@@ -617,14 +617,11 @@ function getPrecioHistorico(ticker, fecha) {
 }
 
 function tickerHistorico(inst) {
-  // Bopreales: BPC7D -> BPOC7, BPD7D -> BPOD7, etc.
-  if (inst.grupo === 'usdbopreal') {
-    return inst.ticker.replace(/^BP([A-Z])(\d)D$/, 'BPO$1$2');
-  }
   // USD Bonares y Globales: agregar sufijo D
   if (inst.grupo === 'usdbonares' || inst.grupo === 'usdglobales') {
     return inst.ticker + 'D';
   }
+  // Resto (incluyendo Bopreales): ticker directo
   return inst.ticker;
 }
 
