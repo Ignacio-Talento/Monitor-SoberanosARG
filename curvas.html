@@ -1,0 +1,543 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Curvas de Rendimiento</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #f0f4f8; --surface: #ffffff; --card: #f8fafc;
+    --border: #d1d9e0; --text: #1a2332; --text-2: #3a4a5c; --text-3: #7a8fa0;
+    --navy: #0d1f4e; --navy-light: #1a3270;
+    --green: #16a34a; --blue: #1d6fa5; --teal: #0d9488;
+    --purple: #7c3aed; --amber: #b45309; --red: #dc2626;
+    --mono: 'JetBrains Mono','Fira Code','Courier New',monospace;
+    --sans: 'Inter',system-ui,sans-serif;
+  }
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap');
+  body { background: var(--bg); color: var(--text); font-family: var(--sans); min-height: 100vh; padding: 0; }
+  .wrap { max-width: 1400px; margin: 0 auto; padding: 0 24px 24px; }
+
+  .navbar { background: var(--navy); padding: 0 32px; height: 56px; display: flex; align-items: center; justify-content: space-between; }
+  .navbar-brand { display: flex; align-items: center; gap: 16px; }
+  .navbar-logo { font-size: 20px; font-weight: 700; color: #ffffff; letter-spacing: 0.05em; font-family: var(--sans); }
+  .navbar-sep { width: 1px; height: 20px; background: rgba(255,255,255,0.2); }
+  .navbar-title { font-size: 11px; color: rgba(255,255,255,0.6); font-family: var(--mono); letter-spacing: 0.1em; text-transform: uppercase; }
+
+  .nav-tabs { display: flex; gap: 4px; border-bottom: 2px solid var(--border); margin: 20px 0 20px 0; }
+  .nav-tab { font-size: 11px; font-family: var(--mono); font-weight: 600; letter-spacing: .05em; padding: 8px 20px; border-radius: 6px 6px 0 0; cursor: pointer; border: 1px solid transparent; color: var(--text-3); background: transparent; transition: all .15s; text-transform: uppercase; text-decoration: none; display: block; }
+  .nav-tab:hover { color: var(--navy); background: var(--bg); }
+  .nav-tab.active { color: var(--navy); background: var(--surface); border-color: var(--border); border-bottom-color: transparent; margin-bottom: -2px; font-weight: 700; }
+
+  .controles { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 14px 20px; margin-bottom: 16px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; box-shadow: 0 1px 4px rgba(0,0,0,0.06); }
+  .controles-title { font-size: 10px; font-weight: 600; letter-spacing: .10em; text-transform: uppercase; color: var(--text-3); font-family: var(--mono); white-space: nowrap; margin-right: 4px; }
+  .familia-btn { display: flex; align-items: center; gap: 7px; cursor: pointer; padding: 5px 12px; border-radius: 20px; border: 2px solid; font-size: 11px; font-family: var(--mono); font-weight: 600; letter-spacing: .04em; text-transform: uppercase; transition: all .15s; user-select: none; }
+  .familia-btn.off { opacity: 0.3; }
+  .familia-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+
+  .chart-wrap { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 24px; box-shadow: 0 1px 4px rgba(0,0,0,0.06); position: relative; }
+  .chart-container { position: relative; height: 520px; }
+  .no-data { display: flex; align-items: center; justify-content: center; height: 400px; font-size: 13px; color: var(--text-3); font-family: var(--mono); font-style: italic; }
+
+  .legend-outlier { display: flex; align-items: center; gap: 6px; font-size: 10px; font-family: var(--mono); color: var(--text-3); margin-top: 10px; }
+  .legend-outlier-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--red); flex-shrink: 0; }
+  .slider-wrap { display: flex; align-items: center; gap: 12px; margin-left: auto; }
+  .slider-lbl { font-size: 10px; font-family: var(--mono); color: var(--text-3); text-transform: uppercase; letter-spacing: .06em; white-space: nowrap; }
+  .slider-val { font-size: 12px; font-family: var(--mono); color: var(--navy); font-weight: 600; min-width: 30px; }
+  input[type=range] { accent-color: var(--navy); width: 140px; cursor: pointer; }
+
+  /* TABLA BEI */
+  .bei-section { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 20px 24px; margin-top: 16px; box-shadow: 0 1px 4px rgba(0,0,0,0.06); width: 100%; }
+  .bei-title { font-size: 11px; font-weight: 700; letter-spacing: .10em; text-transform: uppercase; color: var(--navy); font-family: var(--mono); margin-bottom: 16px; }
+  .bei-table { width: 100%; border-collapse: collapse; }
+  .bei-table th { padding: 8px 14px; font-size: 10px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--text-3); text-align: right; background: var(--card); border-bottom: 2px solid var(--navy); font-family: var(--mono); }
+  .bei-table th:first-child { text-align: left; }
+  .bei-table td { padding: 9px 14px; font-size: 12px; font-family: var(--mono); text-align: right; border-bottom: 1px solid var(--border); color: var(--text-2); }
+  .bei-table td:first-child { text-align: left; font-weight: 600; color: var(--text); }
+  .bei-table tr:last-child td { border-bottom: none; }
+  .rec-cer { color: var(--navy); font-weight: 700; background: #e8edf5; padding: 2px 10px; border-radius: 4px; }
+  .rec-lecap { color: #1a3270; font-weight: 700; background: #dbeafe; padding: 2px 10px; border-radius: 4px; }
+  .rec-neutro { color: var(--text-3); font-weight: 500; }
+  .bei-empty { font-size: 12px; color: var(--text-3); font-family: var(--mono); font-style: italic; padding: 16px 0; }
+</style>
+</head>
+<body>
+
+<nav class="navbar">
+  <div class="navbar-brand">
+    <div class="navbar-logo">BALANZ</div>
+    <div class="navbar-sep"></div>
+    <div class="navbar-title">Monitor · Renta Fija AR</div>
+  </div>
+</nav>
+
+<div class="wrap">
+  <div class="nav-tabs">
+    <a class="nav-tab" href="bonos.html">Monitor</a>
+    <a class="nav-tab active" href="curvas.html">Curvas</a>
+  </div>
+
+  <div class="controles">
+    <div class="controles-title">Familias</div>
+    <div id="filtros" style="display:flex;gap:8px;flex-wrap:wrap;"></div>
+    <div class="slider-wrap">
+      <div class="slider-lbl">M. Dur. máx.</div>
+      <input type="range" id="slider-md" min="0" max="10" step="0.1" value="10" oninput="onSlider(this.value)">
+      <div class="slider-val" id="slider-val">10</div>
+    </div>
+  </div>
+
+  <div class="chart-wrap">
+    <div id="no-data" class="no-data" style="display:none">Abrí el Monitor y actualizá los precios primero.</div>
+    <div class="chart-container">
+      <canvas id="chart"></canvas>
+    </div>
+    <div class="legend-outlier">
+      <div class="legend-outlier-dot"></div>
+      Outlier (más de 2σ de la curva de regresión) — excluido del suavizado
+    </div>
+  </div>
+</div>
+
+  <!-- TABLA BEI vs REM -->
+  <div class="bei-section">
+    <div class="bei-title">Inflación Implícita · BEI vs REM</div>
+    <div id="bei-contenido"><div class="bei-empty">Seleccioná las familias LECAP y CER para calcular la BEI.</div></div>
+  </div>
+
+</div>
+
+<script>
+const FAMILIAS = [
+  { key: 'lecap',      label: 'LECAPs',        color: '#0d1f4e' },  // azul marino oscuro
+  { key: 'tasafija',   label: 'Tasa Fija',     color: '#1a3270' },  // azul marino medio
+  { key: 'cer',        label: 'CER',           color: '#1d6fa5' },  // azul medio
+  { key: 'tamar',      label: 'TAMAR',         color: '#2e86c1' },  // azul claro
+  { key: 'usdlinked',  label: 'USD Linked',    color: '#5ba4cf' },  // azul celeste
+  { key: 'usdbonares', label: 'USD Bonares',   color: '#85c1e9' },  // azul muy claro
+  { key: 'usdglobales',label: 'USD Globales',  color: '#aed6f1' },  // azul pastel
+  { key: 'usdbopreal', label: 'USD Bopreales', color: '#7fb3d3' },  // azul grisáceo
+  { key: 'dual',       label: 'Duales',        color: '#4a90b8' },  // azul intermedio
+];
+
+let activos = new Set();
+let remData = []; // [{ mes: 'Mayo 2026', valor: 2.3 }, ...]
+
+async function cargarREM() {
+  try {
+    const resp = await fetch('Indicadores.xlsx?t=' + Date.now());
+    if (!resp.ok) return;
+    const buffer = await resp.arrayBuffer();
+    const wb = XLSX.read(buffer, { type: 'array' });
+    const ws = wb.Sheets['Indicadores'];
+    const rows = XLSX.utils.sheet_to_json(ws, { defval: '', raw: false, header: 1 });
+    
+    // Buscar fila REM
+    let remIdx = rows.findIndex(r => r[0] === 'REM');
+    if (remIdx === -1) return;
+    
+    const headers = rows[remIdx + 1];
+    const valores = rows[remIdx + 2];
+    
+    remData = [];
+    headers.forEach((mes, i) => {
+      if (!mes) return;
+      const val = parseFloat(String(valores[i] || '').replace(',', '.'));
+      if (!isNaN(val)) remData.push({ mes: String(mes), valor: val });
+    });
+  } catch(e) {
+    console.warn('Error cargando REM:', e);
+  }
+}
+
+// ── CALCULAR BEI FORWARD ─────────────────────────────────────
+function calcularBEI(datos) {
+  const lecaps = datos.filter(d => d.grupo === 'lecap' && d.md != null && d.tea != null);
+  const cers   = datos.filter(d => d.grupo === 'cer'   && d.md != null && d.tea != null);
+  
+  if (lecaps.length < 3 || cers.length < 2) return null;
+  
+  const fnLecap = regresionPoly2(lecaps.map(d => ({ x: d.md, y: d.tea })));
+  const fnCer   = regresionPoly2(cers.map(d => ({ x: d.md, y: d.tea })));
+  
+  if (!fnLecap || !fnCer) return null;
+  
+  // Calcular BEI acumulada mes a mes (t en años)
+  const resultados = [];
+  for (let m = 1; m <= 12; m++) {
+    const t = m / 12;
+    const teaLecap = fnLecap(t) / 100;
+    const teaCer   = fnCer(t) / 100;
+    const beiAcum  = (1 + teaLecap) / (1 + teaCer) - 1; // acumulada hasta mes m
+    resultados.push({ mes: m, beiAcum });
+  }
+  
+  // Forward: inflación de cada mes individual
+  const forward = resultados.map((r, i) => {
+    const beiAnterior = i === 0 ? 0 : resultados[i-1].beiAcum;
+    const beiMes = (1 + r.beiAcum) / (1 + beiAnterior) - 1;
+    return { mes: r.mes, bei: beiMes * 100 };
+  });
+  
+  return forward;
+}
+
+function renderBEI(datos) {
+  const contenido = document.getElementById('bei-contenido');
+  if (!remData.length) {
+    contenido.innerHTML = '<div class="bei-empty">Cargando datos REM...</div>';
+    return;
+  }
+
+  const lec = datos.filter(d => d.grupo === 'lecap' && d.md != null && d.tea != null);
+  const cer = datos.filter(d => d.grupo === 'cer'   && d.md != null && d.tea != null);
+  const fnL = lec.length >= 3 ? regresionPoly2(lec.map(d => ({ x: d.md, y: d.tea }))) : null;
+  const fnC = cer.length >= 3 ? regresionPoly2(cer.map(d => ({ x: d.md, y: d.tea }))) : null;
+
+  // MD mínimo de la curva CER (para no extrapolar)
+  const mdMinCer = cer.length ? Math.min(...cer.map(d => d.md)) : 0.1;
+
+  const ahora = new Date();
+  const meses = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+
+  // Calcular BEI acumulada para cada mes del REM
+  const beiAcum = {};
+  remData.forEach((r, i) => {
+    const t = (i + 1) / 12; // mes 1 = 1/12, mes 2 = 2/12, etc.
+    if (fnL && fnC && t >= mdMinCer) {
+      const teaL = fnL(t) / 100;
+      const teaC = fnC(t) / 100;
+      beiAcum[i] = (1 + teaL) / (1 + teaC) - 1;
+    } else {
+      beiAcum[i] = null;
+    }
+  });
+
+  let html = `<table class="bei-table">
+    <thead><tr>
+      <th>Período</th>
+      <th>BEI implícita %</th>
+      <th>REM %</th>
+      <th>Diferencia</th>
+      <th>Recomendación</th>
+    </tr></thead><tbody>`;
+
+  // Mes en curso: BEI = REM
+  const mesActualNombre = `${meses[ahora.getMonth()]} ${ahora.getFullYear()}`;
+  const remActual = remData[0];
+  html += `<tr style="background:var(--card)">
+    <td>${mesActualNombre} <span style="font-size:10px;color:var(--text-3)">(en curso)</span></td>
+    <td style="color:var(--text-3)">= REM</td>
+    <td>${remActual.valor.toFixed(2)}%</td>
+    <td>—</td>
+    <td><span class="rec-neutro">—</span></td>
+  </tr>`;
+
+  // Meses del REM (forward)
+  remData.forEach((r, i) => {
+    // Nombre del mes: mes actual + i+1
+    const mesDate = new Date(ahora.getFullYear(), ahora.getMonth() + i + 1, 1);
+    const mesNombre = `${meses[mesDate.getMonth()]} ${mesDate.getFullYear()}`;
+
+    // BEI forward = acumulada mes i+1 - acumulada mes i
+    const beiAnterior = i === 0
+      ? (remActual.valor / 100) // mes en curso = REM
+      : (beiAcum[i-1] !== null ? beiAcum[i-1] : null);
+    const beiActual = beiAcum[i];
+
+    let beiFwd = null;
+    if (beiActual !== null && beiAnterior !== null) {
+      beiFwd = ((1 + beiActual) / (1 + beiAnterior) - 1) * 100;
+    }
+
+    const remVal = r.valor;
+    const diff = beiFwd !== null ? beiFwd - remVal : null;
+
+    let rec = '<span class="rec-neutro">—</span>';
+    if (diff !== null) {
+      if (diff > 0.2)       rec = '<span class="rec-cer">CER</span>';
+      else if (diff < -0.2) rec = '<span class="rec-lecap">LECAP</span>';
+      else                  rec = '<span class="rec-neutro">Neutro</span>';
+    }
+
+    html += `<tr>
+      <td>${mesNombre}</td>
+      <td>${beiFwd !== null ? beiFwd.toFixed(2) + '%' : '<span style="color:var(--text-3)">Sin datos</span>'}</td>
+      <td>${remVal.toFixed(2)}%</td>
+      <td style="color:${diff === null ? 'var(--text-3)' : diff > 0 ? 'var(--red)' : 'var(--green)'}">${diff !== null ? (diff > 0 ? '+' : '') + diff.toFixed(2) + '%' : '—'}</td>
+      <td>${rec}</td>
+    </tr>`;
+  });
+
+  // Fila 12 meses — dato especial del REM vs BEI a MD=1
+  const rem12 = remData.find(r => r.mes === '12 Meses');
+  if (rem12 && fnL && fnC) {
+    const teaL12 = fnL(1) / 100;
+    const teaC12 = fnC(1) / 100;
+    const bei12  = ((1 + teaL12) / (1 + teaC12) - 1) * 100;
+    const diff12 = bei12 - rem12.valor;
+    let rec12 = '<span class="rec-neutro">Neutro</span>';
+    if (diff12 > 0.5)       rec12 = '<span class="rec-cer">CER</span>';
+    else if (diff12 < -0.5) rec12 = '<span class="rec-lecap">LECAP</span>';
+    html += `<tr style="background:var(--card);font-weight:600">
+      <td>12 Meses (anualizado)</td>
+      <td>${bei12.toFixed(2)}%</td>
+      <td>${rem12.valor.toFixed(2)}%</td>
+      <td style="color:${diff12 > 0 ? 'var(--red)' : 'var(--green)'}">${(diff12 > 0 ? '+' : '') + diff12.toFixed(2)}%</td>
+      <td>${rec12}</td>
+    </tr>`;
+  }
+
+  html += '</tbody></table>';
+  contenido.innerHTML = html;
+}
+let mdMax = 10;
+
+function onSlider(val) {
+  mdMax = parseFloat(val);
+  document.getElementById('slider-val').textContent = parseFloat(val).toFixed(1);
+  const datos = JSON.parse(localStorage.getItem('bonos_data') || '[]');
+  renderGrafico(datos);
+}
+let chartInstance = null;
+
+// ── REGRESION POLINOMICA GRADO 2 ─────────────────────────────
+function regresionPoly2(puntos) {
+  const n = puntos.length;
+  if (n < 3) return null;
+  // Ax = b donde x = [a, b, c] para y = ax² + bx + c
+  let s0=n, s1=0, s2=0, s3=0, s4=0, t0=0, t1=0, t2=0;
+  puntos.forEach(p => {
+    const x = p.x, y = p.y;
+    s1 += x; s2 += x*x; s3 += x*x*x; s4 += x*x*x*x;
+    t0 += y; t1 += x*y; t2 += x*x*y;
+  });
+  // Resolver sistema 3x3
+  const A = [[s0,s1,s2],[s1,s2,s3],[s2,s3,s4]];
+  const b = [t0,t1,t2];
+  const coef = gaussElim(A, b);
+  if (!coef) return null;
+  return x => coef[0] + coef[1]*x + coef[2]*x*x;
+}
+
+function gaussElim(A, b) {
+  const n = A.length;
+  const M = A.map((r,i) => [...r, b[i]]);
+  for (let col = 0; col < n; col++) {
+    let maxRow = col;
+    for (let row = col+1; row < n; row++) if (Math.abs(M[row][col]) > Math.abs(M[maxRow][col])) maxRow = row;
+    [M[col], M[maxRow]] = [M[maxRow], M[col]];
+    if (Math.abs(M[col][col]) < 1e-10) return null;
+    for (let row = col+1; row < n; row++) {
+      const f = M[row][col] / M[col][col];
+      for (let j = col; j <= n; j++) M[row][j] -= f * M[col][j];
+    }
+  }
+  const x = new Array(n).fill(0);
+  for (let i = n-1; i >= 0; i--) {
+    x[i] = M[i][n] / M[i][i];
+    for (let j = i-1; j >= 0; j--) M[j][n] -= M[j][i] * x[i];
+  }
+  return x;
+}
+
+// ── DETECTAR OUTLIERS (2σ) ────────────────────────────────────
+function detectarOutliers(puntos, fn) {
+  if (!fn) return { normales: puntos, outliers: [] };
+  const residuos = puntos.map(p => Math.abs(p.y - fn(p.x)));
+  const mean = residuos.reduce((a,b) => a+b, 0) / residuos.length;
+  const std = Math.sqrt(residuos.map(r => (r-mean)**2).reduce((a,b) => a+b, 0) / residuos.length);
+  const umbral = mean + 2 * std;
+  return {
+    normales: puntos.filter((p,i) => residuos[i] <= umbral),
+    outliers: puntos.filter((p,i) => residuos[i] > umbral),
+  };
+}
+
+// ── GENERAR CURVA SUAVE ───────────────────────────────────────
+function generarCurva(fn, xMin, xMax, steps=100) {
+  if (!fn) return [];
+  const result = [];
+  for (let i = 0; i <= steps; i++) {
+    const x = xMin + (xMax - xMin) * i / steps;
+    result.push({ x: parseFloat(x.toFixed(3)), y: parseFloat(fn(x).toFixed(3)) });
+  }
+  return result;
+}
+
+// ── RENDER ────────────────────────────────────────────────────
+function renderGrafico(datos) {
+  const canvas = document.getElementById('chart');
+  const noData = document.getElementById('no-data');
+  if (chartInstance) { chartInstance.destroy(); chartInstance = null; }
+
+  const datasets = [];
+
+  FAMILIAS.filter(f => activos.has(f.key)).forEach(f => {
+    const puntos = datos
+      .filter(d => d.grupo === f.key && d.md != null && d.tea != null && d.md <= mdMax)
+      .map(d => ({ x: parseFloat(d.md.toFixed(2)), y: parseFloat(d.tea.toFixed(2)), ticker: d.ticker }))
+      .sort((a,b) => a.x - b.x);
+
+    if (!puntos.length) return;
+
+    // Primera pasada de regresión para detectar outliers
+    const fn1 = regresionPoly2(puntos);
+    const { normales, outliers } = detectarOutliers(puntos, fn1);
+
+    // Segunda pasada con solo normales para curva suave
+    const fn2 = normales.length >= 3 ? regresionPoly2(normales) : null;
+    const xMin = Math.min(...normales.map(p=>p.x));
+    const xMax = Math.max(...normales.map(p=>p.x));
+    const curva = fn2 ? generarCurva(fn2, xMin, xMax) : [];
+
+    // Dataset curva suave
+    if (curva.length) {
+      datasets.push({
+        label: f.label,
+        data: curva,
+        borderColor: f.color,
+        backgroundColor: 'transparent',
+        pointRadius: 0,
+        borderWidth: 2.5,
+        tension: 0,
+        showLine: true,
+        order: 2,
+      });
+    }
+
+    // Dataset puntos normales
+    datasets.push({
+      label: `${f.label} (puntos)`,
+      data: normales,
+      borderColor: f.color,
+      backgroundColor: f.color + 'cc',
+      pointRadius: 5,
+      pointHoverRadius: 7,
+      showLine: false,
+      order: 1,
+    });
+
+    // Dataset outliers en rojo
+    if (outliers.length) {
+      datasets.push({
+        label: `${f.label} (outliers)`,
+        data: outliers,
+        borderColor: '#dc2626',
+        backgroundColor: '#dc2626cc',
+        pointRadius: 6,
+        pointHoverRadius: 8,
+        pointStyle: 'circle',
+        showLine: false,
+        order: 0,
+      });
+    }
+  });
+
+  if (!datasets.length) {
+    canvas.style.display = 'none';
+    noData.style.display = 'flex';
+    noData.textContent = 'No hay datos para mostrar. Seleccioná al menos una familia.';
+    return;
+  }
+
+  canvas.style.display = 'block';
+  noData.style.display = 'none';
+
+  chartInstance = new Chart(canvas, {
+    type: 'scatter',
+    data: { datasets },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: { mode: 'nearest', intersect: true },
+      plugins: {
+        legend: {
+          display: true,
+          position: 'top',
+          labels: {
+            font: { family: 'JetBrains Mono', size: 10 },
+            padding: 12,
+            filter: item => !item.text.includes('(puntos)') && !item.text.includes('(outliers)'),
+          }
+        },
+        tooltip: {
+          callbacks: {
+            label: ctx => {
+              const p = ctx.raw;
+              const isOutlier = ctx.dataset.label.includes('outliers');
+              return `${p.ticker || ''}  MD: ${p.x}  TEA: ${p.y}%${isOutlier ? '  ⚠ outlier' : ''}`;
+            }
+          },
+          bodyFont: { family: 'JetBrains Mono', size: 11 },
+          titleFont: { family: 'JetBrains Mono', size: 11 },
+        }
+      },
+      scales: {
+        x: {
+          title: { display: true, text: 'Duration Modificada (años)', font: { family: 'JetBrains Mono', size: 11 }, color: '#7a8fa0' },
+          grid: { color: '#e5e7eb' },
+          ticks: { font: { family: 'JetBrains Mono', size: 10 }, color: '#7a8fa0' }
+        },
+        y: {
+          title: { display: true, text: 'TEA %', font: { family: 'JetBrains Mono', size: 11 }, color: '#7a8fa0' },
+          grid: { color: '#e5e7eb' },
+          ticks: { font: { family: 'JetBrains Mono', size: 10 }, color: '#7a8fa0', callback: v => v + '%' }
+        }
+      }
+    }
+  });
+}
+
+// ── FILTROS ───────────────────────────────────────────────────
+function renderFiltros(datos) {
+  const container = document.getElementById('filtros');
+  FAMILIAS.forEach(f => {
+    if (!datos.some(d => d.grupo === f.key)) return;
+    const btn = document.createElement('div');
+    btn.className = 'familia-btn';
+    btn.style.cssText = `border-color:${f.color};color:${f.color}`;
+    btn.innerHTML = `<span class="familia-dot" style="background:${f.color}"></span>${f.label}`;
+    btn.classList.add('off');
+    btn.addEventListener('click', () => {
+      if (activos.has(f.key)) activos.delete(f.key);
+      else activos.add(f.key);
+      btn.classList.toggle('off', !activos.has(f.key));
+      renderGrafico(datos);
+      renderBEI(datos);
+    });
+    container.appendChild(btn);
+  });
+}
+
+// ── INIT ──────────────────────────────────────────────────────
+try {
+  const raw = localStorage.getItem('bonos_data');
+  const datos = raw ? JSON.parse(raw) : null;
+  if (datos && datos.length) {
+    const maxMD = Math.max(...datos.filter(d => d.md).map(d => d.md));
+    const sliderMax = Math.ceil(maxMD + 0.5);
+    const slider = document.getElementById('slider-md');
+    slider.max = sliderMax;
+    slider.value = sliderMax;
+    mdMax = sliderMax;
+    document.getElementById('slider-val').textContent = sliderMax.toFixed(1);
+  }
+  if (!datos || !datos.length) {
+    document.getElementById('no-data').style.display = 'flex';
+    document.getElementById('chart').style.display = 'none';
+  } else {
+    renderFiltros(datos);
+    renderGrafico(datos);
+    cargarREM().then(() => renderBEI(datos));
+  }
+} catch(e) {
+  document.getElementById('no-data').style.display = 'flex';
+  document.getElementById('chart').style.display = 'none';
+}
+</script>
+</body>
+</html>
