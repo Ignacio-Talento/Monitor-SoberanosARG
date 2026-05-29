@@ -1,0 +1,540 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sendero CER</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #f0f4f8; --surface: #ffffff; --card: #f8fafc;
+    --border: #d1d9e0; --border-l: #b8c4cf;
+    --text: #1a2332; --text-2: #3a4a5c; --text-3: #7a8fa0;
+    --navy: #0d1f4e; --navy-light: #1a3270;
+    --green: #16a34a; --green-bg: #dcfce7; --green-border: #86efac;
+    --blue: #1d6fa5; --amber: #b45309; --red: #dc2626;
+    --mono: 'JetBrains Mono','Fira Code','Courier New',monospace;
+    --sans: 'Inter',system-ui,sans-serif;
+  }
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap');
+  body { background: var(--bg); color: var(--text); font-family: var(--sans); min-height: 100vh; padding: 0; }
+  .wrap { max-width: 1400px; margin: 0 auto; padding: 0 24px 24px; }
+
+  .navbar { background: var(--navy); padding: 0 32px; height: 56px; display: flex; align-items: center; justify-content: space-between; }
+  .navbar-brand { display: flex; align-items: center; gap: 16px; }
+  .navbar-logo { font-size: 20px; font-weight: 700; color: #ffffff; letter-spacing: 0.05em; font-family: var(--sans); }
+  .navbar-sep { width: 1px; height: 20px; background: rgba(255,255,255,0.2); }
+  .navbar-title { font-size: 11px; color: rgba(255,255,255,0.6); font-family: var(--mono); letter-spacing: 0.1em; text-transform: uppercase; }
+
+  .nav-tabs { display: flex; gap: 4px; border-bottom: 2px solid var(--border); margin: 20px 0 20px 0; }
+  .nav-tab { font-size: 11px; font-family: var(--mono); font-weight: 600; letter-spacing: .05em; padding: 8px 20px; border-radius: 6px 6px 0 0; cursor: pointer; border: 1px solid transparent; color: var(--text-3); background: transparent; transition: all .15s; text-transform: uppercase; text-decoration: none; display: block; }
+  .nav-tab:hover { color: var(--navy); background: var(--bg); }
+  .nav-tab.active { color: var(--navy); background: var(--surface); border-color: var(--border); border-bottom-color: transparent; margin-bottom: -2px; font-weight: 700; }
+
+  /* PANEL INFLACION */
+  .panel { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 20px 24px; margin-bottom: 16px; box-shadow: 0 1px 4px rgba(0,0,0,0.06); }
+  .panel-title { font-size: 11px; font-weight: 700; letter-spacing: .10em; text-transform: uppercase; color: var(--navy); font-family: var(--mono); margin-bottom: 16px; }
+  .infl-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; }
+  .infl-item { display: flex; flex-direction: column; gap: 4px; }
+  .infl-lbl { font-size: 10px; color: var(--text-3); font-family: var(--mono); letter-spacing: .06em; text-transform: uppercase; }
+  .infl-sublbl { font-size: 9px; color: var(--blue); font-family: var(--mono); margin-top: 2px; }
+  .infl-input { background: var(--bg); border: 1px solid var(--border-l); border-radius: 5px; color: var(--amber); font-family: var(--mono); font-size: 14px; font-weight: 500; padding: 7px 12px; width: 100%; transition: border-color .15s; }
+  .infl-input:focus { outline: none; border-color: var(--amber); }
+  input[type=number]::-webkit-inner-spin-button, input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+  input[type=number] { -moz-appearance: textfield; appearance: textfield; }
+
+  /* TABLA BONOS CER */
+  .table-wrap { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; box-shadow: 0 1px 4px rgba(0,0,0,0.06); overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; min-width: 900px; }
+  thead tr { border-bottom: 2px solid var(--navy); }
+  th { padding: 10px 14px; font-size: 10px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--text-3); text-align: right; background: var(--card); white-space: nowrap; font-family: var(--mono); }
+  th:first-child, th:nth-child(2) { text-align: left; }
+  tbody tr { border-bottom: 1px solid var(--border); transition: background .1s; }
+  tbody tr:last-child { border-bottom: none; }
+  tbody tr:hover { background: var(--row-hover, #eef2f7); }
+  td { padding: 9px 14px; font-size: 12px; text-align: right; color: var(--text-2); white-space: nowrap; font-family: var(--mono); }
+  td:first-child { text-align: left; font-weight: 600; color: var(--text); }
+  td:nth-child(2) { text-align: left; }
+  .badge-confirmado { background: var(--green-bg); color: var(--green); border: 1px solid var(--green-border); padding: 2px 8px; border-radius: 4px; font-size: 10px; font-weight: 600; }
+  .badge-proyectado { background: #fef3c7; color: var(--amber); border: 1px solid #fcd34d; padding: 2px 8px; border-radius: 4px; font-size: 10px; font-weight: 600; }
+  .no-comp { color: var(--text-3); font-style: italic; font-size: 11px; }
+  .val-green { color: var(--green); font-weight: 600; }
+  .val-blue { color: var(--blue); font-weight: 500; }
+  .val-amber { color: var(--amber); font-weight: 500; }
+  .alert { padding: 10px 14px; border-radius: 6px; font-size: 11px; font-family: var(--mono); margin-bottom: 14px; display: none; }
+  .alert.show { display: block; }
+  .alert.info { background:#f0fdf4; border:1px solid #86efac; color:var(--green); }
+  .alert.err { background:#fef2f2; border:1px solid #fecaca; color:var(--red); }
+</style>
+</head>
+<body>
+
+<nav class="navbar">
+  <div class="navbar-brand">
+    <div class="navbar-logo">BALANZ</div>
+    <div class="navbar-sep"></div>
+    <div class="navbar-title">Monitor · Renta Fija AR</div>
+  </div>
+</nav>
+
+<div class="wrap">
+  <div class="nav-tabs">
+    <a class="nav-tab" href="bonos.html">Monitor</a>
+    <a class="nav-tab" href="curvas.html">Curvas</a>
+    <a class="nav-tab active" href="senderoCER.html">Sendero CER</a>
+  </div>
+
+  <div class="alert" id="alert"></div>
+
+  <!-- PANEL INFLACION -->
+  <div class="panel">
+    <div class="panel-title">Expectativas de inflación mensual</div>
+    <div class="infl-grid" id="infl-grid">
+      <div style="font-size:12px;color:var(--text-3);font-family:var(--mono)">Cargando datos del REM...</div>
+    </div>
+  </div>
+
+  <!-- TABLA BONOS CER -->
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Ticker</th>
+          <th>Vencimiento</th>
+          <th>Días</th>
+          <th>CER Emisión</th>
+          <th>CER Vto.</th>
+          <th>Coeficiente</th>
+          <th>Estado</th>
+          <th>TIR CER %</th>
+          <th>LECAP comparable</th>
+          <th>TIR LECAP %</th>
+          <th>Spread (pb)</th>
+        </tr>
+      </thead>
+      <tbody id="tbody-cer">
+        <tr><td colspan="11" style="text-align:center;padding:24px;color:var(--text-3);font-style:italic;font-family:var(--mono)">Calculando...</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<script>
+const BCRA_URL  = 'https://indicadoresbcra.granda-fra.workers.dev';
+const EXCEL_URL = 'Instrumentos.xlsx';
+
+// Meses en español para el REM
+const MESES_ES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+
+let cerSerie   = {}; // { 'YYYY-MM-DD': valor }
+let cerUltFecha = null; // última fecha publicada del CER
+let inflInputs = {}; // { 'YYYY-MM': pct } expectativas de inflación
+let bonosCER   = []; // instrumentos CER del Excel
+let lecaps     = []; // instrumentos LECAP del Excel
+
+// ── HELPERS ──────────────────────────────────────────────────
+function parseLocalDate(s) {
+  if (!s) return null;
+  const parts = String(s).split('-').map(Number);
+  return new Date(parts[0], parts[1] - 1, parts[2]);
+}
+function dateToStr(d) {
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+function addDias(d, n) {
+  const r = new Date(d); r.setDate(r.getDate() + n); return r;
+}
+function diasAlVenc(f) {
+  if (!f) return null;
+  const hoy = new Date(); hoy.setHours(0,0,0,0);
+  return Math.round((parseLocalDate(f) - hoy) / 86400000);
+}
+function fmtDate(s) {
+  if (!s) return '—';
+  try {
+    const d = parseLocalDate(s);
+    return `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getFullYear()).slice(2)}`;
+  } catch { return s; }
+}
+function showAlert(msg, tipo='err') {
+  const el = document.getElementById('alert');
+  el.textContent = msg; el.className = 'alert show ' + tipo;
+  setTimeout(() => el.className = 'alert', 6000);
+}
+
+// ── DIAS HABILES ─────────────────────────────────────────────
+function restarDiasHabiles(fecha, n) {
+  let d = parseLocalDate(fecha);
+  let count = 0;
+  while (count < n) {
+    d.setDate(d.getDate() - 1);
+    const dow = d.getDay();
+    if (dow !== 0 && dow !== 6) count++;
+  }
+  return dateToStr(d);
+}
+
+// ── CARGAR CER DESDE BCRA ────────────────────────────────────
+async function cargarCER() {
+  try {
+    const desde = '2020-01-01';
+    const hasta = dateToStr(new Date());
+    const resp = await fetch(`${BCRA_URL}/?serie=cer&desde=${desde}&hasta=${hasta}`);
+    const json = await resp.json();
+    const detalle = json.results?.[0]?.detalle || [];
+    cerSerie = {};
+    detalle.forEach(r => { cerSerie[r.fecha] = parseFloat(r.valor); });
+    // Encontrar última fecha publicada
+    const fechas = Object.keys(cerSerie).sort();
+    cerUltFecha = fechas[fechas.length - 1];
+    console.log(`CER cargado: ${fechas.length} datos, último: ${cerUltFecha} = ${cerSerie[cerUltFecha]}`);
+  } catch(e) {
+    showAlert('Error cargando CER del BCRA: ' + e.message);
+  }
+}
+
+// ── OBTENER VALOR CER (REAL O PROYECTADO) ─────────────────────
+function getCER(fecha) {
+  if (!fecha) return null;
+  
+  // Si hay dato real, usarlo
+  if (cerSerie[fecha]) return { valor: cerSerie[fecha], proyectado: false };
+  
+  // Buscar el dato real más cercano anterior
+  const fechas = Object.keys(cerSerie).sort();
+  const anteriores = fechas.filter(f => f <= fecha);
+  if (!anteriores.length) return null;
+  
+  const ultimoReal = anteriores[anteriores.length - 1];
+  let valorBase = cerSerie[ultimoReal];
+  let fechaBase = parseLocalDate(ultimoReal);
+  let fechaTarget = parseLocalDate(fecha);
+  
+  // Proyectar día a día usando el sendero de inflación
+  let fechaActual = new Date(fechaBase);
+  fechaActual.setDate(fechaActual.getDate() + 1);
+  
+  while (fechaActual <= fechaTarget) {
+    const mesKey = `${fechaActual.getFullYear()}-${String(fechaActual.getMonth()+1).padStart(2,'0')}`;
+    const inflMes = inflInputs[mesKey];
+    if (inflMes !== undefined && inflMes !== null) {
+      // Factor diario = (1 + inflMes/100)^(1/30)
+      const factorDiario = Math.pow(1 + inflMes / 100, 1/30);
+      valorBase *= factorDiario;
+    }
+    fechaActual.setDate(fechaActual.getDate() + 1);
+  }
+  
+  return { valor: valorBase, proyectado: true };
+}
+
+// ── CARGAR REM ───────────────────────────────────────────────
+async function cargarREM() {
+  try {
+    const resp = await fetch('Indicadores.xlsx?t=' + Date.now());
+    if (!resp.ok) return;
+    const buffer = await resp.arrayBuffer();
+    const wb = XLSX.read(buffer, { type: 'array' });
+    const ws = wb.Sheets['Indicadores'];
+    const rows = XLSX.utils.sheet_to_json(ws, { defval: '', raw: false, header: 1 });
+    
+    let remIdx = rows.findIndex(r => r[0] === 'REM');
+    if (remIdx === -1) return;
+    
+    const headers = rows[remIdx + 1];
+    const valores = rows[remIdx + 2];
+    
+    // Determinar el año/mes de cada columna del REM
+    // El REM publica el mes en curso y los próximos 5 meses
+    const ahora = new Date();
+    
+    headers.forEach((mes, i) => {
+      if (!mes || mes === '12 Meses') return;
+      const val = parseFloat(String(valores[i] || '').replace(',', '.'));
+      if (isNaN(val)) return;
+      
+      // Buscar qué mes/año corresponde
+      const mesIdx = MESES_ES.findIndex(m => mes.startsWith(m));
+      if (mesIdx === -1) return;
+      
+      // Determinar el año — si el mes ya pasó en el año actual, es el próximo año
+      let anio = ahora.getFullYear();
+      if (mesIdx < ahora.getMonth()) anio++;
+      
+      const key = `${anio}-${String(mesIdx + 1).padStart(2,'0')}`;
+      inflInputs[key] = val;
+    });
+    
+    console.log('REM cargado:', inflInputs);
+  } catch(e) {
+    console.warn('Error cargando REM:', e);
+  }
+}
+
+// ── RENDER INPUTS INFLACION ───────────────────────────────────
+function renderInflInputs() {
+  const grid = document.getElementById('infl-grid');
+  
+  // Determinar qué mes afecta al CER y hasta cuándo
+  // La inflación de mes X se publica a principios de mes X+1
+  // y afecta al CER desde el 15 de mes X+1 hasta el 15 de mes X+2
+  
+  const ahora = new Date();
+  const meses = [];
+  
+  // Mostrar 12 meses desde el mes actual
+  for (let i = 0; i < 12; i++) {
+    const d = new Date(ahora.getFullYear(), ahora.getMonth() + i, 1);
+    const key = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+    const mesNombre = `${MESES_ES[d.getMonth()]} ${d.getFullYear()}`;
+    
+    // El dato de inflación de mes X afecta al CER del 15 de mes X+1 al 15 de mes X+2
+    const cerDesde = new Date(d.getFullYear(), d.getMonth() + 1, 15);
+    const cerHasta = new Date(d.getFullYear(), d.getMonth() + 2, 15);
+    const cerDesdeStr = `15/${String(cerDesde.getMonth()+1).padStart(2,'0')}/${String(cerDesde.getFullYear()).slice(2)}`;
+    const cerHastaStr = `15/${String(cerHasta.getMonth()+1).padStart(2,'0')}/${String(cerHasta.getFullYear()).slice(2)}`;
+    
+    meses.push({ key, mesNombre, cerDesdeStr, cerHastaStr });
+  }
+  
+  grid.innerHTML = meses.map(m => {
+    // Calcular valor CER proyectado para la fecha hasta (15 del mes +2)
+    const cerHastaDate = new Date(parseInt(m.key.split('-')[0]), parseInt(m.key.split('-')[1]) + 1, 15);
+    const cerHastaISO = dateToStr(cerHastaDate);
+    const cerProyectado = getCER(cerHastaISO);
+    const cerValStr = cerProyectado ? (cerProyectado.proyectado ? '~' : '') + cerProyectado.valor.toFixed(4) : '—';
+
+    return `
+    <div class="infl-item">
+      <div class="infl-lbl">${m.mesNombre}</div>
+      <input class="infl-input" type="number" step="0.01" 
+        value="${inflInputs[m.key] !== undefined ? inflInputs[m.key] : ''}" 
+        placeholder="% mensual"
+        oninput="onInflChange('${m.key}', this.value)">
+      <div class="infl-sublbl">→ CER ${m.cerDesdeStr} a ${m.cerHastaStr} · <span style="color:var(--navy);font-weight:600">${cerValStr}</span></div>
+    </div>
+  `;}).join('');
+}
+
+function onInflChange(key, val) {
+  const v = parseFloat(val);
+  if (!isNaN(v)) inflInputs[key] = v;
+  else delete inflInputs[key];
+  clearTimeout(window._inflTimer);
+  window._inflTimer = setTimeout(renderTabla, 600);
+}
+
+// ── CARGAR EXCEL ─────────────────────────────────────────────
+function excelSerialToDate(v) {
+  if (!v) return '';
+  const s = String(v).trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+  // M/D/YY o M/D/YYYY
+  const mdy = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})$/);
+  if (mdy) {
+    const y = mdy[3].length === 2 ? '20' + mdy[3] : mdy[3];
+    return `${y}-${mdy[1].padStart(2,'0')}-${mdy[2].padStart(2,'0')}`;
+  }
+  // DD-MM-YY
+  const dmy = s.match(/^(\d{1,2})-(\d{1,2})-(\d{2})$/);
+  if (dmy) return `20${dmy[3]}-${dmy[2].padStart(2,'0')}-${dmy[1].padStart(2,'0')}`;
+  // Serial numérico Excel
+  if (/^\d+$/.test(s)) {
+    const serial = parseInt(s);
+    const d = new Date(0);
+    d.setUTCFullYear(1899, 11, 31);
+    d.setUTCDate(d.getUTCDate() + serial);
+    return `${d.getUTCFullYear()}-${String(d.getUTCMonth()+1).padStart(2,'0')}-${String(d.getUTCDate()).padStart(2,'0')}`;
+  }
+  return s;
+}
+
+async function cargarExcel() {
+  try {
+    const resp = await fetch(EXCEL_URL + '?t=' + Date.now());
+    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+    const buffer = await resp.arrayBuffer();
+    const wb = XLSX.read(buffer, { type: 'array' });
+
+    // CER
+    if (wb.SheetNames.includes('CER')) {
+      const rows = XLSX.utils.sheet_to_json(wb.Sheets['CER'], { defval: '', raw: false });
+      bonosCER = rows
+        .filter(r => r['Ticker'] && String(r['Ticker']).trim())
+        .map(r => ({
+          ticker:  String(r['Ticker']).trim(),
+          emision: excelSerialToDate(r['Fecha Emision'] || r['Fecha Emisión']),
+          venc:    excelSerialToDate(r['Fecha Vencimineto'] || r['Fecha Vencimiento']),
+          margen:  parseFloat(r['Margen']) || 0,
+        }));
+    }
+
+    // LECAPS
+    if (wb.SheetNames.includes('LECAPS')) {
+      const rows = XLSX.utils.sheet_to_json(wb.Sheets['LECAPS'], { defval: '', raw: false });
+      lecaps = rows
+        .filter(r => r['Ticker'] && String(r['Ticker']).trim())
+        .map(r => ({
+          ticker:  String(r['Ticker']).trim(),
+          emision: excelSerialToDate(r['Fecha Emision'] || r['Fecha Emisión']),
+          venc:    excelSerialToDate(r['Fecha Vencimineto'] || r['Fecha Vencimiento']),
+          tem:     parseFloat(r['TEM (%)']) || null,
+        }))
+        .filter(l => l.tem);
+    }
+
+    console.log(`Excel: ${bonosCER.length} bonos CER, ${lecaps.length} LECAPs`);
+  } catch(e) {
+    showAlert('Error cargando Excel: ' + e.message);
+  }
+}
+
+// ── CALCULAR TIR NEWTON-RAPHSON ───────────────────────────────
+function calcTIR(precio, vf, diasAlVenc) {
+  // Para bono a descuento: precio × (1 + TIR)^t = VF
+  // TIR = (VF/precio)^(1/t) - 1
+  if (!precio || !vf || diasAlVenc <= 0) return null;
+  const t = diasAlVenc / 365;
+  return (Math.pow(vf / precio, 1 / t) - 1) * 100;
+}
+
+function parseLocalDate2(s) {
+  if (!s) return null;
+  const parts = String(s).split('-').map(Number);
+  return new Date(parts[0], parts[1] - 1, parts[2]);
+}
+
+function dias360(emision, venc) {
+  const e = parseLocalDate2(emision);
+  const v = parseLocalDate2(venc);
+  let d1 = e.getDate(), m1 = e.getMonth()+1, y1 = e.getFullYear();
+  let d2 = v.getDate(), m2 = v.getMonth()+1, y2 = v.getFullYear();
+  if (d1 === 31) d1 = 30;
+  if (d2 === 31 && d1 >= 30) d2 = 30;
+  return (y2-y1)*360 + (m2-m1)*30 + (d2-d1);
+}
+
+function calcVPV(emision, venc, tem) {
+  if (!emision || !venc || !tem) return null;
+  try {
+    const diasBase = dias360(emision, venc);
+    const t = diasBase / 30;
+    return 100 * Math.pow(1 + tem/100, t);
+  } catch { return null; }
+}
+
+function calcTEALecap(lecap, precio) {
+  // Usar misma logica que el monitor: VPV con TEM y dias360
+  if (!lecap.tem || !lecap.emision || !lecap.venc || !precio) return null;
+  const vpv = calcVPV(lecap.emision, lecap.venc, lecap.tem);
+  if (!vpv) return null;
+  const dias = diasAlVenc(lecap.venc);
+  if (!dias || dias <= 0) return null;
+  const t = dias / 365;
+  return (Math.pow(vpv / precio, 1/t) - 1) * 100;
+}
+
+// ── RENDER TABLA ─────────────────────────────────────────────
+function renderTabla() {
+  const tbody = document.getElementById('tbody-cer');
+  if (!bonosCER.length) {
+    tbody.innerHTML = '<tr><td colspan="11" style="text-align:center;padding:24px;color:var(--text-3);font-style:italic;font-family:var(--mono)">Cargando instrumentos...</td></tr>';
+    return;
+  }
+
+  // Precio de cada bono CER (desde localStorage del monitor)
+  const bonosData = JSON.parse(localStorage.getItem('bonos_data') || '[]');
+  const precioMap = {};
+  bonosData.filter(d => d.grupo === 'cer').forEach(d => { precioMap[d.ticker] = d.precio; });
+
+  let html = '';
+
+  bonosCER.forEach(bono => {
+    const dias = diasAlVenc(bono.venc);
+    if (dias === null || dias < 0) return;
+
+    const precio = precioMap[bono.ticker] || null;
+
+    // Fechas CER (10 días hábiles antes)
+    const fechaCerEmision = bono.emision ? restarDiasHabiles(bono.emision, 10) : null;
+    const fechaCerVenc    = bono.venc    ? restarDiasHabiles(bono.venc, 10)    : null;
+
+    // Obtener valores CER
+    const cerEmision = fechaCerEmision ? getCER(fechaCerEmision) : null;
+    const cerVenc    = fechaCerVenc    ? getCER(fechaCerVenc)    : null;
+
+    // Coeficiente de ajuste
+    const coef = (cerEmision && cerVenc) ? cerVenc.valor / cerEmision.valor : null;
+
+    // Estado: confirmado si ambos CER son reales
+    const confirmado = cerEmision && cerVenc && !cerEmision.proyectado && !cerVenc.proyectado;
+    const estadoBadge = confirmado
+      ? '<span class="badge-confirmado">Tasa fija ✓</span>'
+      : '<span class="badge-proyectado">Proyectado</span>';
+
+    // Valor final = 100 × coeficiente
+    const vf = coef ? 100 * coef : null;
+
+    // TIR CER
+    const tir = (precio && vf) ? calcTIR(precio, vf, dias) : null;
+
+    // LECAP comparable (vencimiento más cercano, máx 10 días de diferencia)
+    let lecapComp = null;
+    let lecapTEA = null;
+    let lecapDias = null;
+    if (bono.venc) {
+      const vencBono = parseLocalDate(bono.venc);
+      lecapComp = lecaps.reduce((prev, curr) => {
+        if (!curr.venc) return prev;
+        const vencL = parseLocalDate(curr.venc);
+        const diffCurr = Math.abs(vencL - vencBono) / 86400000;
+        const diffPrev = prev ? Math.abs(parseLocalDate(prev.venc) - vencBono) / 86400000 : Infinity;
+        return diffCurr < diffPrev ? curr : prev;
+      }, null);
+
+      if (lecapComp) {
+        const diffDias = Math.abs((parseLocalDate(lecapComp.venc) - vencBono) / 86400000);
+        if (diffDias > 20) {
+          lecapComp = null; // No comparable
+        } else {
+          lecapDias = diasAlVenc(lecapComp.venc);
+          const lecapPrecioData = bonosData.find(d => d.ticker === lecapComp.ticker);
+          const lecapPrecio = lecapPrecioData ? lecapPrecioData.precio : null;
+          lecapTEA = lecapPrecio ? calcTEALecap(lecapComp, lecapPrecio) : null;
+        }
+      }
+    }
+
+    // Spread en pb
+    const spread = (tir !== null && lecapTEA !== null) ? (tir - lecapTEA) * 100 : null;
+
+    html += `<tr>
+      <td>${bono.ticker}</td>
+      <td>${fmtDate(bono.venc)}</td>
+      <td>${dias}d</td>
+      <td>${cerEmision ? cerEmision.valor.toFixed(4) : '—'}</td>
+      <td>${cerVenc ? cerVenc.valor.toFixed(4) + (cerVenc.proyectado ? ' *' : '') : '—'}</td>
+      <td>${coef ? coef.toFixed(4) : '—'}</td>
+      <td>${estadoBadge}</td>
+      <td class="val-blue">${tir !== null ? tir.toFixed(2) + '%' : precio ? '—' : '<span style="color:var(--text-3);font-style:italic;font-size:11px">Sin precio</span>'}</td>
+      <td>${lecapComp ? lecapComp.ticker : '<span class="no-comp">Sin comparable</span>'}</td>
+      <td class="val-green">${lecapTEA !== null ? lecapTEA.toFixed(2) + '%' : '—'}</td>
+      <td style="color:${spread === null ? 'var(--text-3)' : spread > 0 ? 'var(--green)' : 'var(--red)'}">${spread !== null ? (spread > 0 ? '+' : '') + Math.round(spread) + ' pb' : '—'}</td>
+    </tr>`;
+  });
+
+  tbody.innerHTML = html || '<tr><td colspan="11" style="text-align:center;padding:24px;color:var(--text-3);font-style:italic;font-family:var(--mono)">Sin datos</td></tr>';
+}
+
+// ── INIT ─────────────────────────────────────────────────────
+async function init() {
+  await Promise.all([cargarCER(), cargarREM(), cargarExcel()]);
+  renderInflInputs();
+  renderTabla();
+}
+
+init();
+</script>
+</body>
+</html>
