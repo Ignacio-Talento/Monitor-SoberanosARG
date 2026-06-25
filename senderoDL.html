@@ -1,0 +1,697 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sendero DL</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #f0f4f8; --surface: #ffffff; --card: #f8fafc;
+    --border: #d1d9e0; --border-l: #b8c4cf;
+    --text: #1a2332; --text-2: #3a4a5c; --text-3: #7a8fa0;
+    --navy: #0d1f4e; --navy-light: #1a3270;
+    --green: #16a34a; --green-bg: #dcfce7; --green-border: #86efac;
+    --blue: #1d6fa5; --amber: #b45309; --red: #dc2626;
+    --mono: 'JetBrains Mono','Fira Code','Courier New',monospace;
+    --sans: 'Inter',system-ui,sans-serif;
+  }
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap');
+  body { background: var(--bg); color: var(--text); font-family: var(--sans); min-height: 100vh; padding: 0; }
+  .wrap { max-width: 1400px; margin: 0 auto; padding: 0 24px 24px; }
+
+  .navbar { background: var(--navy); padding: 0 32px; height: 56px; display: flex; align-items: center; justify-content: space-between; }
+  .navbar-brand { display: flex; align-items: center; gap: 16px; }
+  .navbar-logo { font-size: 20px; font-weight: 700; color: #ffffff; letter-spacing: 0.05em; font-family: var(--sans); }
+  .navbar-sep { width: 1px; height: 20px; background: rgba(255,255,255,0.2); }
+  .navbar-title { font-size: 11px; color: rgba(255,255,255,0.6); font-family: var(--mono); letter-spacing: 0.1em; text-transform: uppercase; }
+
+  .nav-tabs { display: flex; gap: 4px; border-bottom: 2px solid var(--border); margin: 20px 0 20px 0; }
+  .nav-tab { font-size: 11px; font-family: var(--mono); font-weight: 600; letter-spacing: .05em; padding: 8px 20px; border-radius: 6px 6px 0 0; cursor: pointer; border: 1px solid transparent; color: var(--text-3); background: transparent; transition: all .15s; text-transform: uppercase; text-decoration: none; display: block; }
+  .nav-tab:hover { color: var(--navy); background: var(--bg); }
+  .nav-tab.active { color: var(--navy); background: var(--surface); border-color: var(--border); border-bottom-color: transparent; margin-bottom: -2px; font-weight: 700; }
+
+  /* PANEL TC */
+  .panel { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 20px 24px; margin-bottom: 16px; box-shadow: 0 1px 4px rgba(0,0,0,0.06); }
+  .panel-title { font-size: 11px; font-weight: 700; letter-spacing: .10em; text-transform: uppercase; color: var(--navy); font-family: var(--mono); margin-bottom: 16px; }
+  .tc-hoy-box { font-size: 11px; font-family: var(--mono); color: var(--text-2); margin-bottom: 14px; }
+  .tc-hoy-box strong { color: var(--navy); font-weight: 600; }
+  .infl-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 12px; }
+  .infl-item { display: flex; flex-direction: column; gap: 4px; }
+  .infl-lbl { font-size: 10px; color: var(--text-3); font-family: var(--mono); letter-spacing: .06em; text-transform: uppercase; }
+  .infl-sublbl { font-size: 9px; color: var(--blue); font-family: var(--mono); margin-top: 2px; }
+  .infl-input { background: var(--bg); border: 1px solid var(--border-l); border-radius: 5px; color: var(--amber); font-family: var(--mono); font-size: 14px; font-weight: 500; padding: 7px 12px; width: 100%; transition: border-color .15s; }
+  .infl-input:focus { outline: none; border-color: var(--amber); }
+  input[type=number]::-webkit-inner-spin-button, input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+  input[type=number] { -moz-appearance: textfield; appearance: textfield; }
+
+  /* TABLA BONOS DL */
+  .table-wrap { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; box-shadow: 0 1px 4px rgba(0,0,0,0.06); overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; min-width: 800px; }
+  thead tr { border-bottom: 2px solid var(--navy); }
+  th { padding: 10px 14px; font-size: 10px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--text-3); text-align: right; background: var(--card); white-space: nowrap; font-family: var(--mono); }
+  th:first-child, th:nth-child(2) { text-align: left; }
+  tbody tr { border-bottom: 1px solid var(--border); transition: background .1s; }
+  tbody tr:last-child { border-bottom: none; }
+  tbody tr:hover { background: var(--row-hover, #eef2f7); }
+  td { padding: 9px 14px; font-size: 12px; text-align: right; color: var(--text-2); white-space: nowrap; font-family: var(--mono); }
+  td:first-child { text-align: left; font-weight: 600; color: var(--text); }
+  td:nth-child(2) { text-align: left; }
+  .badge-rec { background: #dbeafe; color: var(--navy); border: 1px solid var(--navy); padding: 2px 8px; border-radius: 4px; font-size: 10px; font-weight: 600; }
+  .no-comp { color: var(--text-3); font-style: italic; font-size: 11px; }
+  .val-green { color: var(--green); font-weight: 600; }
+  .val-blue { color: var(--blue); font-weight: 500; }
+  .val-amber { color: var(--amber); font-weight: 500; }
+  .alert { padding: 10px 14px; border-radius: 6px; font-size: 11px; font-family: var(--mono); margin-bottom: 14px; display: none; }
+  .alert.show { display: block; }
+  .alert.info { background:#f0fdf4; border:1px solid #86efac; color:var(--green); }
+  .alert.err { background:#fef2f2; border:1px solid #fecaca; color:var(--red); }
+</style>
+</head>
+<body>
+
+<nav class="navbar">
+  <div class="navbar-brand">
+    <div class="navbar-logo">BALANZ</div>
+    <div class="navbar-sep"></div>
+    <div class="navbar-title">Monitor · Renta Fija AR</div>
+  </div>
+</nav>
+
+<div class="wrap">
+  <div class="nav-tabs">
+    <a class="nav-tab" href="bonos.html">Monitor</a>
+    <a class="nav-tab" href="senderoCER.html">Sendero CER</a>
+    <a class="nav-tab active" href="senderoDL.html">Sendero DL</a>
+    <a class="nav-tab" href="senderoTAMAR.html">Sendero TAMAR</a>
+    <a class="nav-tab" href="duales.html">Duales</a>
+    <a class="nav-tab" href="globVsBon.html">Glob vs Bon</a>
+  </div>
+
+  <div class="alert" id="alert"></div>
+
+  <!-- PANEL TC -->
+  <div class="panel">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+      <div class="panel-title" style="margin-bottom:0;">Expectativas de tipo de cambio (REM)</div>
+      <button id="btn-reset-rem" onclick="restablecerREM()" style="font-size:10px;font-family:var(--mono);font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:#fff;background:var(--navy);border:1px solid var(--navy);border-radius:5px;padding:6px 12px;cursor:pointer;transition:background .15s;" onmouseover="this.style.background='var(--navy-light)'" onmouseout="this.style.background='var(--navy)'">Restablecer REM</button>
+    </div>
+    <div class="tc-hoy-box" id="tc-hoy-box">Cargando TC oficial...</div>
+    <div class="infl-grid" id="tc-grid">
+      <div style="font-size:12px;color:var(--text-3);font-family:var(--mono)">Cargando datos del REM...</div>
+    </div>
+  </div>
+
+  <!-- TABLA BONOS DL -->
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Ticker</th>
+          <th>Vencimiento</th>
+          <th>Días</th>
+          <th>TC aplicable proy.</th>
+          <th>Devaluación proy. %</th>
+          <th>TIR DL %</th>
+          <th>LECAP comparable</th>
+          <th>TIR LECAP %</th>
+          <th>¿Qué conviene?</th>
+        </tr>
+      </thead>
+      <tbody id="tbody-dl">
+        <tr><td colspan="9" style="text-align:center;padding:24px;color:var(--text-3);font-style:italic;font-family:var(--mono)">Calculando...</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- GRÁFICO LECAPs vs SINTÉTICO DL+FUTURO -->
+  <div class="panel" style="margin-top:16px;">
+    <div class="panel-title">LECAPs vs Sintético Dólar Linked + Futuro</div>
+    <div style="font-size:11px;color:var(--text-2);font-family:var(--sans);line-height:1.7;background:#e8edf5;border-left:3px solid var(--navy);border-radius:0 6px 6px 0;padding:12px 16px;margin-bottom:16px;">
+      Compara la curva de <strong>tasa fija en pesos de las LECAPs</strong> contra la tasa en pesos <strong>sintética</strong> que se arma comprando una Dólar Linked y <strong>shorteando el futuro de dólar</strong> de su mismo vencimiento. Al vender el futuro se fija hoy el tipo de cambio de salida, por lo que la Dólar Linked cubierta queda con una tasa en pesos cierta.<br><br>
+      Si la curva de <strong>LECAPs está por encima</strong> de la del sintético, conviene ir a <strong>LECAPs</strong>. Si está <strong>por debajo</strong>, conviene armar el <strong>sintético</strong> (Dólar Linked + short de futuro).
+    </div>
+    <div style="position:relative;height:420px;">
+      <canvas id="chart-sintetico"></canvas>
+    </div>
+    <div id="sintetico-empty" class="" style="display:none;font-size:12px;color:var(--text-3);font-family:var(--mono);font-style:italic;padding:16px 0;"></div>
+  </div>
+</div>
+
+<script>
+const BCRA_URL  = 'https://indicadoresbcra.granda-fra.workers.dev';
+const ECO_URL   = 'https://ecovalores-proxy.granda-fra.workers.dev';
+const EXCEL_URL = 'Instrumentos.xlsx';
+
+// Contratos de futuros de dólar (plazo calculado dinámicamente, no hardcodeado)
+const FUTUROS_TICKERS = [
+  { ticker: 'DLR/JUN26', anio: 2026, mesIdx: 5 },
+  { ticker: 'DLR/JUL26', anio: 2026, mesIdx: 6 },
+  { ticker: 'DLR/AGO26', anio: 2026, mesIdx: 7 },
+  { ticker: 'DLR/SEP26', anio: 2026, mesIdx: 8 },
+  { ticker: 'DLR/OCT26', anio: 2026, mesIdx: 9 },
+  { ticker: 'DLR/NOV26', anio: 2026, mesIdx: 10 },
+  { ticker: 'DLR/DIC26', anio: 2026, mesIdx: 11 },
+  { ticker: 'DLR/ENE27', anio: 2027, mesIdx: 0 },
+  { ticker: 'DLR/FEB27', anio: 2027, mesIdx: 1 },
+  { ticker: 'DLR/MAR27', anio: 2027, mesIdx: 2 },
+  { ticker: 'DLR/ABR27', anio: 2027, mesIdx: 3 },
+];
+let futurosPrecios = {}; // { ticker: { precio, venc(Date) } }
+
+const MESES_ES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+
+let tcHoy = null;            // TC oficial mayorista T-1
+let tcInputs = {};           // { 'YYYY-MM': nivelTC, 'm12': nivelTC, 'anio-YYYY': nivelTC }
+let tcInputsInicial = null;  // foto inicial para el botón Restablecer REM
+let remTCPrimerMes = null;   // { anio, mesIdx } primer mes del REM TC
+let anclas = [];             // [{ date, tc, key }] cadena de proyección ordenada por fecha
+let dlBonos = [];            // instrumentos DL del Excel
+let lecaps  = [];            // instrumentos LECAP del Excel
+
+// ── HELPERS ──────────────────────────────────────────────────
+function parseLocalDate(s) {
+  if (!s) return null;
+  const p = String(s).split('-').map(Number);
+  return new Date(p[0], p[1]-1, p[2]);
+}
+function dateToStr(d) {
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+function diasAlVenc(f) {
+  if (!f) return null;
+  const hoy = new Date(); hoy.setHours(0,0,0,0);
+  return Math.round((parseLocalDate(f) - hoy) / 86400000);
+}
+function fmtDate(s) {
+  if (!s) return '—';
+  try {
+    const d = parseLocalDate(s);
+    return `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getFullYear()).slice(2)}`;
+  } catch { return s; }
+}
+function showAlert(msg, tipo='err') {
+  const el = document.getElementById('alert');
+  el.textContent = msg; el.className = 'alert show ' + tipo;
+  setTimeout(() => el.className = 'alert', 6000);
+}
+// Último día hábil de un mes (mesIdx puede exceder 11, Date corrige el año)
+function ultimoDiaHabilDelMes(anio, mesIdx) {
+  let d = new Date(anio, mesIdx + 1, 0); // día 0 del mes siguiente = último día del mes
+  while (d.getDay() === 0 || d.getDay() === 6) d.setDate(d.getDate() - 1);
+  return d;
+}
+
+function excelSerialToDate(v) {
+  if (!v) return '';
+  const s = String(v).trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+  const mdy = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})$/);
+  if (mdy) { const y = mdy[3].length === 2 ? '20'+mdy[3] : mdy[3]; return `${y}-${mdy[1].padStart(2,'0')}-${mdy[2].padStart(2,'0')}`; }
+  const dmy = s.match(/^(\d{1,2})-(\d{1,2})-(\d{2})$/);
+  if (dmy) return `20${dmy[3]}-${dmy[2].padStart(2,'0')}-${dmy[1].padStart(2,'0')}`;
+  if (/^\d+$/.test(s)) {
+    const serial = parseInt(s);
+    const d = new Date(0); d.setUTCFullYear(1899, 11, 31); d.setUTCDate(d.getUTCDate() + serial);
+    return `${d.getUTCFullYear()}-${String(d.getUTCMonth()+1).padStart(2,'0')}-${String(d.getUTCDate()).padStart(2,'0')}`;
+  }
+  return s;
+}
+
+// ── LECAP: dias360 + VPV + TEA (igual que el monitor) ─────────
+function dias360(emision, venc) {
+  const e = parseLocalDate(emision), v = parseLocalDate(venc);
+  let d1=e.getDate(), m1=e.getMonth()+1, y1=e.getFullYear();
+  let d2=v.getDate(), m2=v.getMonth()+1, y2=v.getFullYear();
+  if (d1===31) d1=30;
+  if (d2===31 && d1>=30) d2=30;
+  return (y2-y1)*360 + (m2-m1)*30 + (d2-d1);
+}
+function calcVPV(emision, venc, tem) {
+  if (!emision || !venc || !tem) return null;
+  return 100 * Math.pow(1 + tem/100, dias360(emision, venc) / 30);
+}
+function calcTEALecap(lecap, precio) {
+  if (!lecap.tem || !lecap.emision || !lecap.venc || !precio) return null;
+  const vpv = calcVPV(lecap.emision, lecap.venc, lecap.tem);
+  if (!vpv) return null;
+  const dias = diasAlVenc(lecap.venc);
+  if (!dias || dias <= 0) return null;
+  return (Math.pow(vpv / precio, 365/dias) - 1) * 100;
+}
+
+// ── TC OFICIAL DE HOY ─────────────────────────────────────────
+async function cargarTCHoy() {
+  // 1) Desde localStorage (lo guarda el Monitor)
+  const ls = parseFloat(localStorage.getItem('bonos_usdHoy'));
+  if (ls && !isNaN(ls) && ls > 0) { tcHoy = ls; return; }
+  // 2) Respaldo: traer el mayorista del BCRA
+  try {
+    const hoyStr = dateToStr(new Date());
+    const d = new Date(); const hace = new Date(d.getFullYear(), d.getMonth(), d.getDate() - 10);
+    const resp = await fetch(`${BCRA_URL}/?serie=usd&desde=${dateToStr(hace)}&hasta=${hoyStr}`);
+    const json = await resp.json();
+    const det = json.results?.[0]?.detalle || [];
+    if (det.length) { det.sort((a,b) => b.fecha.localeCompare(a.fecha)); tcHoy = parseFloat(det[0].valor); }
+  } catch(e) { console.warn('Error TC oficial:', e); }
+}
+
+// ── CARGAR REM TIPO DE CAMBIO ─────────────────────────────────
+async function cargarREM_TC() {
+  try {
+    const resp = await fetch('Indicadores.xlsx?t=' + Date.now());
+    if (!resp.ok) return;
+    const buffer = await resp.arrayBuffer();
+    const wb = XLSX.read(buffer, { type: 'array' });
+    const ws = wb.Sheets['Indicadores'];
+    const rows = XLSX.utils.sheet_to_json(ws, { defval: '', raw: false, header: 1 });
+
+    const remIdx = rows.findIndex(r => r[0] === 'REM tipo de cambio');
+    if (remIdx === -1) { showAlert('No se encontró la fila "REM tipo de cambio" en Indicadores.xlsx'); return; }
+
+    const headers = rows[remIdx + 1];
+    const valores = rows[remIdx + 2];
+    const ahora = new Date();
+
+    // Primer mes del REM TC (el mes en curso, sin rezago)
+    let primerMesIdx = -1;
+    for (const mes of headers) {
+      if (!mes || mes === '12 Meses') continue;
+      primerMesIdx = MESES_ES.findIndex(m => mes.startsWith(m));
+      if (primerMesIdx !== -1) break;
+    }
+    if (primerMesIdx === -1) return;
+    let primerAnio = ahora.getFullYear();
+    if (primerMesIdx > ahora.getMonth() + 6) primerAnio--;
+    remTCPrimerMes = { anio: primerAnio, mesIdx: primerMesIdx };
+
+    // Mapear cada header mensual a su YYYY-MM (consecutivo)
+    let anioCursor = primerAnio, mesIdxAnterior = primerMesIdx, primero = true;
+    headers.forEach((mes, i) => {
+      if (!mes) return;
+      const val = parseFloat(String(valores[i] || '').replace(',', '.'));
+      if (isNaN(val)) return;
+      if (mes === '12 Meses') { tcInputs['m12'] = val; return; }
+      const mesIdx = MESES_ES.findIndex(m => mes.startsWith(m));
+      if (mesIdx === -1) return;
+      if (!primero && mesIdx < mesIdxAnterior) anioCursor++;
+      mesIdxAnterior = mesIdx; primero = false;
+      tcInputs[`${anioCursor}-${String(mesIdx+1).padStart(2,'0')}`] = val;
+    });
+
+    console.log('REM TC cargado:', tcInputs, 'primer mes:', remTCPrimerMes);
+  } catch(e) {
+    console.warn('Error cargando REM TC:', e);
+  }
+}
+
+// ── CARGAR EXCEL (DL + LECAPS) ────────────────────────────────
+async function cargarExcel() {
+  try {
+    const resp = await fetch(EXCEL_URL + '?t=' + Date.now());
+    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+    const buffer = await resp.arrayBuffer();
+    const wb = XLSX.read(buffer, { type: 'array' });
+
+    if (wb.SheetNames.includes('USD Linked')) {
+      const rows = XLSX.utils.sheet_to_json(wb.Sheets['USD Linked'], { defval: '', raw: false });
+      dlBonos = rows
+        .filter(r => r['Ticker'] && String(r['Ticker']).trim() && String(r['Ticker']).trim() !== 'Ticker')
+        .map(r => ({
+          ticker: String(r['Ticker']).trim(),
+          venc:   excelSerialToDate(r['Fecha Vencimineto'] || r['Fecha Vencimiento']),
+        }));
+    }
+
+    if (wb.SheetNames.includes('LECAPS')) {
+      const rows = XLSX.utils.sheet_to_json(wb.Sheets['LECAPS'], { defval: '', raw: false });
+      lecaps = rows
+        .filter(r => r['Ticker'] && String(r['Ticker']).trim())
+        .map(r => ({
+          ticker:  String(r['Ticker']).trim(),
+          emision: excelSerialToDate(r['Fecha Emision'] || r['Fecha Emisión']),
+          venc:    excelSerialToDate(r['Fecha Vencimineto'] || r['Fecha Vencimiento']),
+          tem:     parseFloat(r['TEM (%)']) || null,
+        }))
+        .filter(l => l.tem);
+    }
+
+    console.log(`Excel: ${dlBonos.length} DL, ${lecaps.length} LECAPs`);
+  } catch(e) {
+    showAlert('Error cargando Excel: ' + e.message);
+  }
+}
+
+// ── CONSTRUIR CADENA DE ANCLAS ────────────────────────────────
+function construirAnclas() {
+  anclas = [];
+  if (!tcHoy || !remTCPrimerMes) return;
+  const hoy = new Date(); hoy.setHours(0,0,0,0);
+  anclas.push({ date: hoy, tc: tcHoy, key: 'hoy' });
+
+  // 6 meses del REM
+  for (let i = 0; i < 6; i++) {
+    const d = new Date(remTCPrimerMes.anio, remTCPrimerMes.mesIdx + i, 1);
+    const key = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+    const v = tcInputs[key];
+    if (v == null) continue;
+    const date = ultimoDiaHabilDelMes(d.getFullYear(), d.getMonth());
+    if (date > hoy) anclas.push({ date, tc: v, key });
+  }
+
+  // 12 meses → último día hábil de mayo del año siguiente (primer mes + 11)
+  if (tcInputs['m12'] != null) {
+    const date = ultimoDiaHabilDelMes(remTCPrimerMes.anio, remTCPrimerMes.mesIdx + 11);
+    if (date > hoy) anclas.push({ date, tc: tcInputs['m12'], key: 'm12' });
+  }
+
+  // Anuales → último día hábil de mayo de cada año
+  Object.keys(tcInputs).filter(k => k.startsWith('anio-')).forEach(k => {
+    const y = parseInt(k.split('-')[1]);
+    const v = tcInputs[k];
+    if (v == null || isNaN(y)) return;
+    const date = ultimoDiaHabilDelMes(y, 4); // mayo = índice 4
+    if (date > hoy) anclas.push({ date, tc: v, key: k });
+  });
+
+  anclas.sort((a, b) => a.date - b.date);
+}
+
+// ── PROYECTAR TC A UNA FECHA ──────────────────────────────────
+// Interpolación geométrica diaria dentro del segmento de anclas que contiene la fecha.
+function getTC(fechaStr) {
+  if (!anclas.length || !tcHoy) return null;
+  const t = parseLocalDate(fechaStr);
+  if (!t) return null;
+  if (t <= anclas[0].date) return anclas[0].tc;
+  for (let i = 0; i < anclas.length - 1; i++) {
+    const a = anclas[i], b = anclas[i+1];
+    if (t <= b.date) {
+      const daysAB = (b.date - a.date) / 86400000;
+      const daysAT = (t - a.date) / 86400000;
+      if (daysAB <= 0) return b.tc;
+      return a.tc * Math.pow(b.tc / a.tc, daysAT / daysAB);
+    }
+  }
+  // Más allá de la última ancla: extrapolar con el ritmo del último segmento
+  if (anclas.length >= 2) {
+    const a = anclas[anclas.length-2], b = anclas[anclas.length-1];
+    const daysAB = (b.date - a.date) / 86400000;
+    const dailyF = Math.pow(b.tc / a.tc, 1/daysAB);
+    const daysFromB = (t - b.date) / 86400000;
+    return b.tc * Math.pow(dailyF, daysFromB);
+  }
+  return anclas[anclas.length-1].tc;
+}
+
+// ── RENDER PANEL DE INPUTS ────────────────────────────────────
+function renderTCInputs() {
+  const grid = document.getElementById('tc-grid');
+  const box  = document.getElementById('tc-hoy-box');
+  if (!remTCPrimerMes) { grid.innerHTML = '<div style="font-size:12px;color:var(--text-3);font-family:var(--mono)">Sin datos del REM TC.</div>'; return; }
+
+  box.innerHTML = tcHoy
+    ? `TC oficial mayorista (hoy): <strong>$${tcHoy.toLocaleString('es-AR', {minimumFractionDigits:2, maximumFractionDigits:2})}</strong>`
+    : `<span style="color:var(--red)">No se pudo obtener el TC oficial. Abrí el Monitor y actualizá para cargarlo.</span>`;
+
+  // Sembrar anuales por defecto: devaluación implícita de 12 meses, repetida
+  const dev12 = (tcInputs['m12'] && tcHoy) ? (tcInputs['m12'] / tcHoy - 1) : null;
+  const anio12m = remTCPrimerMes.anio + 1; // mayo 2027 (para el ejemplo)
+  // Año de vencimiento más largo entre los DL
+  const maxVenc = dlBonos.length ? dlBonos.reduce((mx, b) => {
+    if (!b.venc) return mx;
+    const y = parseInt(b.venc.split('-')[0]);
+    return y > mx ? y : mx;
+  }, anio12m) : anio12m;
+  if (dev12 != null) {
+    for (let y = anio12m + 1; y <= maxVenc; y++) {
+      const k = `anio-${y}`;
+      if (tcInputs[k] == null) {
+        const n = y - anio12m; // años después del punto de 12 meses
+        tcInputs[k] = Math.round(tcInputs['m12'] * Math.pow(1 + dev12, n));
+      }
+    }
+  }
+
+  construirAnclas();
+
+  let html = '';
+
+  // Bloque meses REM
+  html += `<div style="grid-column:1/-1;font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--text-3);font-family:var(--mono);padding-bottom:4px;border-bottom:1px solid var(--border);margin-bottom:4px">Datos REM · TC esperado fin de mes ($)</div>`;
+  for (let i = 0; i < 6; i++) {
+    const d = new Date(remTCPrimerMes.anio, remTCPrimerMes.mesIdx + i, 1);
+    const key = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+    const mesNombre = `${MESES_ES[d.getMonth()]} ${d.getFullYear()}`;
+    html += `<div class="infl-item">
+      <div class="infl-lbl">${mesNombre}</div>
+      <input class="infl-input" type="number" step="1" value="${tcInputs[key] ?? ''}" placeholder="$ TC" oninput="onTCChange('${key}', this.value)">
+      <div class="infl-sublbl"><span class="tc-dev-lbl" data-tc-key="${key}">${devLbl(tcInputs[key])}</span></div>
+    </div>`;
+  }
+
+  // Bloque 12 meses
+  html += `<div style="grid-column:1/-1;font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--text-3);font-family:var(--mono);padding:12px 0 4px;border-bottom:1px solid var(--border);margin-bottom:4px">12 meses · TC esperado (Mayo ${anio12m})</div>`;
+  html += `<div class="infl-item">
+    <div class="infl-lbl">12 Meses</div>
+    <input class="infl-input" type="number" step="1" value="${tcInputs['m12'] ?? ''}" placeholder="$ TC" oninput="onTCChange('m12', this.value)" style="color:var(--blue);">
+    <div class="infl-sublbl"><span class="tc-dev-lbl" data-tc-key="m12">${devLbl(tcInputs['m12'])}</span></div>
+  </div>`;
+
+  // Bloque anual
+  html += `<div style="grid-column:1/-1;font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--text-3);font-family:var(--mono);padding:12px 0 4px;border-bottom:1px solid var(--border);margin-bottom:4px">Proyección anual · TC esperado fin de mayo ($)</div>`;
+  for (let y = anio12m + 1; y <= maxVenc; y++) {
+    const key = `anio-${y}`;
+    html += `<div class="infl-item">
+      <div class="infl-lbl">Mayo ${y}</div>
+      <input class="infl-input" type="number" step="1" value="${tcInputs[key] ?? ''}" placeholder="$ TC" oninput="onTCChange('${key}', this.value)" style="color:var(--text-2);">
+      <div class="infl-sublbl"><span class="tc-dev-lbl" data-tc-key="${key}">${devLbl(tcInputs[key])}</span></div>
+    </div>`;
+  }
+
+  grid.innerHTML = html;
+
+  // Foto inicial (solo en el primer render completo)
+  if (tcInputsInicial === null) tcInputsInicial = { ...tcInputs };
+}
+
+// Etiqueta de devaluación acumulada vs hoy
+function devLbl(tcNivel) {
+  if (tcNivel == null || !tcHoy) return '';
+  const dev = (tcNivel / tcHoy - 1) * 100;
+  return `→ dev. vs hoy: <span style="color:var(--navy);font-weight:600">${dev >= 0 ? '+' : ''}${dev.toFixed(1)}%</span>`;
+}
+
+// Actualiza solo las etiquetas de devaluación (sin recrear inputs)
+function actualizarDevLbls() {
+  document.querySelectorAll('.tc-dev-lbl[data-tc-key]').forEach(span => {
+    const k = span.getAttribute('data-tc-key');
+    span.innerHTML = devLbl(tcInputs[k]);
+  });
+}
+
+function onTCChange(key, val) {
+  const v = parseFloat(val);
+  if (!isNaN(v)) tcInputs[key] = v;
+  else delete tcInputs[key];
+  clearTimeout(window._tcTimer);
+  window._tcTimer = setTimeout(() => { construirAnclas(); actualizarDevLbls(); renderTabla(); }, 600);
+}
+
+function restablecerREM() {
+  if (!tcInputsInicial) return;
+  tcInputs = { ...tcInputsInicial };
+  renderTCInputs();
+  renderTabla();
+}
+
+// ── RENDER TABLA ──────────────────────────────────────────────
+function renderTabla() {
+  const tbody = document.getElementById('tbody-dl');
+  if (!dlBonos.length) {
+    tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:24px;color:var(--text-3);font-style:italic;font-family:var(--mono)">Cargando instrumentos...</td></tr>';
+    return;
+  }
+
+  const bonosData = JSON.parse(localStorage.getItem('bonos_data') || '[]');
+  const precioMap = {};
+  bonosData.filter(d => d.grupo === 'usdlinked').forEach(d => { precioMap[d.ticker] = d.precio; });
+
+  // Ordenar por días al vencimiento, de menor a mayor
+  const dlOrdenados = [...dlBonos].sort((a, b) => {
+    const da = diasAlVenc(a.venc), db = diasAlVenc(b.venc);
+    return (da ?? 999999) - (db ?? 999999);
+  });
+
+  let html = '';
+
+  dlOrdenados.forEach(bono => {
+    const dias = diasAlVenc(bono.venc);
+    if (dias === null || dias < 0) return;
+
+    const precio = precioMap[bono.ticker] || null;
+    const tcVenc = bono.venc ? getTC(bono.venc) : null;
+    const dev    = (tcVenc && tcHoy) ? (tcVenc / tcHoy - 1) * 100 : null;
+
+    // TIR en pesos: VF = 100 × TC proyectado; TIR = (VF/precio)^(365/días) - 1
+    const vf  = tcVenc ? 100 * tcVenc : null;
+    const tir = (precio && vf && dias > 0) ? (Math.pow(vf / precio, 365/dias) - 1) * 100 : null;
+
+    // LECAP comparable (vto más cercano, máx 20 días)
+    let lecapComp = null, lecapTEA = null;
+    if (bono.venc) {
+      const vencBono = parseLocalDate(bono.venc);
+      lecapComp = lecaps.reduce((prev, curr) => {
+        if (!curr.venc) return prev;
+        const diffCurr = Math.abs(parseLocalDate(curr.venc) - vencBono) / 86400000;
+        const diffPrev = prev ? Math.abs(parseLocalDate(prev.venc) - vencBono) / 86400000 : Infinity;
+        return diffCurr < diffPrev ? curr : prev;
+      }, null);
+      if (lecapComp) {
+        const diffDias = Math.abs((parseLocalDate(lecapComp.venc) - vencBono) / 86400000);
+        if (diffDias > 20) { lecapComp = null; }
+        else {
+          const lp = bonosData.find(d => d.ticker === lecapComp.ticker);
+          lecapTEA = (lp && lp.precio) ? calcTEALecap(lecapComp, lp.precio) : null;
+        }
+      }
+    }
+
+    const spread = (tir !== null && lecapTEA !== null) ? (tir - lecapTEA) : null;
+
+    html += `<tr>
+      <td>${bono.ticker}</td>
+      <td>${fmtDate(bono.venc)}</td>
+      <td>${dias}d</td>
+      <td>${tcVenc !== null ? '$' + tcVenc.toLocaleString('es-AR', {maximumFractionDigits:0}) : '—'}</td>
+      <td class="val-amber">${dev !== null ? (dev >= 0 ? '+' : '') + dev.toFixed(1) + '%' : '—'}</td>
+      <td class="val-blue">${tir !== null ? tir.toFixed(2) + '%' : precio ? '—' : '<span style="color:var(--text-3);font-style:italic;font-size:11px">Sin precio</span>'}</td>
+      <td>${lecapComp ? lecapComp.ticker : '<span class="no-comp">Sin comparable</span>'}</td>
+      <td class="val-blue">${lecapTEA !== null ? lecapTEA.toFixed(2) + '%' : '—'}</td>
+      <td>${spread === null ? '—' : spread > 0 ? '<span class="badge-rec">DL</span>' : '<span class="badge-rec">LECAP</span>'}</td>
+    </tr>`;
+  });
+
+  tbody.innerHTML = html || '<tr><td colspan="9" style="text-align:center;padding:24px;color:var(--text-3);font-style:italic;font-family:var(--mono)">Sin datos</td></tr>';
+}
+
+// ── FUTUROS ───────────────────────────────────────────────────
+function vencFuturo(f) { return new Date(f.anio, f.mesIdx + 1, 0); } // último día del mes
+async function fetchFuturos() {
+  futurosPrecios = {};
+  const hoy = new Date(); hoy.setHours(0,0,0,0);
+  for (const f of FUTUROS_TICKERS) {
+    const venc = vencFuturo(f);
+    if (venc <= hoy) continue; // contrato vencido
+    try {
+      const resp = await fetch(`${ECO_URL}/?ticker=${f.ticker}`);
+      const d = await resp.json();
+      if (d.price && d.price > 0) futurosPrecios[f.ticker] = { precio: d.price, venc };
+    } catch(e) {}
+    await new Promise(r => setTimeout(r, 200));
+  }
+}
+
+// Futuro de vencimiento más cercano a una fecha dada (margen ±10 días)
+function futuroCercano(vencStr) {
+  const vBono = parseLocalDate(vencStr);
+  if (!vBono) return null;
+  let mejor = null, mejorDiff = Infinity;
+  for (const [tk, info] of Object.entries(futurosPrecios)) {
+    const diff = Math.abs(info.venc - vBono) / 86400000;
+    if (diff < mejorDiff) { mejorDiff = diff; mejor = { ticker: tk, ...info, diffDias: diff }; }
+  }
+  return (mejor && mejor.diffDias <= 10) ? mejor : null;
+}
+
+// ── GRÁFICO LECAPs vs SINTÉTICO ───────────────────────────────
+let chartSintetico = null;
+function renderGraficoSintetico() {
+  const canvas = document.getElementById('chart-sintetico');
+  const empty  = document.getElementById('sintetico-empty');
+  const bonosData = JSON.parse(localStorage.getItem('bonos_data') || '[]');
+
+  // Mapa de precios DL
+  const precioDL = {};
+  bonosData.filter(d => d.grupo === 'usdlinked').forEach(d => { precioDL[d.ticker] = d.precio; });
+
+  const hoy = new Date(); hoy.setHours(0,0,0,0);
+
+  // ── Curva sintético: DL < 1 año + futuro cercano ──
+  const puntosSint = [];
+  dlBonos.forEach(bono => {
+    const dias = diasAlVenc(bono.venc);
+    if (dias === null || dias <= 0 || dias > 365) return; // solo < 1 año
+    const precio = precioDL[bono.ticker];
+    if (!precio) return;
+    const fut = futuroCercano(bono.venc);
+    if (!fut) return;
+    // Días de hoy al vencimiento del futuro
+    const diasFut = Math.round((fut.venc - hoy) / 86400000);
+    if (diasFut <= 0) return;
+    // Anualización simple: ((PrecioFuturo - PrecioDL)/PrecioDL) / díasFuturo × 365
+    // (futuro y DL ya están en la misma escala, al nivel del TC)
+    const tasaSint = ((fut.precio - precio) / precio) / diasFut * 365 * 100;
+    puntosSint.push({ x: parseFloat((diasFut/365).toFixed(3)), y: parseFloat(tasaSint.toFixed(2)), ticker: bono.ticker + ' / ' + fut.ticker });
+  });
+  puntosSint.sort((a,b) => a.x - b.x);
+
+  // ── Curva LECAPs: TEA directa ──
+  const puntosLecap = [];
+  lecaps.forEach(l => {
+    const dias = diasAlVenc(l.venc);
+    if (dias === null || dias <= 0) return;
+    const lp = bonosData.find(d => d.ticker === l.ticker);
+    const precio = lp ? lp.precio : null;
+    const tea = precio ? calcTEALecap(l, precio) : null;
+    if (tea === null) return;
+    puntosLecap.push({ x: parseFloat((dias/365).toFixed(3)), y: parseFloat(tea.toFixed(2)), ticker: l.ticker });
+  });
+  puntosLecap.sort((a,b) => a.x - b.x);
+
+  if (chartSintetico) { chartSintetico.destroy(); chartSintetico = null; }
+
+  if (!puntosSint.length && !puntosLecap.length) {
+    canvas.style.display = 'none';
+    empty.style.display = 'block';
+    empty.textContent = 'No hay datos suficientes. Asegurate de haber cargado precios en el Monitor y que haya futuros cotizando.';
+    return;
+  }
+  canvas.style.display = 'block';
+  empty.style.display = 'none';
+
+  chartSintetico = new Chart(canvas, {
+    type: 'scatter',
+    data: { datasets: [
+      { label: 'LECAPs (TEA pesos)', data: puntosLecap, borderColor: '#0d1f4e', backgroundColor: '#0d1f4ecc', pointRadius: 5, pointHoverRadius: 7, showLine: true, borderWidth: 2.5, tension: 0.3, order: 1 },
+      { label: 'Sintético DL + Futuro', data: puntosSint, borderColor: '#00b4d8', backgroundColor: '#00b4d8cc', pointRadius: 5, pointHoverRadius: 7, showLine: true, borderWidth: 2.5, tension: 0.3, order: 0 },
+    ]},
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { position: 'top', labels: { font: { family: 'JetBrains Mono', size: 11 }, padding: 12 } },
+        tooltip: { callbacks: { label: ctx => `${ctx.raw.ticker}  ·  plazo ${ctx.raw.x} a  ·  TEA ${ctx.raw.y}%` }, bodyFont: { family: 'JetBrains Mono', size: 11 } }
+      },
+      scales: {
+        x: { title: { display: true, text: 'Plazo (años)', font: { family: 'JetBrains Mono', size: 11 }, color: '#7a8fa0' }, grid: { color: '#e5e7eb' }, ticks: { font: { family: 'JetBrains Mono', size: 10 }, color: '#7a8fa0' } },
+        y: { title: { display: true, text: 'TEA en pesos %', font: { family: 'JetBrains Mono', size: 11 }, color: '#7a8fa0' }, grid: { color: '#e5e7eb' }, ticks: { font: { family: 'JetBrains Mono', size: 10 }, color: '#7a8fa0', callback: v => v + '%' } }
+      }
+    }
+  });
+}
+
+// ── INIT ──────────────────────────────────────────────────────
+async function init() {
+  await Promise.all([cargarTCHoy(), cargarREM_TC(), cargarExcel()]);
+  renderTCInputs();
+  renderTabla();
+  await fetchFuturos();
+  renderGraficoSintetico();
+}
+
+init();
+</script>
+</body>
+</html>
