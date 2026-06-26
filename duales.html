@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Duales</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #f0f4f8; --surface: #ffffff; --card: #f8fafc;
+    --border: #d1d9e0; --border-l: #b8c4cf;
+    --text: #1a2332; --text-2: #3a4a5c; --text-3: #7a8fa0;
+    --navy: #0d1f4e; --navy-light: #1a3270;
+    --green: #16a34a; --green-bg: #dcfce7; --green-border: #86efac;
+    --blue: #1d6fa5; --amber: #b45309; --red: #dc2626;
+    --mono: 'JetBrains Mono','Fira Code','Courier New',monospace;
+    --sans: 'Inter',system-ui,sans-serif;
+  }
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap');
+  body { background: var(--bg); color: var(--text); font-family: var(--sans); min-height: 100vh; padding: 0; }
+  .wrap { max-width: 1400px; margin: 0 auto; padding: 0 24px 24px; }
+
+  .navbar { background: var(--navy); padding: 0 32px; height: 56px; display: flex; align-items: center; justify-content: space-between; }
+  .navbar-brand { display: flex; align-items: center; gap: 16px; }
+  .navbar-logo { font-size: 20px; font-weight: 700; color: #ffffff; letter-spacing: 0.05em; font-family: var(--sans); }
+  .navbar-sep { width: 1px; height: 20px; background: rgba(255,255,255,0.2); }
+  .navbar-title { font-size: 11px; color: rgba(255,255,255,0.6); font-family: var(--mono); letter-spacing: 0.1em; text-transform: uppercase; }
+
+  .nav-tabs { display: flex; gap: 4px; border-bottom: 2px solid var(--border); margin: 20px 0 20px 0; flex-wrap: wrap; }
+  .nav-tab { font-size: 11px; font-family: var(--mono); font-weight: 600; letter-spacing: .05em; padding: 8px 20px; border-radius: 6px 6px 0 0; cursor: pointer; border: 1px solid transparent; color: var(--text-3); background: transparent; transition: all .15s; text-transform: uppercase; text-decoration: none; display: block; }
+  .nav-tab:hover { color: var(--navy); background: var(--bg); }
+  .nav-tab.active { color: var(--navy); background: var(--surface); border-color: var(--border); border-bottom-color: transparent; margin-bottom: -2px; font-weight: 700; }
+
+  .table-wrap { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; box-shadow: 0 1px 4px rgba(0,0,0,0.06); overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; min-width: 900px; }
+  thead tr { border-bottom: 2px solid var(--navy); }
+  th { padding: 10px 14px; font-size: 10px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--text-3); text-align: right; background: var(--card); white-space: nowrap; font-family: var(--mono); }
+  th:first-child, th:nth-child(2), th:nth-child(5) { text-align: left; }
+  tbody tr { border-bottom: 1px solid var(--border); transition: background .1s; }
+  tbody tr:last-child { border-bottom: none; }
+  tbody tr:hover { background: var(--row-hover, #eef2f7); }
+  td { padding: 9px 14px; font-size: 12px; text-align: right; color: var(--text-2); white-space: nowrap; font-family: var(--mono); }
+  td:first-child { text-align: left; font-weight: 600; color: var(--text); }
+  td:nth-child(2), td:nth-child(5) { text-align: left; }
+  tr.dual-sep td { border-top: 2px solid var(--navy); }
+  .badge-pata { font-size: 10px; font-weight: 600; padding: 2px 8px; border-radius: 4px; }
+  .badge-cer { background: #e8edf5; color: var(--navy); border: 1px solid var(--navy); }
+  .badge-tamar { background: #dbeafe; color: #1a3270; border: 1px solid #1a3270; }
+  .badge-lecap { background: #e0f7fc; color: var(--blue); border: 1px solid var(--blue); }
+  .badge-rec { background: var(--green-bg); color: var(--green); border: 1px solid var(--green-border); padding: 2px 8px; border-radius: 4px; font-size: 10px; font-weight: 600; }
+  .badge-rec-dual { background: #fef3c7; color: var(--amber); border: 1px solid #fcd34d; padding: 2px 8px; border-radius: 4px; font-size: 10px; font-weight: 600; }
+  .no-comp { color: var(--text-3); font-style: italic; font-size: 11px; }
+  .val-blue { color: var(--blue); font-weight: 500; }
+  .val-amber { color: var(--amber); font-weight: 600; }
+  .comentario { background: #e8edf5; border-left: 3px solid var(--navy); border-radius: 0 6px 6px 0; padding: 14px 18px; margin-top: 16px; font-size: 12px; color: var(--text-2); line-height: 1.7; font-family: var(--sans); }
+  .comentario strong { color: var(--navy); }
+  .alert { padding: 10px 14px; border-radius: 6px; font-size: 11px; font-family: var(--mono); margin-bottom: 14px; display: none; }
+  .alert.show { display: block; }
+  .alert.err { background:#fef2f2; border:1px solid #fecaca; color:var(--red); }
+</style>
+</head>
+<body>
+
+<nav class="navbar">
+  <div class="navbar-brand">
+    <div class="navbar-logo">BALANZ</div>
+    <div class="navbar-sep"></div>
+    <div class="navbar-title">Monitor · Renta Fija AR</div>
+  </div>
+</nav>
+
+<div class="wrap">
+  <div class="nav-tabs">
+    <a class="nav-tab" href="bonos.html">Monitor</a>
+    <a class="nav-tab" href="senderoCER.html">Sendero CER</a>
+    <a class="nav-tab" href="senderoDL.html">Sendero DL</a>
+    <a class="nav-tab" href="senderoTAMAR.html">Sendero TAMAR</a>
+    <a class="nav-tab active" href="duales.html">Duales</a>
+    <a class="nav-tab" href="globVsBon.html">Glob vs Bon</a>
+    <a class="nav-tab" href="caucionVsLecap.html">Caución vs Lecap</a>
+  </div>
+
+  <div class="alert" id="alert"></div>
+
+  <!-- TABLA DUALES -->
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Dual</th>
+          <th>Pata</th>
+          <th>Vto.</th>
+          <th>TIR pata %</th>
+          <th>Puro comparable</th>
+          <th>Vto. puro</th>
+          <th>TIR puro %</th>
+          <th>Diferencia</th>
+          <th>¿Qué conviene?</th>
+        </tr>
+      </thead>
+      <tbody id="tbody-duales">
+        <tr><td colspan="9" style="text-align:center;padding:24px;color:var(--text-3);font-style:italic;font-family:var(--mono)">Calculando...</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="comentario">
+    Lo "normal" es que un <strong>Dual rinda menos que el bono puro</strong> equivalente. No es una anomalía: al comprar un Dual no comprás una sola pata, sino <strong>ambas a la vez</strong>, y al vencimiento cobrás según la pata que haya rendido más. Esa opcionalidad es una <strong>cobertura</strong> — te protege de elegir mal el tipo de ajuste — y como todo seguro, tiene un costo: <strong>menos riesgo implica menos rendimiento</strong>. Por eso, una pata del Dual mostrando una TIR menor que su puro comparable es lo esperable; la diferencia es, en buena medida, el precio de esa cobertura.
+  </div>
+</div>
+
+<script>
+// ── HELPERS ──────────────────────────────────────────────────
+function parseLocalDate(s) { if (!s) return null; const p = String(s).split('-').map(Number); return new Date(p[0], p[1]-1, p[2]); }
+function diasAlVenc(f) { if (!f) return null; const hoy = new Date(); hoy.setHours(0,0,0,0); return Math.round((parseLocalDate(f) - hoy) / 86400000); }
+function fmtDate(s) { if (!s) return '—'; try { const d = parseLocalDate(s); return `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getFullYear()).slice(2)}`; } catch { return s; } }
+function showAlert(msg, tipo='err') { const el = document.getElementById('alert'); el.textContent = msg; el.className = 'alert show ' + tipo; }
+
+// Tipo de pata → grupo del bono puro comparable
+const PURO_DE_PATA = { 'CER': 'cer', 'TAMAR': 'tamar', 'LECAP': 'lecap' };
+const VENTANA_DIAS = 60; // ±2 meses
+
+function badgePata(tipo) {
+  const cls = tipo === 'CER' ? 'badge-cer' : tipo === 'TAMAR' ? 'badge-tamar' : 'badge-lecap';
+  return `<span class="badge-pata ${cls}">${tipo}</span>`;
+}
+
+// ── RENDER ───────────────────────────────────────────────────
+function renderTabla() {
+  const tbody = document.getElementById('tbody-duales');
+  const datos = JSON.parse(localStorage.getItem('bonos_data') || '[]');
+
+  if (!datos.length) {
+    tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:24px;color:var(--text-3);font-style:italic;font-family:var(--mono)">No hay datos. Pasá primero por el Monitor y cargá los precios.</td></tr>';
+    return;
+  }
+
+  // Patas de Duales: entradas grupo 'dual' con pataTipo y tea
+  const patasDuales = datos.filter(d => d.grupo === 'dual' && d.pataTipo && d.tea != null);
+  if (!patasDuales.length) {
+    tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:24px;color:var(--text-3);font-style:italic;font-family:var(--mono)">No hay Duales con precio cargado en el Monitor.</td></tr>';
+    return;
+  }
+
+  // Agrupar patas por ticker (un Dual = varias patas)
+  const porTicker = {};
+  patasDuales.forEach(p => { (porTicker[p.ticker] = porTicker[p.ticker] || []).push(p); });
+
+  // Ordenar Duales por vencimiento
+  const tickers = Object.keys(porTicker).sort((a, b) => {
+    const va = porTicker[a][0].venc, vb = porTicker[b][0].venc;
+    return (diasAlVenc(va) ?? 9e9) - (diasAlVenc(vb) ?? 9e9);
+  });
+
+  let html = '';
+  tickers.forEach((tk, idx) => {
+    const patas = porTicker[tk];
+    patas.forEach((pata, j) => {
+      const grupoPuro = PURO_DE_PATA[pata.pataTipo];
+      const vencDual = parseLocalDate(pata.venc);
+
+      // Buscar puro del mismo tipo, vto más cercano dentro de ±60 días
+      let puro = null, mejorDiff = Infinity;
+      if (grupoPuro && vencDual) {
+        datos.filter(d => d.grupo === grupoPuro && d.tea != null && d.venc).forEach(d => {
+          const diff = Math.abs(parseLocalDate(d.venc) - vencDual) / 86400000;
+          if (diff < mejorDiff) { mejorDiff = diff; puro = d; }
+        });
+        if (puro && mejorDiff > VENTANA_DIAS) puro = null;
+      }
+
+      const tirDual = pata.tea;
+      const tirPuro = puro ? puro.tea : null;
+      const diff = (tirPuro != null) ? tirDual - tirPuro : null;
+
+      // ¿Qué conviene? El de mayor TIR
+      let rec = '<span class="no-comp">—</span>';
+      if (diff != null) {
+        rec = diff > 0
+          ? `<span class="badge-rec-dual">Dual (${pata.pataTipo})</span>`
+          : `<span class="badge-rec">${puro.ticker}</span>`;
+      }
+
+      const sep = (j === 0 && idx > 0) ? ' class="dual-sep"' : '';
+      html += `<tr${sep}>
+        <td>${j === 0 ? tk : ''}</td>
+        <td>${badgePata(pata.pataTipo)}</td>
+        <td>${fmtDate(pata.venc)}</td>
+        <td class="val-amber">${tirDual.toFixed(2)}%</td>
+        <td>${puro ? puro.ticker : '<span class="no-comp">Sin comparable</span>'}</td>
+        <td>${puro ? fmtDate(puro.venc) : '—'}</td>
+        <td class="val-blue">${tirPuro != null ? tirPuro.toFixed(2) + '%' : '—'}</td>
+        <td style="color:${diff == null ? 'var(--text-3)' : diff > 0 ? 'var(--green)' : 'var(--red)'}">${diff != null ? (diff > 0 ? '+' : '') + diff.toFixed(2) + '%' : '—'}</td>
+        <td>${rec}</td>
+      </tr>`;
+    });
+  });
+
+  tbody.innerHTML = html || '<tr><td colspan="9" style="text-align:center;padding:24px;color:var(--text-3);font-style:italic;font-family:var(--mono)">Sin datos</td></tr>';
+}
+
+renderTabla();
+</script>
+</body>
+</html>

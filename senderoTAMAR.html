@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sendero TAMAR</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #f0f4f8; --surface: #ffffff; --card: #f8fafc;
+    --border: #d1d9e0; --border-l: #b8c4cf;
+    --text: #1a2332; --text-2: #3a4a5c; --text-3: #7a8fa0;
+    --navy: #0d1f4e; --navy-light: #1a3270;
+    --green: #16a34a; --green-bg: #dcfce7; --green-border: #86efac;
+    --blue: #1d6fa5; --amber: #b45309; --red: #dc2626;
+    --mono: 'JetBrains Mono','Fira Code','Courier New',monospace;
+    --sans: 'Inter',system-ui,sans-serif;
+  }
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap');
+  body { background: var(--bg); color: var(--text); font-family: var(--sans); min-height: 100vh; padding: 0; }
+  .wrap { max-width: 1400px; margin: 0 auto; padding: 0 24px 24px; }
+
+  .navbar { background: var(--navy); padding: 0 32px; height: 56px; display: flex; align-items: center; justify-content: space-between; }
+  .navbar-brand { display: flex; align-items: center; gap: 16px; }
+  .navbar-logo { font-size: 20px; font-weight: 700; color: #ffffff; letter-spacing: 0.05em; font-family: var(--sans); }
+  .navbar-sep { width: 1px; height: 20px; background: rgba(255,255,255,0.2); }
+  .navbar-title { font-size: 11px; color: rgba(255,255,255,0.6); font-family: var(--mono); letter-spacing: 0.1em; text-transform: uppercase; }
+
+  .nav-tabs { display: flex; gap: 4px; border-bottom: 2px solid var(--border); margin: 20px 0 20px 0; flex-wrap: wrap; }
+  .nav-tab { font-size: 11px; font-family: var(--mono); font-weight: 600; letter-spacing: .05em; padding: 8px 20px; border-radius: 6px 6px 0 0; cursor: pointer; border: 1px solid transparent; color: var(--text-3); background: transparent; transition: all .15s; text-transform: uppercase; text-decoration: none; display: block; }
+  .nav-tab:hover { color: var(--navy); background: var(--bg); }
+  .nav-tab.active { color: var(--navy); background: var(--surface); border-color: var(--border); border-bottom-color: transparent; margin-bottom: -2px; font-weight: 700; }
+
+  .panel { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 20px 24px; margin-bottom: 16px; box-shadow: 0 1px 4px rgba(0,0,0,0.06); }
+  .panel-title { font-size: 11px; font-weight: 700; letter-spacing: .10em; text-transform: uppercase; color: var(--navy); font-family: var(--mono); margin-bottom: 16px; }
+  .infl-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 12px; }
+  .infl-item { display: flex; flex-direction: column; gap: 4px; }
+  .infl-lbl { font-size: 10px; color: var(--text-3); font-family: var(--mono); letter-spacing: .06em; text-transform: uppercase; }
+  .infl-input { background: var(--bg); border: 1px solid var(--border-l); border-radius: 5px; color: var(--amber); font-family: var(--mono); font-size: 14px; font-weight: 500; padding: 7px 12px; width: 100%; transition: border-color .15s; }
+  .infl-input:focus { outline: none; border-color: var(--amber); }
+  input[type=number]::-webkit-inner-spin-button, input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+  input[type=number] { -moz-appearance: textfield; appearance: textfield; }
+
+  .table-wrap { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; box-shadow: 0 1px 4px rgba(0,0,0,0.06); overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; min-width: 850px; }
+  thead tr { border-bottom: 2px solid var(--navy); }
+  th { padding: 10px 14px; font-size: 10px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--text-3); text-align: right; background: var(--card); white-space: nowrap; font-family: var(--mono); }
+  th:first-child, th:nth-child(2) { text-align: left; }
+  tbody tr { border-bottom: 1px solid var(--border); transition: background .1s; }
+  tbody tr:last-child { border-bottom: none; }
+  tbody tr:hover { background: var(--row-hover, #eef2f7); }
+  td { padding: 9px 14px; font-size: 12px; text-align: right; color: var(--text-2); white-space: nowrap; font-family: var(--mono); }
+  td:first-child { text-align: left; font-weight: 600; color: var(--text); }
+  td:nth-child(2) { text-align: left; }
+  .badge-rec { background: #dbeafe; color: var(--navy); border: 1px solid var(--navy); padding: 2px 8px; border-radius: 4px; font-size: 10px; font-weight: 600; }
+  .no-comp { color: var(--text-3); font-style: italic; font-size: 11px; }
+  .val-blue { color: var(--blue); font-weight: 500; }
+  .val-amber { color: var(--amber); font-weight: 500; }
+  .val-text3 { color: var(--text-2); font-weight: 400; }
+  .alert { padding: 10px 14px; border-radius: 6px; font-size: 11px; font-family: var(--mono); margin-bottom: 14px; display: none; }
+  .alert.show { display: block; }
+  .alert.info { background:#f0fdf4; border:1px solid #86efac; color:var(--green); }
+  .alert.err { background:#fef2f2; border:1px solid #fecaca; color:var(--red); }
+</style>
+</head>
+<body>
+
+<nav class="navbar">
+  <div class="navbar-brand">
+    <div class="navbar-logo">BALANZ</div>
+    <div class="navbar-sep"></div>
+    <div class="navbar-title">Monitor · Renta Fija AR</div>
+  </div>
+</nav>
+
+<div class="wrap">
+  <div class="nav-tabs">
+    <a class="nav-tab" href="bonos.html">Monitor</a>
+    <a class="nav-tab" href="senderoCER.html">Sendero CER</a>
+    <a class="nav-tab" href="senderoDL.html">Sendero DL</a>
+    <a class="nav-tab active" href="senderoTAMAR.html">Sendero TAMAR</a>
+    <a class="nav-tab" href="duales.html">Duales</a>
+    <a class="nav-tab" href="globVsBon.html">Glob vs Bon</a>
+    <a class="nav-tab" href="caucionVsLecap.html">Caución vs Lecap</a>
+  </div>
+
+  <div class="alert" id="alert"></div>
+
+  <!-- PANEL TAMAR -->
+  <div class="panel">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+      <div class="panel-title" style="margin-bottom:0;">Expectativas de TAMAR (REM)</div>
+      <button id="btn-reset-rem" onclick="restablecerREM()" style="font-size:10px;font-family:var(--mono);font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:#fff;background:var(--navy);border:1px solid var(--navy);border-radius:5px;padding:6px 12px;cursor:pointer;transition:background .15s;" onmouseover="this.style.background='var(--navy-light)'" onmouseout="this.style.background='var(--navy)'">Restablecer REM</button>
+    </div>
+    <div class="infl-grid" id="tamar-grid">
+      <div style="font-size:12px;color:var(--text-3);font-family:var(--mono)">Cargando datos del REM...</div>
+    </div>
+  </div>
+
+  <!-- TABLA BONOS TAMAR -->
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Ticker</th>
+          <th>Vencimiento</th>
+          <th>Días</th>
+          <th>TAMAR prom. conocida</th>
+          <th>TAMAR prom. total</th>
+          <th>TIR TAMAR %</th>
+          <th>LECAP comparable</th>
+          <th>TIR LECAP %</th>
+          <th>¿Qué conviene?</th>
+        </tr>
+      </thead>
+      <tbody id="tbody-tamar">
+        <tr><td colspan="9" style="text-align:center;padding:24px;color:var(--text-3);font-style:italic;font-family:var(--mono)">Cargando series de TAMAR del BCRA...</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<script>
+const BCRA_URL  = 'https://indicadoresbcra.granda-fra.workers.dev';
+const EXCEL_URL = 'Instrumentos.xlsx';
+
+const MESES_ES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+
+let tamarInputs = {};          // { 'YYYY-MM': tasaTNA, 'm12': tasaTNA }
+let tamarInputsInicial = null; // foto inicial para Restablecer REM
+let remTamarPrimerMes = null;  // { anio, mesIdx } primer mes del REM TAMAR
+let tamarBonos = [];           // instrumentos TAMAR del Excel
+let lecaps = [];               // instrumentos LECAP del Excel
+let tamarSeries = {};          // { ticker: [valores diarios reales, viejo→nuevo] }
+
+// ── HELPERS ──────────────────────────────────────────────────
+function parseLocalDate(s) { if (!s) return null; const p = String(s).split('-').map(Number); return new Date(p[0], p[1]-1, p[2]); }
+function dateToStr(d) { return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; }
+function diasAlVenc(f) { if (!f) return null; const hoy = new Date(); hoy.setHours(0,0,0,0); return Math.round((parseLocalDate(f) - hoy) / 86400000); }
+function fmtDate(s) { if (!s) return '—'; try { const d = parseLocalDate(s); return `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getFullYear()).slice(2)}`; } catch { return s; } }
+function showAlert(msg, tipo='err') { const el = document.getElementById('alert'); el.textContent = msg; el.className = 'alert show ' + tipo; setTimeout(() => el.className = 'alert', 6000); }
+
+function restarDiasHabiles(fechaStr, n) {
+  const d = parseLocalDate(fechaStr) || new Date();
+  let r = n;
+  while (r > 0) { d.setDate(d.getDate() - 1); const dow = d.getDay(); if (dow !== 0 && dow !== 6) r--; }
+  return dateToStr(d);
+}
+
+function excelSerialToDate(v) {
+  if (!v) return '';
+  const s = String(v).trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+  const mdy = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})$/);
+  if (mdy) { const y = mdy[3].length === 2 ? '20'+mdy[3] : mdy[3]; return `${y}-${mdy[1].padStart(2,'0')}-${mdy[2].padStart(2,'0')}`; }
+  const dmy = s.match(/^(\d{1,2})-(\d{1,2})-(\d{2})$/);
+  if (dmy) return `20${dmy[3]}-${dmy[2].padStart(2,'0')}-${dmy[1].padStart(2,'0')}`;
+  if (/^\d+$/.test(s)) { const serial = parseInt(s); const d = new Date(0); d.setUTCFullYear(1899, 11, 31); d.setUTCDate(d.getUTCDate() + serial); return `${d.getUTCFullYear()}-${String(d.getUTCMonth()+1).padStart(2,'0')}-${String(d.getUTCDate()).padStart(2,'0')}`; }
+  return s;
+}
+
+function dias360(emision, venc) {
+  const e = parseLocalDate(emision), v = parseLocalDate(venc);
+  let d1=e.getDate(), m1=e.getMonth()+1, y1=e.getFullYear();
+  let d2=v.getDate(), m2=v.getMonth()+1, y2=v.getFullYear();
+  if (d1===31) d1=30;
+  if (d2===31 && d1>=30) d2=30;
+  return (y2-y1)*360 + (m2-m1)*30 + (d2-d1);
+}
+function calcVPV(emision, venc, tem) { if (!emision || !venc || !tem) return null; return 100 * Math.pow(1 + tem/100, dias360(emision, venc) / 30); }
+function calcTEALecap(lecap, precio) {
+  if (!lecap.tem || !lecap.emision || !lecap.venc || !precio) return null;
+  const vpv = calcVPV(lecap.emision, lecap.venc, lecap.tem);
+  if (!vpv) return null;
+  const dias = diasAlVenc(lecap.venc);
+  if (!dias || dias <= 0) return null;
+  return (Math.pow(vpv / precio, 365/dias) - 1) * 100;
+}
+
+// ── CARGAR REM TAMAR ──────────────────────────────────────────
+async function cargarREM_TAMAR() {
+  try {
+    const resp = await fetch('Indicadores.xlsx?t=' + Date.now());
+    if (!resp.ok) return;
+    const buffer = await resp.arrayBuffer();
+    const wb = XLSX.read(buffer, { type: 'array' });
+    const ws = wb.Sheets['Indicadores'];
+    const rows = XLSX.utils.sheet_to_json(ws, { defval: '', raw: false, header: 1 });
+
+    const remIdx = rows.findIndex(r => String(r[0]||'').trim().toLowerCase() === 'rem tamar');
+    if (remIdx === -1) { showAlert('No se encontró la fila "REM tamar" en Indicadores.xlsx'); return; }
+
+    const headers = rows[remIdx + 1];
+    const valores = rows[remIdx + 2];
+    const ahora = new Date();
+
+    let primerMesIdx = -1;
+    for (const mes of headers) {
+      if (!mes || mes === '12 Meses') continue;
+      primerMesIdx = MESES_ES.findIndex(m => mes.startsWith(m));
+      if (primerMesIdx !== -1) break;
+    }
+    if (primerMesIdx === -1) return;
+    let primerAnio = ahora.getFullYear();
+    if (primerMesIdx > ahora.getMonth() + 6) primerAnio--;
+    remTamarPrimerMes = { anio: primerAnio, mesIdx: primerMesIdx };
+
+    let anioCursor = primerAnio, mesIdxAnterior = primerMesIdx, primero = true;
+    headers.forEach((mes, i) => {
+      if (!mes) return;
+      const val = parseFloat(String(valores[i] || '').replace(',', '.'));
+      if (isNaN(val)) return;
+      if (mes === '12 Meses') { tamarInputs['m12'] = val; return; }
+      const mesIdx = MESES_ES.findIndex(m => mes.startsWith(m));
+      if (mesIdx === -1) return;
+      if (!primero && mesIdx < mesIdxAnterior) anioCursor++;
+      mesIdxAnterior = mesIdx; primero = false;
+      tamarInputs[`${anioCursor}-${String(mesIdx+1).padStart(2,'0')}`] = val;
+    });
+
+    console.log('REM TAMAR cargado:', tamarInputs, 'primer mes:', remTamarPrimerMes);
+  } catch(e) {
+    console.warn('Error cargando REM TAMAR:', e);
+  }
+}
+
+// ── CARGAR EXCEL (TAMAR + LECAPS) ─────────────────────────────
+async function cargarExcel() {
+  try {
+    const resp = await fetch(EXCEL_URL + '?t=' + Date.now());
+    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+    const buffer = await resp.arrayBuffer();
+    const wb = XLSX.read(buffer, { type: 'array' });
+
+    if (wb.SheetNames.includes('TAMAR')) {
+      const rows = XLSX.utils.sheet_to_json(wb.Sheets['TAMAR'], { defval: '', raw: false });
+      tamarBonos = rows
+        .filter(r => r['Ticker'] && String(r['Ticker']).trim() && String(r['Ticker']).trim() !== 'Ticker')
+        .map(r => {
+          let margen = r['Margen'];
+          if (typeof margen === 'string') margen = parseFloat(margen.replace('%','').trim()) || 0;
+          else margen = parseFloat(margen) || 0;
+          if (margen < 1 && margen > 0) margen = margen * 100;
+          return {
+            ticker:  String(r['Ticker']).trim(),
+            emision: excelSerialToDate(r['Fecha Emisión'] || r['Fecha Emision']),
+            venc:    excelSerialToDate(r['Fecha Vencimineto'] || r['Fecha Vencimiento']),
+            tamar_aplicable: parseInt(r['TAMAR aplicable']) || 10,
+            margen,
+          };
+        });
+    }
+
+    if (wb.SheetNames.includes('LECAPS')) {
+      const rows = XLSX.utils.sheet_to_json(wb.Sheets['LECAPS'], { defval: '', raw: false });
+      lecaps = rows
+        .filter(r => r['Ticker'] && String(r['Ticker']).trim())
+        .map(r => ({
+          ticker:  String(r['Ticker']).trim(),
+          emision: excelSerialToDate(r['Fecha Emision'] || r['Fecha Emisión']),
+          venc:    excelSerialToDate(r['Fecha Vencimineto'] || r['Fecha Vencimiento']),
+          tem:     parseFloat(r['TEM (%)']) || null,
+        }))
+        .filter(l => l.tem);
+    }
+
+    console.log(`Excel: ${tamarBonos.length} TAMAR, ${lecaps.length} LECAPs`);
+  } catch(e) {
+    showAlert('Error cargando Excel: ' + e.message);
+  }
+}
+
+// ── FETCH SERIES TAMAR (BCRA) ─────────────────────────────────
+async function fetchSeriesTamar() {
+  const hoy = dateToStr(new Date());
+  for (const b of tamarBonos) {
+    const fechaDesde = restarDiasHabiles(b.emision, b.tamar_aplicable);
+    const fechaHasta = restarDiasHabiles(hoy, b.tamar_aplicable);
+    try {
+      const resp = await fetch(`${BCRA_URL}/?serie=tamar&desde=${fechaDesde}&hasta=${fechaHasta}`);
+      const json = await resp.json();
+      const detalle = json.results?.[0]?.detalle || [];
+      // Ordenar por fecha ascendente (viejo→nuevo)
+      detalle.sort((a,b) => (a.fecha||'').localeCompare(b.fecha||''));
+      tamarSeries[b.ticker] = detalle.map(r => parseFloat(r.valor));
+    } catch(e) {
+      console.warn(`BCRA TAMAR ${b.ticker} error:`, e);
+      tamarSeries[b.ticker] = [];
+    }
+  }
+}
+
+// ── TASA TAMAR PROYECTADA PARA UN DÍA ─────────────────────────
+// Día dentro de los 6 meses del REM → tasa de ese mes.
+// Día anterior al primer mes (por el lag) → tasa del primer mes.
+// Día más allá del mes 6 → tasa de "12 meses".
+function getTamarProyectada(date) {
+  if (!remTamarPrimerMes) return tamarInputs['m12'] ?? null;
+  const mAbs = date.getFullYear()*12 + date.getMonth();
+  const firstAbs = remTamarPrimerMes.anio*12 + remTamarPrimerMes.mesIdx;
+  let offset = mAbs - firstAbs;
+  if (offset < 0) offset = 0;
+  if (offset > 5) return tamarInputs['m12'] ?? null;
+  const d = new Date(remTamarPrimerMes.anio, remTamarPrimerMes.mesIdx + offset, 1);
+  const key = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+  return tamarInputs[key] ?? (tamarInputs['m12'] ?? null);
+}
+
+// ── PROMEDIOS (conocido y total) ──────────────────────────────
+function calcPromedios(bono) {
+  const serie = tamarSeries[bono.ticker] || [];
+  if (!serie.length) return { promConocido: null, promTotal: null };
+  const lag = bono.tamar_aplicable || 10;
+  const sumaConocida = serie.reduce((a,v) => a+v, 0);
+  const nConocida = serie.length;
+  const promConocido = sumaConocida / nConocida;
+
+  // Tramo futuro: días hábiles de (hoy-lag) a (venc-lag), con tasa proyectada por mes
+  const finKnown = parseLocalDate(restarDiasHabiles(dateToStr(new Date()), lag));
+  const vencLag  = parseLocalDate(restarDiasHabiles(bono.venc, lag));
+  let sumaFutura = 0, nFutura = 0;
+  if (finKnown && vencLag && vencLag > finKnown) {
+    const d = new Date(finKnown);
+    while (d < vencLag) {
+      d.setDate(d.getDate() + 1);
+      const dow = d.getDay();
+      if (dow === 0 || dow === 6) continue;
+      const rate = getTamarProyectada(d);
+      if (rate != null) { sumaFutura += rate; nFutura++; }
+    }
+  }
+  const promTotal = (sumaConocida + sumaFutura) / (nConocida + nFutura);
+  return { promConocido, promTotal };
+}
+
+// ── RENDER INPUTS ─────────────────────────────────────────────
+function renderTamarInputs() {
+  const grid = document.getElementById('tamar-grid');
+  if (!remTamarPrimerMes) { grid.innerHTML = '<div style="font-size:12px;color:var(--text-3);font-family:var(--mono)">Sin datos del REM TAMAR.</div>'; return; }
+
+  let html = '';
+  html += `<div style="grid-column:1/-1;font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--text-3);font-family:var(--mono);padding-bottom:4px;border-bottom:1px solid var(--border);margin-bottom:4px">Datos REM · TAMAR esperada (TNA %)</div>`;
+  for (let i = 0; i < 6; i++) {
+    const d = new Date(remTamarPrimerMes.anio, remTamarPrimerMes.mesIdx + i, 1);
+    const key = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+    const mesNombre = `${MESES_ES[d.getMonth()]} ${d.getFullYear()}`;
+    html += `<div class="infl-item">
+      <div class="infl-lbl">${mesNombre}</div>
+      <input class="infl-input" type="number" step="0.01" value="${tamarInputs[key] ?? ''}" placeholder="TNA %" oninput="onTamarChange('${key}', this.value)">
+    </div>`;
+  }
+  html += `<div style="grid-column:1/-1;font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--text-3);font-family:var(--mono);padding:12px 0 4px;border-bottom:1px solid var(--border);margin-bottom:4px">12 meses (se usa para todo el tramo posterior al mes 6)</div>`;
+  html += `<div class="infl-item">
+    <div class="infl-lbl">12 Meses</div>
+    <input class="infl-input" type="number" step="0.01" value="${tamarInputs['m12'] ?? ''}" placeholder="TNA %" oninput="onTamarChange('m12', this.value)" style="color:var(--blue);">
+  </div>`;
+
+  grid.innerHTML = html;
+  if (tamarInputsInicial === null) tamarInputsInicial = { ...tamarInputs };
+}
+
+function onTamarChange(key, val) {
+  const v = parseFloat(val);
+  if (!isNaN(v)) tamarInputs[key] = v;
+  else delete tamarInputs[key];
+  clearTimeout(window._tamarTimer);
+  window._tamarTimer = setTimeout(renderTabla, 600);
+}
+
+function restablecerREM() {
+  if (!tamarInputsInicial) return;
+  tamarInputs = { ...tamarInputsInicial };
+  renderTamarInputs();
+  renderTabla();
+}
+
+// ── RENDER TABLA ──────────────────────────────────────────────
+function renderTabla() {
+  const tbody = document.getElementById('tbody-tamar');
+  if (!tamarBonos.length) {
+    tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:24px;color:var(--text-3);font-style:italic;font-family:var(--mono)">Sin instrumentos TAMAR</td></tr>';
+    return;
+  }
+
+  const bonosData = JSON.parse(localStorage.getItem('bonos_data') || '[]');
+  const precioMap = {};
+  bonosData.filter(d => d.grupo === 'tamar').forEach(d => { precioMap[d.ticker] = d.precio; });
+
+  const ordenados = [...tamarBonos].sort((a, b) => {
+    const da = diasAlVenc(a.venc), db = diasAlVenc(b.venc);
+    return (da ?? 999999) - (db ?? 999999);
+  });
+
+  let html = '';
+
+  ordenados.forEach(bono => {
+    const dias = diasAlVenc(bono.venc);
+    if (dias === null || dias < 0) return;
+
+    const precio = precioMap[bono.ticker] || null;
+    const { promConocido, promTotal } = calcPromedios(bono);
+
+    let tir = null;
+    if (promTotal != null) {
+      const tasaTotal = promTotal + (bono.margen || 0);
+      const tamarTEM = Math.pow(Math.pow(1 + (tasaTotal/100) / (365/32), 365/32), 1/12) - 1;
+      const meses = dias360(bono.emision, bono.venc) / 360 * 12;
+      const vf = 100 * Math.pow(1 + tamarTEM, meses);
+      if (precio && vf && dias > 0) tir = (Math.pow(vf / precio, 365/dias) - 1) * 100;
+    }
+
+    // LECAP comparable (vto más cercano, máx 20 días)
+    let lecapComp = null, lecapTEA = null;
+    if (bono.venc) {
+      const vencBono = parseLocalDate(bono.venc);
+      lecapComp = lecaps.reduce((prev, curr) => {
+        if (!curr.venc) return prev;
+        const diffCurr = Math.abs(parseLocalDate(curr.venc) - vencBono) / 86400000;
+        const diffPrev = prev ? Math.abs(parseLocalDate(prev.venc) - vencBono) / 86400000 : Infinity;
+        return diffCurr < diffPrev ? curr : prev;
+      }, null);
+      if (lecapComp) {
+        const diffDias = Math.abs((parseLocalDate(lecapComp.venc) - vencBono) / 86400000);
+        if (diffDias > 20) { lecapComp = null; }
+        else { const lp = bonosData.find(d => d.ticker === lecapComp.ticker); lecapTEA = (lp && lp.precio) ? calcTEALecap(lecapComp, lp.precio) : null; }
+      }
+    }
+
+    const spread = (tir !== null && lecapTEA !== null) ? (tir - lecapTEA) : null;
+
+    html += `<tr>
+      <td>${bono.ticker}</td>
+      <td>${fmtDate(bono.venc)}</td>
+      <td>${dias}d</td>
+      <td class="val-text3">${promConocido != null ? promConocido.toFixed(2) + '%' : '—'}</td>
+      <td class="val-amber">${promTotal != null ? promTotal.toFixed(2) + '%' : '—'}</td>
+      <td class="val-blue">${tir !== null ? tir.toFixed(2) + '%' : precio ? '—' : '<span style="color:var(--text-3);font-style:italic;font-size:11px">Sin precio</span>'}</td>
+      <td>${lecapComp ? lecapComp.ticker : '<span class="no-comp">Sin comparable</span>'}</td>
+      <td class="val-blue">${lecapTEA !== null ? lecapTEA.toFixed(2) + '%' : '—'}</td>
+      <td>${spread === null ? '—' : spread > 0 ? '<span class="badge-rec">TAMAR</span>' : '<span class="badge-rec">LECAP</span>'}</td>
+    </tr>`;
+  });
+
+  tbody.innerHTML = html || '<tr><td colspan="9" style="text-align:center;padding:24px;color:var(--text-3);font-style:italic;font-family:var(--mono)">Sin datos</td></tr>';
+}
+
+// ── INIT ──────────────────────────────────────────────────────
+async function init() {
+  await Promise.all([cargarREM_TAMAR(), cargarExcel()]);
+  renderTamarInputs();
+  await fetchSeriesTamar();
+  renderTabla();
+}
+
+init();
+</script>
+</body>
+</html>
