@@ -1,0 +1,605 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Caución vs Lecap</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #f0f4f8; --surface: #ffffff; --card: #f8fafc; --row-hover: #eef2f7;
+    --border: #d1d9e0; --border-l: #b8c4cf;
+    --text: #1a2332; --text-2: #3a4a5c; --text-3: #7a8fa0;
+    --green: #16a34a; --green-bg: #dcfce7; --green-border: #86efac;
+    --blue: #1d6fa5; --amber: #b45309; --red: #dc2626;
+    --navy: #0d1f4e; --navy-light: #1a3270;
+    --mono: 'JetBrains Mono','Fira Code','Courier New',monospace;
+    --sans: 'Inter',system-ui,sans-serif;
+  }
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap');
+  body { background: var(--bg); color: var(--text); font-family: var(--sans); min-height: 100vh; padding: 0; }
+  .wrap { max-width: 1400px; margin: 0 auto; padding: 0 24px 24px; }
+
+  .navbar { background: var(--navy); padding: 0 32px; height: 56px; display: flex; align-items: center; justify-content: space-between; }
+  .navbar-brand { display: flex; align-items: center; gap: 16px; }
+  .navbar-logo { font-size: 20px; font-weight: 700; color: #ffffff; letter-spacing: 0.05em; font-family: var(--sans); }
+  .navbar-sep { width: 1px; height: 20px; background: rgba(255,255,255,0.2); }
+  .navbar-title { font-size: 11px; color: rgba(255,255,255,0.6); font-family: var(--mono); letter-spacing: 0.1em; text-transform: uppercase; }
+
+  .nav-tabs { display: flex; gap: 4px; border-bottom: 2px solid var(--border); margin: 20px 0 20px 0; flex-wrap: wrap; }
+  .nav-tab { font-size: 11px; font-family: var(--mono); font-weight: 600; letter-spacing: .05em; padding: 8px 20px; border-radius: 6px 6px 0 0; cursor: pointer; border: 1px solid transparent; color: var(--text-3); background: transparent; transition: all .15s; text-transform: uppercase; text-decoration: none; display: block; }
+  .nav-tab:hover { color: var(--navy); background: var(--bg); }
+  .nav-tab.active { color: var(--navy); background: var(--surface); border-color: var(--border); border-bottom-color: transparent; margin-bottom: -2px; font-weight: 700; }
+
+  .status-line { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--text-3); font-family: var(--mono); margin-bottom: 16px; }
+  .dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+  .dot.ok { background: var(--green); } .dot.err { background: var(--red); } .dot.loading { background: var(--amber); } .dot.idle { background: var(--text-3); }
+
+  .toolbar { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; flex-wrap: wrap; }
+  .btn { font-size: 11px; font-family: var(--mono); border-radius: 5px; padding: 7px 14px; cursor: pointer; border: 1px solid; transition: background .15s; white-space: nowrap; }
+  .btn-ghost { color: var(--text-3); background: var(--surface); border-color: var(--border); }
+  .btn-ghost:hover { background: var(--row-hover); color: var(--text-2); }
+  .btn-navy { color: #fff; background: var(--navy); border-color: var(--navy); }
+  .btn-navy:hover { background: var(--navy-light); }
+  .sep-v { width: 1px; height: 20px; background: var(--border); }
+  .upload-st { font-size: 11px; font-family: var(--mono); color: var(--text-3); }
+  .upload-st.ok { color: var(--green); } .upload-st.err { color: var(--red); }
+
+  /* CAUCION */
+  .caucion { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; margin-bottom: 20px; overflow: hidden; box-shadow: 0 1px 4px rgba(0,0,0,0.06); }
+  .caucion-header { display: flex; align-items: center; justify-content: space-between; padding: 13px 18px; border-bottom: 1px solid var(--border); background: var(--card); }
+  .caucion-title { font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-3); font-family: var(--mono); font-weight: 600; }
+  .caucion-body { padding: 16px 18px; background: var(--surface); }
+  .caucion-row { display: flex; align-items: flex-end; gap: 32px; flex-wrap: wrap; }
+  .caucion-input-wrap { display: flex; flex-direction: column; gap: 4px; }
+  .caucion-lbl { font-size: 10px; color: var(--text-3); font-family: var(--mono); letter-spacing: .06em; text-transform: uppercase; }
+  .caucion-input { background: var(--bg); border: 1px solid var(--border-l); border-radius: 5px; color: var(--amber); font-family: var(--mono); font-size: 14px; font-weight: 500; padding: 7px 12px; width: 120px; transition: border-color .15s; }
+  .caucion-input:focus { outline: none; border-color: var(--amber); }
+  .caucion-results { display: flex; gap: 32px; flex-wrap: wrap; }
+  .caucion-stat { display: flex; flex-direction: column; gap: 3px; }
+  .caucion-stat .lbl { font-size: 10px; color: var(--text-3); font-family: var(--mono); letter-spacing: .06em; text-transform: uppercase; }
+  .caucion-stat .val { font-size: 15px; font-weight: 500; font-family: var(--mono); color: var(--blue); }
+
+  /* TABLA */
+  .table-wrap { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; margin-bottom: 16px; overflow-x: auto; box-shadow: 0 1px 4px rgba(0,0,0,0.06); }
+  table { width: 100%; border-collapse: collapse; min-width: 1000px; }
+  thead tr { border-bottom: 2px solid var(--navy); }
+  th { padding: 10px 14px; font-size: 10px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--text-3); text-align: right; white-space: nowrap; cursor: pointer; background: var(--card); transition: color .15s; user-select: none; }
+  th:hover { color: var(--text-2); }
+  th:first-child, th:nth-child(2) { text-align: left; }
+  th.sorted { color: var(--navy); }
+  tbody tr { border-bottom: 1px solid var(--border); transition: background .1s; }
+  tbody tr:last-child { border-bottom: none; }
+  tbody tr:hover { background: var(--row-hover); }
+  td { padding: 8px 14px; font-size: 12px; text-align: right; color: var(--text-2); white-space: nowrap; font-family: var(--mono); vertical-align: middle; }
+  td:first-child { text-align: left; font-weight: 600; color: var(--text); }
+  td:nth-child(2) { text-align: left; }
+  .tir { color: var(--green); font-weight: 600; }
+  .tna-v { color: var(--blue); font-weight: 500; }
+  .no-p { color: var(--text-3); font-style: italic; font-size: 11px; }
+  .dias-normal { color: var(--text-2); }
+  .dias-red { color: var(--red); font-weight: 600; }
+  .sp-p { color: var(--green); font-size: 11px; font-weight: 600; }
+  .sp-n { color: var(--red); font-size: 11px; font-weight: 600; }
+  .tnabe-v { color: var(--amber); font-weight: 500; }
+
+  input[type=number]::-webkit-inner-spin-button, input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+  input[type=number] { -moz-appearance: textfield; appearance: textfield; }
+
+  .precio-cell-input { background: var(--bg); border: 1px solid var(--border-l); border-radius: 4px; color: var(--text-2); font-family: var(--mono); font-size: 12px; text-align: right; width: 100px; padding: 3px 6px; transition: border-color .15s, color .15s; }
+  .precio-cell-input:focus { outline: none; border-color: var(--blue); color: var(--text); }
+  .precio-cell-input.has-value { color: var(--navy); border-color: #a0b4d8; background: #e8edf5; }
+  .precio-cell-input::placeholder { color: var(--text-3); font-size: 11px; }
+
+  .alert { padding: 10px 14px; border-radius: 6px; font-size: 11px; font-family: var(--mono); margin-bottom: 14px; display: none; }
+  .alert.show { display: block; }
+  .alert.err { background:#fef2f2; border:1px solid #fecaca; color:var(--red); }
+  .alert.info { background:#f0fdf4; border:1px solid #86efac; color:var(--green); }
+
+  /* SIMULADOR */
+  .sim { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; margin-top: 16px; overflow: hidden; box-shadow: 0 1px 4px rgba(0,0,0,0.06); }
+  .sim-header { display: flex; align-items: center; justify-content: space-between; padding: 13px 18px; user-select: none; background: var(--card); border-bottom: 1px solid var(--border); }
+  .sim-title { font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-3); font-family: var(--mono); font-weight: 600; }
+  .sim-body { padding: 20px 24px 24px; }
+  .sim-inputs { display: flex; align-items: flex-end; gap: 24px; flex-wrap: wrap; margin-bottom: 24px; }
+  .sim-input-wrap { display: flex; flex-direction: column; gap: 4px; }
+  .sim-lbl { font-size: 10px; color: var(--text-3); font-family: var(--mono); letter-spacing: .06em; text-transform: uppercase; }
+  .sim-select { background: var(--bg); border: 1px solid var(--border-l); border-radius: 5px; color: var(--text); font-family: var(--mono); font-size: 13px; font-weight: 500; padding: 7px 12px; min-width: 160px; cursor: pointer; transition: border-color .15s; }
+  .sim-select:focus { outline: none; border-color: var(--blue); }
+  .sim-input { background: var(--bg); border: 1px solid var(--border-l); border-radius: 5px; color: var(--blue); font-family: var(--mono); font-size: 14px; font-weight: 500; padding: 7px 12px; width: 180px; transition: border-color .15s; }
+  .sim-input:focus { outline: none; border-color: var(--blue); }
+  .sim-stat { background: var(--surface); padding: 14px 18px; display: flex; flex-direction: column; gap: 5px; }
+  .sim-stat .lbl { font-size: 10px; color: var(--text-3); font-family: var(--mono); letter-spacing: .06em; text-transform: uppercase; }
+  .sim-stat .val { font-size: 16px; font-weight: 600; font-family: var(--mono); color: var(--text); }
+  .sim-stat .val.green { color: var(--green); } .sim-stat .val.blue { color: var(--blue); } .sim-stat .val.amber { color: var(--amber); } .sim-stat .val.red { color: var(--red); }
+  .sim-empty { font-size: 12px; color: var(--text-3); font-family: var(--mono); font-style: italic; padding: 16px 0; }
+  .sim-dato { font-size: 15px; font-weight: 600; font-family: var(--mono); color: var(--text); padding: 7px 0; min-width: 100px; }
+
+  /* GLOSARIO */
+  .glosario { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; margin-top: 16px; overflow: hidden; box-shadow: 0 1px 4px rgba(0,0,0,0.06); }
+  .glosario-header { display: flex; align-items: center; justify-content: space-between; padding: 13px 18px; cursor: pointer; user-select: none; background: var(--card); border-bottom: 1px solid var(--border); }
+  .glosario-title { font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-3); font-family: var(--mono); font-weight: 600; }
+  .glosario-body { padding: 20px 24px 24px; display: none; }
+  .glosario-body.open { display: block; }
+  .glosario-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0 48px; }
+  @media (max-width: 768px) { .glosario-grid { grid-template-columns: 1fr; } body { padding: 12px; } }
+  .glosario-item { display: flex; gap: 12px; padding: 9px 0; border-bottom: 1px solid var(--border); }
+  .glosario-item:last-child { border-bottom: none; }
+  .glosario-col { font-size: 11px; font-family: var(--mono); color: var(--blue); white-space: nowrap; min-width: 140px; padding-top: 1px; font-weight: 500; }
+  .glosario-desc { font-size: 11px; color: var(--text-2); line-height: 1.55; }
+  .glosario-formula { display: block; font-family: var(--mono); font-size: 10px; color: var(--text-3); margin-top: 4px; }
+  .caucion-arrow { font-size: 10px; color: var(--text-3); transition: transform .2s; }
+  .caucion-arrow.open { transform: rotate(180deg); }
+</style>
+</head>
+<body>
+
+<nav class="navbar">
+  <div class="navbar-brand">
+    <div class="navbar-logo">BALANZ</div>
+    <div class="navbar-sep"></div>
+    <div class="navbar-title">Monitor · Renta Fija AR</div>
+  </div>
+</nav>
+
+<div class="wrap">
+  <div class="nav-tabs">
+    <a class="nav-tab" href="bonos.html">Monitor</a>
+    <a class="nav-tab" href="senderoCER.html">Sendero CER</a>
+    <a class="nav-tab" href="senderoDL.html">Sendero DL</a>
+    <a class="nav-tab" href="senderoTAMAR.html">Sendero TAMAR</a>
+    <a class="nav-tab" href="duales.html">Duales</a>
+    <a class="nav-tab" href="globVsBon.html">Glob vs Bon</a>
+    <a class="nav-tab active" href="caucionVsLecap.html">Caución vs Lecap</a>
+  </div>
+
+  <div class="status-line">
+    <span class="dot loading" id="dot"></span>
+    <span id="status-txt">Cargando...</span>
+  </div>
+
+  <div class="alert" id="alert"></div>
+
+  <!-- TOOLBAR -->
+  <div class="toolbar">
+    <button class="btn btn-navy" onclick="recargarPrecios()">↻ Recargar precios del Monitor</button>
+    <span class="upload-st" id="precio-st"></span>
+    <div class="sep-v"></div>
+    <button class="btn btn-ghost" onclick="limpiarPrecios()">Limpiar precios</button>
+  </div>
+
+  <!-- CAUCION -->
+  <div class="caucion">
+    <div class="caucion-header"><div class="caucion-title">Caución de referencia</div></div>
+    <div class="caucion-body">
+      <div class="caucion-row" style="justify-content: space-between; align-items: flex-start;">
+        <div style="display:flex; align-items:flex-end; gap:32px; flex-wrap:wrap;">
+          <div class="caucion-input-wrap">
+            <div class="caucion-lbl">TNA Caución 1d (%)</div>
+            <input class="caucion-input" id="caucion-tna-input" type="number" step="0.01" value="20" placeholder="ej: 20" oninput="recalcCaucion()">
+            <div style="font-size:9px;color:var(--text-3);font-family:var(--mono);margin-top:2px;" id="caucion-fuente"></div>
+          </div>
+          <div class="caucion-results">
+            <div class="caucion-stat"><div class="lbl">TNA</div><div class="val" id="cau-tna">—</div></div>
+            <div class="caucion-stat"><div class="lbl">TEA</div><div class="val" id="cau-tea">—</div></div>
+            <div class="caucion-stat"><div class="lbl">TEM (mensual cap.)</div><div class="val" id="cau-tem">—</div></div>
+          </div>
+        </div>
+        <div style="display:flex; align-items:flex-end; gap:20px; flex-wrap:wrap; border-left:1px solid var(--border); padding-left:28px;">
+          <div class="caucion-input-wrap">
+            <div class="caucion-lbl">Derecho de Mercado (%)</div>
+            <input class="caucion-input" id="dm-input" type="number" step="0.0001" value="0.001" placeholder="ej: 0.001" oninput="renderTabla()" style="color:var(--text-2); width:130px;">
+          </div>
+          <div class="caucion-input-wrap">
+            <div class="caucion-lbl">Comisión del Agente (%)</div>
+            <input class="caucion-input" id="ca-input" type="number" step="0.01" value="0.25" placeholder="ej: 0.25" oninput="renderTabla()" style="color:var(--text-2); width:130px;">
+          </div>
+          <div class="caucion-stat">
+            <div class="lbl">Costo Total</div>
+            <div class="val" id="costo-total" style="color:var(--red);">—</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TABLA -->
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th onclick="sortBy('ticker')" id="th-ticker">Ticker</th>
+          <th onclick="sortBy('tipo')" id="th-tipo">Tipo</th>
+          <th onclick="sortBy('precio')" id="th-precio">Precio ASK</th>
+          <th onclick="sortBy('precio_neto')" id="th-precio_neto">Precio Neto</th>
+          <th onclick="sortBy('venc')" id="th-venc">Vencimiento</th>
+          <th onclick="sortBy('dias')" id="th-dias">Días</th>
+          <th onclick="sortBy('vpv')" id="th-vpv">Valor Final</th>
+          <th onclick="sortBy('rend_directo')" id="th-rend_directo" class="sorted">Rend. Directo % ▼</th>
+          <th onclick="sortBy('rend_anual')" id="th-rend_anual">Rend. Directo Anualizado %</th>
+          <th onclick="sortBy('spread')" id="th-spread">Ganancia vs Caución</th>
+          <th onclick="sortBy('tna_be')" id="th-tna_be">TNA BE</th>
+        </tr>
+      </thead>
+      <tbody id="tbody"></tbody>
+    </table>
+  </div>
+
+  <!-- GLOSARIO -->
+  <div class="glosario">
+    <div class="glosario-header" onclick="toggleGlosario()">
+      <div class="glosario-title">Glosario de columnas y fórmulas</div>
+      <span class="caucion-arrow" id="glosario-arrow">▼</span>
+    </div>
+    <div class="glosario-body" id="glosario-body">
+      <div class="glosario-grid">
+        <div class="glosario-item"><div class="glosario-col">Precio Neto</div><div class="glosario-desc"><span class="glosario-formula">Precio ASK × (1 + DM% + CA%)</span></div></div>
+        <div class="glosario-item"><div class="glosario-col">Valor Final</div><div class="glosario-desc"><span class="glosario-formula">100 × (1 + TEM)^(días_360 / 30)</span></div></div>
+        <div class="glosario-item"><div class="glosario-col">Rend. Directo %</div><div class="glosario-desc"><span class="glosario-formula">(Valor Final − Precio Neto) / Precio Neto</span></div></div>
+        <div class="glosario-item"><div class="glosario-col">Rend. Directo Anualizado %</div><div class="glosario-desc"><span class="glosario-formula">Rend. Directo × (365 / días)</span></div></div>
+        <div class="glosario-item"><div class="glosario-col">Ganancia vs Caución</div><div class="glosario-desc"><span class="glosario-formula">Valor Final − Precio Neto × (1 + TNA_cau/365)^(días−2)</span></div></div>
+        <div class="glosario-item"><div class="glosario-col">TNA BE</div><div class="glosario-desc"><span class="glosario-formula">((Valor Final / Precio Neto)^(1/(días−2)) − 1) × 365</span></div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SIMULADOR -->
+  <div class="sim">
+    <div class="sim-header"><div class="sim-title">Simulador de operación</div></div>
+    <div class="sim-body">
+      <div class="sim-inputs">
+        <div class="sim-input-wrap">
+          <div class="sim-lbl">Instrumento</div>
+          <select class="sim-select" id="sim-ticker" onchange="calcSim()"><option value="">— Seleccioná —</option></select>
+        </div>
+        <div class="sim-input-wrap">
+          <div class="sim-lbl">Monto a invertir ($)</div>
+          <input class="sim-input" id="sim-monto" type="number" step="1000" placeholder="ej: 1000000" oninput="calcSim()">
+        </div>
+        <div class="sim-input-wrap"><div class="sim-lbl">Precio ASK</div><div class="sim-dato" id="sim-precio-ask">—</div></div>
+        <div class="sim-input-wrap"><div class="sim-lbl">Precio Neto</div><div class="sim-dato" id="sim-precio-neto" style="color:var(--amber)">—</div></div>
+      </div>
+      <div id="sim-out"><div class="sim-empty">Seleccioná un instrumento e ingresá el monto.</div></div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+const EXCEL_URL = 'Instrumentos.xlsx';
+const BCRA_URL  = 'https://indicadoresbcra.granda-fra.workers.dev';
+let lecaps = [];
+let precios = {};
+let caucionTna = 20;
+let sortCol = 'dias';
+let sortAsc = true;
+
+// ── HELPERS FECHA ────────────────────────────────────────────
+function parseLocalDate(s) {
+  if (!s) return null;
+  const parts = String(s).split('-').map(Number);
+  return new Date(parts[0], parts[1] - 1, parts[2]);
+}
+function dateToStr(d) { return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; }
+function excelSerialToDate(v) {
+  if (!v) return '';
+  const s = String(v).trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+  const mdy = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})$/);
+  if (mdy) { const y = mdy[3].length === 2 ? '20'+mdy[3] : mdy[3]; return `${y}-${mdy[1].padStart(2,'0')}-${mdy[2].padStart(2,'0')}`; }
+  const dmy = s.match(/^(\d{1,2})-(\d{1,2})-(\d{2})$/);
+  if (dmy) return `20${dmy[3]}-${dmy[2].padStart(2,'0')}-${dmy[1].padStart(2,'0')}`;
+  if (/^\d+$/.test(s)) { const serial = parseInt(s); const d = new Date(0); d.setUTCFullYear(1899, 11, 31); d.setUTCDate(d.getUTCDate() + serial); return `${d.getUTCFullYear()}-${String(d.getUTCMonth()+1).padStart(2,'0')}-${String(d.getUTCDate()).padStart(2,'0')}`; }
+  return s;
+}
+
+// ── DIAS360 / VPV ────────────────────────────────────────────
+function dias360(emision, venc) {
+  const e = parseLocalDate(emision); const v = parseLocalDate(venc);
+  let d1 = e.getDate(), m1 = e.getMonth() + 1, y1 = e.getFullYear();
+  let d2 = v.getDate(), m2 = v.getMonth() + 1, y2 = v.getFullYear();
+  if (d1 === 31) d1 = 30;
+  if (d2 === 31 && d1 >= 30) d2 = 30;
+  return (y2 - y1) * 360 + (m2 - m1) * 30 + (d2 - d1);
+}
+function calcularVPV(emision, venc, tem) {
+  if (!emision || !venc || !tem) return null;
+  try { const diasBase = dias360(emision, venc); const t = diasBase / 30; return 100 * Math.pow(1 + tem / 100, t); } catch { return null; }
+}
+
+// ── HELPERS CÁLCULO ──────────────────────────────────────────
+function rendimientoDirecto(vpv, precio) { if (!vpv || !precio || precio <= 0) return null; return (vpv - precio) / precio * 100; }
+function rendimientoDirectoAnualizado(rend, dias) { if (rend === null || !dias || dias <= 0) return null; return (365 / dias) * rend; }
+function gananciaCaucion(vpv, precio, caucionTna, dias) {
+  if (!vpv || !precio || !caucionTna || dias === null || dias <= 0) return null;
+  const factorCaucion = Math.pow(1 + caucionTna / 100 / 365, dias - 2);
+  return vpv - precio * factorCaucion;
+}
+function calcTnaBE(precio, vpv, dias) {
+  if (!vpv || !precio || precio <= 0 || dias === null || dias <= 2) return null;
+  return (Math.pow(vpv / precio, 1 / (dias - 2)) - 1) * 365 * 100;
+}
+function diasAlVenc(f) { if (!f) return null; const hoy = new Date(); hoy.setHours(0,0,0,0); const venc = parseLocalDate(f); if (!venc) return null; return Math.round((venc - hoy) / 86400000); }
+function fmtDate(s) { if (!s) return '—'; try { const d = parseLocalDate(s); return `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getFullYear()).slice(2)}`; } catch { return s; } }
+function setStatus(e,t) { document.getElementById('dot').className='dot '+e; document.getElementById('status-txt').textContent=t; }
+function showAlert(msg, tipo='err') { const el = document.getElementById('alert'); el.textContent=msg; el.className='alert show '+tipo; setTimeout(()=>el.className='alert', 5000); }
+
+// ── CAUCION ──────────────────────────────────────────────────
+function recalcCaucion() {
+  caucionTna = parseFloat(document.getElementById('caucion-tna-input').value) || 0;
+  if (!caucionTna) {
+    ['cau-tna','cau-tea','cau-tem'].forEach(id => document.getElementById(id).textContent='—');
+  } else {
+    const tea = (Math.pow(1 + caucionTna/100/365, 365) - 1) * 100;
+    const tem = (Math.pow(1 + caucionTna/100/365, 30) - 1) * 100;
+    document.getElementById('cau-tna').textContent = caucionTna.toFixed(2)+'%';
+    document.getElementById('cau-tea').textContent = tea.toFixed(2)+'%';
+    document.getElementById('cau-tem').textContent = tem.toFixed(4)+'%';
+  }
+  renderTabla();
+}
+
+// Pre-cargar caución 1d real del BCRA (editable)
+async function cargarCaucionBCRA() {
+  try {
+    const hoy = new Date();
+    const desde = new Date(hoy); desde.setDate(desde.getDate() - 12);
+    const resp = await fetch(`${BCRA_URL}/?serie=caucion1d&desde=${dateToStr(desde)}&hasta=${dateToStr(hoy)}`);
+    const json = await resp.json();
+    const det = json.results?.[0]?.detalle || [];
+    if (det.length) {
+      det.sort((a,b) => b.fecha.localeCompare(a.fecha));
+      const val = parseFloat(det[0].valor);
+      if (!isNaN(val)) {
+        document.getElementById('caucion-tna-input').value = val.toFixed(2);
+        document.getElementById('caucion-fuente').textContent = `BCRA · ${det[0].fecha}`;
+      }
+    }
+  } catch(e) { console.warn('Caución BCRA error:', e); }
+  recalcCaucion();
+}
+
+// ── PRECIOS DESDE EL MONITOR (bonos_data) ────────────────────
+function cargarPreciosMonitor() {
+  const bd = JSON.parse(localStorage.getItem('bonos_data') || '[]');
+  precios = {};
+  bd.filter(d => d.grupo === 'lecap' && d.precio != null).forEach(d => { precios[d.ticker] = d.precio; });
+  const n = Object.keys(precios).length;
+  const st = document.getElementById('precio-st');
+  if (st) { st.textContent = n ? `✓ ${n} precios del Monitor` : 'Sin precios — pasá por el Monitor'; st.className = 'upload-st ' + (n ? 'ok' : 'err'); }
+}
+
+function recargarPrecios() {
+  cargarPreciosMonitor();
+  lecaps.forEach(l => {
+    const inp = document.getElementById('inp-' + l.ticker);
+    if (inp) {
+      if (precios[l.ticker] != null) { inp.value = precios[l.ticker].toFixed(2); inp.classList.add('has-value'); }
+      else { inp.value = ''; inp.classList.remove('has-value'); }
+    }
+  });
+  renderTabla();
+}
+
+function limpiarPrecios() {
+  precios = {};
+  lecaps.forEach(l => { const inp = document.getElementById('inp-' + l.ticker); if (inp) { inp.value = ''; inp.classList.remove('has-value'); } });
+  document.getElementById('precio-st').textContent = '';
+  document.getElementById('precio-st').className = 'upload-st';
+  renderTabla();
+}
+
+let _precioTimer = {};
+function onPrecioChange(ticker, val) {
+  const inp = document.getElementById('inp-' + ticker);
+  let p = parseFloat(val);
+  if (!val || isNaN(p) || p <= 0) { if (inp) inp.classList.remove('has-value'); }
+  else { if (inp) inp.classList.add('has-value'); }
+  clearTimeout(_precioTimer[ticker]);
+  _precioTimer[ticker] = setTimeout(() => {
+    p = parseFloat(document.getElementById('inp-' + ticker)?.value);
+    if (!p || isNaN(p) || p <= 0) delete precios[ticker]; else precios[ticker] = p;
+    renderTabla();
+  }, 700);
+}
+
+// ── EXCEL: LECAPS desde Instrumentos.xlsx ────────────────────
+async function cargarExcel() {
+  setStatus('loading', 'Leyendo Instrumentos.xlsx...');
+  try {
+    const resp = await fetch(EXCEL_URL + '?t=' + Date.now());
+    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+    const wb = XLSX.read(await resp.arrayBuffer(), { type:'array' });
+    if (!wb.SheetNames.includes('LECAPS')) throw new Error('No se encontró la hoja LECAPS');
+    const rows = XLSX.utils.sheet_to_json(wb.Sheets['LECAPS'], { defval:'', raw: false });
+    lecaps = rows
+      .filter(r => r['Ticker'] && String(r['Ticker']).trim())
+      .map(r => {
+        const emision = excelSerialToDate(r['Fecha Emision'] || r['Fecha Emisión']);
+        const venc    = excelSerialToDate(r['Fecha Vencimiento'] || r['Fecha Vencimineto']);
+        const tem     = parseFloat(r['TEM (%)']) || null;
+        return { ticker: String(r['Ticker']).trim(), tipo: String(r['Tipo']||'LECAP').trim(), emision, venc, tem, vpv: calcularVPV(emision, venc, tem) };
+      });
+    const hora = new Date().toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'});
+    setStatus('ok', `${lecaps.length} instrumentos · ${hora}`);
+  } catch(e) {
+    setStatus('err', 'Error: ' + e.message);
+    showAlert('No se pudo cargar Instrumentos.xlsx: ' + e.message);
+  }
+}
+
+// ── SORT ─────────────────────────────────────────────────────
+function sortBy(col) {
+  sortAsc = sortCol===col ? !sortAsc : (col==='ticker'||col==='venc'||col==='tipo');
+  sortCol = col;
+  renderTabla();
+}
+
+// ── COSTOS ───────────────────────────────────────────────────
+function getCostos() {
+  const dm = parseFloat(document.getElementById('dm-input')?.value) || 0;
+  const ca = parseFloat(document.getElementById('ca-input')?.value) || 0;
+  return { dm, ca, total: dm + ca };
+}
+
+// ── ENRIQUECER ───────────────────────────────────────────────
+function enriquecer() {
+  const { dm, ca, total } = getCostos();
+  const ctEl = document.getElementById('costo-total');
+  if (ctEl) ctEl.textContent = total.toFixed(4) + '%';
+  return lecaps.map(l => {
+    const dias = diasAlVenc(l.venc);
+    const precio = precios[l.ticker] || null;
+    const precio_neto = precio !== null ? precio * (1 + (dm + ca) / 100) : null;
+    const rend_directo = rendimientoDirecto(l.vpv, precio_neto);
+    const rend_anual = rendimientoDirectoAnualizado(rend_directo, dias);
+    const spread = gananciaCaucion(l.vpv, precio_neto, caucionTna, dias);
+    const tna_be = calcTnaBE(precio_neto, l.vpv, dias);
+    return { ...l, dias, precio, precio_neto, rend_directo, rend_anual, spread, tna_be };
+  }).filter(d => d.dias !== null && d.dias > 0); // excluir vencidas
+}
+
+// ── RENDER TABLA ─────────────────────────────────────────────
+function renderTabla() {
+  const data = enriquecer().sort((a,b) => {
+    let va=a[sortCol], vb=b[sortCol];
+    if (va===null||va===undefined) return 1;
+    if (vb===null||vb===undefined) return -1;
+    if (typeof va==='string') return sortAsc?va.localeCompare(vb):vb.localeCompare(va);
+    return sortAsc?va-vb:vb-va;
+  });
+
+  document.querySelectorAll('th').forEach(th => { th.classList.remove('sorted'); th.textContent = th.textContent.replace(/\s*[▲▼]/,''); });
+  const thEl = document.getElementById('th-'+sortCol);
+  if (thEl) { thEl.classList.add('sorted'); thEl.textContent+=' '+(sortAsc?'▲':'▼'); }
+
+  const tbody = document.getElementById('tbody');
+  const filasExistentes = {};
+  tbody.querySelectorAll('tr[data-ticker]').forEach(tr => { filasExistentes[tr.dataset.ticker] = tr; });
+  const fragment = document.createDocumentFragment();
+
+  data.forEach(d => {
+    let tr = filasExistentes[d.ticker];
+    if (!tr) {
+      tr = document.createElement('tr');
+      tr.dataset.ticker = d.ticker;
+      const tipoBadge = d.tipo==='BONCAP'
+        ? `<span style="background:#fef3c7;color:#b45309;border:1px solid #fcd34d;padding:2px 7px;border-radius:4px;font-size:10px;font-weight:600;">BONCAP</span>`
+        : `<span style="background:#dcfce7;color:#16a34a;border:1px solid #86efac;padding:2px 7px;border-radius:4px;font-size:10px;font-weight:600;">LECAP</span>`;
+      tr.innerHTML = `
+        <td>${d.ticker}</td>
+        <td>${tipoBadge}</td>
+        <td><input class="precio-cell-input" id="inp-${d.ticker}" type="number" step="0.01" placeholder="—" oninput="onPrecioChange('${d.ticker}', this.value)"></td>
+        <td class="td-precio-neto"></td>
+        <td class="td-venc"></td>
+        <td class="td-dias"></td>
+        <td class="td-vpv"></td>
+        <td class="td-rend"></td>
+        <td class="td-rendanual"></td>
+        <td class="td-spread"></td>
+        <td class="td-tnabe"></td>`;
+    }
+
+    const inp = tr.querySelector('.precio-cell-input');
+    if (inp && d.precio !== null && inp.value === '') { inp.value = d.precio.toFixed(2); inp.classList.add('has-value'); }
+    if (inp && d.precio !== null) inp.classList.add('has-value');
+    if (inp && d.precio === null) inp.classList.remove('has-value');
+
+    const diasHtml = d.dias!==null ? `<span class="${d.dias<30?'dias-red':'dias-normal'}">${d.dias}d</span>` : '—';
+    const rendHtml = d.rend_directo!==null ? `<span style="color:${d.rend_directo>=0?'var(--green)':'var(--red)'};font-weight:600">${d.rend_directo.toFixed(4)}%</span>` : `<span class="no-p">—</span>`;
+    const rendAnualHtml = d.rend_anual!==null ? `<span class="tna-v">${d.rend_anual.toFixed(2)}%</span>` : `<span class="no-p">—</span>`;
+    const spreadHtml = d.spread!==null ? `<span class="${d.spread>=0?'sp-p':'sp-n'}">${d.spread>=0?'+':''}${d.spread.toFixed(4)}</span>` : `<span class="no-p">—</span>`;
+    const tnaBEHtml = d.tna_be!==null ? `<span class="tnabe-v">${d.tna_be.toFixed(2)}%</span>` : `<span class="no-p">—</span>`;
+
+    tr.querySelector('.td-precio-neto').textContent = d.precio_neto !== null ? d.precio_neto.toFixed(2) : '—';
+    tr.querySelector('.td-precio-neto').style.color = d.precio_neto !== null ? 'var(--amber)' : 'var(--text-3)';
+    tr.querySelector('.td-venc').textContent = fmtDate(d.venc);
+    tr.querySelector('.td-dias').innerHTML = diasHtml;
+    tr.querySelector('.td-vpv').style.color = 'var(--text-2)';
+    tr.querySelector('.td-vpv').textContent = d.vpv!==null ? d.vpv.toFixed(4) : '—';
+    tr.querySelector('.td-rend').innerHTML = rendHtml;
+    tr.querySelector('.td-rendanual').innerHTML = rendAnualHtml;
+    tr.querySelector('.td-spread').innerHTML = spreadHtml;
+    tr.querySelector('.td-tnabe').innerHTML = tnaBEHtml;
+
+    fragment.appendChild(tr);
+  });
+
+  tbody.innerHTML = '';
+  tbody.appendChild(fragment);
+  calcSim();
+}
+
+// ── SIMULADOR ────────────────────────────────────────────────
+function actualizarSelectSim() {
+  const sel = document.getElementById('sim-ticker');
+  if (!sel) return;
+  const current = sel.value;
+  sel.innerHTML = '<option value="">— Seleccioná —</option>';
+  lecaps.forEach(l => { if (diasAlVenc(l.venc) <= 0) return; const opt = document.createElement('option'); opt.value = l.ticker; opt.textContent = l.ticker + ' · ' + fmtDate(l.venc); sel.appendChild(opt); });
+  if (current) sel.value = current;
+}
+function fmtPesos(n) { if (n === null || isNaN(n)) return '—'; return '$' + n.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+
+function calcSim() {
+  const ticker = document.getElementById('sim-ticker').value;
+  const monto = parseFloat(document.getElementById('sim-monto').value);
+  const out = document.getElementById('sim-out');
+  const { dm, ca } = getCostos();
+  const precioAskEl = document.getElementById('sim-precio-ask');
+  const precioNetoEl = document.getElementById('sim-precio-neto');
+  const precioAsk = ticker ? (precios[ticker] || null) : null;
+  const precioNeto = precioAsk !== null ? precioAsk * (1 + (dm + ca) / 100) : null;
+  if (precioAskEl) precioAskEl.textContent = precioAsk !== null ? precioAsk.toFixed(4) : '—';
+  if (precioNetoEl) precioNetoEl.textContent = precioNeto !== null ? precioNeto.toFixed(4) : '—';
+
+  if (!ticker || !monto || monto <= 0) { out.innerHTML = '<div class="sim-empty">Seleccioná un instrumento e ingresá el monto.</div>'; return; }
+  const l = lecaps.find(x => x.ticker === ticker);
+  if (!l) { out.innerHTML = '<div class="sim-empty">Instrumento no encontrado.</div>'; return; }
+
+  const dias = diasAlVenc(l.venc);
+  const nominales = precioNeto !== null ? Math.floor(monto / precioNeto * 100) : null;
+  const montoReal = nominales !== null ? nominales / 100 * precioNeto : null;
+  const valorVenc = (nominales !== null && l.vpv !== null) ? nominales / 100 * l.vpv : null;
+  const gananciaPesos = (valorVenc !== null && montoReal !== null) ? valorVenc - montoReal : null;
+  const costoCaucion = (precioNeto !== null && nominales !== null && dias !== null && dias > 2)
+    ? (precioNeto * Math.pow(1 + caucionTna / 100 / 365, dias - 2)) * nominales / 100 : null;
+  const spread = gananciaCaucion(l.vpv, precioNeto, caucionTna, dias);
+  const spreadPesos = (spread !== null && nominales !== null) ? spread * nominales / 100 : null;
+  const noPrecio = precioAsk === null;
+
+  out.innerHTML = `
+    ${noPrecio ? '<div class="sim-empty" style="margin-bottom:12px">⚠ Ingresá el precio ASK en la tabla o recargá los precios del Monitor.</div>' : ''}
+    <div style="display:flex; flex-direction:column; gap:1px; background:var(--border); border:1px solid var(--border); border-radius:8px; overflow:hidden;">
+      <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:1px; background:var(--border);">
+        <div class="sim-stat"><div class="lbl">Nominales VN</div><div class="val blue">${nominales !== null ? nominales.toLocaleString('es-AR') : '—'}</div></div>
+        <div class="sim-stat"><div class="lbl">Monto Invertido</div><div class="val">${fmtPesos(montoReal)}</div></div>
+        <div class="sim-stat"><div class="lbl">Valor al Vencimiento</div><div class="val green">${fmtPesos(valorVenc)}</div></div>
+      </div>
+      <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:1px; background:var(--border);">
+        <div class="sim-stat"><div class="lbl">Ganancia Bruta $</div><div class="val ${gananciaPesos !== null && gananciaPesos >= 0 ? 'green' : 'red'}">${fmtPesos(gananciaPesos)}</div></div>
+        <div class="sim-stat"><div class="lbl">Costo Caución $</div><div class="val amber">${fmtPesos(costoCaucion)}</div></div>
+        <div class="sim-stat"><div class="lbl">Ganancia vs Caución $</div><div class="val ${spreadPesos !== null && spreadPesos >= 0 ? 'green' : 'red'}">${spreadPesos !== null ? (spreadPesos >= 0 ? '+' : '') + fmtPesos(spreadPesos) : '—'}</div></div>
+      </div>
+    </div>`;
+}
+
+function toggleGlosario() {
+  const body = document.getElementById('glosario-body');
+  const arrow = document.getElementById('glosario-arrow');
+  const open = body.classList.toggle('open');
+  arrow.classList.toggle('open', open);
+}
+
+// ── INIT ─────────────────────────────────────────────────────
+async function init() {
+  await cargarExcel();
+  cargarPreciosMonitor();
+  actualizarSelectSim();
+  await cargarCaucionBCRA(); // pre-carga caución + recalcCaucion() → renderTabla()
+}
+init();
+</script>
+</body>
+</html>
