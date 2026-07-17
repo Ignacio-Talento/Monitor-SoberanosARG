@@ -1,0 +1,7 @@
+# Credenciales / token de la API de 1816 (NUNCA subir al repo)
+.1816_key
+.1816_token.json
+
+# Python
+__pycache__/
+*.pyc

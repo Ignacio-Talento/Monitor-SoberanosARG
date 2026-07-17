@@ -28,6 +28,8 @@ jobs:
           pip install requests openpyxl
  
       - name: Ejecutar script de actualización
+        env:
+          API_1816_KEY: ${{ secrets.API_1816_KEY }}
         run: python actualizar_historicos.py
  
       - name: Commit y push si hay cambios
