@@ -2,9 +2,9 @@ name: Actualizar Históricos de Precios
  
 on:
   schedule:
-    # 18:00 hora Argentina (UTC-3) = 21:00 UTC
+    # 17:05 hora Argentina (UTC-3) = 20:05 UTC
     # Solo días de semana (lunes a viernes)
-    - cron: '0 21 * * 1-5'
+    - cron: '5 20 * * 1-5'
   workflow_dispatch: # Permite ejecución manual desde GitHub
 
 permissions:
