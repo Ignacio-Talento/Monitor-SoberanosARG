@@ -288,6 +288,7 @@
 // ── CONSTANTES ────────────────────────────────────────────────
 const WORKER_URL   = 'https://yahoo-proxy.granda-fra.workers.dev';
 const ECO_URL      = 'https://ecovalores-proxy.granda-fra.workers.dev';
+const PROXY_1816   = '/api/precios'; // proxy propio a 1816 (Pages Function, mismo origen). Fallback: Eco.
 const BCRA_WORKER  = 'https://indicadoresbcra.granda-fra.workers.dev';
 const ARG_WORKER   = 'https://argentinadatos-proxy.granda-fra.workers.dev';
 const FERIADOS_WORKER = 'https://feriados-proxy.granda-fra.workers.dev';
@@ -1282,28 +1283,54 @@ async function fetchPreciosYahoo() {
   const btn = document.getElementById('btn-yahoo');
   const stEl = document.getElementById('yahoo-st');
   btn.disabled = true;
-  stEl.textContent = 'Consultando Eco Valores...';
+  stEl.textContent = 'Trayendo precios (1816)...';
   stEl.className = 'upload-st loading';
   setStatus('loading', 'Trayendo precios...');
 
+  // Instrumentos no vencidos (alineado con el render de la tabla)
+  const vivos = instrumentos.filter(inst => {
+    const d = diasAlVenc(inst.venc);
+    return d === null || d > 0;
+  });
+
   let ok = 0, err = 0;
 
-  for (const inst of instrumentos) {
-    // Saltar instrumentos vencidos (alineado con el render de la tabla)
-    const diasInst = diasAlVenc(inst.venc);
-    if (diasInst !== null && diasInst <= 0) continue;
-    const tickerEco = (inst.grupo === 'usdbonares' || inst.grupo === 'usdglobales')
-      ? inst.ticker + 'D' : inst.ticker;
-    try {
-      const resp = await fetch(`${ECO_URL}/?ticker=${tickerEco}`);
-      const d = await resp.json();
-      if (d.price && d.price > 0) {
-        precios[inst.ticker] = d.price;
-        ok++;
-        renderTabla();
-      } else err++;
-    } catch { err++; }
-    await new Promise(r => setTimeout(r, 400));
+  // Fuente primaria: proxy propio a 1816 (Pages Function), UNA sola llamada bulk con caché.
+  let usados1816 = false;
+  try {
+    const resp = await fetch(PROXY_1816, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(vivos.map(i => ({ ticker: i.ticker, grupo: i.grupo }))),
+    });
+    if (!resp.ok) throw new Error('proxy HTTP ' + resp.status);
+    const data = await resp.json();
+    if (data && data.error) throw new Error(data.error);
+    for (const inst of vivos) {
+      const p = data[inst.ticker.toUpperCase()];
+      if (p && p > 0) { precios[inst.ticker] = p; ok++; } else err++;
+    }
+    usados1816 = true;
+    renderTabla();
+  } catch (e) {
+    // Fallback: método anterior (Eco Valores per-ticker) si el proxy no está disponible.
+    console.warn('Proxy 1816 no disponible, usando Eco Valores:', e);
+    stEl.textContent = 'Proxy no disponible, usando Eco...';
+    ok = 0; err = 0;
+    for (const inst of vivos) {
+      const tickerEco = (inst.grupo === 'usdbonares' || inst.grupo === 'usdglobales')
+        ? inst.ticker + 'D' : inst.ticker;
+      try {
+        const resp = await fetch(`${ECO_URL}/?ticker=${tickerEco}`);
+        const d = await resp.json();
+        if (d.price && d.price > 0) {
+          precios[inst.ticker] = d.price;
+          ok++;
+          renderTabla();
+        } else err++;
+      } catch { err++; }
+      await new Promise(r => setTimeout(r, 400));
+    }
   }
 
   guardarPrecios();
