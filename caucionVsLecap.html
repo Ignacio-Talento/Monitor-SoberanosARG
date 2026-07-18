@@ -4,18 +4,19 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Caución vs Lecap</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@300;400;600;700&display=swap" rel="stylesheet"><style>body{font-variant-numeric:tabular-nums;}</style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
   :root {
-    --bg: #f0f4f8; --surface: #ffffff; --card: #f8fafc; --row-hover: #eef2f7;
-    --border: #d1d9e0; --border-l: #b8c4cf;
-    --text: #1a2332; --text-2: #3a4a5c; --text-3: #7a8fa0;
-    --green: #16a34a; --green-bg: #dcfce7; --green-border: #86efac;
-    --blue: #1d6fa5; --amber: #b45309; --red: #dc2626;
-    --navy: #0d1f4e; --navy-light: #1a3270;
-    --mono: 'JetBrains Mono','Fira Code','Courier New',monospace;
-    --sans: 'Inter',system-ui,sans-serif;
+    --bg: #f4f4f4; --surface: #ffffff; --card: #f8fafc; --row-hover: #eef2f7;
+    --border: #c8d3e0; --border-l: #a7b2c8;
+    --text: #0d2055; --text-2: #3a4a5c; --text-3: #707070;
+    --green: #198754; --green-bg: #dcfce7; --green-border: #86efac;
+    --blue: #145e81; --amber: #e08e16; --red: #dc3545;
+    --navy: #0d2055; --navy-light: #17336f;
+    --mono: 'Open Sans',Arial,system-ui,sans-serif;
+    --sans: 'Open Sans',Arial,system-ui,sans-serif;
   }
   @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap');
   body { background: var(--bg); color: var(--text); font-family: var(--sans); min-height: 100vh; padding: 0; }
@@ -485,8 +486,8 @@ function renderTabla() {
       tr = document.createElement('tr');
       tr.dataset.ticker = d.ticker;
       const tipoBadge = d.tipo==='BONCAP'
-        ? `<span style="background:#fef3c7;color:#b45309;border:1px solid #fcd34d;padding:2px 7px;border-radius:4px;font-size:10px;font-weight:600;">BONCAP</span>`
-        : `<span style="background:#dcfce7;color:#16a34a;border:1px solid #86efac;padding:2px 7px;border-radius:4px;font-size:10px;font-weight:600;">LECAP</span>`;
+        ? `<span style="background:#fef3c7;color:#e08e16;border:1px solid #fcd34d;padding:2px 7px;border-radius:4px;font-size:10px;font-weight:600;">BONCAP</span>`
+        : `<span style="background:#dcfce7;color:#198754;border:1px solid #86efac;padding:2px 7px;border-radius:4px;font-size:10px;font-weight:600;">LECAP</span>`;
       tr.innerHTML = `
         <td>${d.ticker}</td>
         <td>${tipoBadge}</td>

@@ -4,18 +4,19 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Globales vs Bonares</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@300;400;600;700&display=swap" rel="stylesheet"><style>body{font-variant-numeric:tabular-nums;}</style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
   :root {
-    --bg: #f0f4f8; --surface: #ffffff; --card: #f8fafc;
-    --border: #d1d9e0; --border-l: #b8c4cf;
-    --text: #1a2332; --text-2: #3a4a5c; --text-3: #7a8fa0;
-    --navy: #0d1f4e; --navy-light: #1a3270;
-    --green: #16a34a; --green-bg: #dcfce7; --green-border: #86efac;
-    --blue: #1d6fa5; --amber: #b45309; --red: #dc2626; --cyan: #00b4d8;
-    --mono: 'JetBrains Mono','Fira Code','Courier New',monospace;
-    --sans: 'Inter',system-ui,sans-serif;
+    --bg: #f4f4f4; --surface: #ffffff; --card: #f8fafc;
+    --border: #c8d3e0; --border-l: #a7b2c8;
+    --text: #0d2055; --text-2: #3a4a5c; --text-3: #707070;
+    --navy: #0d2055; --navy-light: #17336f;
+    --green: #198754; --green-bg: #dcfce7; --green-border: #86efac;
+    --blue: #145e81; --amber: #e08e16; --red: #dc3545; --cyan: #00a3e4;
+    --mono: 'Open Sans',Arial,system-ui,sans-serif;
+    --sans: 'Open Sans',Arial,system-ui,sans-serif;
   }
   @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap');
   body { background: var(--bg); color: var(--text); font-family: var(--sans); min-height: 100vh; padding: 0; }
@@ -162,8 +163,8 @@ function renderGrafico(datos) {
   const empty  = document.getElementById('gb-empty');
 
   const fam = [
-    { key: 'usdglobales', label: 'Globales', color: '#0d1f4e' },
-    { key: 'usdbonares',  label: 'Bonares',  color: '#00b4d8' },
+    { key: 'usdglobales', label: 'Globales', color: '#0d2055' },
+    { key: 'usdbonares',  label: 'Bonares',  color: '#00a3e4' },
   ];
 
   if (chartGB) { chartGB.destroy(); chartGB = null; }
@@ -190,7 +191,7 @@ function renderGrafico(datos) {
       datasets.push({ label: f.label, data: generarCurva(fn2, xMin, xMax), borderColor: f.color, backgroundColor: 'transparent', pointRadius: 0, borderWidth: 2.5, tension: 0, showLine: true, order: 2 });
     }
     datasets.push({ label: `${f.label} (puntos)`, data: normales, borderColor: f.color, backgroundColor: f.color + 'cc', pointRadius: 5, pointHoverRadius: 7, showLine: false, order: 1 });
-    if (outliers.length) datasets.push({ label: `${f.label} (outliers)`, data: outliers, borderColor: '#dc2626', backgroundColor: '#dc2626cc', pointRadius: 6, pointHoverRadius: 8, showLine: false, order: 0 });
+    if (outliers.length) datasets.push({ label: `${f.label} (outliers)`, data: outliers, borderColor: '#dc3545', backgroundColor: '#dc3545cc', pointRadius: 6, pointHoverRadius: 8, showLine: false, order: 0 });
   });
 
   if (!hayPuntos) {
@@ -210,8 +211,8 @@ function renderGrafico(datos) {
         tooltip: { callbacks: { label: ctx => { const p = ctx.raw; const o = ctx.dataset.label.includes('outliers'); return `${p.ticker || ''}  MD: ${p.x}  TIR: ${p.y}%${o ? '  ⚠ outlier' : ''}`; } }, bodyFont: { family: 'JetBrains Mono', size: 11 } }
       },
       scales: {
-        x: { type: 'linear', min: 0, max: parseFloat((maxMD * 1.05).toFixed(2)), title: { display: true, text: 'Duration Modificada (años)', font: { family: 'JetBrains Mono', size: 11 }, color: '#7a8fa0' }, grid: { color: '#e5e7eb' }, ticks: { font: { family: 'JetBrains Mono', size: 10 }, color: '#7a8fa0' } },
-        y: { title: { display: true, text: 'TIR USD %', font: { family: 'JetBrains Mono', size: 11 }, color: '#7a8fa0' }, grid: { color: '#e5e7eb' }, ticks: { font: { family: 'JetBrains Mono', size: 10 }, color: '#7a8fa0', callback: v => v + '%' } }
+        x: { type: 'linear', min: 0, max: parseFloat((maxMD * 1.05).toFixed(2)), title: { display: true, text: 'Duration Modificada (años)', font: { family: 'JetBrains Mono', size: 11 }, color: '#707070' }, grid: { color: '#e5e7eb' }, ticks: { font: { family: 'JetBrains Mono', size: 10 }, color: '#707070' } },
+        y: { title: { display: true, text: 'TIR USD %', font: { family: 'JetBrains Mono', size: 11 }, color: '#707070' }, grid: { color: '#e5e7eb' }, ticks: { font: { family: 'JetBrains Mono', size: 10 }, color: '#707070', callback: v => v + '%' } }
       }
     }
   });

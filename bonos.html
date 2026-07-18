@@ -4,34 +4,35 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Monitor Bonos</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@300;400;600;700&display=swap" rel="stylesheet"><style>body{font-variant-numeric:tabular-nums;}</style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js">cargarExcelGitHub();
 </script>
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
   :root {
-    --bg: #f0f4f8;
+    --bg: #f4f4f4;
     --surface: #ffffff;
     --card: #f8fafc;
     --row-hover: #eef2f7;
-    --border: #d1d9e0;
-    --border-l: #b8c4cf;
-    --text: #1a2332;
+    --border: #c8d3e0;
+    --border-l: #a7b2c8;
+    --text: #0d2055;
     --text-2: #3a4a5c;
-    --text-3: #7a8fa0;
-    --green: #16a34a;
+    --text-3: #707070;
+    --green: #198754;
     --green-bg: #dcfce7;
     --green-border: #86efac;
-    --blue: #1d6fa5;
-    --amber: #b45309;
-    --red: #dc2626;
+    --blue: #145e81;
+    --amber: #e08e16;
+    --red: #dc3545;
     --purple: #7c3aed;
     --teal: #0d9488;
-    --navy: #0d1f4e;
-    --navy-light: #1a3270;
-    --cyan: #00b4d8;
-    --cyan-bg: #e0f7fc;
-    --mono: 'JetBrains Mono','Fira Code','Courier New',monospace;
-    --sans: 'Inter',system-ui,sans-serif;
+    --navy: #0d2055;
+    --navy-light: #17336f;
+    --cyan: #00a3e4;
+    --cyan-bg: #e2f4fc;
+    --mono: 'Open Sans',Arial,system-ui,sans-serif;
+    --sans: 'Open Sans',Arial,system-ui,sans-serif;
   }
   @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap');
   body { background: var(--bg); color: var(--text); font-family: var(--sans); min-height: 100vh; padding: 0; }
@@ -111,7 +112,7 @@
 
   .no-p { color: var(--text-3); font-style: italic; font-size: 11px; }
   .val-green { color: var(--green); font-weight: 500; }
-  .val-cyan  { color: #1a3270;  font-weight: 700; }
+  .val-cyan  { color: #17336f;  font-weight: 700; }
   .val-blue  { color: var(--blue);  font-weight: 500; }
   .val-amber { color: var(--amber); font-weight: 500; }
   .val-text3 { color: var(--text-2); font-weight: 400; }

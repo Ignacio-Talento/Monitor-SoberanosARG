@@ -4,19 +4,20 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Sendero DL</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@300;400;600;700&display=swap" rel="stylesheet"><style>body{font-variant-numeric:tabular-nums;}</style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
   :root {
-    --bg: #f0f4f8; --surface: #ffffff; --card: #f8fafc;
-    --border: #d1d9e0; --border-l: #b8c4cf;
-    --text: #1a2332; --text-2: #3a4a5c; --text-3: #7a8fa0;
-    --navy: #0d1f4e; --navy-light: #1a3270;
-    --green: #16a34a; --green-bg: #dcfce7; --green-border: #86efac;
-    --blue: #1d6fa5; --amber: #b45309; --red: #dc2626;
-    --mono: 'JetBrains Mono','Fira Code','Courier New',monospace;
-    --sans: 'Inter',system-ui,sans-serif;
+    --bg: #f4f4f4; --surface: #ffffff; --card: #f8fafc;
+    --border: #c8d3e0; --border-l: #a7b2c8;
+    --text: #0d2055; --text-2: #3a4a5c; --text-3: #707070;
+    --navy: #0d2055; --navy-light: #17336f;
+    --green: #198754; --green-bg: #dcfce7; --green-border: #86efac;
+    --blue: #145e81; --amber: #e08e16; --red: #dc3545;
+    --mono: 'Open Sans',Arial,system-ui,sans-serif;
+    --sans: 'Open Sans',Arial,system-ui,sans-serif;
   }
   @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap');
   body { background: var(--bg); color: var(--text); font-family: var(--sans); min-height: 100vh; padding: 0; }
@@ -668,8 +669,8 @@ function renderGraficoSintetico() {
   chartSintetico = new Chart(canvas, {
     type: 'scatter',
     data: { datasets: [
-      { label: 'LECAPs (TEA pesos)', data: puntosLecap, borderColor: '#0d1f4e', backgroundColor: '#0d1f4ecc', pointRadius: 5, pointHoverRadius: 7, showLine: true, borderWidth: 2.5, tension: 0.3, order: 1 },
-      { label: 'Sintético DL + Futuro', data: puntosSint, borderColor: '#00b4d8', backgroundColor: '#00b4d8cc', pointRadius: 5, pointHoverRadius: 7, showLine: true, borderWidth: 2.5, tension: 0.3, order: 0 },
+      { label: 'LECAPs (TEA pesos)', data: puntosLecap, borderColor: '#0d2055', backgroundColor: '#0d2055cc', pointRadius: 5, pointHoverRadius: 7, showLine: true, borderWidth: 2.5, tension: 0.3, order: 1 },
+      { label: 'Sintético DL + Futuro', data: puntosSint, borderColor: '#00a3e4', backgroundColor: '#00a3e4cc', pointRadius: 5, pointHoverRadius: 7, showLine: true, borderWidth: 2.5, tension: 0.3, order: 0 },
     ]},
     options: {
       responsive: true, maintainAspectRatio: false,
@@ -678,8 +679,8 @@ function renderGraficoSintetico() {
         tooltip: { callbacks: { label: ctx => `${ctx.raw.ticker}  ·  plazo ${ctx.raw.x} a  ·  TEA ${ctx.raw.y}%` }, bodyFont: { family: 'JetBrains Mono', size: 11 } }
       },
       scales: {
-        x: { title: { display: true, text: 'Plazo (años)', font: { family: 'JetBrains Mono', size: 11 }, color: '#7a8fa0' }, grid: { color: '#e5e7eb' }, ticks: { font: { family: 'JetBrains Mono', size: 10 }, color: '#7a8fa0' } },
-        y: { title: { display: true, text: 'TEA en pesos %', font: { family: 'JetBrains Mono', size: 11 }, color: '#7a8fa0' }, grid: { color: '#e5e7eb' }, ticks: { font: { family: 'JetBrains Mono', size: 10 }, color: '#7a8fa0', callback: v => v + '%' } }
+        x: { title: { display: true, text: 'Plazo (años)', font: { family: 'JetBrains Mono', size: 11 }, color: '#707070' }, grid: { color: '#e5e7eb' }, ticks: { font: { family: 'JetBrains Mono', size: 10 }, color: '#707070' } },
+        y: { title: { display: true, text: 'TEA en pesos %', font: { family: 'JetBrains Mono', size: 11 }, color: '#707070' }, grid: { color: '#e5e7eb' }, ticks: { font: { family: 'JetBrains Mono', size: 10 }, color: '#707070', callback: v => v + '%' } }
       }
     }
   });
