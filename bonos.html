@@ -81,10 +81,15 @@
   .alert.info { background:#f0fdf4; border:1px solid #86efac; color:var(--green); }
 
   /* TABLA PRINCIPAL */
-  .table-wrap { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; overflow-x: auto; box-shadow: 0 1px 4px rgba(0,0,0,0.06); }
+  .table-wrap { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; overflow: visible; box-shadow: 0 1px 4px rgba(0,0,0,0.06); }
   table { width: 100%; border-collapse: collapse; min-width: 700px; }
   thead tr { border-bottom: 2px solid var(--navy); }
-  th { padding: 10px 14px; font-size: 10px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--text-3); text-align: right; white-space: nowrap; background: var(--card); }
+  /* Encabezados fijos al hacer scroll (sticky) + ordenables al clickear */
+  th { padding: 10px 14px; font-size: 10px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--text-3); text-align: right; white-space: nowrap; background: var(--card); position: sticky; top: 0; z-index: 3; box-shadow: inset 0 -2px 0 var(--navy); }
+  th.sortable { cursor: pointer; user-select: none; transition: color .12s; }
+  th.sortable:hover { color: var(--navy); }
+  th.sorted { color: var(--navy); }
+  .sort-arrow { color: var(--cyan); font-weight: 700; }
   th.th-left { text-align: left; }
 
   /* FILA DE GRUPO */
@@ -952,6 +957,49 @@ function setMoneda(m) {
   renderTabla();
 }
 
+// ── ORDENAMIENTO DE COLUMNAS (dentro de cada grupo de bonos) ──
+let sortCol = null, sortDir = 'desc';
+const SORT_COLS = ['ticker','nombre','precio','venc','dias','md','tna','tea','paridad','day','wtd','mtd','ytd'];
+const SORT_GET = {
+  ticker: f => f.inst.ticker, nombre: f => f.inst.nombre || '', precio: f => f.m.precio,
+  venc: f => f.dias, dias: f => f.dias, md: f => f.m.md, tna: f => f.m.tna, tea: f => f.m.tea,
+  paridad: f => f.m.paridad, day: f => f.day, wtd: f => f.wtd, mtd: f => f.mtd, ytd: f => f.ytd,
+};
+function cmpVal(a, b, dir) {
+  const na = a === null || a === undefined || a === '' || (typeof a === 'number' && isNaN(a));
+  const nb = b === null || b === undefined || b === '' || (typeof b === 'number' && isNaN(b));
+  if (na && nb) return 0;
+  if (na) return 1;   // sin dato siempre al final
+  if (nb) return -1;
+  const r = (typeof a === 'string' || typeof b === 'string') ? String(a).localeCompare(String(b)) : a - b;
+  return dir === 'asc' ? r : -r;
+}
+function ordenarPor(col) {
+  if (sortCol === col) sortDir = (sortDir === 'desc' ? 'asc' : 'desc');
+  else { sortCol = col; sortDir = 'desc'; }   // primer click: mayor a menor
+  actualizarFlechas();
+  renderTabla();
+}
+function actualizarFlechas() {
+  document.querySelectorAll('thead th').forEach(th => {
+    th.classList.remove('sorted');
+    const a = th.querySelector('.sort-arrow'); if (a) a.textContent = '';
+  });
+  if (sortCol) {
+    const th = document.querySelector(`thead th[data-col="${sortCol}"]`);
+    if (th) { th.classList.add('sorted'); const a = th.querySelector('.sort-arrow'); if (a) a.textContent = sortDir === 'desc' ? ' ▼' : ' ▲'; }
+  }
+}
+function initColumnasOrdenables() {
+  document.querySelectorAll('thead th').forEach((th, i) => {
+    const col = SORT_COLS[i]; if (!col) return;
+    th.dataset.col = col;
+    th.classList.add('sortable');
+    if (!th.querySelector('.sort-arrow')) { const s = document.createElement('span'); s.className = 'sort-arrow'; th.appendChild(s); }
+    th.addEventListener('click', () => ordenarPor(col));
+  });
+}
+
 function renderTabla() {
   const tbody = document.getElementById('tbody');
   if (!instrumentos.length) {
@@ -959,29 +1007,42 @@ function renderTabla() {
     return;
   }
 
-  let html = '';
-  let grupoActual = null;
-
+  // 1) Filas visibles con métricas precomputadas (para poder ordenar sin recalcular)
+  const filas = [];
   for (const inst of instrumentos) {
-    // Filtrar por moneda activa (solo afecta la visualización, no los cálculos ni bonos_data)
-    if (monedaDeGrupo(inst.grupo) !== monedaActiva) continue;
-
-    // Saltar instrumentos vencidos
+    if (monedaDeGrupo(inst.grupo) !== monedaActiva) continue;       // solo la moneda activa
     const diasInst = diasAlVenc(inst.venc);
-    if (diasInst !== null && diasInst <= 0) continue;
-
-    // Header de grupo
-    if (inst.grupo !== grupoActual) {
-      grupoActual = inst.grupo;
-      const label = GRUPOS.find(g => g.key === inst.grupo)?.label || inst.grupo;
-      html += `<tr class="group-header"><td colspan="13">${label}</td></tr>`;
-    }
-
+    if (diasInst !== null && diasInst <= 0) continue;               // saltar vencidos
     const m = calcMetricas(inst);
-    const diasHtml = m.dias !== null
-      ? `<span class="${m.dias < 30 ? 'val-red' : ''}">${m.dias}d</span>` : '—';
+    const th = tickerHistorico(inst);
+    filas.push({ inst, m, dias: m.dias,
+      day: calcDay(inst, th, m.precio), wtd: calcWTD(inst, th, m.precio),
+      mtd: calcMTD(inst, th, m.precio), ytd: calcYTD(inst, th, m.precio) });
+  }
 
-    html += `<tr class="data-row">
+  // 2) Agrupar preservando el orden de aparición de los grupos
+  const grupos = []; const gidx = {};
+  for (const f of filas) {
+    if (!(f.inst.grupo in gidx)) { gidx[f.inst.grupo] = grupos.length; grupos.push({ key: f.inst.grupo, filas: [] }); }
+    grupos[gidx[f.inst.grupo]].filas.push(f);
+  }
+
+  // 3) Ordenar DENTRO de cada grupo por la columna seleccionada (asc/desc)
+  if (sortCol && SORT_GET[sortCol]) {
+    const get = SORT_GET[sortCol];
+    for (const g of grupos) g.filas.sort((a, b) => cmpVal(get(a), get(b), sortDir));
+  }
+
+  // 4) Render (header de grupo + filas)
+  let html = '';
+  for (const g of grupos) {
+    const label = GRUPOS.find(x => x.key === g.key)?.label || g.key;
+    html += `<tr class="group-header"><td colspan="13">${label}</td></tr>`;
+    for (const f of g.filas) {
+      const { inst, m } = f;
+      const diasHtml = m.dias !== null
+        ? `<span class="${m.dias < 30 ? 'val-red' : ''}">${m.dias}d</span>` : '—';
+      html += `<tr class="data-row">
       <td class="td-ticker">${inst.ticker}</td>
       <td class="td-nombre">${inst.nombre || ''}</td>
       <td><input class="precio-cell-input${m.precio ? ' has-value' : ''}" id="inp-${inst.ticker}" type="number" step="0.01" placeholder="—" value="${m.precio ? m.precio.toFixed(2) : ''}" oninput="onPrecioChange('${inst.ticker}', this.value)"></td>
@@ -991,11 +1052,12 @@ function renderTabla() {
       <td>${dash(m.tna, 2, '%', 'val-blue')}</td>
       <td>${dash(m.tea, 2, '%', 'val-cyan')}</td>
       <td>${dash(m.paridad, 2, '%', 'val-text3')}</td>
-      <td>${renderVariacion(calcDay(inst, tickerHistorico(inst), m.precio))}</td>
-      <td>${renderVariacion(calcWTD(inst, tickerHistorico(inst), m.precio))}</td>
-      <td>${renderVariacion(calcMTD(inst, tickerHistorico(inst), m.precio))}</td>
-      <td>${renderVariacion(calcYTD(inst, tickerHistorico(inst), m.precio))}</td>
+      <td>${renderVariacion(f.day)}</td>
+      <td>${renderVariacion(f.wtd)}</td>
+      <td>${renderVariacion(f.mtd)}</td>
+      <td>${renderVariacion(f.ytd)}</td>
     </tr>`;
+    }
   }
 
   tbody.innerHTML = html || `<tr><td colspan="13" class="empty-state">No hay instrumentos en ${monedaActiva === 'pesos' ? 'pesos' : 'dólares'}</td></tr>`;
@@ -1648,6 +1710,7 @@ async function cargarExcelGitHub() {
     showAlert('No se pudo cargar Instrumentos.xlsx: ' + e.message);
   }
 }
+initColumnasOrdenables();
 cargarExcelGitHub();
 </script>
 </body>
