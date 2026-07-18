@@ -19,7 +19,7 @@
 const BASE_1816   = "https://api.1816.com.ar";
 const ECO_URL     = "https://ecovalores-proxy.granda-fra.workers.dev"; // fallback (worker del colega)
 const CAMPO       = "precioDirty";
-const CACHE_TTL   = 600;   // segundos que dura el caché (10 min). Subir = menos créditos, dato más viejo.
+const CACHE_TTL   = 300;   // segundos que dura el caché (5 min, alineado con el auto-refresh del front). Subir = menos créditos.
 const MAX_TICKERS = 50;    // límite de 1816 por request
 
 // grupo del frontend -> moneda a pedir en 1816
@@ -187,11 +187,15 @@ export async function onRequest(context) {
   }
   if (!items.length) return json({});
 
-  // Caché (mismo set de tickers -> misma key -> hit entre visitas/usuarios dentro del TTL)
+  // Caché (mismo set de tickers -> misma key -> hit entre visitas/usuarios dentro del TTL).
+  // ?fresh=1 (botón "Actualizar precios") saltea el caché y pide dato fresco a 1816.
+  const fresh = new URL(request.url).searchParams.get("fresh") === "1";
   const cache = caches.default;
   const cacheKey = new Request("https://cache.local/precios?h=" + hashItems(items), { method: "GET" });
-  const hit = await cache.match(cacheKey);
-  if (hit) return hit;
+  if (!fresh) {
+    const hit = await cache.match(cacheKey);
+    if (hit) return hit;
+  }
 
   let precios;
   try {

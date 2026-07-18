@@ -195,7 +195,7 @@
 
   <!-- TOOLBAR -->
   <div class="toolbar">
-    <button class="btn btn-green" onclick="fetchPreciosYahoo()" id="btn-yahoo">↻ Actualizar precios</button>
+    <button class="btn btn-green" onclick="fetchPreciosYahoo(true)" id="btn-yahoo">↻ Actualizar precios</button>
     <span class="upload-st" id="yahoo-st"></span>
     <div class="sep-v"></div>
     <button class="btn btn-ghost" onclick="limpiarPrecios()">Limpiar precios</button>
@@ -1278,8 +1278,8 @@ function parsearExcel(buffer) {
 
 
 // ── FETCH PRECIOS (Eco Valores) ───────────────────────────────
-async function fetchPreciosYahoo() {
-  if (!instrumentos.length) { showAlert('Primero cargá el Excel'); return; }
+async function fetchPreciosYahoo(force = false) {
+  if (!instrumentos.length) { if (force) showAlert('Primero cargá el Excel'); return; }
   const btn = document.getElementById('btn-yahoo');
   const stEl = document.getElementById('yahoo-st');
   btn.disabled = true;
@@ -1298,7 +1298,8 @@ async function fetchPreciosYahoo() {
   // Fuente primaria: proxy propio a 1816 (Pages Function), UNA sola llamada bulk con caché.
   let usados1816 = false;
   try {
-    const resp = await fetch(PROXY_1816, {
+    // force=true (botón) saltea el caché del proxy y pide dato fresco a 1816.
+    const resp = await fetch(PROXY_1816 + (force ? '?fresh=1' : ''), {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify(vivos.map(i => ({ ticker: i.ticker, grupo: i.grupo }))),
@@ -1344,7 +1345,7 @@ async function fetchPreciosYahoo() {
     const d = diasAlVenc(i.venc);
     return (d === null || d > 0) && !precios[i.ticker];
   });
-  if (sinPrecio.length > 0) showAlert(`${sinPrecio.length} tickers sin precio: ${sinPrecio.map(i => i.ticker).join(', ')}`, 'err');
+  if (force && sinPrecio.length > 0) showAlert(`${sinPrecio.length} tickers sin precio: ${sinPrecio.map(i => i.ticker).join(', ')}`, 'err');
   btn.disabled = false;
 }
 
@@ -1632,6 +1633,15 @@ async function cargarExcelGitHub() {
     // Fetchear BCRA histórico después de cargar instrumentos
     await fetchBCRA();
     await cargarHistoricos();
+    // Carga inicial de precios + auto-refresh cada 5 min (usa el caché del proxy →
+    // 1 consulta real a 1816 por ventana, compartida entre solapas/usuarios). El botón
+    // "Actualizar precios" fuerza dato fresco (saltea el caché).
+    fetchPreciosYahoo(false);
+    if (!window._autoPreciosTimer) {
+      window._autoPreciosTimer = setInterval(() => {
+        if (instrumentos.length && document.visibilityState !== 'hidden') fetchPreciosYahoo(false);
+      }, 5 * 60 * 1000);
+    }
   } catch(e) {
     setStatus('err', 'Error cargando Excel: ' + e.message);
     showAlert('No se pudo cargar Instrumentos.xlsx: ' + e.message);
