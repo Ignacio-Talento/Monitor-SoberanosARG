@@ -47,11 +47,21 @@ function tickerEco(grupo, ticker) {
   return (grupo === "usdbonares" || grupo === "usdglobales") ? ticker + "D" : ticker;
 }
 
+// --- rate limit: 1816 admite 1 request/segundo. Espaciamos TODAS las llamadas. ---
+let _lastReq = 0;
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+async function throttle() {
+  const wait = 1100 - (Date.now() - _lastReq);
+  if (wait > 0) await sleep(wait);
+  _lastReq = Date.now();
+}
+
 // --- token 1816 (cacheado en el isolate) ---
 let _token = null, _tokenExp = 0;
 async function getToken(apiKey) {
   const now = Date.now() / 1000;
   if (_token && _tokenExp - now > 300) return _token;
+  await throttle();
   const r = await fetch(`${BASE_1816}/v1/auth/token`, {
     method: "POST",
     headers: { "content-type": "application/json" },
@@ -74,17 +84,16 @@ async function fetch1816(apiKey, tickers, moneda) {
     qs.append("campos", CAMPO);
     qs.append("moneda", moneda);
 
-    let token = await getToken(apiKey);
-    let r = await fetch(`${BASE_1816}/v1/mercado/indicadores?` + qs, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    if (r.status === 401) { // token vencido: renovar y reintentar una vez
-      _token = null;
-      token = await getToken(apiKey);
-      r = await fetch(`${BASE_1816}/v1/mercado/indicadores?` + qs, {
+    const pedir = async () => {
+      await throttle();
+      const token = await getToken(apiKey);
+      return fetch(`${BASE_1816}/v1/mercado/indicadores?` + qs, {
         headers: { Authorization: `Bearer ${token}` },
       });
-    }
+    };
+    let r = await pedir();
+    if (r.status === 401) { _token = null; r = await pedir(); }   // token vencido
+    if (r.status === 429) { await sleep(1200); r = await pedir(); } // rate limit: esperar y reintentar
     if (!r.ok) throw new Error("indicadores 1816 HTTP " + r.status);
     const d = await r.json();
     const inst = d.instrumentos || {};
