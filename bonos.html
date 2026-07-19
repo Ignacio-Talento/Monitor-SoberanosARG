@@ -385,8 +385,9 @@ function showAlert(msg, tipo='err') {
 // Instrumentos.xlsx. ALTAS = títulos nuevos (emisión reciente, no vencidos, no ignorados)
 // que 1816 lista y el monitor no tiene. BAJAS = títulos del Excel ya vencidos (se ocultan
 // solos de la tabla; acá se listan para limpiarlos). No calcula métricas: sólo avisa.
-const DETECTOR_VENTANA_DIAS = 10;                  // "nuevo" = emitido en los últimos N días
-const DETECTOR_IGNORE_KEY   = 'bonos_detector_ignorar';
+const DETECTOR_VENTANA_DIAS   = 10;                // "nuevo" = emitido en los últimos N días
+const DETECTOR_FALTANTES_DESDE = '2025-01-01';     // "faltante": no cargado pero emitido desde esta fecha (excluye legacy)
+const DETECTOR_IGNORE_KEY     = 'bonos_detector_ignorar';
 
 function getDetectorIgnorados() {
   try { return new Set(JSON.parse(localStorage.getItem(DETECTOR_IGNORE_KEY) || '[]')); }
@@ -421,17 +422,22 @@ function pintarDetector(data) {
   const ignorados = getDetectorIgnorados();
   const hoyMs = Date.now();
   const ventanaMs = DETECTOR_VENTANA_DIAS * 86400000;
+  const emiMs = x => { const e = parseLocalDate((x.emision || '').slice(0, 10)); return e ? e.getTime() : 0; };
+  const orden = (a, b) => (b.emision || '').localeCompare(a.emision || '');
 
-  // ALTAS: en 1816, no en el Excel, emisión reciente, no vencido, no ignorado
-  const altas = vivos.filter(x => {
+  // Candidatos: en 1816, no cargados, sin variantes, no vencidos, no ignorados, con emisión.
+  const candidatos = vivos.filter(x => {
     if (!x.ticker || x.ticker.includes('@') || x.ticker.includes(' ')) return false; // variantes/opciones
-    if (cargados.has(x.ticker) || ignorados.has(x.ticker)) return false;
-    const emi = parseLocalDate((x.emision || '').slice(0, 10));
+    if (cargados.has(x.ticker) || ignorados.has(x.ticker) || !x.emision) return false;
     const ven = parseLocalDate((x.venc || '').slice(0, 10));
     if (ven && ven.getTime() <= hoyMs) return false;                // ya vencido
-    if (!emi || (hoyMs - emi.getTime()) > ventanaMs) return false;  // no reciente (legacy)
     return true;
-  }).sort((a, b) => (b.emision || '').localeCompare(a.emision || ''));
+  });
+  // NUEVOS: emitidos en los últimos DETECTOR_VENTANA_DIAS días.
+  const nuevos = candidatos.filter(x => (hoyMs - emiMs(x)) <= ventanaMs).sort(orden);
+  // FALTANTES: más viejos que la ventana pero emitidos desde DETECTOR_FALTANTES_DESDE (no legacy).
+  const desdeMs = parseLocalDate(DETECTOR_FALTANTES_DESDE).getTime();
+  const faltantes = candidatos.filter(x => (hoyMs - emiMs(x)) > ventanaMs && emiMs(x) >= desdeMs).sort(orden);
 
   // BAJAS: instrumentos del Excel ya vencidos (dedup por ticker; los duales duplican filas)
   const bajas = [...new Map(
@@ -439,19 +445,26 @@ function pintarDetector(data) {
                 .map(i => [i.ticker, i])
   ).values()];
 
-  if (!altas.length && !bajas.length) { el.style.display = 'none'; return; }
+  if (!nuevos.length && !faltantes.length && !bajas.length) { el.style.display = 'none'; return; }
 
-  let html = '<button class="det-close" title="cerrar" onclick="this.parentElement.style.display=\'none\'">×</button>';
-  if (altas.length) {
-    html += `<div class="det-sec"><b>🆕 ${altas.length} título(s) nuevo(s) en 1816 sin cargar</b>` +
-      `<span class="det-hint">agregalos a Instrumentos.xlsx (cupones/margen los completás vos)</span>` +
-      `<table class="det-tabla"><tr><th>Ticker</th><th>Grupo</th><th>Emisión</th><th>Vencimiento</th><th></th></tr>`;
-    for (const a of altas) {
-      html += `<tr><td>${a.ticker}</td><td>${a.grupo}</td><td>${(a.emision||'').slice(0,10)}</td>` +
+  const tabla = (lista) => {
+    let h = `<table class="det-tabla"><tr><th>Ticker</th><th>Grupo</th><th>Emisión</th><th>Vencimiento</th><th></th></tr>`;
+    for (const a of lista) {
+      h += `<tr><td>${a.ticker}</td><td>${a.grupo}</td><td>${(a.emision||'').slice(0,10)}</td>` +
         `<td>${(a.venc||'').slice(0,10)}</td>` +
         `<td><button class="det-x" onclick="ignorarTicker('${a.ticker}')">ignorar</button></td></tr>`;
     }
-    html += `</table></div>`;
+    return h + `</table>`;
+  };
+
+  let html = '<button class="det-close" title="cerrar" onclick="this.parentElement.style.display=\'none\'">×</button>';
+  if (nuevos.length) {
+    html += `<div class="det-sec"><b>🆕 ${nuevos.length} título(s) nuevo(s) en 1816 (últimos ${DETECTOR_VENTANA_DIAS} días)</b>` +
+      `<span class="det-hint">agregalos a Instrumentos.xlsx (cupones/margen los completás vos)</span>` + tabla(nuevos) + `</div>`;
+  }
+  if (faltantes.length) {
+    html += `<div class="det-sec"><b>📋 ${faltantes.length} título(s) que te faltan (emitidos desde ${DETECTOR_FALTANTES_DESDE})</b>` +
+      `<span class="det-hint">no son nuevos, pero 1816 los lista y no los tenés; revisá si querés seguirlos</span>` + tabla(faltantes) + `</div>`;
   }
   if (bajas.length) {
     html += `<div class="det-sec"><b>⏹ ${bajas.length} vencido(s)</b>` +
