@@ -851,8 +851,12 @@ function variacionConCupon(inst, ticker, precioHoy, fechaBaseStr, precioBase) {
 
 function calcYTD(inst, ticker, precioHoy) {
   if (!precioHoy) return null;
-  // Base: último día hábil de 2025
+  // Base: último día hábil de 2025 (ACTUALIZAR cada 1/1).
   const fechaBase = '2025-12-31';
+  // Si el instrumento se emitió después de la base, no cotizaba al cierre del año
+  // anterior → no hay YTD real. Se muestra "—" en vez de medir desde un placeholder (par).
+  const emisionStr = inst.emision || inst.pata?.emision;
+  if (emisionStr && parseLocalDate(emisionStr) > parseLocalDate(fechaBase)) return null;
   const precioBase = getPrecioHistorico(ticker, fechaBase);
   return variacionConCupon(inst, ticker, precioHoy, fechaBase, precioBase);
 }
