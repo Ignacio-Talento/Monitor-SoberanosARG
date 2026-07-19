@@ -385,7 +385,7 @@ function showAlert(msg, tipo='err') {
 // Instrumentos.xlsx. ALTAS = títulos nuevos (emisión reciente, no vencidos, no ignorados)
 // que 1816 lista y el monitor no tiene. BAJAS = títulos del Excel ya vencidos (se ocultan
 // solos de la tabla; acá se listan para limpiarlos). No calcula métricas: sólo avisa.
-const DETECTOR_VENTANA_DIAS = 120;                 // "nuevo" = emitido en los últimos N días
+const DETECTOR_VENTANA_DIAS = 10;                  // "nuevo" = emitido en los últimos N días
 const DETECTOR_IGNORE_KEY   = 'bonos_detector_ignorar';
 
 function getDetectorIgnorados() {
@@ -411,7 +411,13 @@ function pintarDetector(data) {
   const el = document.getElementById('detector-banner');
   if (!el || !data) return;
   const vivos = data.instrumentos || [];
-  const cargados = new Set(instrumentos.map(i => i.ticker));
+  // Tickers ya cargados. Para bopreales el monitor usa BPC7D pero 1816 usa BPOC7:
+  // agregamos también la forma 1816 para no marcarlos como "nuevos" por error.
+  const cargados = new Set();
+  for (const i of instrumentos) {
+    cargados.add(i.ticker);
+    if (i.grupo === 'usdbopreal' && i.ticker.length >= 4) cargados.add('BPO' + i.ticker.slice(2, -1));
+  }
   const ignorados = getDetectorIgnorados();
   const hoyMs = Date.now();
   const ventanaMs = DETECTOR_VENTANA_DIAS * 86400000;
