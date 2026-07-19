@@ -36,6 +36,17 @@
   }
   @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap');
   body { background: var(--bg); color: var(--text); font-family: var(--sans); min-height: 100vh; padding: 0; }
+  /* DETECTOR de altas/bajas de instrumentos */
+  .detector-banner { position: relative; margin: 0 32px 16px; padding: 10px 34px 10px 14px; background: var(--surface); border: 1px solid var(--border); border-left: 3px solid var(--cyan); border-radius: 8px; font-size: 12px; color: var(--text); box-shadow: 0 1px 4px rgba(0,0,0,0.06); }
+  .detector-banner .det-sec { margin: 4px 0; }
+  .detector-banner .det-hint { color: var(--text-3); font-weight: 400; margin-left: 6px; font-size: 11px; }
+  .det-tabla { border-collapse: collapse; margin-top: 5px; }
+  .det-tabla th, .det-tabla td { border: 1px solid var(--border); padding: 2px 10px; text-align: left; font-size: 11px; font-family: var(--mono); }
+  .det-tabla th { background: var(--card); color: var(--navy); font-weight: 600; }
+  .det-x { font-size: 10px; padding: 1px 8px; cursor: pointer; border: 1px solid var(--border-l); background: var(--bg); border-radius: 4px; color: var(--text-2); }
+  .det-x:hover { border-color: var(--cyan); color: var(--navy); }
+  .det-close { position: absolute; top: 5px; right: 9px; border: none; background: none; font-size: 17px; cursor: pointer; color: var(--text-3); line-height: 1; }
+  .det-close:hover { color: var(--navy); }
   .wrap { max-width: 1400px; margin: 0 auto; padding: 0 24px 24px; }
 
   /* NAVBAR */
@@ -197,6 +208,9 @@
   </div>
 
   <div class="alert" id="alert"></div>
+
+  <!-- DETECTOR: altas (nuevos en 1816 sin cargar) y bajas (vencidos) vs Instrumentos.xlsx -->
+  <div id="detector-banner" class="detector-banner" style="display:none"></div>
 
   <!-- TOOLBAR -->
   <div class="toolbar">
@@ -364,6 +378,82 @@ function showAlert(msg, tipo='err') {
   const el = document.getElementById('alert');
   el.textContent = msg; el.className = 'alert show ' + tipo;
   setTimeout(() => el.className = 'alert', 6000);
+}
+
+// ── DETECTOR de altas/bajas de instrumentos ───────────────────
+// Cruza el universo soberano vivo de 1816 (/api/instrumentos) contra lo cargado del
+// Instrumentos.xlsx. ALTAS = títulos nuevos (emisión reciente, no vencidos, no ignorados)
+// que 1816 lista y el monitor no tiene. BAJAS = títulos del Excel ya vencidos (se ocultan
+// solos de la tabla; acá se listan para limpiarlos). No calcula métricas: sólo avisa.
+const DETECTOR_VENTANA_DIAS = 120;                 // "nuevo" = emitido en los últimos N días
+const DETECTOR_IGNORE_KEY   = 'bonos_detector_ignorar';
+
+function getDetectorIgnorados() {
+  try { return new Set(JSON.parse(localStorage.getItem(DETECTOR_IGNORE_KEY) || '[]')); }
+  catch { return new Set(); }
+}
+function ignorarTicker(tk) {
+  const s = getDetectorIgnorados(); s.add(tk);
+  localStorage.setItem(DETECTOR_IGNORE_KEY, JSON.stringify([...s]));
+  if (window._universo1816) pintarDetector(window._universo1816); // re-render sin re-consultar
+}
+
+async function detectarCambios() {
+  try {
+    const r = await fetch('/api/instrumentos');
+    if (!r.ok) return;                     // es un extra: si falla, el monitor sigue igual
+    window._universo1816 = await r.json();
+  } catch { return; }
+  pintarDetector(window._universo1816);
+}
+
+function pintarDetector(data) {
+  const el = document.getElementById('detector-banner');
+  if (!el || !data) return;
+  const vivos = data.instrumentos || [];
+  const cargados = new Set(instrumentos.map(i => i.ticker));
+  const ignorados = getDetectorIgnorados();
+  const hoyMs = Date.now();
+  const ventanaMs = DETECTOR_VENTANA_DIAS * 86400000;
+
+  // ALTAS: en 1816, no en el Excel, emisión reciente, no vencido, no ignorado
+  const altas = vivos.filter(x => {
+    if (!x.ticker || x.ticker.includes('@') || x.ticker.includes(' ')) return false; // variantes/opciones
+    if (cargados.has(x.ticker) || ignorados.has(x.ticker)) return false;
+    const emi = parseLocalDate((x.emision || '').slice(0, 10));
+    const ven = parseLocalDate((x.venc || '').slice(0, 10));
+    if (ven && ven.getTime() <= hoyMs) return false;                // ya vencido
+    if (!emi || (hoyMs - emi.getTime()) > ventanaMs) return false;  // no reciente (legacy)
+    return true;
+  }).sort((a, b) => (b.emision || '').localeCompare(a.emision || ''));
+
+  // BAJAS: instrumentos del Excel ya vencidos (dedup por ticker; los duales duplican filas)
+  const bajas = [...new Map(
+    instrumentos.filter(i => { const d = diasAlVenc(i.venc); return d !== null && d <= 0; })
+                .map(i => [i.ticker, i])
+  ).values()];
+
+  if (!altas.length && !bajas.length) { el.style.display = 'none'; return; }
+
+  let html = '<button class="det-close" title="cerrar" onclick="this.parentElement.style.display=\'none\'">×</button>';
+  if (altas.length) {
+    html += `<div class="det-sec"><b>🆕 ${altas.length} título(s) nuevo(s) en 1816 sin cargar</b>` +
+      `<span class="det-hint">agregalos a Instrumentos.xlsx (cupones/margen los completás vos)</span>` +
+      `<table class="det-tabla"><tr><th>Ticker</th><th>Grupo</th><th>Emisión</th><th>Vencimiento</th><th></th></tr>`;
+    for (const a of altas) {
+      html += `<tr><td>${a.ticker}</td><td>${a.grupo}</td><td>${(a.emision||'').slice(0,10)}</td>` +
+        `<td>${(a.venc||'').slice(0,10)}</td>` +
+        `<td><button class="det-x" onclick="ignorarTicker('${a.ticker}')">ignorar</button></td></tr>`;
+    }
+    html += `</table></div>`;
+  }
+  if (bajas.length) {
+    html += `<div class="det-sec"><b>⏹ ${bajas.length} vencido(s)</b>` +
+      `<span class="det-hint">ocultos de la tabla; conviene quitarlos del Excel:</span> ` +
+      bajas.map(b => b.ticker).join(', ') + `</div>`;
+  }
+  el.innerHTML = html;
+  el.style.display = 'block';
 }
 
 // ── LECAP: dias360 + VPV ──────────────────────────────────────
@@ -1675,6 +1765,8 @@ async function cargarExcelGitHub() {
         if (instrumentos.length && document.visibilityState !== 'hidden') fetchPreciosYahoo(false);
       }, 5 * 60 * 1000);
     }
+    // Detectar altas/bajas de títulos vs el universo vivo de 1816 (no bloquea la carga).
+    detectarCambios();
   } catch(e) {
     setStatus('err', 'Error cargando Excel: ' + e.message);
     showAlert('No se pudo cargar Instrumentos.xlsx: ' + e.message);
