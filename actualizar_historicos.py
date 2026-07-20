@@ -7,7 +7,7 @@ Los tickers se leen dinámicamente desde Instrumentos.xlsx.
 import requests
 import openpyxl
 from openpyxl import load_workbook
-from datetime import date
+from datetime import date, timedelta
 import os
 import re
 import time
@@ -156,6 +156,49 @@ def fetch_precios_1816(items, fecha=None):
     print(f"1816: {len(resultado)} precios obtenidos de {sum(len(v) for v in por_moneda.values())} consultables.")
     return resultado
 
+# ── FECHA DE LA RUEDA A REGISTRAR ─────────────────────────────
+def resolver_fecha_1816(items, max_dias=7):
+    """Última rueda con datos en 1816, buscando hacia atrás desde hoy.
+
+    1816 no tiene datos los fines de semana, los feriados, ni antes del cierre:
+    pedirle "hoy" a las 10 AM devuelve todo null. Sin esto la corrida degradaba a
+    Eco en silencio y escribía una fila con los precios del día anterior, que además
+    bloqueaba la corrida real de ese día (el chequeo de "ya existe fila" la saltea).
+
+    Se prueba con UN ticker de referencia (barato) y se saltean sábados y domingos
+    por fecha, sin gastar consultas. Devuelve 'AAAA-MM-DD', o None si no hay key /
+    cliente / 1816 no responde (en ese caso el flujo sigue como antes: hoy + Eco).
+    """
+    if Cliente1816 is None:
+        return None
+    if not (os.environ.get("API_1816_KEY") or os.path.exists(".1816_key")):
+        return None
+    ref = next((it for it in items if it['t1816'] and it['moneda']), None)
+    if not ref:
+        return None
+    try:
+        cli = Cliente1816()
+        for i in range(max_dias + 1):
+            d = date.today() - timedelta(days=i)
+            if d.weekday() >= 5:          # sábado/domingo: ni consultamos
+                continue
+            f = d.strftime("%Y-%m-%d")
+            # 1816 admite 1 req/seg: un 429 transitorio no debe degradar todo el día a Eco.
+            for intento in range(3):
+                try:
+                    filas = cli.precios([ref['t1816']], [CAMPO_1816],
+                                        moneda=ref['moneda'], fecha_operacion=f)
+                    break
+                except Exception:
+                    if intento == 2:
+                        raise
+                    time.sleep(2 * (intento + 1))
+            if filas and isinstance(filas[0].get(CAMPO_1816), (int, float)):
+                return f
+    except Exception as e:
+        print(f"AVISO: no se pudo resolver la fecha en 1816 ({e}).")
+    return None
+
 # ── FETCH PRECIO ──────────────────────────────────────────────
 def fetch_precio(ticker):
     try:
@@ -176,16 +219,26 @@ def fetch_precio(ticker):
 
 # ── ACTUALIZAR EXCEL ──────────────────────────────────────────
 def actualizar_historicos():
-    hoy = date.today()
-    fecha_str = hoy.strftime("%Y-%m-%d")
-    print(f"Actualizando historicos para {fecha_str}...")
-
     # Leer tickers dinámicamente
     items = leer_tickers()
     if not items:
         print("ERROR: No se pudieron leer los tickers.")
         return
     tickers = [it['eco'] for it in items]
+
+    # La fila se rotula con la última rueda que 1816 tenga cargada, que no siempre es
+    # hoy (fin de semana, feriado, o corrida antes del cierre). Así una corrida
+    # prematura no inventa una fila con precios viejos ni bloquea la corrida real:
+    # si esa rueda ya está registrada, se sale por el chequeo de más abajo.
+    fecha_1816 = resolver_fecha_1816(items)
+    if fecha_1816:
+        fecha_str = fecha_1816
+        if fecha_str != date.today().strftime("%Y-%m-%d"):
+            print(f"1816 todavía no tiene datos de hoy; última rueda disponible: {fecha_str}")
+    else:
+        fecha_str = date.today().strftime("%Y-%m-%d")
+        print("AVISO: no se pudo resolver la fecha en 1816; se usa hoy y se completa con Eco.")
+    print(f"Actualizando historicos para {fecha_str}...")
 
     # Cargar o crear el Excel
     if os.path.exists(HISTORICOS_FILE):
@@ -218,7 +271,7 @@ def actualizar_historicos():
             print(f"  Nuevo ticker agregado al header: {ticker}")
 
     # Precios primero desde 1816 (fuente primaria); lo que falte, desde Eco.
-    precios_api = fetch_precios_1816(items)
+    precios_api = fetch_precios_1816(items, fecha=fecha_1816)
 
     n1816 = 0
     neco = 0
