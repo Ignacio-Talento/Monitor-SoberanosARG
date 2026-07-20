@@ -1788,14 +1788,17 @@ async function cargarExcelGitHub() {
     // Fetchear BCRA histórico después de cargar instrumentos
     await fetchBCRA();
     await cargarHistoricos();
-    // Carga inicial de precios + auto-refresh cada 5 min (usa el caché del proxy →
-    // 1 consulta real a 1816 por ventana, compartida entre solapas/usuarios). El botón
-    // "Actualizar precios" fuerza dato fresco (saltea el caché).
+    // Carga inicial de precios + auto-refresh cada 1 min, alineado con el CACHE_TTL de
+    // /api/precios (60 s): así cada pasada trae dato fresco. Se eligió 1 min porque 1816
+    // es casi en vivo y los papeles líquidos cambian de precio cada ~40 s (medido el
+    // 2026-07-20: AL30, 28 cambios en 18 min). El caché del proxy hace que las solapas y
+    // usuarios simultáneos compartan una sola consulta real por ventana. El botón
+    // "Actualizar precios" fuerza dato fresco igual (saltea el caché con ?fresh=1).
     fetchPreciosYahoo(false);
     if (!window._autoPreciosTimer) {
       window._autoPreciosTimer = setInterval(() => {
         if (instrumentos.length && document.visibilityState !== 'hidden') fetchPreciosYahoo(false);
-      }, 5 * 60 * 1000);
+      }, 60 * 1000);
     }
     // Detectar altas/bajas de títulos vs el universo vivo de 1816 (no bloquea la carga).
     detectarCambios();
