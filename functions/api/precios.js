@@ -19,7 +19,11 @@
 const BASE_1816   = "https://api.1816.com.ar";
 const ECO_URL     = "https://ecovalores-proxy.granda-fra.workers.dev"; // fallback (worker del colega)
 const CAMPO       = "precioDirty";
-const CACHE_TTL   = 300;   // segundos que dura el caché (5 min, alineado con el auto-refresh del front). Subir = menos créditos.
+// Segundos que dura el caché. Medido el 2026-07-20 en horario de mercado: 1816 es casi en
+// vivo (la operación aparece a los ~5-15 s) y los papeles líquidos cambian de precio cada
+// ~40 s (AL30: 28 cambios en 18 min). Con 300 s se mostraban precios de hasta 5 min de
+// atraso en esos papeles, así que se bajó a 60. Subir = menos créditos, dato más viejo.
+const CACHE_TTL   = 60;
 const MAX_TICKERS = 50;    // límite de 1816 por request
 const MAX_ECO_FALLBACK = 20; // tope de consultas a Eco (cada una es un subrequest; CF corta ~50)
 
