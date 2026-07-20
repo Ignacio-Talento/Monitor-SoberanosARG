@@ -21,6 +21,7 @@ const ECO_URL     = "https://ecovalores-proxy.granda-fra.workers.dev"; // fallba
 const CAMPO       = "precioDirty";
 const CACHE_TTL   = 300;   // segundos que dura el caché (5 min, alineado con el auto-refresh del front). Subir = menos créditos.
 const MAX_TICKERS = 50;    // límite de 1816 por request
+const MAX_ECO_FALLBACK = 20; // tope de consultas a Eco (cada una es un subrequest; CF corta ~50)
 
 // grupo del frontend -> moneda a pedir en 1816
 const MONEDA = {
@@ -75,7 +76,8 @@ async function getToken(apiKey) {
 }
 
 // Consulta precioDirty a 1816 para una lista de tickers 1816 en una moneda. -> { ticker: precio }
-async function fetch1816(apiKey, tickers, moneda) {
+// `fecha` (YYYY-MM-DD) opcional: si va, se pide esa rueda; si es null, la de hoy.
+async function fetch1816(apiKey, tickers, moneda, fecha) {
   const out = {};
   for (let i = 0; i < tickers.length; i += MAX_TICKERS) {
     const lote = tickers.slice(i, i + MAX_TICKERS);
@@ -83,6 +85,7 @@ async function fetch1816(apiKey, tickers, moneda) {
     lote.forEach((t) => qs.append("tickers", t));
     qs.append("campos", CAMPO);
     qs.append("moneda", moneda);
+    if (fecha) qs.append("fechaOperacion", fecha);
 
     const pedir = async () => {
       await throttle();
@@ -103,6 +106,26 @@ async function fetch1816(apiKey, tickers, moneda) {
     }
   }
   return out;
+}
+
+// --- Última rueda con datos -------------------------------------------------
+// 1816 NO tiene datos los fines de semana ni feriados: pedir "hoy" devuelve todo null.
+// Buscamos hacia atrás la última fecha con datos usando UN ticker de referencia (barato).
+// Los sábados/domingos se saltean por fecha, sin gastar llamadas.
+const MS_ART = 3 * 3600 * 1000; // Argentina = UTC-3
+function fechaART(offsetDias) {
+  return new Date(Date.now() - MS_ART - offsetDias * 86400000);
+}
+async function resolverFecha(apiKey, tickerRef, moneda) {
+  for (let i = 0; i <= 7; i++) {
+    const d = fechaART(i);
+    const dow = d.getUTCDay();
+    if (dow === 0 || dow === 6) continue;             // fin de semana: ni consultamos
+    const fecha = i === 0 ? null : d.toISOString().slice(0, 10);
+    const r = await fetch1816(apiKey, [tickerRef], moneda, fecha);
+    if (Object.keys(r).length) return fecha;          // null = hoy tiene datos
+  }
+  return null;
 }
 
 async function fallbackEco(grupo, ticker) {
@@ -128,19 +151,30 @@ async function computePrecios(env, items) {
   }
 
   const result = {};
-  if (apiKey) {
-    for (const moneda of Object.keys(porMoneda)) {
+  const monedas = Object.keys(porMoneda);
+  if (apiKey && monedas.length) {
+    // Una sola resolución de fecha para todas las monedas (fin de semana/feriado -> última rueda).
+    const ref = porMoneda[monedas[0]][0];
+    const fecha = await resolverFecha(apiKey, ref.t, monedas[0]);
+    for (const moneda of monedas) {
       const pares = porMoneda[moneda];
-      const precios = await fetch1816(apiKey, pares.map((p) => p.t), moneda);
+      // Deduplicar: los duales mandan 2 filas por ticker y gastarían cupo del lote de 50.
+      const tickers = [...new Set(pares.map((p) => p.t))];
+      const precios = await fetch1816(apiKey, tickers, moneda, fecha);
       for (const p of pares) if (p.t in precios) result[p.eco] = precios[p.t];
     }
   }
 
-  // Fallback a Eco para lo que 1816 no resolvió (raro: instrumentos que ya no cotizan).
-  for (const it of items) {
-    const eco = String(it.ticker || "").trim().toUpperCase();
-    if (!eco || eco in result) continue;
-    const p = await fallbackEco(String(it.grupo || "").trim(), eco);
+  // Fallback a Eco SOLO para lo que 1816 no resolvió. Acotado: cada uno es un subrequest
+  // y Cloudflare corta en ~50 por request (si no, un día sin datos deja la respuesta a medias).
+  const pendientes = [...new Set(
+    items.map((it) => String(it.ticker || "").trim().toUpperCase())
+         .filter((eco) => eco && !(eco in result))
+  )].slice(0, MAX_ECO_FALLBACK);
+  const grupoDe = {};
+  for (const it of items) grupoDe[String(it.ticker || "").trim().toUpperCase()] = String(it.grupo || "").trim();
+  for (const eco of pendientes) {
+    const p = await fallbackEco(grupoDe[eco], eco);
     if (p) result[eco] = p;
   }
   return result;
