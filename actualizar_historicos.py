@@ -118,6 +118,22 @@ def leer_tickers():
     print(f"Tickers leídos desde {INSTRUMENTOS_FILE}: {len(items)}")
     return items
 
+# ── CLIENTE 1816 COMPARTIDO ───────────────────────────────────
+# Una sola instancia para todo el proceso: el cliente lleva internamente el control de
+# 1 request/seg que exige 1816, así que crear uno por función hace que cada uno espacie
+# por su cuenta, se pisen entre sí y la API devuelva HTTP 429.
+_CLI_1816 = None
+def cliente_1816():
+    """Devuelve el cliente compartido, o None si no hay key/cliente disponible."""
+    global _CLI_1816
+    if Cliente1816 is None:
+        return None
+    if not (os.environ.get("API_1816_KEY") or os.path.exists(".1816_key")):
+        return None
+    if _CLI_1816 is None:
+        _CLI_1816 = Cliente1816()
+    return _CLI_1816
+
 # ── FETCH PRECIOS DESDE 1816 (fuente primaria) ────────────────
 def fetch_precios_1816(items, fecha=None):
     """Devuelve {eco_ticker: precio} solo para los que 1816 respondió con dato.
@@ -125,10 +141,9 @@ def fetch_precios_1816(items, fecha=None):
     se puede fijar para pruebas o backfills puntuales.
     Ante cualquier problema (sin key, sin cliente, error de red/API) devuelve {}
     y el flujo cae a Eco Valores para todo. Nunca rompe la corrida."""
-    if Cliente1816 is None:
-        return {}
-    if not (os.environ.get("API_1816_KEY") or os.path.exists(".1816_key")):
-        print("AVISO: no hay API_1816_KEY; se usará solo Eco Valores.")
+    cli = cliente_1816()
+    if cli is None:
+        print("AVISO: no hay API_1816_KEY o cliente 1816; se usará solo Eco Valores.")
         return {}
 
     # Agrupar por moneda: {moneda: [(eco, t1816), ...]}
@@ -142,10 +157,17 @@ def fetch_precios_1816(items, fecha=None):
 
     resultado = {}
     try:
-        cli = Cliente1816()
         for moneda, pares in por_moneda.items():
             tickers = [t for _, t in pares]
-            filas = cli.precios(tickers, [CAMPO_1816], moneda=moneda, fecha_operacion=fecha)
+            # Reintentar ante 429: un rate limit transitorio no debe mandar TODO a Eco.
+            for intento in range(3):
+                try:
+                    filas = cli.precios(tickers, [CAMPO_1816], moneda=moneda, fecha_operacion=fecha)
+                    break
+                except Exception:
+                    if intento == 2:
+                        raise
+                    time.sleep(3 * (intento + 1))
             valor_por_t = {f['ticker']: f.get(CAMPO_1816) for f in filas}
             for eco, t in pares:
                 v = valor_por_t.get(t)
@@ -171,15 +193,13 @@ def resolver_fecha_1816(items, max_dias=7):
     por fecha, sin gastar consultas. Devuelve 'AAAA-MM-DD', o None si no hay key /
     cliente / 1816 no responde (en ese caso el flujo sigue como antes: hoy + Eco).
     """
-    if Cliente1816 is None:
-        return None
-    if not (os.environ.get("API_1816_KEY") or os.path.exists(".1816_key")):
+    cli = cliente_1816()
+    if cli is None:
         return None
     ref = next((it for it in items if it['t1816'] and it['moneda']), None)
     if not ref:
         return None
     try:
-        cli = Cliente1816()
         for i in range(max_dias + 1):
             d = date.today() - timedelta(days=i)
             if d.weekday() >= 5:          # sábado/domingo: ni consultamos
