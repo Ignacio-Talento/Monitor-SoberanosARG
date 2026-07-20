@@ -41,7 +41,9 @@ MONEDA_1816 = {
 }
 # Bopreales: el ticker de 1816 es irregular (no es un simple swap), mapa explícito.
 MAPA_BOPREAL_1816 = {
-    'BPC7D': 'BPOC7', 'BPD7D': 'BPOD7', 'BPA8D': 'BPOA8', 'BPB8D': 'BPOB8',
+    # Patrón: BP{XX}D -> BPO{XX}. Se deja explícito por si alguna serie no lo respeta.
+    'BPA7D': 'BPOA7', 'BPB7D': 'BPOB7', 'BPC7D': 'BPOC7', 'BPD7D': 'BPOD7',
+    'BPA8D': 'BPOA8', 'BPB8D': 'BPOB8',
 }
 
 def resolver_1816(sheet_name, eco_ticker, master_ticker):

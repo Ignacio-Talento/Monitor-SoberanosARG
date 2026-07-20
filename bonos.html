@@ -314,6 +314,12 @@ const GRUPOS = [
   { key: 'dual',        label: 'DUALES'        },
 ];
 
+// Grupos que están cargados en Instrumentos.xlsx pero NO se muestran en el Monitor.
+// Se filtran acá en vez de borrarlos del Excel: reconstruir el cronograma de flujos de un
+// bono con cupón es difícil (1816 no expone flujos), así que conviene conservar el dato.
+// Para volver a mostrarlos, sacarlos de esta lista.
+const GRUPOS_OCULTOS = ['onusd'];
+
 // Grupos que se muestran en cada moneda. Linked va en pesos (cotiza/liquida en $).
 const GRUPOS_DOLAR = ['usdlinked', 'usdbonares', 'usdglobales', 'usdbopreal', 'onusd'];
 function monedaDeGrupo(grupo) { return GRUPOS_DOLAR.includes(grupo) ? 'dolares' : 'pesos'; }
@@ -1168,7 +1174,7 @@ function renderTabla() {
 function parsearExcel(buffer) {
   try {
     const wb = XLSX.read(buffer, { type: 'array' });
-    const result = [];
+    let result = [];   // let: más abajo se reasigna al filtrar los grupos ocultos
 
     // LECAP
     if (wb.SheetNames.includes('LECAPS')) {
@@ -1410,6 +1416,9 @@ function parsearExcel(buffer) {
         });
       });
     }
+
+    // Sacar los grupos ocultos (siguen en el Excel, sólo no se muestran ni se les pide precio)
+    result = result.filter(i => !GRUPOS_OCULTOS.includes(i.grupo));
 
     // Ordenar por grupo (según GRUPOS) y dentro de cada grupo por días al vencimiento
     const grupoOrder = GRUPOS.map(g => g.key);
