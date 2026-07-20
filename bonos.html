@@ -389,9 +389,21 @@ const DETECTOR_VENTANA_DIAS   = 10;                // "nuevo" = emitido en los �
 const DETECTOR_FALTANTES_DESDE = '2025-01-01';     // "faltante": no cargado pero emitido desde esta fecha (excluye legacy)
 const DETECTOR_IGNORE_KEY     = 'bonos_detector_ignorar';
 
+// Lista compartida (repo) + override personal (localStorage del navegador).
+let _ignorarRepo = null;
+async function cargarIgnorarRepo() {
+  if (_ignorarRepo) return _ignorarRepo;
+  _ignorarRepo = [];
+  try {
+    const r = await fetch('detector_ignorar.json?t=' + Date.now());
+    if (r.ok) _ignorarRepo = Object.keys((await r.json()).ignorar || {});
+  } catch { /* si falla, sólo se usa la lista local */ }
+  return _ignorarRepo;
+}
 function getDetectorIgnorados() {
-  try { return new Set(JSON.parse(localStorage.getItem(DETECTOR_IGNORE_KEY) || '[]')); }
-  catch { return new Set(); }
+  let local = [];
+  try { local = JSON.parse(localStorage.getItem(DETECTOR_IGNORE_KEY) || '[]'); } catch { /* ignorar */ }
+  return new Set([...(_ignorarRepo || []), ...local]);
 }
 function ignorarTicker(tk) {
   const s = getDetectorIgnorados(); s.add(tk);
@@ -400,6 +412,7 @@ function ignorarTicker(tk) {
 }
 
 async function detectarCambios() {
+  await cargarIgnorarRepo();               // lista compartida antes de comparar
   try {
     const r = await fetch('/api/instrumentos');
     if (!r.ok) return;                     // es un extra: si falla, el monitor sigue igual
@@ -464,7 +477,7 @@ function pintarDetector(data) {
   }
   if (faltantes.length) {
     html += `<div class="det-sec"><b>📋 ${faltantes.length} título(s) que te faltan (emitidos desde ${DETECTOR_FALTANTES_DESDE})</b>` +
-      `<span class="det-hint">no son nuevos, pero 1816 los lista y no los tenés; revisá si querés seguirlos</span>` + tabla(faltantes) + `</div>`;
+      `<span class="det-hint">no son nuevos, pero 1816 los lista y no los tenés; "ignorar" es solo para este navegador — para todos, agregalos a detector_ignorar.json</span>` + tabla(faltantes) + `</div>`;
   }
   if (bajas.length) {
     html += `<div class="det-sec"><b>⏹ ${bajas.length} vencido(s)</b>` +

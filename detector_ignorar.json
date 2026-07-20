@@ -1,0 +1,8 @@
+{
+  "_nota": "Tickers que el detector de altas NO debe proponer. Vive en el repo => vale para todos los usuarios y dispositivos. El boton 'ignorar' del banner agrega solo en el navegador local (localStorage); para que valga para todos, agregalo aca.",
+  "ignorar": {
+    "TTD26": "dual: falta el TEM de su pata tasa fija (1816 no expone ese dato contractual)",
+    "BPO28": "bopreal: falta el cronograma de cupones/amortizaciones (1816 no tiene endpoint de flujos)",
+    "X31L6": "LECER: el modelo CER del monitor no lo representa (su base CER no es emision-10 habiles, o tiene spread sobre CER)"
+  }
+}
