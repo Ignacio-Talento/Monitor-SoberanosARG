@@ -1,0 +1,18 @@
+# Archivos de DATOS que divergen a propósito de upstream (Frangranda/Monitor-SoberanosARG).
+#
+# Este fork sigue un universo de instrumentos distinto (LECER, los 6 Bopreales, ONs ocultas)
+# y corre su propia GitHub Action, así que estos dos binarios se escriben de forma
+# independiente en cada repo y chocan en CADA sincronizacion con upstream.
+#
+# Con merge=ours, al mergear upstream se conserva siempre la version de este fork.
+# El codigo (bonos.html, actualizar_historicos.py, functions/) SI converge normalmente.
+#
+# IMPORTANTE: el driver "ours" no viene definido por defecto. Hay que habilitarlo una vez
+# por clon (queda en .git/config, no se versiona):
+#
+#     git config merge.ours.driver true
+#
+# Sin eso, git ignora esta regla y vuelve a marcar conflicto (no rompe nada, solo molesta).
+
+historicos.xlsx    merge=ours
+Instrumentos.xlsx  merge=ours
