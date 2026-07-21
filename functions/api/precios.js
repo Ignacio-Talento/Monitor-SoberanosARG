@@ -19,11 +19,13 @@
 const BASE_1816   = "https://api.1816.com.ar";
 const ECO_URL     = "https://ecovalores-proxy.granda-fra.workers.dev"; // fallback (worker del colega)
 const CAMPO       = "precioDirty";
-// Segundos que dura el caché. Medido el 2026-07-20 en horario de mercado: 1816 es casi en
-// vivo (la operación aparece a los ~5-15 s) y los papeles líquidos cambian de precio cada
-// ~40 s (AL30: 28 cambios en 18 min). Con 300 s se mostraban precios de hasta 5 min de
-// atraso en esos papeles, así que se bajó a 60. Subir = menos créditos, dato más viejo.
-const CACHE_TTL   = 60;
+// Segundos que dura el caché. Es EL dial de consumo de créditos: el costo de 1816 es
+// tickers x (campos + 1), así que una consulta del monitor cuesta ~272 y una jornada de 8 h
+// con refresco continuo son 480 consultas -> ~131k, por encima del tope diario de 100.000.
+// Con 120 s se baja a ~65k/día y queda margen para seguir sumando instrumentos.
+// (Medido el 2026-07-20: 1816 es casi en vivo, ~5-15 s, y los líquidos cambian cada ~40 s,
+// así que 120 s sigue mostrando precios frescos; el botón "Actualizar precios" saltea el caché.)
+const CACHE_TTL   = 120;
 const MAX_TICKERS = 50;    // límite de 1816 por request
 const MAX_ECO_FALLBACK = 20; // tope de consultas a Eco (cada una es un subrequest; CF corta ~50)
 
