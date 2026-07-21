@@ -16,10 +16,13 @@
  */
 
 const BASE_1816 = "https://api.1816.com.ar";
-const CACHE_TTL = 21600; // 6 h (subir = menos llamadas a 1816)
+// 12 h. Son ~25 curvas espaciadas a 1 req/seg (~28 s por cache miss), y el universo de
+// instrumentos cambia muy poco: conviene pagar ese costo un par de veces por día nada más.
+const CACHE_TTL = 43200;
 
 // curvaId de 1816 -> grupo del monitor. (12 y 17 = USD Linked + Lelink caen ambos en usdlinked)
 const CURVAS = {
+  // --- Soberanos ---
   9:  "lecap",       // Soberanos ARS tasa fija (LECAPs/BONCAPs capitalizables)
   10: "tasafija",    // Soberanos ARS Botes
   7:  "cer",         // Soberanos ARS CER
@@ -30,6 +33,23 @@ const CURVAS = {
   8:  "usdbonares",  // Soberanos USD Bonares
   11: "usdglobales", // Soberanos USD Globales
   24: "usdbopreal",  // BCRA USD (Bopreales)
+  // --- Provinciales ---
+  18: "subsoberano",     // Provinciales USD
+  20: "subsoberano",     // Provinciales USD Linked
+  21: "subsoberano",     // Provinciales ARS Fijo
+  19: "subsoberano",     // Provinciales ARS Inflación
+  15: "subsoberano",     // Provinciales ARS Badlar
+  27: "subsoberano",     // Provinciales ARS Tamar
+  29: "subsoberano",     // Provinciales Duales
+  // --- Corporativos (ONs) ---
+  16: "onusd",           // Corporativos USD
+  3:  "oncorp",          // Corporativos USD Linked
+  25: "oncorp",          // Corporativos ARS Fijo
+  5:  "oncorp",          // Corporativos ARS Inflación
+  4:  "oncorp",          // Corporativos ARS Badlar
+  26: "oncorp",          // Corporativos ARS Tamar
+  23: "oncorp",          // Corporativos ARS TPM
+  30: "oncorp",          // Corporativos ARS Caución
 };
 
 // --- rate limit: 1816 admite 1 request/segundo. Espaciamos TODAS las llamadas. ---
@@ -80,7 +100,14 @@ async function computeUniverso(env) {
   const apiKey = env.API_1816_KEY;
   const vistos = new Map(); // ticker -> { ticker, grupo, emision, venc }
   for (const [curvaId, grupo] of Object.entries(CURVAS)) {
-    const items = await fetchCurva(apiKey, curvaId);
+    // Son ~25 curvas espaciadas 1 req/seg: si una falla, no tiramos abajo el resto.
+    // El detector es un extra; devolver un universo parcial es mejor que no devolver nada.
+    let items = null;
+    try {
+      items = await fetchCurva(apiKey, curvaId);
+    } catch (_e) {
+      continue;
+    }
     for (const it of items || []) {
       const ticker = String(it.ticker || "").trim();
       if (!ticker || ticker.includes("@") || ticker.includes(" ")) continue; // variantes/opciones

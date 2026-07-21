@@ -397,7 +397,8 @@ function showAlert(msg, tipo='err') {
 // que 1816 lista y el monitor no tiene. BAJAS = títulos del Excel ya vencidos (se ocultan
 // solos de la tabla; acá se listan para limpiarlos). No calcula métricas: sólo avisa.
 const DETECTOR_VENTANA_DIAS   = 10;                // "nuevo" = emitido en los últimos N días
-const DETECTOR_FALTANTES_DESDE = '2025-01-01';     // "faltante": no cargado pero emitido desde esta fecha (excluye legacy)
+const DETECTOR_FALTANTES_DESDE = '2025-01-01';     // "faltante": no cargado pero emitido desde esta fecha
+const DETECTOR_MAX_FALTANTES  = 10;                // cuántos faltantes se listan (el resto va como conteo) (excluye legacy)
 const DETECTOR_IGNORE_KEY     = 'bonos_detector_ignorar';
 
 // Lista compartida (repo) + override personal (localStorage del navegador).
@@ -487,8 +488,17 @@ function pintarDetector(data) {
       `<span class="det-hint">agregalos a Instrumentos.xlsx (cupones/margen los completás vos)</span>` + tabla(nuevos) + `</div>`;
   }
   if (faltantes.length) {
-    html += `<div class="det-sec"><b>📋 ${faltantes.length} título(s) que te faltan (emitidos desde ${DETECTOR_FALTANTES_DESDE})</b>` +
-      `<span class="det-hint">no son nuevos, pero 1816 los lista y no los tenés; "ignorar" es solo para este navegador — para todos, agregalos a detector_ignorar.json</span>` + tabla(faltantes) + `</div>`;
+    // Con las curvas de provinciales y corporativos esto son cientos de títulos: volcarlos
+    // todos haría inservible el banner. Se muestra el conteo por grupo y sólo los más
+    // recientes, que es lo accionable. El aviso diario útil es la sección de "nuevos".
+    const porGrupo = {};
+    for (const f of faltantes) porGrupo[f.grupo] = (porGrupo[f.grupo] || 0) + 1;
+    const resumen = Object.entries(porGrupo).sort((a, b) => b[1] - a[1])
+      .map(([g, n]) => `${g} ${n}`).join(' · ');
+    html += `<div class="det-sec"><b>📋 ${faltantes.length} título(s) que 1816 lista y no seguís</b>` +
+      `<span class="det-hint">backlog, no aviso diario — emitidos desde ${DETECTOR_FALTANTES_DESDE}</span>` +
+      `<div style="margin:4px 0 2px;font-family:var(--mono);font-size:11px;color:var(--text-2)">${resumen}</div>` +
+      `<span class="det-hint">Más recientes:</span>` + tabla(faltantes.slice(0, DETECTOR_MAX_FALTANTES)) + `</div>`;
   }
   if (bajas.length) {
     html += `<div class="det-sec"><b>⏹ ${bajas.length} vencido(s)</b>` +
@@ -677,9 +687,35 @@ function valorTecnicoTF(inst, fechaLiq) {
   return residual + corridos;
 }
 
+// Grupos que se calculan con parámetros (TEM, CER, TAMAR, TC): no necesitan cronograma.
+const GRUPOS_PARAMETRICOS = ['lecap', 'cer', 'tamar', 'usdlinked', 'dual'];
+
+// ¿Este instrumento se resuelve con los indicadores que publica 1816 en vez de calcularse acá?
+// Criterio POR INSTRUMENTO, no por grupo: un bono con cupón que todavía no tiene su cronograma
+// cargado en Instrumentos.xlsx usa los indicadores de 1816. En cuanto se le agregan los flujos,
+// pasa solo a cálculo local (y deja de pedir campos extra, o sea que baja de 5 a 2 créditos).
+function usaIndicadores1816(inst) {
+  if (!inst || GRUPOS_PARAMETRICOS.includes(inst.grupo)) return false;
+  return !(inst.flujos && inst.flujos.length);
+}
+
+// Métricas tomadas de 1816 (las trae el proxy junto al precio). TNA derivada de la TEA en
+// convención semestral, igual que el resto de los bonos hard-dollar con cupón.
+function metricasDe1816(inst, precio, dias) {
+  const ind = indicadores1816[String(inst.ticker).toUpperCase()] || {};
+  const num = v => (typeof v === 'number' && isFinite(v)) ? v : null;
+  const teaDec  = num(ind.tea);
+  const paridad = num(ind.paridad) === null ? null : num(ind.paridad) * 100;
+  const md      = num(ind.durationMod);
+  const tea = teaDec === null ? null : teaDec * 100;
+  const tna = teaDec === null ? null : (Math.pow(1 + teaDec, 1/2) - 1) * 2 * 100;
+  return { precio, dias, tna, tea, md, paridad };
+}
+
 function calcMetricas(inst) {
   const precio = precios[inst.ticker] || null;
   const dias   = diasAlVenc(inst.venc);
+  if (usaIndicadores1816(inst)) return metricasDe1816(inst, precio, dias);
   const hoy    = new Date(); hoy.setHours(0,0,0,0);
   const liq    = sumarDiasHabiles(hoy, 1); // settlement T+1 hábil (precios de Eco Valores son T+1)
 
@@ -926,22 +962,6 @@ function calcMetricas(inst) {
     const m = frecuenciaCupon(inst); // TNA con la periodicidad del cupón
     const tna = (Math.pow(1 + tir, 1/m) - 1) * m * 100;
     const md  = calcMD(flujos, precio, tir, m); // M.Dur en la misma convención (semestral)
-    return { precio, dias, tna, tea, md, paridad };
-  }
-
-  // ── SUBSOBERANOS (provinciales en USD) ────────────────────────
-  // Único grupo que NO se calcula localmente: no tenemos su cronograma de flujos (1816 no
-  // expone cupones/amortizaciones), así que se muestran los indicadores que 1816 ya calcula
-  // y que el proxy trae junto con el precio. La TNA se deriva de la TEA en convención
-  // semestral, igual que el resto de los hard-dollar con cupón.
-  if (inst.grupo === 'subsoberano') {
-    const ind = indicadores1816[String(inst.ticker).toUpperCase()] || {};
-    const num = v => (typeof v === 'number' && isFinite(v)) ? v : null;
-    const teaDec  = num(ind.tea);
-    const paridad = num(ind.paridad) === null ? null : num(ind.paridad) * 100;
-    const md      = num(ind.durationMod);
-    const tea = teaDec === null ? null : teaDec * 100;
-    const tna = teaDec === null ? null : (Math.pow(1 + teaDec, 1/2) - 1) * 2 * 100;
     return { precio, dias, tna, tea, md, paridad };
   }
 
@@ -1502,7 +1522,9 @@ async function fetchPreciosYahoo(force = false) {
     const resp = await fetch(PROXY_1816 + (force ? '?fresh=1' : ''), {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify(vivos.map(i => ({ ticker: i.ticker, grupo: i.grupo }))),
+      // `ind` marca los que necesitan los indicadores de 1816 (no tienen cronograma cargado).
+      // Sólo a esos se les piden campos extra, que es lo que encarece la consulta.
+      body: JSON.stringify(vivos.map(i => ({ ticker: i.ticker, grupo: i.grupo, ind: usaIndicadores1816(i) }))),
     });
     if (!resp.ok) throw new Error('proxy HTTP ' + resp.status);
     const data = await resp.json();

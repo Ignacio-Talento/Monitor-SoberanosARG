@@ -88,8 +88,8 @@ async function getToken(apiKey) {
 
 // Consulta 1816 para una lista de tickers en una moneda. -> { ticker: {campo: valor, ...} }
 // `fecha` (YYYY-MM-DD) opcional: si va, se pide esa rueda; si es null, la de hoy.
-// `campos` permite pedir más que el precio (los subsoberanos usan los indicadores ya
-// calculados por 1816 en vez de computarlos localmente: no tenemos sus flujos).
+// `campos` permite pedir más que el precio: los instrumentos sin cronograma de flujos cargado
+// usan los indicadores que ya calcula 1816 en vez de computarlos localmente.
 async function fetch1816(apiKey, tickers, moneda, fecha, campos = [CAMPO]) {
   const out = {};
   for (let i = 0; i < tickers.length; i += MAX_TICKERS) {
@@ -155,21 +155,23 @@ async function fallbackEco(grupo, ticker) {
 async function computePrecios(env, items) {
   const apiKey = env.API_1816_KEY;
 
-  // Se agrupa por moneda, salvo los subsoberanos, que van en su propio lote porque
-  // se les piden campos extra (los indicadores que calcula 1816).
-  const porMoneda = {}; // clave -> [{ eco, t, grupo, moneda }]
+  // Se agrupa por moneda, y aparte los que piden indicadores (`ind`), porque a esos se les
+  // piden campos extra y el costo de 1816 es tickers x (campos + 1). El front marca `ind`
+  // por instrumento: son los bonos con cupón que todavía no tienen cronograma cargado.
+  const porMoneda = {}; // clave -> [{ eco, t, grupo, moneda, ind }]
   for (const it of items) {
     const eco = String(it.ticker || "").trim().toUpperCase();
     const grupo = String(it.grupo || "").trim();
     if (!eco || !grupo) continue;
     const m = map1816(grupo, eco);
     if (!m) continue;
-    const clave = grupo === "subsoberano" ? "subsoberano" : m.moneda;
-    (porMoneda[clave] ||= []).push({ eco, t: m.t, grupo, moneda: m.moneda });
+    const ind = it.ind === true;
+    const clave = ind ? "ind:" + m.moneda : m.moneda;
+    (porMoneda[clave] ||= []).push({ eco, t: m.t, grupo, moneda: m.moneda, ind });
   }
 
   const result = {};
-  const indicadores = {};   // solo subsoberanos: TIR/M.Dur/paridad que ya calcula 1816
+  const indicadores = {};   // solo los pedidos con `ind`: TIR/M.Dur/paridad que ya calcula 1816
   const monedas = Object.keys(porMoneda);
   if (apiKey && monedas.length) {
     // Una sola resolución de fecha para todas las monedas (fin de semana/feriado -> última rueda).
@@ -180,16 +182,16 @@ async function computePrecios(env, items) {
       const moneda = pares[0].moneda;
       // Deduplicar: los duales mandan 2 filas por ticker y gastarían cupo del lote de 50.
       const tickers = [...new Set(pares.map((p) => p.t))];
-      // Para subsoberanos pedimos además los indicadores: no tenemos su cronograma de
-      // flujos, así que el front muestra los que calcula 1816 en vez de computarlos.
-      const esSubsob = pares[0] && pares[0].grupo === "subsoberano";
-      const campos = esSubsob ? [CAMPO, "tea", "durationMod", "paridad"] : [CAMPO];
+      // A los marcados con `ind` se les piden además los indicadores que calcula 1816,
+      // porque no tenemos su cronograma para computarlos acá.
+      const pideInd = pares[0] && pares[0].ind;
+      const campos = pideInd ? [CAMPO, "tea", "durationMod", "paridad"] : [CAMPO];
       const datos = await fetch1816(apiKey, tickers, moneda, fecha, campos);
       for (const p of pares) {
         const fila = datos[p.t];
         if (!fila) continue;
         if (typeof fila[CAMPO] === "number") result[p.eco] = fila[CAMPO];
-        if (esSubsob) {
+        if (pideInd) {
           indicadores[p.eco] = {
             tea: fila.tea, durationMod: fila.durationMod, paridad: fila.paridad,
           };
