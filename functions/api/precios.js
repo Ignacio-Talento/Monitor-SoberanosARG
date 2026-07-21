@@ -31,6 +31,7 @@ const MAX_ECO_FALLBACK = 20; // tope de consultas a Eco (cada una es un subreque
 const MONEDA = {
   lecap: "ars", tasafija: "ars", cer: "ars", tamar: "ars", usdlinked: "ars", dual: "ars",
   usdbonares: "mep", usdglobales: "mep", usdbopreal: "mep", onusd: "mep",
+  subsoberano: "mep",
 };
 // Bopreales: ticker 1816 irregular (mapa explícito)
 // Patrón: BP{XX}D -> BPO{XX}. Se deja explícito por si alguna serie no lo respeta.
@@ -83,15 +84,17 @@ async function getToken(apiKey) {
   return _token;
 }
 
-// Consulta precioDirty a 1816 para una lista de tickers 1816 en una moneda. -> { ticker: precio }
+// Consulta 1816 para una lista de tickers en una moneda. -> { ticker: {campo: valor, ...} }
 // `fecha` (YYYY-MM-DD) opcional: si va, se pide esa rueda; si es null, la de hoy.
-async function fetch1816(apiKey, tickers, moneda, fecha) {
+// `campos` permite pedir más que el precio (los subsoberanos usan los indicadores ya
+// calculados por 1816 en vez de computarlos localmente: no tenemos sus flujos).
+async function fetch1816(apiKey, tickers, moneda, fecha, campos = [CAMPO]) {
   const out = {};
   for (let i = 0; i < tickers.length; i += MAX_TICKERS) {
     const lote = tickers.slice(i, i + MAX_TICKERS);
     const qs = new URLSearchParams();
     lote.forEach((t) => qs.append("tickers", t));
-    qs.append("campos", CAMPO);
+    campos.forEach((c) => qs.append("campos", c));
     qs.append("moneda", moneda);
     if (fecha) qs.append("fechaOperacion", fecha);
 
@@ -109,8 +112,7 @@ async function fetch1816(apiKey, tickers, moneda, fecha) {
     const d = await r.json();
     const inst = d.instrumentos || {};
     for (const t of lote) {
-      const v = inst[t] && inst[t][CAMPO];
-      if (typeof v === "number") out[t] = v;
+      if (inst[t]) out[t] = inst[t];
     }
   }
   return out;
@@ -131,7 +133,9 @@ async function resolverFecha(apiKey, tickerRef, moneda) {
     if (dow === 0 || dow === 6) continue;             // fin de semana: ni consultamos
     const fecha = i === 0 ? null : d.toISOString().slice(0, 10);
     const r = await fetch1816(apiKey, [tickerRef], moneda, fecha);
-    if (Object.keys(r).length) return fecha;          // null = hoy tiene datos
+    // Ojo: 1816 devuelve el instrumento aunque no haya operado (con el campo en null),
+    // así que hay que mirar el precio, no la presencia de la clave.
+    if (r[tickerRef] && typeof r[tickerRef][CAMPO] === "number") return fecha;
   }
   return null;
 }
@@ -149,43 +153,63 @@ async function fallbackEco(grupo, ticker) {
 async function computePrecios(env, items) {
   const apiKey = env.API_1816_KEY;
 
-  const porMoneda = {}; // moneda -> [{ eco, t }]
+  // Se agrupa por moneda, salvo los subsoberanos, que van en su propio lote porque
+  // se les piden campos extra (los indicadores que calcula 1816).
+  const porMoneda = {}; // clave -> [{ eco, t, grupo, moneda }]
   for (const it of items) {
     const eco = String(it.ticker || "").trim().toUpperCase();
     const grupo = String(it.grupo || "").trim();
     if (!eco || !grupo) continue;
     const m = map1816(grupo, eco);
-    if (m) (porMoneda[m.moneda] ||= []).push({ eco, t: m.t });
+    if (!m) continue;
+    const clave = grupo === "subsoberano" ? "subsoberano" : m.moneda;
+    (porMoneda[clave] ||= []).push({ eco, t: m.t, grupo, moneda: m.moneda });
   }
 
   const result = {};
+  const indicadores = {};   // solo subsoberanos: TIR/M.Dur/paridad que ya calcula 1816
   const monedas = Object.keys(porMoneda);
   if (apiKey && monedas.length) {
     // Una sola resolución de fecha para todas las monedas (fin de semana/feriado -> última rueda).
     const ref = porMoneda[monedas[0]][0];
-    const fecha = await resolverFecha(apiKey, ref.t, monedas[0]);
-    for (const moneda of monedas) {
-      const pares = porMoneda[moneda];
+    const fecha = await resolverFecha(apiKey, ref.t, ref.moneda);
+    for (const clave of monedas) {
+      const pares = porMoneda[clave];
+      const moneda = pares[0].moneda;
       // Deduplicar: los duales mandan 2 filas por ticker y gastarían cupo del lote de 50.
       const tickers = [...new Set(pares.map((p) => p.t))];
-      const precios = await fetch1816(apiKey, tickers, moneda, fecha);
-      for (const p of pares) if (p.t in precios) result[p.eco] = precios[p.t];
+      // Para subsoberanos pedimos además los indicadores: no tenemos su cronograma de
+      // flujos, así que el front muestra los que calcula 1816 en vez de computarlos.
+      const esSubsob = pares[0] && pares[0].grupo === "subsoberano";
+      const campos = esSubsob ? [CAMPO, "tea", "durationMod", "paridad"] : [CAMPO];
+      const datos = await fetch1816(apiKey, tickers, moneda, fecha, campos);
+      for (const p of pares) {
+        const fila = datos[p.t];
+        if (!fila) continue;
+        if (typeof fila[CAMPO] === "number") result[p.eco] = fila[CAMPO];
+        if (esSubsob) {
+          indicadores[p.eco] = {
+            tea: fila.tea, durationMod: fila.durationMod, paridad: fila.paridad,
+          };
+        }
+      }
     }
   }
 
   // Fallback a Eco SOLO para lo que 1816 no resolvió. Acotado: cada uno es un subrequest
   // y Cloudflare corta en ~50 por request (si no, un día sin datos deja la respuesta a medias).
-  const pendientes = [...new Set(
-    items.map((it) => String(it.ticker || "").trim().toUpperCase())
-         .filter((eco) => eco && !(eco in result))
-  )].slice(0, MAX_ECO_FALLBACK);
   const grupoDe = {};
   for (const it of items) grupoDe[String(it.ticker || "").trim().toUpperCase()] = String(it.grupo || "").trim();
+  const pendientes = [...new Set(
+    items.map((it) => String(it.ticker || "").trim().toUpperCase())
+         // Los subsoberanos no están en Eco: pedirlos sólo gastaría subrequests.
+         .filter((eco) => eco && !(eco in result) && grupoDe[eco] !== "subsoberano")
+  )].slice(0, MAX_ECO_FALLBACK);
   for (const eco of pendientes) {
     const p = await fallbackEco(grupoDe[eco], eco);
     if (p) result[eco] = p;
   }
-  return result;
+  return { precios: result, indicadores };
 }
 
 // --- helpers HTTP ---
@@ -239,14 +263,14 @@ export async function onRequest(context) {
     if (hit) return hit;
   }
 
-  let precios;
+  let datos;   // { precios: {ticker: precio}, indicadores: {ticker: {...}} }
   try {
-    precios = await computePrecios(env, items);
+    datos = await computePrecios(env, items);
   } catch (e) {
     return json({ error: String(e && e.message || e) }, 502);
   }
 
-  const resp = json(precios, 200, { "cache-control": `public, max-age=${CACHE_TTL}` });
+  const resp = json(datos, 200, { "cache-control": `public, max-age=${CACHE_TTL}` });
   context.waitUntil(cache.put(cacheKey, resp.clone()));
   return resp;
 }

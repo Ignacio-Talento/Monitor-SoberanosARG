@@ -299,6 +299,9 @@ let instrumentos = []; // array plano ordenado: { grupo, ...datos }
 let precios = cargarPreciosGuardados(); // persiste mientras la pestaña esté abierta (sessionStorage)
 let bcraData = { cer: {}, tamar: {}, usd: {}, usdHoy: null, tamarReciente: null, caucion1d: null, uva: null, plazo30d: null, riesgopais: null };
 let historicos = {}; // { ticker: { 'YYYY-MM-DD': precio } }
+// Indicadores que calcula 1816 (tea/durationMod/paridad), sólo para los grupos de los que
+// NO tenemos cronograma de flujos y por eso no se computan localmente (hoy: subsoberanos).
+let indicadores1816 = {};
 let _precioTimer = {};
 
 // ── GRUPOS (orden de aparición en tabla) ──────────────────────
@@ -312,6 +315,7 @@ const GRUPOS = [
   { key: 'usdglobales', label: 'USD GLOBALES'  },
   { key: 'usdbopreal',  label: 'USD BOPREALES' },
   { key: 'onusd',       label: 'ON USD'         },
+  { key: 'subsoberano', label: 'SUBSOBERANOS'   },
   { key: 'dual',        label: 'DUALES'        },
 ];
 
@@ -322,7 +326,7 @@ const GRUPOS = [
 const GRUPOS_OCULTOS = ['onusd'];
 
 // Grupos que se muestran en cada moneda. Linked va en pesos (cotiza/liquida en $).
-const GRUPOS_DOLAR = ['usdlinked', 'usdbonares', 'usdglobales', 'usdbopreal', 'onusd'];
+const GRUPOS_DOLAR = ['usdlinked', 'usdbonares', 'usdglobales', 'usdbopreal', 'onusd', 'subsoberano'];
 function monedaDeGrupo(grupo) { return GRUPOS_DOLAR.includes(grupo) ? 'dolares' : 'pesos'; }
 let monedaActiva = 'pesos'; // 'pesos' (default) | 'dolares'
 
@@ -925,6 +929,22 @@ function calcMetricas(inst) {
     return { precio, dias, tna, tea, md, paridad };
   }
 
+  // ── SUBSOBERANOS (provinciales en USD) ────────────────────────
+  // Único grupo que NO se calcula localmente: no tenemos su cronograma de flujos (1816 no
+  // expone cupones/amortizaciones), así que se muestran los indicadores que 1816 ya calcula
+  // y que el proxy trae junto con el precio. La TNA se deriva de la TEA en convención
+  // semestral, igual que el resto de los hard-dollar con cupón.
+  if (inst.grupo === 'subsoberano') {
+    const ind = indicadores1816[String(inst.ticker).toUpperCase()] || {};
+    const num = v => (typeof v === 'number' && isFinite(v)) ? v : null;
+    const teaDec  = num(ind.tea);
+    const paridad = num(ind.paridad) === null ? null : num(ind.paridad) * 100;
+    const md      = num(ind.durationMod);
+    const tea = teaDec === null ? null : teaDec * 100;
+    const tna = teaDec === null ? null : (Math.pow(1 + teaDec, 1/2) - 1) * 2 * 100;
+    return { precio, dias, tna, tea, md, paridad };
+  }
+
   return { precio, dias, tna: null, tea: null, md: null, paridad: null };
 }
 
@@ -1366,6 +1386,21 @@ function parsearExcel(buffer) {
       });
     }
 
+    // Subsoberanos (provinciales USD): hoja PARAMÉTRICA, sin cronograma de flujos.
+    // Para este grupo el monitor no calcula nada: muestra los indicadores de 1816
+    // (ver la rama 'subsoberano' en calcMetricas). Sólo hacen falta ticker, nombre y venc.
+    if (wb.SheetNames.includes('Subsoberanos')) {
+      const rows = XLSX.utils.sheet_to_json(wb.Sheets['Subsoberanos'], { defval: '', raw: false });
+      rows.filter(r => String(r['Ticker']||'').trim()).forEach(r => {
+        result.push({
+          grupo: 'subsoberano',
+          ticker: String(r['Ticker']).trim(),
+          nombre: String(r['Nombre']||'').trim(),
+          venc:   excelSerialToDate(r['Fecha Vencimiento'] || r['Fecha Vencimineto']),
+        });
+      });
+    }
+
     // ── DUALES ───────────────────────────────────────────────────
     if (wb.SheetNames.includes('Duales')) {
       const ws = wb.Sheets['Duales'];
@@ -1472,8 +1507,12 @@ async function fetchPreciosYahoo(force = false) {
     if (!resp.ok) throw new Error('proxy HTTP ' + resp.status);
     const data = await resp.json();
     if (data && data.error) throw new Error(data.error);
+    // El proxy devuelve { precios, indicadores }. Se tolera el formato plano anterior
+    // por si quedó una respuesta vieja en caché.
+    const mapaPrecios = data.precios || data;
+    indicadores1816 = data.indicadores || {};
     for (const inst of vivos) {
-      const p = data[inst.ticker.toUpperCase()];
+      const p = mapaPrecios[inst.ticker.toUpperCase()];
       if (p && p > 0) { precios[inst.ticker] = p; ok++; } else err++;
     }
     usados1816 = true;
