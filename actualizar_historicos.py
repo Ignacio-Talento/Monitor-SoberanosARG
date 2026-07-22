@@ -38,6 +38,8 @@ MONEDA_1816 = {
     'USD Linked': 'ars', 'Duales': 'ars',
     'USD Bonares': 'mep', 'USD Globales': 'mep',
     'USD Bopreales': 'mep', 'ON USD': 'mep',
+    # Solapa ONs (ley local + NY): tickers en forma D, se piden a 1816 en mep con swap D->O.
+    'ONs': 'mep',
 }
 # Bopreales: el ticker de 1816 es irregular (no es un simple swap), mapa explícito.
 MAPA_BOPREAL_1816 = {
@@ -61,7 +63,7 @@ def resolver_1816(sheet_name, eco_ticker, master_ticker):
         return master_ticker, moneda
     if sheet_name == 'USD Bopreales':
         return MAPA_BOPREAL_1816.get(eco_ticker), moneda
-    if sheet_name == 'ON USD':
+    if sheet_name in ('ON USD', 'ONs'):
         t = (eco_ticker[:-1] + 'O') if eco_ticker.endswith('D') else None
         return t, moneda
     return eco_ticker, moneda  # pesos: idéntico
