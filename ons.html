@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Monitor Bonos</title>
+<title>Monitor ONs</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@300;400;600;700&display=swap" rel="stylesheet"><style>body{font-variant-numeric:tabular-nums;}</style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js">cargarExcelGitHub();
 </script>
@@ -198,8 +198,8 @@
 
   <!-- NAVEGACION TABS -->
   <div class="nav-tabs">
-    <a class="nav-tab active" href="bonos.html">Monitor</a>
-    <a class="nav-tab" href="ons.html">ONs</a>
+    <a class="nav-tab" href="bonos.html">Monitor</a>
+    <a class="nav-tab active" href="ons.html">ONs</a>
     <a class="nav-tab" href="senderoCER.html">Sendero CER</a>
     <a class="nav-tab" href="senderoDL.html">Sendero DL</a>
     <a class="nav-tab" href="senderoTAMAR.html">Sendero TAMAR</a>
@@ -210,9 +210,6 @@
   </div>
 
   <div class="alert" id="alert"></div>
-
-  <!-- DETECTOR: altas (nuevos en 1816 sin cargar) y bajas (vencidos) vs Instrumentos.xlsx -->
-  <div id="detector-banner" class="detector-banner" style="display:none"></div>
 
   <!-- TOOLBAR -->
   <div class="toolbar">
@@ -272,10 +269,10 @@
     </div>
   </div>
 
-  <!-- TOGGLE MONEDA -->
+  <!-- TOGGLE LEY (sub-solapas: ONs ley local / ley extranjera NY) -->
   <div class="moneda-toggle">
-    <button id="btn-pesos" onclick="setMoneda('pesos')" class="moneda-btn moneda-btn-active">Pesos</button>
-    <button id="btn-dolares" onclick="setMoneda('dolares')" class="moneda-btn">Dólares</button>
+    <button id="btn-local" onclick="setLey('local')" class="moneda-btn moneda-btn-active">Ley Local</button>
+    <button id="btn-ny" onclick="setLey('ny')" class="moneda-btn">Ley Extranjera (NY)</button>
   </div>
 
   <!-- TABLAS POR TIPO DE BONO (una por grupo, header propio ordenable) -->
@@ -305,31 +302,17 @@ let historicos = {}; // { ticker: { 'YYYY-MM-DD': precio } }
 let indicadores1816 = {};
 let _precioTimer = {};
 
-// ── GRUPOS (orden de aparición en tabla) ──────────────────────
+// ── GRUPOS (una tabla por ley; sub-solapa 'Ley Local' / 'Ley Extranjera') ─────
 const GRUPOS = [
-  { key: 'lecap',      label: 'LECAPS'       },
-  { key: 'tasafija',   label: 'TASA FIJA'    },
-  { key: 'cer',        label: 'CER'          },
-  { key: 'tamar',      label: 'TAMAR'        },
-  { key: 'usdlinked',  label: 'USD LINKED'   },
-  { key: 'usdbonares', label: 'USD BONARES'  },
-  { key: 'usdglobales', label: 'USD GLOBALES'  },
-  { key: 'usdbopreal',  label: 'USD BOPREALES' },
-  { key: 'onusd',       label: 'ON USD'         },
-  { key: 'subsoberano', label: 'SUBSOBERANOS'   },
-  { key: 'dual',        label: 'DUALES'        },
+  { key: 'onlocal', label: 'ONs · LEY LOCAL'          },
+  { key: 'onny',    label: 'ONs · LEY EXTRANJERA (NY)' },
 ];
+const GRUPOS_OCULTOS = [];
 
-// Grupos que están cargados en Instrumentos.xlsx pero NO se muestran en el Monitor.
-// Se filtran acá en vez de borrarlos del Excel: reconstruir el cronograma de flujos de un
-// bono con cupón es difícil (1816 no expone flujos), así que conviene conservar el dato.
-// Para volver a mostrarlos, sacarlos de esta lista.
-const GRUPOS_OCULTOS = ['onusd'];
-
-// Grupos que se muestran en cada moneda. Linked va en pesos (cotiza/liquida en $).
-const GRUPOS_DOLAR = ['usdlinked', 'usdbonares', 'usdglobales', 'usdbopreal', 'onusd', 'subsoberano'];
-function monedaDeGrupo(grupo) { return GRUPOS_DOLAR.includes(grupo) ? 'dolares' : 'pesos'; }
-let monedaActiva = 'pesos'; // 'pesos' (default) | 'dolares'
+// En esta página el toggle no separa monedas sino LEYES: cada grupo es una ley y se
+// muestra el que esté activo. Se reusa la maquinaria de 'monedaActiva' del Monitor.
+function monedaDeGrupo(grupo) { return grupo === 'onlocal' ? 'local' : 'ny'; }
+let monedaActiva = 'local'; // 'local' (default) | 'ny'
 
 // ── HELPERS FECHA ─────────────────────────────────────────────
 function excelSerialToDate(serial) {
@@ -1109,19 +1092,20 @@ async function cargarHistoricos() {
   }
 }
 
-function setMoneda(m) {
-  monedaActiva = m;
-  document.getElementById('btn-pesos').classList.toggle('moneda-btn-active', m === 'pesos');
-  document.getElementById('btn-dolares').classList.toggle('moneda-btn-active', m === 'dolares');
+function setLey(l) {
+  monedaActiva = l;
+  document.getElementById('btn-local').classList.toggle('moneda-btn-active', l === 'local');
+  document.getElementById('btn-ny').classList.toggle('moneda-btn-active', l === 'ny');
   renderTabla();
 }
 
 // ── ORDENAMIENTO DE COLUMNAS (dentro de cada grupo de bonos) ──
 // Columnas: label + ancho % (para colgroup) + accessor de orden + cómo se dibuja la celda.
 const COLS = [
-  { k:'ticker',  label:'Ticker',      w:8.0,  left:true, get:f=>f.inst.ticker,     cell:f=>`<td class="td-ticker">${f.inst.ticker}</td>` },
-  { k:'nombre',  label:'Nombre',      w:14.2, left:true, get:f=>f.inst.nombre||'', cell:f=>`<td class="td-nombre">${f.inst.nombre||''}</td>` },
-  { k:'precio',  label:'Precio',      w:10.4, get:f=>f.m.precio, cell:f=>`<td><input class="precio-cell-input${f.m.precio?' has-value':''}" id="inp-${f.inst.ticker}" type="number" step="0.01" placeholder="—" value="${f.m.precio?f.m.precio.toFixed(2):''}" oninput="onPrecioChange('${f.inst.ticker}', this.value)"></td>` },
+  { k:'ticker',  label:'Ticker',      w:7.0,  left:true, get:f=>f.inst.ticker,     cell:f=>`<td class="td-ticker">${f.inst.ticker}</td>` },
+  { k:'nombre',  label:'Nombre',      w:13.0, left:true, get:f=>f.inst.nombre||'', cell:f=>`<td class="td-nombre">${f.inst.nombre||''}</td>` },
+  { k:'divisa',  label:'Divisa',      w:5.4,  left:true, get:f=>f.inst.divisa||'', cell:f=>`<td>${f.inst.divisa||'—'}</td>` },
+  { k:'precio',  label:'Precio',      w:9.6,  get:f=>f.m.precio, cell:f=>`<td><input class="precio-cell-input${f.m.precio?' has-value':''}" id="inp-${f.inst.ticker}" type="number" step="0.01" placeholder="—" value="${f.m.precio?f.m.precio.toFixed(2):''}" oninput="onPrecioChange('${f.inst.ticker}', this.value)"></td>` },
   { k:'venc',    label:'Vencimiento', w:9.3,  get:f=>f.dias,     cell:f=>`<td>${fmtDate(f.inst.venc)}</td>` },
   { k:'dias',    label:'Días',        w:5.6,  get:f=>f.dias,     cell:f=>`<td>${f.m.dias!==null?`<span class="${f.m.dias<30?'val-red':''}">${f.m.dias}d</span>`:'—'}</td>` },
   { k:'md',      label:'M. Dur.',     w:6.4,  get:f=>f.m.md,      cell:f=>`<td>${dash(f.m.md,1)}</td>` },
@@ -1200,7 +1184,7 @@ function renderTabla() {
     </table>`;
   }
 
-  cont.innerHTML = html || `<div class="empty-state" style="padding:40px;">No hay instrumentos en ${monedaActiva === 'pesos' ? 'pesos' : 'dólares'}</div>`;
+  cont.innerHTML = html || `<div class="empty-state" style="padding:40px;">No hay ONs de ${monedaActiva === 'local' ? 'ley local' : 'ley extranjera'} con datos</div>`;
 
   // Guardar datos enriquecidos en localStorage para curvas.html
   try {
@@ -1216,8 +1200,26 @@ function renderTabla() {
 function parsearExcel(buffer) {
   try {
     const wb = XLSX.read(buffer, { type: 'array' });
-    let result = [];   // let: más abajo se reasigna al filtrar los grupos ocultos
+    let result = [];
 
+    // Hoja ONs: paramétrica (Ticker | Nombre | Fecha Vencimiento | Ley | Divisa). Sin
+    // cronograma de flujos -> cada ON usa los indicadores de 1816 (usaIndicadores1816=true)
+    // hasta que se le cargue el cash flow, momento en que pasa sola a cálculo local.
+    if (wb.SheetNames.includes('ONs')) {
+      const rows = XLSX.utils.sheet_to_json(wb.Sheets['ONs'], { defval: '', raw: false });
+      rows.filter(r => String(r['Ticker']||'').trim()).forEach(r => {
+        const ley = String(r['Ley']||'').trim().toLowerCase();
+        result.push({
+          grupo:  ley === 'local' ? 'onlocal' : 'onny',
+          ticker: String(r['Ticker']).trim(),
+          nombre: String(r['Nombre']||'').trim(),
+          venc:   excelSerialToDate(r['Fecha Vencimiento']),
+          divisa: String(r['Divisa']||'').trim(),
+        });
+      });
+    }
+
+    /* ── PARSER DEL MONITOR DESHABILITADO EN ONS.HTML (se conserva por referencia) ──
     // LECAP
     if (wb.SheetNames.includes('LECAPS')) {
       const rows = XLSX.utils.sheet_to_json(wb.Sheets['LECAPS'], { defval: '', raw: false });
@@ -1474,7 +1476,9 @@ function parsearExcel(buffer) {
       });
     }
 
-    // Sacar los grupos ocultos (siguen en el Excel, sólo no se muestran ni se les pide precio)
+    ── FIN PARSER DESHABILITADO ── */
+
+    // (GRUPOS_OCULTOS está vacío en esta página; se deja el filtro por consistencia)
     result = result.filter(i => !GRUPOS_OCULTOS.includes(i.grupo));
 
     // Ordenar por grupo (según GRUPOS) y dentro de cada grupo por días al vencimiento
@@ -1872,8 +1876,6 @@ async function cargarExcelGitHub() {
         if (instrumentos.length && document.visibilityState !== 'hidden') fetchPreciosYahoo(false);
       }, 60 * 1000);
     }
-    // Detectar altas/bajas de títulos vs el universo vivo de 1816 (no bloquea la carga).
-    detectarCambios();
   } catch(e) {
     setStatus('err', 'Error cargando Excel: ' + e.message);
     showAlert('No se pudo cargar Instrumentos.xlsx: ' + e.message);

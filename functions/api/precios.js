@@ -34,6 +34,9 @@ const MONEDA = {
   lecap: "ars", tasafija: "ars", cer: "ars", tamar: "ars", usdlinked: "ars", dual: "ars",
   usdbonares: "mep", usdglobales: "mep", usdbopreal: "mep", onusd: "mep",
   subsoberano: "mep",
+  // ONs de la solapa dedicada (ons.html). Misma moneda/mapeo D->O que onusd; se
+  // separan por ley (local/NY) sólo para el render, no para pedir el precio.
+  onlocal: "mep", onny: "mep",
 };
 // Bopreales: ticker 1816 irregular (mapa explícito)
 // Patrón: BP{XX}D -> BPO{XX}. Se deja explícito por si alguna serie no lo respeta.
@@ -49,7 +52,8 @@ function map1816(grupo, ticker) {
   let t;
   if (grupo === "usdbonares" || grupo === "usdglobales") t = ticker;               // llega sin la D
   else if (grupo === "usdbopreal") t = MAPA_BOPREAL[ticker] || null;
-  else if (grupo === "onusd") t = ticker.endsWith("D") ? ticker.slice(0, -1) + "O" : null;
+  else if (grupo === "onusd" || grupo === "onlocal" || grupo === "onny")
+    t = ticker.endsWith("D") ? ticker.slice(0, -1) + "O" : null;
   else t = ticker;                                                                  // pesos: idéntico
   return t ? { t, moneda } : null;
 }
@@ -204,10 +208,11 @@ async function computePrecios(env, items) {
   // y Cloudflare corta en ~50 por request (si no, un día sin datos deja la respuesta a medias).
   const grupoDe = {};
   for (const it of items) grupoDe[String(it.ticker || "").trim().toUpperCase()] = String(it.grupo || "").trim();
+  const SIN_ECO = new Set(["subsoberano", "onlocal", "onny"]);
   const pendientes = [...new Set(
     items.map((it) => String(it.ticker || "").trim().toUpperCase())
-         // Los subsoberanos no están en Eco: pedirlos sólo gastaría subrequests.
-         .filter((eco) => eco && !(eco in result) && grupoDe[eco] !== "subsoberano")
+         // Subsoberanos y ONs de ley local/NY no están en Eco: pedirlos sólo gastaría subrequests.
+         .filter((eco) => eco && !(eco in result) && !SIN_ECO.has(grupoDe[eco]))
   )].slice(0, MAX_ECO_FALLBACK);
   for (const eco of pendientes) {
     const p = await fallbackEco(grupoDe[eco], eco);
