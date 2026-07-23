@@ -495,7 +495,7 @@ async function pintarDetector(data) {
                 .map(i => [i.ticker, i])
   ).values()];
 
-  if (!nuevos.length && !faltantes.length && !bajas.length) { el.style.display = 'none'; return; }
+  if (!nuevos.length && !faltantes.length && !bajas.length && !filtradosPorVol) { el.style.display = 'none'; return; }
 
   const tabla = (lista) => {
     let h = `<table class="det-tabla"><tr><th>Ticker</th><th>Grupo</th><th>Emisión</th><th>Vencimiento</th><th></th></tr>`;
@@ -513,6 +513,10 @@ async function pintarDetector(data) {
       ? ` · ${filtradosPorVol} ON/subsob omitido(s) por volumen < 1M nominal (últimas 3 ruedas)` : '';
     html += `<div class="det-sec"><b>🆕 ${nuevos.length} título(s) nuevo(s) en 1816 (últimos ${DETECTOR_VENTANA_DIAS} días)</b>` +
       `<span class="det-hint">agregalos a Instrumentos.xlsx (cupones/margen los completás vos)${notaVol}</span>` + tabla(nuevos) + `</div>`;
+  } else if (filtradosPorVol) {
+    // Hubo altas nuevas de ONs/subsob pero ninguna llega al umbral de liquidez.
+    html += `<div class="det-sec"><b>🆕 0 títulos nuevos para sumar</b>` +
+      `<span class="det-hint">${filtradosPorVol} ON/subsob nuevo(s) omitido(s): operaron < 1M nominal en promedio de las últimas 3 ruedas</span></div>`;
   }
   if (faltantes.length) {
     // Con las curvas de provinciales y corporativos esto son cientos de títulos: volcarlos
