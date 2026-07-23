@@ -401,6 +401,12 @@ const DETECTOR_VENTANA_DIAS   = 10;                // "nuevo" = emitido en los �
 const DETECTOR_FALTANTES_DESDE = '2025-01-01';     // "faltante": no cargado pero emitido desde esta fecha
 const DETECTOR_MAX_FALTANTES  = 10;                // cuántos faltantes se listan (el resto va como conteo) (excluye legacy)
 const DETECTOR_IGNORE_KEY     = 'bonos_detector_ignorar';
+// Filtro de liquidez para ALTAS nuevas de ONs y subsoberanos: sólo se sugiere sumar un título
+// nuevo de estos grupos si operó, en promedio de las últimas 3 ruedas, más de este umbral de
+// NOMINALES (via /api/volumen). Los nuevos de grupos soberanos no se filtran por volumen.
+const DETECTOR_VOL_GRUPOS = new Set(['onusd', 'oncorp', 'subsoberano']);
+const DETECTOR_VOL_MIN    = 1000000;
+const _volCache = {};   // ticker 1816 -> volumen nominal promedio (se pide una vez)
 
 // Lista compartida (repo) + override personal (localStorage del navegador).
 let _ignorarRepo = null;
@@ -434,7 +440,7 @@ async function detectarCambios() {
   pintarDetector(window._universo1816);
 }
 
-function pintarDetector(data) {
+async function pintarDetector(data) {
   const el = document.getElementById('detector-banner');
   if (!el || !data) return;
   const vivos = data.instrumentos || [];
@@ -460,10 +466,28 @@ function pintarDetector(data) {
     return true;
   });
   // NUEVOS: emitidos en los últimos DETECTOR_VENTANA_DIAS días.
-  const nuevos = candidatos.filter(x => (hoyMs - emiMs(x)) <= ventanaMs).sort(orden);
+  let nuevos = candidatos.filter(x => (hoyMs - emiMs(x)) <= ventanaMs).sort(orden);
   // FALTANTES: más viejos que la ventana pero emitidos desde DETECTOR_FALTANTES_DESDE (no legacy).
   const desdeMs = parseLocalDate(DETECTOR_FALTANTES_DESDE).getTime();
   const faltantes = candidatos.filter(x => (hoyMs - emiMs(x)) > ventanaMs && emiMs(x) >= desdeMs).sort(orden);
+
+  // Filtro de liquidez para las ALTAS de ONs/subsoberanos: se piden los volúmenes que falten
+  // (una sola vez, cacheados) y se descartan los que no operaron > DETECTOR_VOL_MIN nominales
+  // en promedio de las últimas 3 ruedas. Si /api/volumen falla, no se filtra (mejor mostrar de más).
+  const aMedir = nuevos.filter(x => DETECTOR_VOL_GRUPOS.has(x.grupo) && !(x.ticker in _volCache));
+  if (aMedir.length) {
+    try {
+      const r = await fetch('/api/volumen', {
+        method: 'POST', headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ tickers: aMedir.map(x => x.ticker) }),
+      });
+      if (r.ok) Object.assign(_volCache, await r.json());
+    } catch { /* sin volumen: no se filtra */ }
+  }
+  const nuevosCrudos = nuevos.length;
+  nuevos = nuevos.filter(x =>
+    !DETECTOR_VOL_GRUPOS.has(x.grupo) || (_volCache[x.ticker] || 0) > DETECTOR_VOL_MIN);
+  const filtradosPorVol = nuevosCrudos - nuevos.length;
 
   // BAJAS: instrumentos del Excel ya vencidos (dedup por ticker; los duales duplican filas)
   const bajas = [...new Map(
@@ -485,8 +509,10 @@ function pintarDetector(data) {
 
   let html = '<button class="det-close" title="cerrar" onclick="this.parentElement.style.display=\'none\'">×</button>';
   if (nuevos.length) {
+    const notaVol = filtradosPorVol
+      ? ` · ${filtradosPorVol} ON/subsob omitido(s) por volumen < 1M nominal (últimas 3 ruedas)` : '';
     html += `<div class="det-sec"><b>🆕 ${nuevos.length} título(s) nuevo(s) en 1816 (últimos ${DETECTOR_VENTANA_DIAS} días)</b>` +
-      `<span class="det-hint">agregalos a Instrumentos.xlsx (cupones/margen los completás vos)</span>` + tabla(nuevos) + `</div>`;
+      `<span class="det-hint">agregalos a Instrumentos.xlsx (cupones/margen los completás vos)${notaVol}</span>` + tabla(nuevos) + `</div>`;
   }
   if (faltantes.length) {
     // Con las curvas de provinciales y corporativos esto son cientos de títulos: volcarlos
