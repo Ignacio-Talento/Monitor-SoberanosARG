@@ -945,8 +945,8 @@ function calcMetricas(inst) {
     return { precio, dias, tna, tea, md, paridad };
   }
 
-  // ── ON USD (Hard Dollar) ──────────────────────────────────────
-  if (inst.grupo === 'onusd') {
+  // ── ON USD / Subsoberanos (Hard Dollar, USD) ──────────────────
+  if (inst.grupo === 'onusd' || inst.grupo === 'subsoberano') {
     const vt = valorTecnicoTF(inst, liq);
     const paridad = (precio && vt) ? precio / vt * 100 : null;
     if (!precio || !inst.flujos?.length) return { precio, dias, tna: null, tea: null, md: null, paridad };
@@ -1472,6 +1472,34 @@ function parsearExcel(buffer) {
           });
         });
       });
+    }
+
+    // ── FLUJOS (hoja long-format): join por ticker ──────────────
+    // Los subsoberanos (paramétricos) obtienen así su cronograma y pasan de los indicadores
+    // de 1816 a cálculo local (rama subsoberano de calcMetricas), bajando de 5 a 2 créditos.
+    if (wb.SheetNames.includes('Flujos')) {
+      const frows = XLSX.utils.sheet_to_json(wb.Sheets['Flujos'], { defval: '', raw: false });
+      const porTk = {};
+      frows.forEach(r => {
+        const tk = String(r['Ticker']||'').trim();
+        if (!tk || tk === 'Ticker') return;
+        (porTk[tk] = porTk[tk] || []).push({
+          fecha: excelSerialToDate(r['Fecha']),
+          vr:    parseFloat(r['Valor Residual']) || 0,
+          renta: parseFloat(r['Renta']) || 0,
+          amort: parseFloat(r['Amortización']) || 0,
+          total: parseFloat(r['Total']) || 0,
+        });
+      });
+      for (const inst of result) {
+        const fl = porTk[inst.ticker];
+        if (fl && fl.length && !(inst.flujos && inst.flujos.length)) {
+          fl.sort((a,b) => (a.fecha||'').localeCompare(b.fecha||''));
+          inst.flujosAll = fl;
+          inst.flujos = fl.filter(f => f.total > 0);
+          inst.vr = fl.find(f => f.vr > 0)?.vr || 100;
+        }
+      }
     }
 
     // Sacar los grupos ocultos (siguen en el Excel, sólo no se muestran ni se les pide precio)
