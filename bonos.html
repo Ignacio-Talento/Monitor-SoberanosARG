@@ -303,6 +303,29 @@ let historicos = {}; // { ticker: { 'YYYY-MM-DD': precio } }
 // Indicadores que calcula 1816 (tea/durationMod/paridad), sólo para los grupos de los que
 // NO tenemos cronograma de flujos y por eso no se computan localmente (hoy: subsoberanos).
 let indicadores1816 = {};
+// Actividad del día por instrumento (volumen nominal sumando los 3 segmentos + última operación).
+// Viene de /api/actividad (caché 5 min). Es una columna de contexto; no bloquea los precios.
+let actividad = {};
+function actVol(tk){ const a = actividad[tk]; return a && typeof a.vol === 'number' ? a.vol : null; }
+function actUltOp(tk){ const a = actividad[tk]; return a ? a.ultimaOp : null; }
+function actUltOpMs(tk){ const u = actUltOp(tk); const d = u ? new Date(u) : null; return d && !isNaN(d) ? d.getTime() : null; }
+function fmtMiles(v){ return Math.round(v).toLocaleString('es-AR'); }
+function fmtUltOp(iso){
+  if (!iso) return '<span class="no-p">—</span>';
+  const d = new Date(iso); if (isNaN(d)) return '<span class="no-p">—</span>';
+  const art = new Date(d.getTime() - 3 * 3600000); // 1816 devuelve UTC; ART = UTC-3
+  const p = n => String(n).padStart(2, '0');
+  return `${p(art.getUTCDate())}/${p(art.getUTCMonth()+1)} ${p(art.getUTCHours())}:${p(art.getUTCMinutes())}:${p(art.getUTCSeconds())}`;
+}
+async function fetchActividad(vivos){
+  try {
+    const r = await fetch('/api/actividad', {
+      method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(vivos.map(i => ({ ticker: i.ticker, grupo: i.grupo }))),
+    });
+    if (r.ok) { actividad = (await r.json()) || {}; renderTabla(); }
+  } catch { /* columna de contexto: si falla, no rompe nada */ }
+}
 let _precioTimer = {};
 
 // ── GRUPOS (orden de aparición en tabla) ──────────────────────
@@ -1215,6 +1238,8 @@ const COLS = [
   { k:'wtd',     label:'WTD %',       w:6.1,  get:f=>f.wtd, cell:f=>`<td>${renderVariacion(f.wtd)}</td>` },
   { k:'mtd',     label:'MTD %',       w:6.1,  get:f=>f.mtd, cell:f=>`<td>${renderVariacion(f.mtd)}</td>` },
   { k:'ytd',     label:'YTD %',       w:6.7,  get:f=>f.ytd, cell:f=>`<td>${renderVariacion(f.ytd)}</td>` },
+  { k:'voldia',  label:'Vol. día (nom)', w:8.5, get:f=>actVol(f.inst.ticker), cell:f=>`<td>${(()=>{const v=actVol(f.inst.ticker);return v==null?'<span class="no-p">—</span>':fmtMiles(v);})()}</td>` },
+  { k:'ultop',   label:'Últ. op.',    w:9.0,  get:f=>actUltOpMs(f.inst.ticker), cell:f=>`<td style="font-size:11px">${fmtUltOp(actUltOp(f.inst.ticker))}</td>` },
 ];
 const COLGROUP = COLS.map(c => `<col style="width:${c.w}%">`).join('');
 const sortState = {};   // grupo -> { col, dir }   (cada grupo se ordena independiente)
@@ -1699,6 +1724,7 @@ async function fetchPreciosYahoo(force = false) {
   });
   if (force && sinPrecio.length > 0) showAlert(`${sinPrecio.length} tickers sin precio: ${sinPrecio.map(i => i.ticker).join(', ')}`, 'err');
   btn.disabled = false;
+  fetchActividad(vivos); // volumen del día + última operación (columna de contexto, en background)
 }
 
 // ── PERSISTENCIA DE PRECIOS (sessionStorage) ──────────────────
