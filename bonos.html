@@ -441,7 +441,12 @@ async function autoAgregarSubsobLiquidos() {
   try {
     let data = window._universo1816;
     if (!data) { const r = await fetch('/api/instrumentos'); if (!r.ok) return; data = await r.json(); }
-    const universo = data.instrumentos || [];
+    let universo = data.instrumentos || [];
+    // Autosanador: si el universo viene de un caché viejo sin los campos nuevos, se pide fresco.
+    if (universo.length && !('monedaDenom' in universo[0])) {
+      const rf = await fetch('/api/instrumentos?fresh=1');
+      if (rf.ok) universo = (await rf.json()).instrumentos || universo;
+    }
     const cargadas = new Set(instrumentos.map(i => i.ticker.toUpperCase()));
     const hoyMs = Date.now(), ventMs = AUTOADD_DIAS * 86400000;
     const cand = universo.filter(x => {

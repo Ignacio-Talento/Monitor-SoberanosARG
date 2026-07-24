@@ -1895,7 +1895,12 @@ async function autoAgregarLiquidos() {
   try {
     const r = await fetch('/api/instrumentos');
     if (!r.ok) return;
-    const universo = (await r.json()).instrumentos || [];
+    let universo = (await r.json()).instrumentos || [];
+    // Autosanador: si el caché sirve una versión vieja sin los campos nuevos, se pide fresco.
+    if (universo.length && !('monedaDenom' in universo[0])) {
+      const rf = await fetch('/api/instrumentos?fresh=1');
+      if (rf.ok) universo = (await rf.json()).instrumentos || universo;
+    }
     // Ya cargados: forma monitor (D) y forma 1816 (O), para no duplicar.
     const cargadas = new Set();
     for (const i of instrumentos) {
