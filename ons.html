@@ -1882,6 +1882,67 @@ async function cargarFeriados() {
   }
 }
 
+// ── AUTO-ADD de ONs líquidas nuevas ───────────────────────────
+// Incluye automáticamente ONs que 1816 lista y el Excel no tiene, si son nuevas (emitidas en
+// los últimos AUTOADD_DIAS) y líquidas (> AUTOADD_VOL_MIN nominales USD, total de los 3
+// segmentos, prom. últimas 5 ruedas). Aparecen con métricas de 1816 (ind, sin cash flow);
+// cuando se les scrapea el cronograma pasan a cálculo local y ganan retornos.
+const AUTOADD_DIAS    = 180;
+const AUTOADD_VOL_MIN = 100000;
+const _MESAUTO = { '01':'Ene','02':'Feb','03':'Mar','04':'Abr','05':'May','06':'Jun','07':'Jul','08':'Ago','09':'Sep','10':'Oct','11':'Nov','12':'Dic' };
+
+async function autoAgregarLiquidos() {
+  try {
+    const r = await fetch('/api/instrumentos');
+    if (!r.ok) return;
+    const universo = (await r.json()).instrumentos || [];
+    // Ya cargados: forma monitor (D) y forma 1816 (O), para no duplicar.
+    const cargadas = new Set();
+    for (const i of instrumentos) {
+      cargadas.add(i.ticker.toUpperCase());
+      if (i.ticker.endsWith('D')) cargadas.add((i.ticker.slice(0, -1) + 'O').toUpperCase());
+    }
+    const hoyMs = Date.now(), ventMs = AUTOADD_DIAS * 86400000;
+    const cand = universo.filter(x => {
+      if (x.grupo !== 'onusd' && x.grupo !== 'oncorp') return false;      // sólo corporativos
+      if (String(x.monedaDenom || '').toUpperCase() !== 'USD') return false; // hard-dollar
+      const tk = String(x.ticker || '').toUpperCase();
+      if (!tk || tk.includes('@') || tk.includes(' ') || cargadas.has(tk)) return false;
+      const ven = x.venc ? new Date(x.venc) : null; if (ven && ven.getTime() <= hoyMs) return false;
+      const emi = x.emision ? new Date(x.emision) : null;
+      if (!emi || (hoyMs - emi.getTime()) > ventMs) return false;         // sólo nuevas
+      return true;
+    });
+    if (!cand.length) return;
+    // Filtro de liquidez (volumen total). Si /api/volumen falla, NO auto-agregamos.
+    let vol = {};
+    const rv = await fetch('/api/volumen', {
+      method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ tickers: cand.map(x => x.ticker) }),
+    });
+    if (!rv.ok) return;
+    vol = await rv.json();
+    const liquidos = cand.filter(x => (vol[x.ticker.toUpperCase()] || 0) > AUTOADD_VOL_MIN);
+    if (!liquidos.length) return;
+    for (const x of liquidos) {
+      const isin = String(x.isin || '').toUpperCase();
+      const ley  = (isin.startsWith('US') || isin.startsWith('XS')) ? 'ny' : 'local';
+      const tkMon = x.ticker.endsWith('O') ? x.ticker.slice(0, -1) + 'D' : x.ticker; // forma monitor
+      const anio = (x.venc || '').slice(0, 4);
+      instrumentos.push({
+        grupo: ley === 'local' ? 'onlocal' : 'onny',
+        ticker: tkMon,
+        nombre: `${(x.emisor || x.ticker)} ${anio} ⚡`.trim(),  // ⚡ = auto (1816, sin cash flow)
+        venc: (x.venc || '').slice(0, 10),
+        divisa: 'USD',
+        auto: true,
+      });
+    }
+    renderTabla();
+    fetchPreciosYahoo(false); // trae precio + indicadores de los recién agregados
+  } catch { /* el auto-add es un extra: si falla, el monitor sigue igual */ }
+}
+
 async function cargarExcelGitHub() {
   setStatus('loading', 'Cargando Instrumentos.xlsx...');
   try {
@@ -1904,6 +1965,7 @@ async function cargarExcelGitHub() {
         if (instrumentos.length && document.visibilityState !== 'hidden') fetchPreciosYahoo(false);
       }, 60 * 1000);
     }
+    autoAgregarLiquidos(); // en background: suma ONs líquidas nuevas de 1816 (no bloquea)
   } catch(e) {
     setStatus('err', 'Error cargando Excel: ' + e.message);
     showAlert('No se pudo cargar Instrumentos.xlsx: ' + e.message);

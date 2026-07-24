@@ -117,6 +117,11 @@ async function computeUniverso(env) {
         grupo,
         emision: it.fechaEmision || null,
         venc: it.fechaVencimiento || null,
+        // Extra para el auto-add de ONs/subsoberanos líquidos: ISIN (para la ley local/NY),
+        // moneda de denominación (filtro USD) y emisor (para el nombre a mostrar).
+        isin: it.isinCode || null,
+        monedaDenom: it.monedaDenom || null,
+        emisor: it.emisorNombre || null,
       });
     }
   }

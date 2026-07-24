@@ -407,6 +407,8 @@ const DETECTOR_IGNORE_KEY     = 'bonos_detector_ignorar';
 const DETECTOR_VOL_GRUPOS = new Set(['onusd', 'oncorp', 'subsoberano']);
 const DETECTOR_VOL_MIN    = 100000;
 const _volCache = {};   // ticker 1816 -> volumen nominal promedio (se pide una vez)
+// Auto-add de subsoberanos líquidos nuevos (mismo criterio que el detector).
+const AUTOADD_DIAS = 180;   // "nuevo" = emitido en los últimos N días
 
 // Lista compartida (repo) + override personal (localStorage del navegador).
 let _ignorarRepo = null;
@@ -428,6 +430,50 @@ function ignorarTicker(tk) {
   const s = getDetectorIgnorados(); s.add(tk);
   localStorage.setItem(DETECTOR_IGNORE_KEY, JSON.stringify([...s]));
   if (window._universo1816) pintarDetector(window._universo1816); // re-render sin re-consultar
+}
+
+// Auto-add de subsoberanos líquidos nuevos: incluye provinciales USD que 1816 lista y el Excel
+// no tiene, si son nuevos (emitidos en los últimos AUTOADD_DIAS) y > DETECTOR_VOL_MIN nominales
+// (total 3 segmentos, prom. 5 ruedas). Aparecen con métricas de 1816 (ind); el cash flow se
+// scrapea después para pasarlos a cálculo local.
+const _MESAUTO = { '01':'Ene','02':'Feb','03':'Mar','04':'Abr','05':'May','06':'Jun','07':'Jul','08':'Ago','09':'Sep','10':'Oct','11':'Nov','12':'Dic' };
+async function autoAgregarSubsobLiquidos() {
+  try {
+    let data = window._universo1816;
+    if (!data) { const r = await fetch('/api/instrumentos'); if (!r.ok) return; data = await r.json(); }
+    const universo = data.instrumentos || [];
+    const cargadas = new Set(instrumentos.map(i => i.ticker.toUpperCase()));
+    const hoyMs = Date.now(), ventMs = AUTOADD_DIAS * 86400000;
+    const cand = universo.filter(x => {
+      if (x.grupo !== 'subsoberano') return false;
+      if (String(x.monedaDenom || '').toUpperCase() !== 'USD') return false;
+      const tk = String(x.ticker || '').toUpperCase();
+      if (!tk || tk.includes('@') || tk.includes(' ') || cargadas.has(tk)) return false;
+      const ven = x.venc ? new Date(x.venc) : null; if (ven && ven.getTime() <= hoyMs) return false;
+      const emi = x.emision ? new Date(x.emision) : null;
+      if (!emi || (hoyMs - emi.getTime()) > ventMs) return false;
+      return true;
+    });
+    if (!cand.length) return;
+    const rv = await fetch('/api/volumen', {
+      method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ tickers: cand.map(x => x.ticker) }),
+    });
+    if (!rv.ok) return;
+    const vol = await rv.json();
+    const liquidos = cand.filter(x => (vol[x.ticker.toUpperCase()] || 0) > DETECTOR_VOL_MIN);
+    if (!liquidos.length) return;
+    for (const x of liquidos) {
+      const anio = (x.venc || '').slice(0, 4);
+      instrumentos.push({
+        grupo: 'subsoberano', ticker: x.ticker,
+        nombre: `${(x.emisor || x.ticker)} ${anio} ⚡`.trim(),  // ⚡ = auto (1816, sin cash flow)
+        venc: (x.venc || '').slice(0, 10), auto: true,
+      });
+    }
+    renderTabla();
+    fetchPreciosYahoo(false);
+  } catch { /* extra: si falla, el monitor sigue igual */ }
 }
 
 async function detectarCambios() {
@@ -1947,7 +1993,8 @@ async function cargarExcelGitHub() {
       }, 60 * 1000);
     }
     // Detectar altas/bajas de títulos vs el universo vivo de 1816 (no bloquea la carga).
-    detectarCambios();
+    // Al terminar (ya tiene el universo cargado), auto-agrega subsoberanos líquidos nuevos.
+    detectarCambios().then(autoAgregarSubsobLiquidos);
   } catch(e) {
     setStatus('err', 'Error cargando Excel: ' + e.message);
     showAlert('No se pudo cargar Instrumentos.xlsx: ' + e.message);
