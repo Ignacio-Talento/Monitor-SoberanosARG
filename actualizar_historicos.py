@@ -40,6 +40,9 @@ MONEDA_1816 = {
     'USD Bopreales': 'mep', 'ON USD': 'mep',
     # Solapa ONs (ley local + NY): tickers en forma D, se piden a 1816 en mep con swap D->O.
     'ONs': 'mep',
+    # Subsoberanos (provinciales USD): ticker idéntico en 1816, se piden en mep. Sin esto caían
+    # a Eco y guardaban basura (precios en pesos/volumen) que rompía los retornos.
+    'Subsoberanos': 'mep',
 }
 # Bopreales: el ticker de 1816 es irregular (no es un simple swap), mapa explícito.
 MAPA_BOPREAL_1816 = {
