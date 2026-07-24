@@ -21,7 +21,7 @@ const SEGMENTOS = ["mep", "ars", "ccl"];
 const RUEDAS_PROM = 5;      // promedio de las últimas N ruedas de mercado
 const DIAS_VENTANA = 12;    // rango a pedir (calendario) para capturar >=5 ruedas con feriados
 const MAX_TICKERS = 10;     // el endpoint de series topea antes que el de precios
-const CACHE_TTL = 3600;
+const CACHE_TTL = 21600;    // 6 h: el promedio de 5 ruedas casi no cambia intradía
 
 // --- rate limit: 1816 admite 1 request/segundo ---
 let _lastReq = 0;
@@ -106,6 +106,16 @@ export async function onRequest(context) {
   } catch { return json({ error: "body inválido" }, 400); }
   if (!tickers.length) return json({});
 
+  // Caché real (Cache API): los POST no los cachea Cloudflare solo. Clave = hash del set de
+  // tickers ordenado. El volumen es un promedio de 5 ruedas: casi no cambia intradía, así que
+  // TTL largo evita recomputar (~28s y ~1k créditos) en cada carga del monitor.
+  const cache = caches.default;
+  const clave = [...tickers].sort().join(",");
+  let h = 0; for (let i = 0; i < clave.length; i++) h = (Math.imul(h, 31) + clave.charCodeAt(i)) | 0;
+  const cacheKey = new Request(`https://cache.local/volumen/${h >>> 0}-${tickers.length}`, { method: "GET" });
+  const hit = await cache.match(cacheKey);
+  if (hit) return hit;
+
   const apiKey = env.API_1816_KEY;
   if (!apiKey) return json({ error: "sin API key" }, 500);
 
@@ -147,5 +157,7 @@ export async function onRequest(context) {
     result[t] = suma / n;
   }
 
-  return json(result, 200, { "cache-control": `public, max-age=${CACHE_TTL}` });
+  const resp = json(result, 200, { "cache-control": `public, max-age=${CACHE_TTL}` });
+  context.waitUntil(cache.put(cacheKey, resp.clone()));
+  return resp;
 }
