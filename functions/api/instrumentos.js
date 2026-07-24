@@ -148,7 +148,8 @@ export async function onRequest(context) {
   // Caché (mismo universo para todos dentro del TTL). ?fresh=1 lo saltea.
   const fresh = new URL(request.url).searchParams.get("fresh") === "1";
   const cache = caches.default;
-  const cacheKey = new Request("https://cache.local/instrumentos", { method: "GET" });
+  // v2: el universo ahora incluye isin/monedaDenom/emisor; el sufijo invalida el caché viejo.
+  const cacheKey = new Request("https://cache.local/instrumentos-v2", { method: "GET" });
   if (!fresh) {
     const hit = await cache.match(cacheKey);
     if (hit) return hit;

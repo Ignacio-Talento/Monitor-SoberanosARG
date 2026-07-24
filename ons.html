@@ -1904,7 +1904,7 @@ async function autoAgregarLiquidos() {
     }
     const hoyMs = Date.now(), ventMs = AUTOADD_DIAS * 86400000;
     const cand = universo.filter(x => {
-      if (x.grupo !== 'onusd' && x.grupo !== 'oncorp') return false;      // sólo corporativos
+      if (x.grupo !== 'onusd') return false;   // sólo corporativos hard-dollar (como los cargados)
       if (String(x.monedaDenom || '').toUpperCase() !== 'USD') return false; // hard-dollar
       const tk = String(x.ticker || '').toUpperCase();
       if (!tk || tk.includes('@') || tk.includes(' ') || cargadas.has(tk)) return false;
