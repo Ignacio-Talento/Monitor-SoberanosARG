@@ -1612,11 +1612,11 @@ async function fetchPreciosYahoo(force = false) {
 // Los precios cargados sobreviven la navegación entre solapas mientras la
 // pestaña esté abierta. Se borran al cerrar la pestaña o con "Limpiar precios".
 function guardarPrecios() {
-  try { sessionStorage.setItem('bonos_precios', JSON.stringify(precios)); } catch(e) {}
+  try { sessionStorage.setItem('bonos_precios_v2', JSON.stringify(precios)); } catch(e) {}
 }
 function cargarPreciosGuardados() {
   try {
-    const raw = sessionStorage.getItem('bonos_precios');
+    const raw = sessionStorage.getItem('bonos_precios_v2');
     return raw ? JSON.parse(raw) : {};
   } catch(e) { return {}; }
 }
