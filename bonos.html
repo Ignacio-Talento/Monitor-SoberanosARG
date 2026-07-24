@@ -1228,6 +1228,8 @@ const COLS = [
   { k:'ticker',  label:'Ticker',      w:8.0,  left:true, get:f=>f.inst.ticker,     cell:f=>`<td class="td-ticker">${f.inst.ticker}</td>` },
   { k:'nombre',  label:'Nombre',      w:14.2, left:true, get:f=>f.inst.nombre||'', cell:f=>`<td class="td-nombre">${f.inst.nombre||''}</td>` },
   { k:'precio',  label:'Precio',      w:10.4, get:f=>f.m.precio, cell:f=>`<td><input class="precio-cell-input${f.m.precio?' has-value':''}" id="inp-${f.inst.ticker}" type="number" step="0.01" placeholder="—" value="${f.m.precio?f.m.precio.toFixed(2):''}" oninput="onPrecioChange('${f.inst.ticker}', this.value)"></td>` },
+  { k:'ultop',   label:'Últ. op.',    w:9.0,  get:f=>actUltOpMs(f.inst.ticker), cell:f=>`<td style="font-size:11px">${fmtUltOp(actUltOp(f.inst.ticker))}</td>` },
+  { k:'voldia',  label:'Vol. día (nom)', w:8.5, get:f=>actVol(f.inst.ticker), cell:f=>`<td>${(()=>{const v=actVol(f.inst.ticker);return v==null?'<span class="no-p">—</span>':fmtMiles(v);})()}</td>` },
   { k:'venc',    label:'Vencimiento', w:9.3,  get:f=>f.dias,     cell:f=>`<td>${fmtDate(f.inst.venc)}</td>` },
   { k:'dias',    label:'Días',        w:5.6,  get:f=>f.dias,     cell:f=>`<td>${f.m.dias!==null?`<span class="${f.m.dias<30?'val-red':''}">${f.m.dias}d</span>`:'—'}</td>` },
   { k:'md',      label:'M. Dur.',     w:6.4,  get:f=>f.m.md,      cell:f=>`<td>${dash(f.m.md,1)}</td>` },
@@ -1238,8 +1240,6 @@ const COLS = [
   { k:'wtd',     label:'WTD %',       w:6.1,  get:f=>f.wtd, cell:f=>`<td>${renderVariacion(f.wtd)}</td>` },
   { k:'mtd',     label:'MTD %',       w:6.1,  get:f=>f.mtd, cell:f=>`<td>${renderVariacion(f.mtd)}</td>` },
   { k:'ytd',     label:'YTD %',       w:6.7,  get:f=>f.ytd, cell:f=>`<td>${renderVariacion(f.ytd)}</td>` },
-  { k:'voldia',  label:'Vol. día (nom)', w:8.5, get:f=>actVol(f.inst.ticker), cell:f=>`<td>${(()=>{const v=actVol(f.inst.ticker);return v==null?'<span class="no-p">—</span>':fmtMiles(v);})()}</td>` },
-  { k:'ultop',   label:'Últ. op.',    w:9.0,  get:f=>actUltOpMs(f.inst.ticker), cell:f=>`<td style="font-size:11px">${fmtUltOp(actUltOp(f.inst.ticker))}</td>` },
 ];
 const COLGROUP = COLS.map(c => `<col style="width:${c.w}%">`).join('');
 const sortState = {};   // grupo -> { col, dir }   (cada grupo se ordena independiente)
