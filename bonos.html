@@ -405,7 +405,7 @@ const DETECTOR_IGNORE_KEY     = 'bonos_detector_ignorar';
 // nuevo de estos grupos si operó, en promedio de las últimas 3 ruedas, más de este umbral de
 // NOMINALES (via /api/volumen). Los nuevos de grupos soberanos no se filtran por volumen.
 const DETECTOR_VOL_GRUPOS = new Set(['onusd', 'oncorp', 'subsoberano']);
-const DETECTOR_VOL_MIN    = 1000000;
+const DETECTOR_VOL_MIN    = 100000;
 const _volCache = {};   // ticker 1816 -> volumen nominal promedio (se pide una vez)
 
 // Lista compartida (repo) + override personal (localStorage del navegador).
@@ -510,13 +510,13 @@ async function pintarDetector(data) {
   let html = '<button class="det-close" title="cerrar" onclick="this.parentElement.style.display=\'none\'">×</button>';
   if (nuevos.length) {
     const notaVol = filtradosPorVol
-      ? ` · ${filtradosPorVol} ON/subsob omitido(s) por volumen < 1M nominal (últimas 3 ruedas)` : '';
+      ? ` · ${filtradosPorVol} ON/subsob omitido(s) por volumen < 100k nominal (últimas 5 ruedas)` : '';
     html += `<div class="det-sec"><b>🆕 ${nuevos.length} título(s) nuevo(s) en 1816 (últimos ${DETECTOR_VENTANA_DIAS} días)</b>` +
       `<span class="det-hint">agregalos a Instrumentos.xlsx (cupones/margen los completás vos)${notaVol}</span>` + tabla(nuevos) + `</div>`;
   } else if (filtradosPorVol) {
     // Hubo altas nuevas de ONs/subsob pero ninguna llega al umbral de liquidez.
     html += `<div class="det-sec"><b>🆕 0 títulos nuevos para sumar</b>` +
-      `<span class="det-hint">${filtradosPorVol} ON/subsob nuevo(s) omitido(s): operaron < 1M nominal en promedio de las últimas 3 ruedas</span></div>`;
+      `<span class="det-hint">${filtradosPorVol} ON/subsob nuevo(s) omitido(s): operaron < 100k nominal en promedio de las últimas 5 ruedas</span></div>`;
   }
   if (faltantes.length) {
     // Con las curvas de provinciales y corporativos esto son cientos de títulos: volcarlos

@@ -14,7 +14,7 @@
 
 const BASE_1816 = "https://api.1816.com.ar";
 const CAMPO = "volumenNominalDiario";
-const RUEDAS_PROM = 3;      // promedio de las últimas N ruedas de mercado
+const RUEDAS_PROM = 5;      // promedio de las últimas N ruedas de mercado
 const DIAS_VENTANA = 12;    // rango a pedir (calendario) para capturar >=3 ruedas con feriados
 const MAX_TICKERS = 10;     // el endpoint de series topea antes que el de precios
 const CACHE_TTL = 3600;
