@@ -451,6 +451,8 @@ async function pintarDetector(data) {
     cargados.add(i.ticker);
     if (i.grupo === 'usdbopreal' && i.ticker.length >= 4) cargados.add('BPO' + i.ticker.slice(2, -1));
   }
+  // ONs de la solapa ONs (ons.html): ya seguidas aunque no estén en el `instrumentos` de esta página.
+  for (const tk of (window._onsSeguidas || [])) cargados.add(tk);
   const ignorados = getDetectorIgnorados();
   const hoyMs = Date.now();
   const ventanaMs = DETECTOR_VENTANA_DIAS * 86400000;
@@ -1530,6 +1532,20 @@ function parsearExcel(buffer) {
           inst.vr = fl.find(f => f.vr > 0)?.vr || 100;
         }
       }
+    }
+
+    // Tickers de la solapa ONs (viven en ons.html, no en esta página): se registran como
+    // "seguidos" para que el detector NO los cuente como faltantes. Se guarda también la forma
+    // 1816 (D->O), que es la que usa el universo de /api/instrumentos.
+    window._onsSeguidas = [];
+    if (wb.SheetNames.includes('ONs')) {
+      XLSX.utils.sheet_to_json(wb.Sheets['ONs'], { defval: '', raw: false }).forEach(r => {
+        const tk = String(r['Ticker']||'').trim();
+        if (tk && tk !== 'Ticker') {
+          window._onsSeguidas.push(tk);
+          if (tk.endsWith('D')) window._onsSeguidas.push(tk.slice(0, -1) + 'O');
+        }
+      });
     }
 
     // Sacar los grupos ocultos (siguen en el Excel, sólo no se muestran ni se les pide precio)
