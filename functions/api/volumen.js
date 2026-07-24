@@ -14,8 +14,12 @@
 
 const BASE_1816 = "https://api.1816.com.ar";
 const CAMPO = "volumenNominalDiario";
+// Volumen TOTAL de nominales USD = suma de los 3 segmentos de liquidación (MEP, pesos/24hs,
+// cable/CCL). Para bonos hard-dollar el nominal es el mismo (USD de VN) en los tres, así que
+// sumar da lo operado de verdad (no sólo el segmento MEP).
+const SEGMENTOS = ["mep", "ars", "ccl"];
 const RUEDAS_PROM = 5;      // promedio de las últimas N ruedas de mercado
-const DIAS_VENTANA = 12;    // rango a pedir (calendario) para capturar >=3 ruedas con feriados
+const DIAS_VENTANA = 12;    // rango a pedir (calendario) para capturar >=5 ruedas con feriados
 const MAX_TICKERS = 10;     // el endpoint de series topea antes que el de precios
 const CACHE_TTL = 3600;
 
@@ -48,16 +52,16 @@ async function getToken(apiKey) {
 
 const iso = (d) => d.toISOString().slice(0, 10);
 
-// Trae la serie de volumenNominalDiario (mep) de un lote de tickers en la ventana.
+// Trae la serie de volumenNominalDiario de un lote de tickers en la ventana, para un segmento.
 // -> { ticker: [ [fecha, valor], ... ] }
-async function fetchSerie(apiKey, tickers, fi, ff) {
+async function fetchSerie(apiKey, tickers, fi, ff, moneda) {
   const pedir = async () => {
     await throttle();
     const token = await getToken(apiKey);
     const qs = new URLSearchParams();
     tickers.forEach((t) => qs.append("tickers", t));
     qs.append("campos", CAMPO);
-    qs.append("moneda", "mep");
+    qs.append("moneda", moneda);
     qs.append("fechaInicial", fi);
     qs.append("fechaFinal", ff);
     return fetch(`${BASE_1816}/v1/mercado/series?${qs.toString()}`, {
@@ -109,11 +113,21 @@ export async function onRequest(context) {
   const ff = iso(hoy);
   const fi = iso(new Date(hoy.getTime() - DIAS_VENTANA * 86400000));
 
-  // Serie por lotes (el endpoint de series topea en ~10 tickers).
-  const series = {};
+  // Serie por lotes (el endpoint de series topea en ~10 tickers) y por segmento; se suma el
+  // volumen de los 3 segmentos por (ticker, fecha).
+  const porFechaTot = {}; // ticker -> { fecha: suma de vol de los 3 segmentos }
+  for (const t of tickers) porFechaTot[t] = {};
   try {
-    for (let i = 0; i < tickers.length; i += MAX_TICKERS) {
-      Object.assign(series, await fetchSerie(apiKey, tickers.slice(i, i + MAX_TICKERS), fi, ff));
+    for (const seg of SEGMENTOS) {
+      for (let i = 0; i < tickers.length; i += MAX_TICKERS) {
+        const lote = tickers.slice(i, i + MAX_TICKERS);
+        const s = await fetchSerie(apiKey, lote, fi, ff, seg);
+        for (const t of lote) {
+          for (const p of (s[t] || [])) {
+            if (p && p[0]) porFechaTot[t][p[0]] = (porFechaTot[t][p[0]] || 0) + (typeof p[1] === "number" ? p[1] : 0);
+          }
+        }
+      }
     }
   } catch (e) {
     return json({ error: String((e && e.message) || e) }, 502);
@@ -121,17 +135,15 @@ export async function onRequest(context) {
 
   // Últimas RUEDAS_PROM ruedas de mercado = las fechas más recientes vistas en cualquier ticker.
   const fechasSet = new Set();
-  for (const t of tickers) for (const p of series[t]) if (p && p[0]) fechasSet.add(p[0]);
+  for (const t of tickers) for (const f in porFechaTot[t]) fechasSet.add(f);
   const ruedas = [...fechasSet].sort().slice(-RUEDAS_PROM);
   const n = ruedas.length || RUEDAS_PROM;
 
   const result = {};
   for (const t of tickers) {
-    const porFecha = {};
-    for (const p of series[t]) if (p && p[0]) porFecha[p[0]] = (typeof p[1] === "number" ? p[1] : 0);
     // suma de las ruedas objetivo (rueda sin operar = 0) / cantidad de ruedas
     let suma = 0;
-    for (const f of ruedas) suma += porFecha[f] || 0;
+    for (const f of ruedas) suma += porFechaTot[t][f] || 0;
     result[t] = suma / n;
   }
 
