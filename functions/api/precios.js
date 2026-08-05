@@ -90,12 +90,51 @@ async function getToken(apiKey) {
   return _token;
 }
 
-// Consulta 1816 para una lista de tickers en una moneda. -> { ticker: {campo: valor, ...} }
+// Pide a 1816 con reintentos. El límite es de 1 request/segundo y el limitador es GLOBAL por
+// API key, no por cliente: alcanza con que haya otra pestaña abierta, otro isolate de Cloudflare
+// (throttle() es estado de módulo, no se comparte) o el job diario para chocar y comer un 429.
+// Verificado contra la API: dos llamadas a ~800 ms devuelven "Demasiadas solicitudes".
+// Por eso se reintenta con espera creciente en vez de una sola vez.
+const ESPERAS_REINTENTO = [0, 1500, 3500, 6000];
+// Presupuesto de tiempo para TODA la request. Sin esto, cuatro grupos de moneda agotando el
+// backoff serían ~80 s de espera y el navegador cortaría antes: peor que devolver lo que hay.
+// Pasado el plazo se deja de reintentar y se responde con lo obtenido (Eco cubre el resto).
+let _plazo = 0;
+async function pedir1816(apiKey, url) {
+  let ultima = null;
+  for (const espera of ESPERAS_REINTENTO) {
+    if (espera && Date.now() + espera > _plazo) break;   // no alcanza el tiempo: cortar acá
+    if (espera) await sleep(espera);
+    await throttle();
+    let r;
+    try {
+      const token = await getToken(apiKey);
+      r = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+    } catch (e) {
+      ultima = { ok: false, status: 0, motivo: String((e && e.message) || e) };
+      continue;                                  // error de red: reintentar
+    }
+    if (r.ok) return r;
+    ultima = r;
+    if (r.status === 401) { _token = null; continue; }        // token vencido
+    if (r.status === 429 || r.status >= 500) continue;         // rate limit o caída: reintentar
+    return r;                                                  // 4xx propio: reintentar no ayuda
+  }
+  return ultima;
+}
+
+// Consulta 1816 para una lista de tickers en una moneda.
+//   -> { datos: { ticker: {campo: valor, ...} }, fallos: [ "..." ] }
 // `fecha` (YYYY-MM-DD) opcional: si va, se pide esa rueda; si es null, la de hoy.
 // `campos` permite pedir más que el precio: los instrumentos sin cronograma de flujos cargado
 // usan los indicadores que ya calcula 1816 en vez de computarlos localmente.
+//
+// NUNCA tira: antes un solo 429 en un lote propagaba una excepción, la respuesta salía 502 y el
+// frontend mandaba los ~90 tickers a Eco, incluidos los lotes que sí habían venido bien. Ahora se
+// devuelve lo que se pudo y el fallback a Eco cubre únicamente los huecos reales.
 async function fetch1816(apiKey, tickers, moneda, fecha, campos = [CAMPO]) {
   const out = {};
+  const fallos = [];
   for (let i = 0; i < tickers.length; i += MAX_TICKERS) {
     const lote = tickers.slice(i, i + MAX_TICKERS);
     const qs = new URLSearchParams();
@@ -104,24 +143,19 @@ async function fetch1816(apiKey, tickers, moneda, fecha, campos = [CAMPO]) {
     qs.append("moneda", moneda);
     if (fecha) qs.append("fechaOperacion", fecha);
 
-    const pedir = async () => {
-      await throttle();
-      const token = await getToken(apiKey);
-      return fetch(`${BASE_1816}/v1/mercado/indicadores?` + qs, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-    };
-    let r = await pedir();
-    if (r.status === 401) { _token = null; r = await pedir(); }   // token vencido
-    if (r.status === 429) { await sleep(1200); r = await pedir(); } // rate limit: esperar y reintentar
-    if (!r.ok) throw new Error("indicadores 1816 HTTP " + r.status);
-    const d = await r.json();
+    const r = await pedir1816(apiKey, `${BASE_1816}/v1/mercado/indicadores?` + qs);
+    if (!r || !r.ok) {
+      fallos.push(`${moneda} x${lote.length}: HTTP ${(r && r.status) || "?"}${r && r.motivo ? " " + r.motivo : ""}`);
+      continue;
+    }
+    let d;
+    try { d = await r.json(); } catch (e) { fallos.push(`${moneda} x${lote.length}: JSON inválido`); continue; }
     const inst = d.instrumentos || {};
     for (const t of lote) {
       if (inst[t]) out[t] = inst[t];
     }
   }
-  return out;
+  return { datos: out, fallos };
 }
 
 // --- Última rueda con datos -------------------------------------------------
@@ -132,16 +166,24 @@ const MS_ART = 3 * 3600 * 1000; // Argentina = UTC-3
 function fechaART(offsetDias) {
   return new Date(Date.now() - MS_ART - offsetDias * 86400000);
 }
+// Memo de la rueda resuelta. Resolverla cuesta una llamada a 1816 en CADA request del monitor,
+// y es justo la llamada que más chance tiene de comerse el 429 porque va primera y sin espacio
+// previo. La rueda cambia como mucho una vez por día, así que 5 minutos de memo es de sobra.
+let _fechaMemo = null, _fechaMemoExp = 0;
 async function resolverFecha(apiKey, tickerRef, moneda) {
+  if (_fechaMemo !== null && Date.now() < _fechaMemoExp) return _fechaMemo.v;
   for (let i = 0; i <= 7; i++) {
     const d = fechaART(i);
     const dow = d.getUTCDay();
     if (dow === 0 || dow === 6) continue;             // fin de semana: ni consultamos
     const fecha = i === 0 ? null : d.toISOString().slice(0, 10);
-    const r = await fetch1816(apiKey, [tickerRef], moneda, fecha);
+    const { datos } = await fetch1816(apiKey, [tickerRef], moneda, fecha);
     // Ojo: 1816 devuelve el instrumento aunque no haya operado (con el campo en null),
     // así que hay que mirar el precio, no la presencia de la clave.
-    if (r[tickerRef] && typeof r[tickerRef][CAMPO] === "number") return fecha;
+    if (datos[tickerRef] && typeof datos[tickerRef][CAMPO] === "number") {
+      _fechaMemo = { v: fecha }; _fechaMemoExp = Date.now() + 300000;
+      return fecha;
+    }
   }
   return null;
 }
@@ -181,6 +223,7 @@ async function computePrecios(env, items) {
   // operó (o es feriado), acá vuelve el cierre de la rueda anterior, y comparar eso contra el
   // último cierre guardado daría 0% de variación en todo el panel.
   let fechaRueda = null;
+  const fallos = [];   // qué se rompió, para poder verlo en el frontend en vez de adivinar
   if (apiKey && monedas.length) {
     // Una sola resolución de fecha para todas las monedas (fin de semana/feriado -> última rueda).
     const ref = porMoneda[monedas[0]][0];
@@ -196,7 +239,9 @@ async function computePrecios(env, items) {
       // porque no tenemos su cronograma para computarlos acá.
       const pideInd = pares[0] && pares[0].ind;
       const campos = pideInd ? [CAMPO, "tea", "durationMod", "paridad"] : [CAMPO];
-      const datos = await fetch1816(apiKey, tickers, moneda, fecha, campos);
+      const res = await fetch1816(apiKey, tickers, moneda, fecha, campos);
+      const datos = res.datos;
+      fallos.push(...res.fallos);
       for (const p of pares) {
         const fila = datos[p.t];
         if (!fila) continue;
@@ -220,11 +265,17 @@ async function computePrecios(env, items) {
          // Subsoberanos y ONs de ley local/NY no están en Eco: pedirlos sólo gastaría subrequests.
          .filter((eco) => eco && !(eco in result) && !SIN_ECO.has(grupoDe[eco]))
   )].slice(0, MAX_ECO_FALLBACK);
+  const de1816 = Object.keys(result).length;
   for (const eco of pendientes) {
     const p = await fallbackEco(grupoDe[eco], eco);
     if (p) result[eco] = p;
   }
-  return { precios: result, indicadores, fecha: fechaRueda };
+  // `diag` deja ver por qué se cayó a Eco. Sin esto, un 429 se veía igual que un ticker que
+  // simplemente no operó y no había manera de distinguirlos desde el frontend.
+  return {
+    precios: result, indicadores, fecha: fechaRueda,
+    diag: { de1816, deEco: Object.keys(result).length - de1816, fallos },
+  };
 }
 
 // --- helpers HTTP ---
@@ -278,6 +329,8 @@ export async function onRequest(context) {
     if (hit) return hit;
   }
 
+  _plazo = Date.now() + 20000;   // techo para los reintentos (ver pedir1816)
+
   let datos;   // { precios: {ticker: precio}, indicadores: {ticker: {...}} }
   try {
     datos = await computePrecios(env, items);
@@ -285,7 +338,13 @@ export async function onRequest(context) {
     return json({ error: String(e && e.message || e) }, 502);
   }
 
-  const resp = json(datos, 200, { "cache-control": `public, max-age=${CACHE_TTL}` });
-  context.waitUntil(cache.put(cacheKey, resp.clone()));
+  // Sólo se cachea una respuesta sana. Si hubo fallos, guardarla dejaría clavada una tanda con
+  // medio panel vacío durante todo el TTL y para todos los que entren, convirtiendo un 429 de un
+  // segundo en dos minutos de precios faltantes.
+  const sana = datos.diag && !datos.diag.fallos.length && datos.diag.de1816 > 0;
+  const resp = json(datos, 200, {
+    "cache-control": sana ? `public, max-age=${CACHE_TTL}` : "no-store",
+  });
+  if (sana) context.waitUntil(cache.put(cacheKey, resp.clone()));
   return resp;
 }

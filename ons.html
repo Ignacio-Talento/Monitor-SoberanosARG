@@ -433,6 +433,8 @@ let historicos = {}; // { ticker: { 'YYYY-MM-DD': precio } }
 // Indicadores que calcula 1816 (tea/durationMod/paridad), sólo para los grupos de los que
 // NO tenemos cronograma de flujos y por eso no se computan localmente (hoy: subsoberanos).
 let indicadores1816 = {};
+// Diagnóstico de la última traída (de1816 / deEco / fallos). Lo informa /api/precios.
+let diag1816 = null;
 // Fecha de la rueda a la que corresponden los precios cargados (la informa /api/precios).
 let fechaRueda = null;
 // Actividad del día por instrumento (volumen nominal sumando los 3 segmentos + última operación).
@@ -1925,6 +1927,9 @@ async function fetchPreciosYahoo(force = false) {
     indicadores1816 = data.indicadores || {};
     // Rueda a la que corresponden estos precios (ver calcDay).
     fechaRueda = data.fecha || null;
+    // El proxy ya no se cae entero ante un 429: devuelve lo que pudo traer de 1816 y avisa qué
+    // falló. Si no lo mostramos, un lote caído se ve idéntico a un ticker que no operó.
+    diag1816 = data.diag || null;
     for (const inst of vivos) {
       const p = mapaPrecios[inst.ticker.toUpperCase()];
       if (p && p > 0) { precios[inst.ticker] = p; ok++; } else err++;
@@ -1959,6 +1964,18 @@ async function fetchPreciosYahoo(force = false) {
   stEl.textContent = `✓ ${ok} precios · ${hora}`;
   stEl.className = 'upload-st ok';
   setStatus('ok', `Precios actualizados · ${hora}`);
+  // Fuente real de los precios. Antes, cuando 1816 fallaba se caía a Eco en silencio y no había
+  // forma de saberlo desde la pantalla; ahora el estado dice de dónde salió cada tanda.
+  if (diag1816) {
+    const { de1816, deEco, fallos } = diag1816;
+    if (deEco || (fallos && fallos.length)) {
+      stEl.textContent = `✓ ${ok} precios (${de1816} de 1816${deEco ? `, ${deEco} de Eco` : ''}) · ${hora}`;
+      if (fallos && fallos.length) {
+        console.warn('1816 falló en:', fallos);
+        if (force) showAlert(`1816 falló en ${fallos.length} lote(s): ${fallos.join(' · ')}. Se completó con Eco.`, 'err');
+      }
+    }
+  }
   // Contar instrumentos no vencidos que realmente quedaron sin precio (estado final)
   const sinPrecio = instrumentos.filter(i => {
     const d = diasAlVenc(i.venc);
