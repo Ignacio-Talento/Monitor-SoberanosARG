@@ -19,10 +19,15 @@
 const BASE_1816   = "https://api.1816.com.ar";
 const ECO_URL     = "https://ecovalores-proxy.granda-fra.workers.dev"; // fallback (worker del colega)
 const CAMPO       = "precioDirty";
-// Segundos que dura el caché. Es EL dial de consumo de créditos: el costo de 1816 es
-// tickers x (campos + 1), así que una consulta del monitor cuesta ~272 y una jornada de 8 h
-// con refresco continuo son 480 consultas -> ~131k, por encima del tope diario de 100.000.
-// Con 120 s se baja a ~65k/día y queda margen para seguir sumando instrumentos.
+// Campos extra para los bonos sin cronograma cargado: se les toman los indicadores ya
+// calculados por 1816 en vez de computarlos localmente.
+const CAMPOS_IND  = [CAMPO, "tea", "durationMod", "paridad"];
+// Segundos que dura el caché. Es EL dial de consumo de créditos.
+// Costo de 1816 = tickers x campos (medido contra la API el 2026-08-05: 10 tickers x 1 campo =
+// 10 créditos, 10 x 4 = 40; el comentario anterior decía "x (campos + 1)" y sobrestimaba ~2x).
+// Un refresco del monitor son ~88 tickers x 1 campo + 1 de la resolución de rueda = ~89, y con
+// las dos páginas ~180. Con TTL de 120 s, una jornada de 8 h da ~240 refrescos -> ~21k/día,
+// consistente con lo observado (15.423 usados de 100.000 al 2026-08-05 19:00).
 // (Medido el 2026-07-20: 1816 es casi en vivo, ~5-15 s, y los líquidos cambian cada ~40 s,
 // así que 120 s sigue mostrando precios frescos; el botón "Actualizar precios" saltea el caché.)
 const CACHE_TTL   = 120;
@@ -201,9 +206,14 @@ async function fallbackEco(grupo, ticker) {
 async function computePrecios(env, items) {
   const apiKey = env.API_1816_KEY;
 
-  // Se agrupa por moneda, y aparte los que piden indicadores (`ind`), porque a esos se les
-  // piden campos extra y el costo de 1816 es tickers x (campos + 1). El front marca `ind`
-  // por instrumento: son los bonos con cupón que todavía no tienen cronograma cargado.
+  // Se agrupa por moneda, y aparte los que piden indicadores (`ind`): son los bonos con cupón
+  // que todavía no tienen cronograma cargado, y a esos hay que pedirles campos extra.
+  //
+  // Da 2 llamadas por refresco mientras no haya instrumentos `ind` (hoy no hay ninguno: los 88
+  // del Monitor y los 88 de ONs tienen su cronograma), y 4 en el peor caso. Unificar todo en 2
+  // pidiendo los 4 campos a todos NO ahorraría llamadas en el caso normal y multiplicaría por 4
+  // los créditos, porque 1816 cobra tickers x campos (medido contra la API el 2026-08-05:
+  // 10 tickers x 1 campo = 10 créditos; 10 x 4 = 40).
   const porMoneda = {}; // clave -> [{ eco, t, grupo, moneda, ind }]
   for (const it of items) {
     const eco = String(it.ticker || "").trim().toUpperCase();
@@ -224,6 +234,10 @@ async function computePrecios(env, items) {
   // último cierre guardado daría 0% de variación en todo el panel.
   let fechaRueda = null;
   const fallos = [];   // qué se rompió, para poder verlo en el frontend en vez de adivinar
+  // Sin key el bloque de abajo no corre y TODO sale por Eco. Antes eso era mudo y se veía igual
+  // que un día sin datos; hay que gritarlo, porque es un problema de configuración (falta el
+  // Secret API_1816_KEY en el proyecto de Pages), no del mercado.
+  if (!apiKey) fallos.push("falta el Secret API_1816_KEY en Cloudflare Pages: no se consultó 1816");
   if (apiKey && monedas.length) {
     // Una sola resolución de fecha para todas las monedas (fin de semana/feriado -> última rueda).
     const ref = porMoneda[monedas[0]][0];
@@ -238,8 +252,7 @@ async function computePrecios(env, items) {
       // A los marcados con `ind` se les piden además los indicadores que calcula 1816,
       // porque no tenemos su cronograma para computarlos acá.
       const pideInd = pares[0] && pares[0].ind;
-      const campos = pideInd ? [CAMPO, "tea", "durationMod", "paridad"] : [CAMPO];
-      const res = await fetch1816(apiKey, tickers, moneda, fecha, campos);
+      const res = await fetch1816(apiKey, tickers, moneda, fecha, pideInd ? CAMPOS_IND : [CAMPO]);
       const datos = res.datos;
       fallos.push(...res.fallos);
       for (const p of pares) {
