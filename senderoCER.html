@@ -681,7 +681,8 @@ async function cargarExcel() {
           emision: excelSerialToDate(r['Fecha Emision'] || r['Fecha Emisión']),
           venc:    excelSerialToDate(r['Fecha Vencimineto'] || r['Fecha Vencimiento']),
           margen:  parseFloat(r['Margen']) || 0,
-        }));
+        }))
+        .sort((a, b) => (a.venc || '').localeCompare(b.venc || '')); // ordenar por vencimiento
     }
 
     // LECAPS
