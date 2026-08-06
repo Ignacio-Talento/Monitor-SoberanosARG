@@ -418,15 +418,44 @@ function precioDe(bono){ return preciosMonitor[TICKER_MONITOR[bono]] ?? null; }
 function initEstado(){
   estado=CASOS.map(c=>({ vn:c.vn, precioV:precioDe(c.origen), precioC:precioDe(c.destino), comV:c.comV, comC:c.comC }));
 }
-function recargarPrecios(){ cargarPreciosMonitor(); estado.forEach((e,i)=>{ e.precioV=precioDe(CASOS[i].origen); e.precioC=precioDe(CASOS[i].destino); }); render(); }
-function onInput(i,campo,val){ const v=parseFloat(val); estado[i][campo]=isNaN(v)?null:v; render(); }
+function recargarPrecios(){ cargarPreciosMonitor(); estado.forEach((e,i)=>{ e.precioV=precioDe(CASOS[i].origen); e.precioC=precioDe(CASOS[i].destino); }); buildTable(); recompute(); }
+function onInput(i,campo,val){ const v=parseFloat(val); estado[i][campo]=isNaN(v)?null:v; recompute(); }
 
 const num=(x,d=2)=>x==null||isNaN(x)?'—':x.toLocaleString('es-AR',{minimumFractionDigits:d,maximumFractionDigits:d});
 const pct=(x,d=2)=>x==null||isNaN(x)?'—':(x*100).toFixed(d)+'%';
 
-function render(){
+// Arma la estructura de la tabla UNA sola vez (inputs con sus valores). Las celdas
+// calculadas quedan con id y se rellenan en recompute(), sin tocar los inputs → tipear no corta.
+function buildTable(){
   const tb=document.getElementById('tbody-rot');
   let html='';
+  estado.forEach((e,i)=>{
+    const c=CASOS[i];
+    html+=`<tr>
+      <td class="lft">${c.origen}</td>
+      <td class="lft"><span class="flecha">→</span>${c.destino}</td>
+      <td><input class="rot-inp vn" type="number" step="1" value="${e.vn??''}" oninput="onInput(${i},'vn',this.value)"></td>
+      <td><input class="rot-inp" type="number" step="0.01" value="${e.precioV??''}" oninput="onInput(${i},'precioV',this.value)"></td>
+      <td class="calc" id="c-tiro-${i}">—</td>
+      <td><input class="rot-inp" type="number" step="0.01" value="${e.precioC??''}" oninput="onInput(${i},'precioC',this.value)"></td>
+      <td class="calc" id="c-tird-${i}">—</td>
+      <td><input class="rot-inp com" type="number" step="0.01" value="${e.comV??''}" oninput="onInput(${i},'comV',this.value)"></td>
+      <td><input class="rot-inp com" type="number" step="0.01" value="${e.comC??''}" oninput="onInput(${i},'comC',this.value)"></td>
+      <td class="calc" id="c-comis-${i}">—</td>
+      <td class="calc" id="c-costo-${i}">—</td>
+      <td id="c-pickup-${i}">—</td>
+      <td class="calc" id="c-be-${i}">—</td>
+      <td class="calc" id="c-tirdn-${i}">—</td>
+      <td id="c-pickupn-${i}">—</td>
+    </tr>`;
+  });
+  tb.innerHTML=html;
+}
+
+// Recalcula y actualiza SOLO las celdas calculadas (por id). No toca los inputs.
+function recompute(){
+  const sgn=x=>x==null?'':(x>=0?'pos':'neg');
+  const set=(id,txt,cls)=>{ const el=document.getElementById(id); if(el){ el.textContent=txt; if(cls!==undefined) el.className=cls; } };
   estado.forEach((e,i)=>{
     const c=CASOS[i];
     const precioV=e.precioV, precioC=e.precioC, comV=(e.comV||0)/100, comC=(e.comC||0)/100, vn=e.vn||0;
@@ -446,26 +475,15 @@ function render(){
       be=(tirD-tirO)>0 && costo!=null ? costo/(tirD-tirO) : null;
     }
     if(tirO!=null && tirDN!=null) pickupN=(tirDN-tirO)*10000;
-    const sgn=x=>x==null?'':(x>=0?'pos':'neg');
-    html+=`<tr>
-      <td class="lft">${c.origen}</td>
-      <td class="lft"><span class="flecha">→</span>${c.destino}</td>
-      <td><input class="rot-inp vn" type="number" step="1" value="${vn||''}" oninput="onInput(${i},'vn',this.value)"></td>
-      <td><input class="rot-inp" type="number" step="0.01" value="${precioV??''}" oninput="onInput(${i},'precioV',this.value)"></td>
-      <td class="calc">${pct(tirO)}</td>
-      <td><input class="rot-inp" type="number" step="0.01" value="${precioC??''}" oninput="onInput(${i},'precioC',this.value)"></td>
-      <td class="calc">${pct(tirD)}</td>
-      <td><input class="rot-inp com" type="number" step="0.01" value="${e.comV??''}" oninput="onInput(${i},'comV',this.value)"></td>
-      <td><input class="rot-inp com" type="number" step="0.01" value="${e.comC??''}" oninput="onInput(${i},'comC',this.value)"></td>
-      <td class="calc">${num(comisTot)}</td>
-      <td class="calc">${costo==null?'—':(costo*100).toFixed(3)+'%'}</td>
-      <td class="${sgn(pickup)}">${pickup==null?'—':(pickup>=0?'+':'')+pickup.toFixed(0)}</td>
-      <td class="calc">${be==null?'—':be.toFixed(2)}</td>
-      <td class="calc">${pct(tirDN)}</td>
-      <td class="${sgn(pickupN)}">${pickupN==null?'—':(pickupN>=0?'+':'')+pickupN.toFixed(0)}</td>
-    </tr>`;
+    set('c-tiro-'+i, pct(tirO));
+    set('c-tird-'+i, pct(tirD));
+    set('c-comis-'+i, num(comisTot));
+    set('c-costo-'+i, costo==null?'—':(costo*100).toFixed(3)+'%');
+    set('c-pickup-'+i, pickup==null?'—':(pickup>=0?'+':'')+pickup.toFixed(0), sgn(pickup));
+    set('c-be-'+i, be==null?'—':be.toFixed(2));
+    set('c-tirdn-'+i, pct(tirDN));
+    set('c-pickupn-'+i, pickupN==null?'—':(pickupN>=0?'+':'')+pickupN.toFixed(0), sgn(pickupN));
   });
-  tb.innerHTML=html;
 }
 
 async function init(){
@@ -475,7 +493,8 @@ async function init(){
   document.getElementById('liq-badge').textContent='Liquidación T+1 hábil: '+fmtDMY(t0);
   cargarPreciosMonitor();
   initEstado();
-  render();
+  buildTable();
+  recompute();
   const dot=document.getElementById('dot'), st=document.getElementById('status-txt');
   dot.className='dot ok'; st.textContent=CASOS.length+' casos · '+new Date().toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'});
 }
