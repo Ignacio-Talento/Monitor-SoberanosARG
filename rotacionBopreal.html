@@ -314,6 +314,11 @@
           <th>TIR Destino</th>
           <th class="inp-col">Com. Venta %</th>
           <th class="inp-col">Com. Compra %</th>
+          <th>Monto Bruto<br>Venta</th>
+          <th>Comisión<br>Venta $</th>
+          <th>Neto a<br>Reinvertir</th>
+          <th>VN Destino<br>Comprado</th>
+          <th>Comisión<br>Compra $</th>
           <th>Comisión<br>Total $</th>
           <th>Costo Rotac.<br>% (s/monto)</th>
           <th>Pickup<br>(bps)</th>
@@ -441,6 +446,11 @@ function buildTable(){
       <td class="calc" id="c-tird-${i}">—</td>
       <td><input class="rot-inp com" type="number" step="0.01" value="${e.comV??''}" oninput="onInput(${i},'comV',this.value)"></td>
       <td><input class="rot-inp com" type="number" step="0.01" value="${e.comC??''}" oninput="onInput(${i},'comC',this.value)"></td>
+      <td class="calc" id="c-montobruto-${i}">—</td>
+      <td class="calc" id="c-comisv-${i}">—</td>
+      <td class="calc" id="c-neto-${i}">—</td>
+      <td class="calc" id="c-vndest-${i}">—</td>
+      <td class="calc" id="c-comisc-${i}">—</td>
       <td class="calc" id="c-comis-${i}">—</td>
       <td class="calc" id="c-costo-${i}">—</td>
       <td id="c-pickup-${i}">—</td>
@@ -462,12 +472,16 @@ function recompute(){
     const tirO=tirBono(c.origen, precioV);
     const tirD=tirBono(c.destino, precioC);
     const tirDN=tirBono(c.destino, precioC!=null?precioC*(1+comC):null);
-    let comisTot=null, costo=null, pickup=null, be=null, pickupN=null;
+    let montoBruto=null, comisV=null, neto=null, vnDest=null, comisC=null, comisTot=null, costo=null, pickup=null, be=null, pickupN=null;
     if(precioV!=null && vn){
-      const L=vn*precioV/100, M=L*comV;
+      montoBruto = vn*precioV/100;          // L: Monto Bruto Venta
+      comisV     = montoBruto*comV;          // M: Comisión Venta $
+      neto       = montoBruto - comisV;      // N: Neto a Reinvertir
       if(precioC!=null){
-        const O=(L-M)/(precioC/100*(1+comC)), P=O*precioC/100*comC;
-        comisTot=M+P; costo=L>0?comisTot/L:null;
+        vnDest   = neto/(precioC/100*(1+comC)); // O: VN Destino Comprado
+        comisC   = vnDest*precioC/100*comC;      // P: Comisión Compra $
+        comisTot = comisV + comisC;             // Q: Comisión Total $
+        costo    = montoBruto>0 ? comisTot/montoBruto : null;
       }
     }
     if(tirO!=null && tirD!=null){
@@ -477,6 +491,11 @@ function recompute(){
     if(tirO!=null && tirDN!=null) pickupN=(tirDN-tirO)*10000;
     set('c-tiro-'+i, pct(tirO));
     set('c-tird-'+i, pct(tirD));
+    set('c-montobruto-'+i, num(montoBruto));
+    set('c-comisv-'+i, num(comisV));
+    set('c-neto-'+i, num(neto));
+    set('c-vndest-'+i, num(vnDest));
+    set('c-comisc-'+i, num(comisC));
     set('c-comis-'+i, num(comisTot));
     set('c-costo-'+i, costo==null?'—':(costo*100).toFixed(3)+'%');
     set('c-pickup-'+i, pickup==null?'—':(pickup>=0?'+':'')+pickup.toFixed(0), sgn(pickup));
