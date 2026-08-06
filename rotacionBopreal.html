@@ -1,0 +1,485 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Rotación BOPREAL</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@300;400;600;700&display=swap" rel="stylesheet"><style>body{font-variant-numeric:tabular-nums;}
+  /* ═══ HEADER DE MARCA ═══════════════════════════════════════════
+     Barra navy a todo el ancho con el logo oficial y la navegación adentro, como balanz.com.
+     Antes eran dos bloques sueltos (barra navy + tab-strip blanco). */
+  .navbar {
+    background: var(--navy); padding: 0 32px; height: 64px;
+    display: flex; align-items: center; justify-content: space-between;
+    margin: 0;
+  }
+  .navbar-brand { display: flex; align-items: center; gap: 18px; }
+  .navbar-logo { height: 26px; width: auto; display: block; }
+  .navbar-sep { width: 1px; height: 22px; background: rgba(255,255,255,.22); }
+  .navbar-title { font-size: 11px; color: rgba(255,255,255,.72); font-family: var(--sans);
+                  letter-spacing: .12em; text-transform: uppercase; font-weight: 600; }
+  .navbar-status { display: flex; align-items: center; gap: 8px; font-size: 11px;
+                   color: rgba(255,255,255,.72); font-family: var(--sans); }
+
+  /* Solapas dentro del header: activo con subrayado cyan, como la nav de la web */
+  .nav-tabs {
+    display: flex; gap: 2px; flex-wrap: wrap; background: var(--navy);
+    border-bottom: none; padding: 0 32px 0;
+    margin: 0 0 24px;
+    box-shadow: var(--sh-card);
+  }
+  .nav-tab {
+    font-size: 12px; font-family: var(--sans); font-weight: 600; letter-spacing: .04em;
+    padding: 12px 16px 11px; border-radius: 0; cursor: pointer; border: 0;
+    border-bottom: 3px solid transparent; color: rgba(255,255,255,.7); background: transparent;
+    transition: color .15s, border-color .15s; text-transform: uppercase;
+    text-decoration: none; display: block; margin: 0;
+  }
+  .nav-tab:hover { color: #fff; background: transparent; border-bottom-color: rgba(255,255,255,.3); }
+  .nav-tab.active { color: #fff; background: transparent; border-bottom-color: var(--cyan); font-weight: 700; }
+
+  /* ═══ BOTONES ═══ La marca usa píldoras; el CTA es cyan, no verde. */
+  .btn { font-size: 12px; font-family: var(--sans); font-weight: 600; border-radius: var(--r-pill);
+         padding: 8px 18px; cursor: pointer; border: 1px solid; transition: background .15s, color .15s;
+         white-space: nowrap; }
+  .btn-green { color: #fff; background: var(--cyan); border-color: var(--cyan); }
+  .btn-green:hover { background: var(--cyan-dark); border-color: var(--cyan-dark); }
+  .btn-green:disabled { opacity: .45; cursor: not-allowed; }
+  .btn-ghost { color: var(--text-2); background: var(--surface); border-color: var(--border); }
+  .btn-ghost:hover { background: var(--row-hover); color: var(--navy); border-color: var(--border-l); }
+
+  /* Controles segmentados (comisión, vistas, moneda): píldora con el activo en navy */
+  .com-lado, .vista-btn { border-radius: var(--r-pill); font-weight: 600; }
+  .com-lado.on, .vista-btn.on { background: var(--navy); border-color: var(--navy); }
+  .com-input, .filtro-input { border-radius: var(--r-input); }
+
+  /* ═══ TÍTULO DE GRUPO ═══ eyebrow cyan en mayúsculas, como los títulos de sección de la web */
+  .grupo-titulo {
+    color: var(--navy) !important; letter-spacing: .1em; font-weight: 700;
+    border-bottom: 2px solid var(--cyan) !important;
+  }
+
+
+
+  /* Alinea el contenido del header con el de .wrap. Se usa 100% (ancho del <body>, que ya
+     excluye la barra de scroll) y NO 100vw, que la incluye y hacía sobresalir la barra. El ancho
+     de referencia es fijo (1850, el de Monitor/ONs) para que el header se vea igual en todas las
+     solapas: las páginas angostas usan .wrap de 1400 y el logo se corría hacia adentro. */
+  .navbar, .nav-tabs {
+    padding-left: max(24px, calc((100% - 1850px) / 2 + 24px)) !important; padding-right: max(24px, calc((100% - 1850px) / 2 + 24px)) !important;
+  }
+
+  /* El skill pide los nombres de sección (eyebrow) en CYAN y MAYÚSCULAS. */
+  .grupo-titulo { color: var(--cyan) !important; }
+  /* Aire entre el header y el contenido, y entre bloques. */
+  .toolbar { margin-bottom: 22px; }
+  .indicadores { border-radius: var(--r-card); box-shadow: var(--sh-card); }
+  .table-wrap { border-radius: var(--r-card); box-shadow: var(--sh-card); }
+</style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    /* Paleta Balanz. Navy y cyan tomados de balanz.com; el resto sigue balanz-design. */
+    --navy: #0d2055;          /* color dominante: header, texto principal */
+    --navy-deep: #01092d;     /* base de degradados */
+    --navy-soft: #06214e;
+    --navy-light: #17336f;    /* hover sobre navy */
+    --cyan: #00a3e4;          /* acento: eyebrows, CTAs, activo */
+    --cyan-dark: #0089c1;     /* hover del CTA */
+    --cyan-bg: #e6f6fd;       /* recuadros informativos */
+
+    --bg: #f2f4f8;            /* fondo de página */
+    --surface: #ffffff;       /* tarjetas */
+    --card: #f8fafc;          /* encabezados de tabla */
+    --row-hover: #eef4fa;
+    --border: #c8d3e0;
+    --border-l: #a7b2c8;
+
+    --text: #0d2055;
+    --text-2: #3a4a5c;
+    --text-3: #6b7280;        /* label_gray del skill */
+
+    --green: #1b9e5a;         /* semánticos de perfil de riesgo */
+    --green-bg: #dcfce7;
+    --green-border: #86efac;
+    --amber: #e08e16;
+    --red: #c0392b;
+    --blue: #145e81;
+    --purple: #7c3aed;
+    --teal: #0d9488;
+
+    --r-pill: 999px;          /* la marca usa píldoras para los CTA */
+    --r-card: 12px;
+    --r-input: 8px;
+    --sh-card: 0 1px 3px rgba(13,32,85,.08), 0 1px 2px rgba(13,32,85,.04);
+    --sh-raised: 0 4px 16px rgba(13,32,85,.10);
+
+    --mono: 'Open Sans',Arial,system-ui,sans-serif;
+    --sans: 'Open Sans',Arial,system-ui,sans-serif;
+  }
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap');
+  /* Barra de scroll vertical siempre visible: sin esto las páginas cortas (Duales, Caución)
+     son 15px más anchas que las largas y el header se corre al cambiar de solapa. */
+  html { overflow-y: scroll; }
+
+  /* min-width: fit-content -> si una tabla se sale a lo ancho (vista Completa), el body crece
+     con ella y el header, que mide 100% del body, la sigue cubriendo al scrollear. */
+  body { background: var(--bg); color: var(--text); font-family: var(--sans); min-height: 100vh;
+         margin: 0; padding: 0; min-width: fit-content; }
+  .wrap { max-width: 1400px; margin: 0 auto; padding: 0 24px 24px; }
+
+
+
+  .status-line { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--text-3); font-family: var(--mono); margin-bottom: 16px; }
+  .dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+  .dot.ok { background: var(--green); } .dot.err { background: var(--red); } .dot.loading { background: var(--amber); } .dot.idle { background: var(--text-3); }
+
+  .toolbar { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; flex-wrap: wrap; }
+  .btn-navy { color: #fff; background: var(--navy); border-color: var(--navy); }
+  .btn-navy:hover { background: var(--navy-light); }
+  .sep-v { width: 1px; height: 20px; background: var(--border); }
+  .upload-st { font-size: 11px; font-family: var(--mono); color: var(--text-3); }
+  .upload-st.ok { color: var(--green); } .upload-st.err { color: var(--red); }
+
+  /* CAUCION */
+  .caucion { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; margin-bottom: 20px; overflow: hidden; box-shadow: 0 1px 4px rgba(0,0,0,0.06); }
+  .caucion-header { display: flex; align-items: center; justify-content: space-between; padding: 13px 18px; border-bottom: 1px solid var(--border); background: var(--card); }
+  .caucion-title { font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-3); font-family: var(--mono); font-weight: 600; }
+  .caucion-body { padding: 16px 18px; background: var(--surface); }
+  .caucion-row { display: flex; align-items: flex-end; gap: 32px; flex-wrap: wrap; }
+  .caucion-input-wrap { display: flex; flex-direction: column; gap: 4px; }
+  .caucion-lbl { font-size: 10px; color: var(--text-3); font-family: var(--mono); letter-spacing: .06em; text-transform: uppercase; }
+  .caucion-input { background: var(--bg); border: 1px solid var(--border-l); border-radius: 5px; color: var(--amber); font-family: var(--mono); font-size: 14px; font-weight: 500; padding: 7px 12px; width: 120px; transition: border-color .15s; }
+  .caucion-input:focus { outline: none; border-color: var(--amber); }
+  .caucion-results { display: flex; gap: 32px; flex-wrap: wrap; }
+  .caucion-stat { display: flex; flex-direction: column; gap: 3px; }
+  .caucion-stat .lbl { font-size: 10px; color: var(--text-3); font-family: var(--mono); letter-spacing: .06em; text-transform: uppercase; }
+  .caucion-stat .val { font-size: 15px; font-weight: 500; font-family: var(--mono); color: var(--blue); }
+
+  /* TABLA */
+  .table-wrap { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; margin-bottom: 16px; overflow-x: auto; box-shadow: 0 1px 4px rgba(0,0,0,0.06); }
+  table { width: 100%; border-collapse: collapse; min-width: 1000px; }
+  thead tr { border-bottom: 2px solid var(--navy); }
+  th { padding: 10px 14px; font-size: 10px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--text-3); text-align: right; white-space: nowrap; cursor: pointer; background: var(--card); transition: color .15s; user-select: none; }
+  th:hover { color: var(--text-2); }
+  th:first-child, th:nth-child(2) { text-align: left; }
+  th.sorted { color: var(--navy); }
+  tbody tr { border-bottom: 1px solid var(--border); transition: background .1s; }
+  tbody tr:last-child { border-bottom: none; }
+  tbody tr:hover { background: var(--row-hover); }
+  td { padding: 8px 14px; font-size: 12px; text-align: right; color: var(--text-2); white-space: nowrap; font-family: var(--mono); vertical-align: middle; }
+  td:first-child { text-align: left; font-weight: 600; color: var(--text); }
+  td:nth-child(2) { text-align: left; }
+  .tir { color: var(--green); font-weight: 600; }
+  .tna-v { color: var(--blue); font-weight: 500; }
+  .no-p { color: var(--text-3); font-style: italic; font-size: 11px; }
+  .dias-normal { color: var(--text-2); }
+  .dias-red { color: var(--red); font-weight: 600; }
+  .sp-p { color: var(--green); font-size: 11px; font-weight: 600; }
+  .sp-n { color: var(--red); font-size: 11px; font-weight: 600; }
+  .tnabe-v { color: var(--amber); font-weight: 500; }
+
+  input[type=number]::-webkit-inner-spin-button, input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+  input[type=number] { -moz-appearance: textfield; appearance: textfield; }
+
+  .precio-cell-input { background: var(--bg); border: 1px solid var(--border-l); border-radius: 4px; color: var(--text-2); font-family: var(--mono); font-size: 12px; text-align: right; width: 100px; padding: 3px 6px; transition: border-color .15s, color .15s; }
+  .precio-cell-input:focus { outline: none; border-color: var(--blue); color: var(--text); }
+  .precio-cell-input.has-value { color: var(--navy); border-color: #a0b4d8; background: #e8edf5; }
+  .precio-cell-input::placeholder { color: var(--text-3); font-size: 11px; }
+
+  .alert { padding: 10px 14px; border-radius: 6px; font-size: 11px; font-family: var(--mono); margin-bottom: 14px; display: none; }
+  .alert.show { display: block; }
+  .alert.err { background:#fef2f2; border:1px solid #fecaca; color:var(--red); }
+  .alert.info { background:#f0fdf4; border:1px solid #86efac; color:var(--green); }
+
+  /* SIMULADOR */
+  .sim { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; margin-top: 16px; overflow: hidden; box-shadow: 0 1px 4px rgba(0,0,0,0.06); }
+  .sim-header { display: flex; align-items: center; justify-content: space-between; padding: 13px 18px; user-select: none; background: var(--card); border-bottom: 1px solid var(--border); }
+  .sim-title { font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-3); font-family: var(--mono); font-weight: 600; }
+  .sim-body { padding: 20px 24px 24px; }
+  .sim-inputs { display: flex; align-items: flex-end; gap: 24px; flex-wrap: wrap; margin-bottom: 24px; }
+  .sim-input-wrap { display: flex; flex-direction: column; gap: 4px; }
+  .sim-lbl { font-size: 10px; color: var(--text-3); font-family: var(--mono); letter-spacing: .06em; text-transform: uppercase; }
+  .sim-select { background: var(--bg); border: 1px solid var(--border-l); border-radius: 5px; color: var(--text); font-family: var(--mono); font-size: 13px; font-weight: 500; padding: 7px 12px; min-width: 160px; cursor: pointer; transition: border-color .15s; }
+  .sim-select:focus { outline: none; border-color: var(--blue); }
+  .sim-input { background: var(--bg); border: 1px solid var(--border-l); border-radius: 5px; color: var(--blue); font-family: var(--mono); font-size: 14px; font-weight: 500; padding: 7px 12px; width: 180px; transition: border-color .15s; }
+  .sim-input:focus { outline: none; border-color: var(--blue); }
+  .sim-stat { background: var(--surface); padding: 14px 18px; display: flex; flex-direction: column; gap: 5px; }
+  .sim-stat .lbl { font-size: 10px; color: var(--text-3); font-family: var(--mono); letter-spacing: .06em; text-transform: uppercase; }
+  .sim-stat .val { font-size: 16px; font-weight: 600; font-family: var(--mono); color: var(--text); }
+  .sim-stat .val.green { color: var(--green); } .sim-stat .val.blue { color: var(--blue); } .sim-stat .val.amber { color: var(--amber); } .sim-stat .val.red { color: var(--red); }
+  .sim-empty { font-size: 12px; color: var(--text-3); font-family: var(--mono); font-style: italic; padding: 16px 0; }
+  .sim-dato { font-size: 15px; font-weight: 600; font-family: var(--mono); color: var(--text); padding: 7px 0; min-width: 100px; }
+
+  /* GLOSARIO */
+  .glosario { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; margin-top: 16px; overflow: hidden; box-shadow: 0 1px 4px rgba(0,0,0,0.06); }
+  .glosario-header { display: flex; align-items: center; justify-content: space-between; padding: 13px 18px; cursor: pointer; user-select: none; background: var(--card); border-bottom: 1px solid var(--border); }
+  .glosario-title { font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-3); font-family: var(--mono); font-weight: 600; }
+  .glosario-body { padding: 20px 24px 24px; display: none; }
+  .glosario-body.open { display: block; }
+  .glosario-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0 48px; }
+  @media (max-width: 768px) { .glosario-grid { grid-template-columns: 1fr; } body { padding: 12px; } }
+  .glosario-item { display: flex; gap: 12px; padding: 9px 0; border-bottom: 1px solid var(--border); }
+  .glosario-item:last-child { border-bottom: none; }
+  .glosario-col { font-size: 11px; font-family: var(--mono); color: var(--blue); white-space: nowrap; min-width: 140px; padding-top: 1px; font-weight: 500; }
+  .glosario-desc { font-size: 11px; color: var(--text-2); line-height: 1.55; }
+  .glosario-formula { display: block; font-family: var(--mono); font-size: 10px; color: var(--text-3); margin-top: 4px; }
+  .caucion-arrow { font-size: 10px; color: var(--text-3); transition: transform .2s; }
+  .caucion-arrow.open { transform: rotate(180deg); }
+</style>
+</head>
+<body>
+
+<nav class="navbar">
+<div class="navbar-brand">
+  <img class="navbar-logo" alt="Balanz" src="data:image/png;base64,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">
+  <div class="navbar-sep"></div>
+  <div class="navbar-title">Monitor · Renta Fija AR</div>
+</div>
+</nav>
+
+<style>
+  .status-line { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--text-3); font-family: var(--mono); margin-bottom: 14px; flex-wrap: wrap; }
+  .dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; background: var(--text-3); }
+  .dot.ok { background: var(--green); } .dot.err { background: var(--red); }
+  .intro { font-size: 12px; color: var(--text-3); font-family: var(--mono); margin-bottom: 16px; line-height: 1.6; max-width: 1100px; }
+  .toolbar { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; margin-bottom: 18px; }
+  .liq-badge { font-size: 11px; font-family: var(--mono); color: var(--text-2); background: var(--cyan-bg); border: 1px solid var(--cyan); border-radius: var(--r-pill); padding: 6px 14px; }
+  .precio-st { font-size: 11px; font-family: var(--mono); }
+  .precio-st.ok { color: var(--green); } .precio-st.err { color: var(--red); }
+
+  .table-wrap { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-card); overflow-x: auto; box-shadow: var(--sh-card); }
+  table.rot { width: 100%; border-collapse: collapse; min-width: 1500px; }
+  table.rot thead tr { border-bottom: 2px solid var(--navy); }
+  table.rot th { padding: 9px 12px; font-size: 10px; font-weight: 600; letter-spacing: .05em; text-transform: uppercase; color: var(--text-3); text-align: right; background: var(--card); white-space: nowrap; font-family: var(--mono); vertical-align: bottom; }
+  table.rot th.lft { text-align: left; }
+  table.rot tbody tr { border-bottom: 1px solid var(--border); }
+  table.rot tbody tr:last-child { border-bottom: none; }
+  table.rot tbody tr:hover { background: var(--row-hover); }
+  table.rot td { padding: 8px 12px; font-size: 12px; text-align: right; color: var(--text-2); white-space: nowrap; font-family: var(--mono); }
+  table.rot td.lft { text-align: left; font-weight: 600; color: var(--text); }
+  table.rot td.calc { color: var(--navy); font-weight: 500; }
+  .flecha { color: var(--text-3); margin: 0 4px; }
+  .pos { color: var(--green); font-weight: 600; } .neg { color: var(--red); font-weight: 600; }
+  .rot-inp { width: 92px; background: var(--bg); border: 1px solid var(--border-l); border-radius: var(--r-input); color: var(--navy); font-family: var(--mono); font-size: 12px; font-weight: 600; text-align: right; padding: 5px 8px; }
+  .rot-inp:focus { outline: none; border-color: var(--cyan); }
+  .rot-inp.com { width: 62px; color: var(--text-2); font-weight: 500; }
+  .rot-inp.vn { width: 96px; color: var(--text-2); font-weight: 500; }
+  th.inp-col { color: var(--cyan); }
+  .nota { font-size: 11px; color: var(--text-3); font-family: var(--mono); line-height: 1.7; margin-top: 18px; padding: 14px 18px; background: var(--card); border-left: 3px solid var(--cyan); border-radius: 0 var(--r-input) var(--r-input) 0; max-width: 1100px; }
+  .nota b { color: var(--navy); }
+  input[type=number]::-webkit-inner-spin-button, input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+  input[type=number] { -moz-appearance: textfield; appearance: textfield; }
+</style>
+
+<div class="nav-tabs">
+  <a class="nav-tab" href="bonos.html">Monitor</a>
+  <a class="nav-tab" href="ons.html">ONs</a>
+  <a class="nav-tab" href="senderoCER.html">Sendero CER</a>
+  <a class="nav-tab" href="senderoDL.html">Sendero DL</a>
+  <a class="nav-tab" href="senderoTAMAR.html">Sendero TAMAR</a>
+  <a class="nav-tab" href="duales.html">Duales</a>
+  <a class="nav-tab" href="globVsBon.html">Glob vs Bon</a>
+  <a class="nav-tab" href="caucionVsLecap.html">Caución vs Lecap</a>
+  <a class="nav-tab" href="caucionNeta.html">Caución Neta</a>
+  <a class="nav-tab active" href="rotacionBopreal.html">Rotación BOPREAL</a>
+</div>
+
+<div class="wrap">
+  <div class="status-line">
+    <span class="dot" id="dot"></span><span id="status-txt">Cargando…</span>
+  </div>
+
+  <div class="intro">
+    Rotación <b>BOPREAL → BONAR</b>. Los precios (sucios, con intereses corridos) se traen del Monitor y son editables. Con la comisión de venta y compra, se calcula por XIRR la TIR de mercado de cada bono, el costo de la rotación, el <b>pickup</b> (bps de TIR que ganás), el <b>break-even</b> (en cuánto tiempo el pickup repaga la comisión) y la <b>TIR neta de comisión</b> del destino. Liquidación T+1 hábil.
+  </div>
+
+  <div class="toolbar">
+    <button class="btn btn-green" onclick="recargarPrecios()">↻ Recargar precios del Monitor</button>
+    <span class="liq-badge" id="liq-badge">Liquidación: —</span>
+    <span class="precio-st" id="precio-st"></span>
+  </div>
+
+  <div class="table-wrap">
+    <table class="rot">
+      <thead>
+        <tr>
+          <th class="lft">Origen</th>
+          <th class="lft">Destino</th>
+          <th class="inp-col">VN a Rotar</th>
+          <th class="inp-col">Precio Venta<br>Origen</th>
+          <th>TIR Origen</th>
+          <th class="inp-col">Precio Compra<br>Destino</th>
+          <th>TIR Destino</th>
+          <th class="inp-col">Com. Venta %</th>
+          <th class="inp-col">Com. Compra %</th>
+          <th>Comisión<br>Total $</th>
+          <th>Costo Rotac.<br>% (s/monto)</th>
+          <th>Pickup<br>(bps)</th>
+          <th>Break-even<br>(años)</th>
+          <th>TIR Dest.<br>NETA com.</th>
+          <th>Pickup NETO<br>(bps)</th>
+        </tr>
+      </thead>
+      <tbody id="tbody-rot"></tbody>
+    </table>
+  </div>
+
+  <div class="nota">
+    <b>TIR de mercado</b>: XIRR con el precio (sucio) que ves y los flujos reales del bono, desde la liquidación T+1 hábil. &nbsp;·&nbsp;
+    <b>TIR Dest. NETA com.</b>: rendimiento del destino computando el costo de comprarlo, precio × (1 + comisión compra) — lo que efectivamente captura el cliente. &nbsp;·&nbsp;
+    <b>Pickup</b> = TIR destino − TIR origen; <b>Pickup NETO</b> = TIR destino neta − TIR origen. &nbsp;·&nbsp;
+    <b>Costo Rotación %</b> = comisión total ÷ monto bruto de venta. &nbsp;·&nbsp;
+    <b>Break-even (años)</b> = Costo Rotación % ÷ Pickup: más bajo, más conviene.<br>
+    Flujos (ByMA/Rava/BCRA): BOPREAL S1 (BPOA7/B7/C7/D7) 5% sem, amort 50% 30/04/27 + 50% 31/10/27. BOPREAL S4 (BPOA8/B8) 3% sem, bullet 31/10/28. Bonar AO27/AO28 6% mensual, bullet (29/10/27 y 31/10/28).
+  </div>
+</div>
+
+<script>
+// ── HELPERS FECHA / DÍAS HÁBILES (portado) ───────────────────
+const FERIADOS_WORKER = 'https://feriados-proxy.granda-fra.workers.dev';
+function parseLocalDate(s){ if(!s) return null; const p=String(s).split('-').map(Number); return new Date(p[0],p[1]-1,p[2]); }
+function dateToStr(d){ return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; }
+function fmtDMY(d){ return `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`; }
+let feriados = new Set();
+function esHabil(d){ const w=d.getDay(); if(w===0||w===6) return false; return !feriados.has(dateToStr(d)); }
+function sumarDiasHabiles(fecha,n){ const d=(fecha instanceof Date)?new Date(fecha):(parseLocalDate(fecha)||new Date()); let r=n; while(r>0){ d.setDate(d.getDate()+1); if(esHabil(d)) r--; } return d; }
+async function cargarFeriados(){
+  const y1=new Date().getFullYear(); const anios=[]; for(let y=2020;y<=y1;y++) anios.push(y);
+  const set=new Set();
+  try{
+    const res=await Promise.all(anios.map(y=>fetch(`${FERIADOS_WORKER}/?anio=${y}`).then(r=>r.ok?r.json():[]).catch(()=>[])));
+    res.flat().forEach(f=>{ if(f&&f.fecha) set.add(String(f.fecha).slice(0,10)); });
+    if(set.size){ feriados=set; try{ localStorage.setItem('bonos_feriados', JSON.stringify([...set])); }catch(e){} }
+  }catch(e){ try{ const b=JSON.parse(localStorage.getItem('bonos_feriados')||'[]'); if(b.length) feriados=new Set(b); }catch(_){} }
+}
+
+// ── XIRR (Newton-Raphson, base act/365) ──────────────────────
+function xirr(cfs){
+  const d0=cfs[0][0];
+  const yf=d=>(d-d0)/(365*86400000);
+  const npv=r=>cfs.reduce((s,[d,a])=>s+a/Math.pow(1+r,yf(d)),0);
+  let r=0.1;
+  for(let i=0;i<200;i++){
+    const f=npv(r);
+    const df=cfs.reduce((s,[d,a])=>s-yf(d)*a/Math.pow(1+r,yf(d)+1),0);
+    if(Math.abs(df)<1e-12) break;
+    const rn=r-f/df;
+    if(Math.abs(rn-r)<1e-11){ r=rn; break; }
+    r=Math.max(rn,-0.999);
+  }
+  return r;
+}
+
+// ── FLUJOS por bono (por 100 VN) ─────────────────────────────
+const S1=[['2026-10-31',2.5],['2027-04-30',52.5],['2027-10-31',51.25]];              // BOPREAL Serie 1
+const S4=[['2026-10-31',1.5],['2027-04-30',1.5],['2027-10-31',1.5],['2028-04-30',1.5],['2028-10-31',101.5]]; // BOPREAL Serie 4
+const AO27F=[['2026-07-31',.5],['2026-08-31',.5],['2026-09-30',.5],['2026-10-30',.5],['2026-11-30',.5],['2026-12-30',.5],['2027-01-29',.5],['2027-02-26',.5],['2027-03-31',.5],['2027-04-30',.5],['2027-05-31',.5],['2027-06-30',.5],['2027-07-30',.5],['2027-08-31',.5],['2027-09-30',.5],['2027-10-29',100.5]];
+const AO28F=[['2026-07-31',.5],['2026-08-31',.5],['2026-09-30',.5],['2026-10-30',.5],['2026-11-30',.5],['2026-12-30',.5],['2027-01-29',.5],['2027-02-26',.5],['2027-03-31',.5],['2027-04-30',.5],['2027-05-31',.5],['2027-06-30',.5],['2027-07-30',.5],['2027-08-31',.5],['2027-09-30',.5],['2027-10-29',.5],['2027-11-30',.5],['2027-12-31',.5],['2028-01-31',.5],['2028-02-29',.5],['2028-03-31',.5],['2028-04-28',.5],['2028-05-31',.5],['2028-06-30',.5],['2028-07-31',.5],['2028-08-31',.5],['2028-09-29',.5],['2028-10-31',100.5]];
+const FLUJOS={ BPOA7:S1, BPOB7:S1, BPOC7:S1, BPOD7:S1, BPOA8:S4, BPOB8:S4, AO27:AO27F, AO28:AO28F };
+const TICKER_MONITOR={ BPOA7:'BPA7D', BPOB7:'BPB7D', BPOC7:'BPC7D', BPOD7:'BPD7D', BPOA8:'BPA8D', BPOB8:'BPB8D', AO27:'AO27', AO28:'AO28' };
+
+// ── CASOS (los del Excel) ────────────────────────────────────
+const CASOS=[
+  { origen:'BPOA7', destino:'AO27', vn:10000, comV:0.2, comC:0.2 },
+  { origen:'BPOB7', destino:'AO27', vn:10000, comV:0.2, comC:0.2 },
+  { origen:'BPOC7', destino:'AO27', vn:10000, comV:0.5, comC:0.5 },
+  { origen:'BPOD7', destino:'AO27', vn:10000, comV:0.2, comC:0.2 },
+  { origen:'BPOA8', destino:'AO28', vn:10000, comV:0.5, comC:0.5 },
+  { origen:'BPOB8', destino:'AO28', vn:10000, comV:0.5, comC:0.5 },
+];
+
+let estado=[];   // { vn, precioV, precioC, comV, comC } por fila
+let t0=null;     // fecha de liquidación T+1 hábil
+let preciosMonitor={};
+
+// XIRR de un bono dado precio y t0. Excluye flujos anteriores a la liquidación.
+function tirBono(bono, precio){
+  if(!precio || precio<=0 || !t0) return null;
+  const cfs=[[t0,-precio]];
+  for(const [f,m] of FLUJOS[bono]){ const fd=parseLocalDate(f); if(fd>t0) cfs.push([fd,m]); }
+  if(cfs.length<2) return null;
+  return xirr(cfs);
+}
+
+function cargarPreciosMonitor(){
+  const bd=JSON.parse(localStorage.getItem('bonos_data')||'[]');
+  preciosMonitor={};
+  bd.forEach(d=>{ if(d.precio!=null) preciosMonitor[d.ticker]=d.precio; });
+  const st=document.getElementById('precio-st');
+  const bonos=[...new Set(CASOS.flatMap(c=>[c.origen,c.destino]))];
+  const hay=bonos.filter(b=>preciosMonitor[TICKER_MONITOR[b]]!=null).length;
+  if(st){ st.textContent = hay ? `✓ ${hay}/${bonos.length} precios del Monitor` : 'Sin precios — pasá por el Monitor'; st.className='precio-st '+(hay?'ok':'err'); }
+}
+
+function precioDe(bono){ return preciosMonitor[TICKER_MONITOR[bono]] ?? null; }
+
+function initEstado(){
+  estado=CASOS.map(c=>({ vn:c.vn, precioV:precioDe(c.origen), precioC:precioDe(c.destino), comV:c.comV, comC:c.comC }));
+}
+function recargarPrecios(){ cargarPreciosMonitor(); estado.forEach((e,i)=>{ e.precioV=precioDe(CASOS[i].origen); e.precioC=precioDe(CASOS[i].destino); }); render(); }
+function onInput(i,campo,val){ const v=parseFloat(val); estado[i][campo]=isNaN(v)?null:v; render(); }
+
+const num=(x,d=2)=>x==null||isNaN(x)?'—':x.toLocaleString('es-AR',{minimumFractionDigits:d,maximumFractionDigits:d});
+const pct=(x,d=2)=>x==null||isNaN(x)?'—':(x*100).toFixed(d)+'%';
+
+function render(){
+  const tb=document.getElementById('tbody-rot');
+  let html='';
+  estado.forEach((e,i)=>{
+    const c=CASOS[i];
+    const precioV=e.precioV, precioC=e.precioC, comV=(e.comV||0)/100, comC=(e.comC||0)/100, vn=e.vn||0;
+    const tirO=tirBono(c.origen, precioV);
+    const tirD=tirBono(c.destino, precioC);
+    const tirDN=tirBono(c.destino, precioC!=null?precioC*(1+comC):null);
+    let comisTot=null, costo=null, pickup=null, be=null, pickupN=null;
+    if(precioV!=null && vn){
+      const L=vn*precioV/100, M=L*comV;
+      if(precioC!=null){
+        const O=(L-M)/(precioC/100*(1+comC)), P=O*precioC/100*comC;
+        comisTot=M+P; costo=L>0?comisTot/L:null;
+      }
+    }
+    if(tirO!=null && tirD!=null){
+      pickup=(tirD-tirO)*10000;
+      be=(tirD-tirO)>0 && costo!=null ? costo/(tirD-tirO) : null;
+    }
+    if(tirO!=null && tirDN!=null) pickupN=(tirDN-tirO)*10000;
+    const sgn=x=>x==null?'':(x>=0?'pos':'neg');
+    html+=`<tr>
+      <td class="lft">${c.origen}</td>
+      <td class="lft"><span class="flecha">→</span>${c.destino}</td>
+      <td><input class="rot-inp vn" type="number" step="1" value="${vn||''}" oninput="onInput(${i},'vn',this.value)"></td>
+      <td><input class="rot-inp" type="number" step="0.01" value="${precioV??''}" oninput="onInput(${i},'precioV',this.value)"></td>
+      <td class="calc">${pct(tirO)}</td>
+      <td><input class="rot-inp" type="number" step="0.01" value="${precioC??''}" oninput="onInput(${i},'precioC',this.value)"></td>
+      <td class="calc">${pct(tirD)}</td>
+      <td><input class="rot-inp com" type="number" step="0.01" value="${e.comV??''}" oninput="onInput(${i},'comV',this.value)"></td>
+      <td><input class="rot-inp com" type="number" step="0.01" value="${e.comC??''}" oninput="onInput(${i},'comC',this.value)"></td>
+      <td class="calc">${num(comisTot)}</td>
+      <td class="calc">${costo==null?'—':(costo*100).toFixed(3)+'%'}</td>
+      <td class="${sgn(pickup)}">${pickup==null?'—':(pickup>=0?'+':'')+pickup.toFixed(0)}</td>
+      <td class="calc">${be==null?'—':be.toFixed(2)}</td>
+      <td class="calc">${pct(tirDN)}</td>
+      <td class="${sgn(pickupN)}">${pickupN==null?'—':(pickupN>=0?'+':'')+pickupN.toFixed(0)}</td>
+    </tr>`;
+  });
+  tb.innerHTML=html;
+}
+
+async function init(){
+  await cargarFeriados();
+  const hoy=new Date(); hoy.setHours(0,0,0,0);
+  t0=sumarDiasHabiles(hoy,1);
+  document.getElementById('liq-badge').textContent='Liquidación T+1 hábil: '+fmtDMY(t0);
+  cargarPreciosMonitor();
+  initEstado();
+  render();
+  const dot=document.getElementById('dot'), st=document.getElementById('status-txt');
+  dot.className='dot ok'; st.textContent=CASOS.length+' casos · '+new Date().toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'});
+}
+init();
+</script>
+</body>
+</html>
