@@ -203,6 +203,7 @@
   <a class="nav-tab" href="globVsBon.html">Glob vs Bon</a>
   <a class="nav-tab" href="caucionVsLecap.html">Caución vs Lecap</a>
   <a class="nav-tab" href="caucionNeta.html">Caución Neta</a>
+  <a class="nav-tab" href="rotacionBopreal.html">Rotación BOPREAL</a>
 </div>
 
 <div class="wrap">
@@ -253,7 +254,7 @@
       La <strong>Break Even Inflation (BEI)</strong> es la inflación implícita que el mercado descuenta, derivada de comparar la curva nominal (LECAPs) con la curva real (CER). Se basa en la ecuación de Fisher:<br><br>
       <strong>BEI anual = (1 + TEA_LECAP) / (1 + TEA_CER) − 1</strong><br><br>
       Donde la TEA_LECAP incluye inflación esperada + retorno real, y la TEA_CER es el retorno real puro por encima de la inflación. La BEI mensual se obtiene como <strong>(1 + BEI_anual)^(1/12) − 1</strong>.<br><br>
-      El <strong>REM</strong> es la expectativa de inflación del consenso de analistas. Si la <strong>BEI &gt; REM</strong>: el mercado valúa más inflación que el consenso → conviene <strong>CER</strong>. Si la <strong>BEI &lt; REM</strong>: el mercado descuenta menos inflación → conviene <strong>LECAP</strong>.
+      El <strong>REM</strong> es la expectativa de inflación del consenso de analistas. Si la <strong>BEI &gt; REM</strong>: el mercado descuenta más inflación que el consenso → si se cumple el REM, la inflación quedaría por debajo del break-even y gana la nominal → conviene <strong>LECAP</strong>. Si la <strong>BEI &lt; REM</strong>: el mercado descuenta menos inflación que el consenso → la inflación superaría el break-even → conviene <strong>CER</strong>.
     </div>
     <div id="bei-contenido"><div class="bei-empty">Calculando BEI... (necesita precios cargados en el Monitor)</div></div>
   </div>
@@ -680,7 +681,8 @@ async function cargarExcel() {
           emision: excelSerialToDate(r['Fecha Emision'] || r['Fecha Emisión']),
           venc:    excelSerialToDate(r['Fecha Vencimineto'] || r['Fecha Vencimiento']),
           margen:  parseFloat(r['Margen']) || 0,
-        }));
+        }))
+        .sort((a, b) => (a.venc || '').localeCompare(b.venc || '')); // ordenar por vencimiento
     }
 
     // LECAPS
@@ -970,8 +972,10 @@ function renderBEI() {
     let rec = '<span class="rec-neutro">—</span>';
     if (diff !== null) {
       const diffR = parseFloat(diff.toFixed(2));
-      if (diffR > 0) rec = '<span class="rec-cer">CER</span>';
-      else if (diffR < 0) rec = '<span class="rec-lecap">LECAP</span>';
+      // diff = BEI − REM. BEI > REM (diff>0): el mercado descuenta más inflación que el REM → conviene LECAP.
+      // BEI < REM (diff<0): el mercado descuenta menos → la inflación superaría el break-even → conviene CER.
+      if (diffR > 0) rec = '<span class="rec-lecap">LECAP</span>';
+      else if (diffR < 0) rec = '<span class="rec-cer">CER</span>';
       else rec = '<span class="rec-neutro">Neutro</span>';
     }
     const beiCell = beiFwd !== null ? `${beiFwd.toFixed(2)}%` : `<span style="color:var(--text-3)">Sin datos</span>`;
@@ -989,7 +993,7 @@ function renderBEI() {
     const diff12 = bei12 - rem12.valor;
     let rec12 = '<span class="rec-neutro">Neutro</span>';
     const diff12R = parseFloat(diff12.toFixed(2));
-    if (diff12R > 0) rec12 = '<span class="rec-cer">CER</span>'; else if (diff12R < 0) rec12 = '<span class="rec-lecap">LECAP</span>';
+    if (diff12R > 0) rec12 = '<span class="rec-lecap">LECAP</span>'; else if (diff12R < 0) rec12 = '<span class="rec-cer">CER</span>';
     html += `<tr style="background:var(--card);font-weight:600">
       <td>12 Meses (anualizado)</td><td>${bei12.toFixed(2)}%</td><td>${rem12.valor.toFixed(2)}%</td>
       <td style="color:${diff12 > 0 ? 'var(--red)' : 'var(--green)'}">${(diff12>0?'+':'') + diff12.toFixed(2)}%</td><td>${rec12}</td>
