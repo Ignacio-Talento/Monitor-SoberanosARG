@@ -7,7 +7,7 @@ Los tickers se leen dinámicamente desde Instrumentos.xlsx.
 import requests
 import openpyxl
 from openpyxl import load_workbook
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 import os
 import re
 import time
@@ -243,6 +243,16 @@ def referencias_rueda(items):
     return [it for it in items if it['t1816'] and it['moneda']][:3]
 
 
+def hoy_art():
+    """Fecha de hoy en Argentina (UTC-3).
+
+    El runner de GitHub Actions corre en UTC: una corrida de las 21:52 ART cae en el día
+    siguiente según date.today(), y ahí arrancaba a buscar la rueda por un día que todavía
+    no existía. Acá el calendario que importa es el argentino.
+    """
+    return (datetime.utcnow() - timedelta(hours=3)).date()
+
+
 def resolver_fecha_1816(items, max_dias=7):
     """Última rueda con datos en 1816, buscando hacia atrás desde hoy.
 
@@ -263,7 +273,7 @@ def resolver_fecha_1816(items, max_dias=7):
         return None
     try:
         for i in range(max_dias + 1):
-            d = date.today() - timedelta(days=i)
+            d = hoy_art() - timedelta(days=i)
             if d.weekday() >= 5:          # sábado/domingo: ni consultamos
                 continue
             f = d.strftime("%Y-%m-%d")
@@ -319,11 +329,26 @@ def actualizar_historicos():
     fecha_1816 = resolver_fecha_1816(items)
     if fecha_1816:
         fecha_str = fecha_1816
-        if fecha_str != date.today().strftime("%Y-%m-%d"):
+        if fecha_str != hoy_art().strftime("%Y-%m-%d"):
             print(f"1816 todavía no tiene datos de hoy; última rueda disponible: {fecha_str}")
+    elif cliente_1816() is not None:
+        # Hay cliente de 1816 pero no se pudo resolver la rueda (típicamente un 429). Antes se
+        # rotulaba la fila con date.today() y se pedían los precios sin fechaOperacion, lo que
+        # escribe mal dos veces: (a) el runner de GitHub corre en UTC, así que después de las
+        # 21 ART "hoy" ya es el día siguiente, y (b) 1816 sin fecha devuelve la última rueda
+        # disponible, que es la anterior. El 2026-08-06 pasó exactamente eso: la corrida guardó
+        # los cierres del 06 rotulados como 07, las variaciones de ese día daban cero y el
+        # chequeo de "ya existe fila" bloqueaba la corrida real del 07.
+        # Una fila faltante se recupera con el backfill; una mal rotulada corrompe en silencio.
+        print("ERROR: 1816 está disponible pero no se pudo resolver la rueda (¿429?). No se "
+              "escribe nada para no rotular mal la fila; correr el backfill para esa fecha.")
+        return
     else:
-        fecha_str = date.today().strftime("%Y-%m-%d")
-        print("AVISO: no se pudo resolver la fecha en 1816; se usa hoy y se completa con Eco.")
+        # Sin cliente de 1816 (falta la key o la librería): modo Eco puro, que es el
+        # comportamiento histórico. Eco cotiza en vivo, así que la fecha de hoy sí corresponde
+        # a los precios que devuelve. Se usa el calendario argentino, no el del runner.
+        fecha_str = hoy_art().strftime("%Y-%m-%d")
+        print("AVISO: 1816 no disponible; se usa la fecha de hoy (ARG) y se completa con Eco.")
     print(f"Actualizando historicos para {fecha_str}...")
 
     # Cargar o crear el Excel
