@@ -44,6 +44,14 @@ MONEDA_1816 = {
     # a Eco y guardaban basura (precios en pesos/volumen) que rompía los retornos.
     'Subsoberanos': 'mep',
 }
+# Hojas que NO son listas de instrumentos. 'Flujos' es la tabla de cronogramas y también tiene
+# columna 'Ticker', así que se colaba entera: 17 tickers que no están en ninguna hoja de
+# instrumentos (PUA36, BC37D, BDC33 y 14 más, varios ya vencidos) entraban al histórico. Y como
+# 'Flujos' no está en MONEDA_1816, no mapeaban a 1816 y caían a Eco, que los devuelve en PESOS:
+# la serie quedaba ~1.500x más grande y las variaciones contra el precio MEP daban -99%.
+# La guarda de escala no lo detectaba porque compara contra la mediana del propio ticker, que
+# también estaba en pesos: la serie era consistentemente errónea, no un salto puntual.
+HOJAS_NO_INSTRUMENTOS = {'Flujos'}
 # Hojas que NO deben caer a Eco: Eco no las publica en dólares y devuelve el precio en PESOS,
 # que entra al histórico ~1.500x más grande y destroza los retornos (una sola celda mala hace
 # que el WTD/MTD del bono muestre -99%). Si 1816 no tiene el precio, se prefiere dejar el hueco.
@@ -112,6 +120,8 @@ def leer_tickers():
     vistos = set()
 
     for sheet_name in wb.sheetnames:
+        if sheet_name in HOJAS_NO_INSTRUMENTOS:
+            continue
         ws = wb[sheet_name]
         rows = list(ws.iter_rows(values_only=True))
         if not rows:
