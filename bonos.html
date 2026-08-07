@@ -1469,6 +1469,9 @@ function setMoneda(m) {
 const RATINGS = {
   "BCRA": { nac: null, glob: null },
   "CABA": { nac: {r:"AAA(arg)", a:"FIX SCR", p:"Estable", f:"2026-04-30"}, glob: {r:"B-", a:"S&P", p:"Estable", f:"2026-06-18"} },
+  // Chubut: Moody's la subió a Caa1 desde Caa3 el 21-07-2026, arrastrada por la suba del
+  // soberano (el techo país en moneda extranjera pasó de Caa3 a Caa1). Nacional del 29-05-2026.
+  "Chubut": { nac: {r:"BB+.ar", a:"Moody's Local AR", p:"Estable", f:"2026-05-29"}, glob: {r:"Caa1", a:"Moody's", p:"Estable", f:"2026-07-21"} },
   "Cordoba": { nac: {r:"AA(arg)", a:"FIX SCR", p:"Estable", f:"2026-06-01"}, glob: {r:"B2", a:"Moody's", p:"Estable", f:"2026-07-21"} },
   "Entre Rios": { nac: {r:"BBB-(arg)", a:"FIX SCR", p:"Estable", f:"2026-05-07"}, glob: {r:"B-", a:"S&P", p:"Estable", f:"2026-06-18"} },
   "Mendoza": { nac: {r:"A-.ar", a:"Moody's Local AR", p:"Estable", f:"2026-06-02"}, glob: {r:"B-", a:"S&P", p:"Estable", f:"2026-06-18"} },
@@ -1485,8 +1488,9 @@ const RATING_GRUPO = {
 };
 // Subsoberanos: el emisor es la provincia, se resuelve por ticker.
 const RATING_SUBSOB = {
-  PMM29:'Mendoza', NDT25:'Neuquen', CO32:'Cordoba', CO35:'Cordoba', ERM33:'Entre Rios',
-  SFD34:'Santa Fe', BDC36:'CABA', BA37D:'PBA', BB37D:'PBA',
+  PMM29:'Mendoza', NDT25:'Neuquen', NDG34:'Neuquen', CO32:'Cordoba', CO35:'Cordoba',
+  ERM33:'Entre Rios', SFD34:'Santa Fe', BDC36:'CABA', BA37D:'PBA', BB37D:'PBA',
+  PUA36:'Chubut',
 };
 const GRUPOS_HARD_USD = ['usdbonares','usdglobales','usdbopreal','subsoberano'];
 function escalaDe(inst){ return GRUPOS_HARD_USD.includes(inst.grupo) ? 'glob' : 'nac'; }
