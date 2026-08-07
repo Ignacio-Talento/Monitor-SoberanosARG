@@ -936,9 +936,15 @@ function valorTecnicoTF(inst, fechaLiq) {
     if (fd.getTime() > liqMs) { fin = f; break; }  // primer flujo > liq (próximo cupón)
   }
   if (!fin) return null; // ya venció
+  // Sin ningún flujo anterior a la liquidación no se sabe desde cuándo devenga el cupón en
+  // curso, y antes se asumía residual 100 sin intereses corridos: la paridad quedaba igual al
+  // precio. Pasa con los recién emitidos (NDG34) y con los cronogramas scrapeados de 1816, que
+  // sólo traen los cupones que faltan (ERM33 daba 106,50 contra 102,27 de 1816). Se devuelve
+  // null y el llamador cae a la paridad que publica 1816.
+  if (!ini) return null;
   // Residual vigente durante el período en curso = VR del flujo de inicio (o el último VR>0)
   let residual;
-  if (ini && ini.vr > 0) residual = ini.vr;
+  if (ini.vr > 0) residual = ini.vr;
   else {
     const previos = flujos.filter(f => parseLocalDate(f.fecha)?.getTime() <= liqMs && f.vr > 0);
     residual = previos.length ? previos[previos.length - 1].vr : (inst.vr || 100);
@@ -965,6 +971,32 @@ const GRUPOS_PARAMETRICOS = ['lecap', 'cer', 'tamar', 'usdlinked', 'dual'];
 function usaIndicadores1816(inst) {
   if (!inst || GRUPOS_PARAMETRICOS.includes(inst.grupo)) return false;
   return !(inst.flujos && inst.flujos.length);
+}
+
+// Paridad = precio / valor técnico (residual + intereses corridos a la liquidación).
+// Cuando el cronograma no alcanza para saber desde cuándo devenga, valorTecnicoTF devuelve null
+// y se usa la paridad que publica 1816, que es la referencia que queremos igualar.
+function paridadDe(inst, precio, liq) {
+  if (!precio) return null;
+  const vt = valorTecnicoTF(inst, liq);
+  if (vt) return precio / vt * 100;
+  const ind = indicadores1816[String(inst.ticker).toUpperCase()] || {};
+  const p = ind.paridad;
+  if (typeof p !== 'number' || !isFinite(p)) return null;
+  // 1816 la calcula al precio de mercado y la da como fracción. Si se pidió a otro precio
+  // (comisión), se reescala: el valor técnico no depende del precio.
+  const pMkt = precios[inst.ticker] || null;
+  const factor = (pMkt && precio !== pMkt) ? precio / pMkt : 1;
+  return p * 100 * factor;
+}
+
+// Instrumentos que tienen cronograma pero al que le faltan los cupones ya pagados: se les pide
+// la paridad a 1816 porque localmente no se puede computar el devengamiento.
+function usaParidad1816(inst) {
+  if (!inst || GRUPOS_PARAMETRICOS.includes(inst.grupo)) return false;
+  if (!(inst.flujos && inst.flujos.length)) return false;   // esos ya van por usaIndicadores1816
+  const hoy = new Date(); hoy.setHours(0, 0, 0, 0);
+  return valorTecnicoTF(inst, sumarDiasHabiles(hoy, 1)) === null;
 }
 
 // Métricas tomadas de 1816 (las trae el proxy junto al precio). TNA derivada de la TEA en
@@ -1065,8 +1097,7 @@ function calcMetricas(inst, precioAlt) {
 
   if (inst.grupo === 'tasafija') {
     // Paridad sobre valor técnico (residual + intereses corridos a la liquidación T+1).
-    const vt = valorTecnicoTF(inst, liq);
-    const paridad = (precio && vt) ? precio / vt * 100 : null;
+    const paridad = paridadDe(inst, precio, liq);
     if (!precio || !inst.flujos?.length) return { precio, dias, tna: null, tea: null, md: null, paridad };
     // El precio de Eco Valores es T+1: los flujos se descuentan desde la fecha de
     // liquidación (hoy + 1 día hábil), en base 365.
@@ -1182,8 +1213,7 @@ function calcMetricas(inst, precioAlt) {
   if (inst.grupo === 'usdbonares' || inst.grupo === 'usdglobales') {
     const tcHoy = bcraData.usdHoy;
     // Paridad sobre valor técnico en USD (residual + intereses corridos a la liquidación T+1).
-    const vt = valorTecnicoTF(inst, liq);
-    const paridad = (precio && vt) ? precio / vt * 100 : null;
+    const paridad = paridadDe(inst, precio, liq);
     if (!precio || !inst.flujos?.length || !tcHoy) return { precio, dias, tna: null, tea: null, md: null, paridad };
     // TIR en USD sobre flujos en USD. Precio T+1: se descuenta desde la liquidación.
     const precioUSD = precio; // precio ya viene en USD desde Eco Valores
@@ -1262,8 +1292,7 @@ function calcMetricas(inst, precioAlt) {
 
   // ── USD BOPREALES ─────────────────────────────────────────────
   if (inst.grupo === 'usdbopreal') {
-    const vt = valorTecnicoTF(inst, liq);
-    const paridad = (precio && vt) ? precio / vt * 100 : null;
+    const paridad = paridadDe(inst, precio, liq);
     if (!precio || !inst.flujos?.length) return { precio, dias, tna: null, tea: null, md: null, paridad };
     const flujos = inst.flujos.map(f => {
       const fd = parseLocalDate(f.fecha);
@@ -1283,8 +1312,7 @@ function calcMetricas(inst, precioAlt) {
 
   // ── ON USD / Subsoberanos (Hard Dollar, USD) ──────────────────
   if (inst.grupo === 'onusd' || inst.grupo === 'subsoberano') {
-    const vt = valorTecnicoTF(inst, liq);
-    const paridad = (precio && vt) ? precio / vt * 100 : null;
+    const paridad = paridadDe(inst, precio, liq);
     if (!precio || !inst.flujos?.length) return { precio, dias, tna: null, tea: null, md: null, paridad };
     const flujos = inst.flujos.map(f => {
       const fd = parseLocalDate(f.fecha);
@@ -2091,7 +2119,12 @@ async function fetchPreciosYahoo(force = false) {
       headers: { 'content-type': 'application/json' },
       // `ind` marca los que necesitan los indicadores de 1816 (no tienen cronograma cargado).
       // Sólo a esos se les piden campos extra, que es lo que encarece la consulta.
-      body: JSON.stringify(vivos.map(i => ({ ticker: i.ticker, grupo: i.grupo, ind: usaIndicadores1816(i) }))),
+      // `ind` pide TIR + duration + paridad (bonos sin cronograma). `par` pide sólo la paridad,
+      // que sale la mitad: son los que tienen cronograma pero sin los cupones ya pagados, donde
+      // no se pueden computar los intereses corridos acá (ver paridadDe).
+      body: JSON.stringify(vivos.map(i => ({ ticker: i.ticker, grupo: i.grupo,
+                                             ind: usaIndicadores1816(i),
+                                             par: usaParidad1816(i) }))),
     });
     if (!resp.ok) throw new Error('proxy HTTP ' + resp.status);
     const data = await resp.json();

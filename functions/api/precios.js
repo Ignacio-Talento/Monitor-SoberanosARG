@@ -22,6 +22,9 @@ const CAMPO       = "precioDirty";
 // Campos extra para los bonos sin cronograma cargado: se les toman los indicadores ya
 // calculados por 1816 en vez de computarlos localmente.
 const CAMPOS_IND  = [CAMPO, "tea", "durationMod", "paridad"];
+// Sólo la paridad: para los que sí tienen cronograma pero les faltan los cupones ya pagados,
+// donde el frontend no puede computar los intereses corridos. Cuesta la mitad que CAMPOS_IND.
+const CAMPOS_PAR  = [CAMPO, "paridad"];
 // Segundos que dura el caché. Es EL dial de consumo de créditos.
 // Costo de 1816 = tickers x campos (medido contra la API el 2026-08-05: 10 tickers x 1 campo =
 // 10 créditos, 10 x 4 = 40; el comentario anterior decía "x (campos + 1)" y sobrestimaba ~2x).
@@ -206,15 +209,18 @@ async function fallbackEco(grupo, ticker) {
 async function computePrecios(env, items) {
   const apiKey = env.API_1816_KEY;
 
-  // Se agrupa por moneda, y aparte los que piden indicadores (`ind`): son los bonos con cupón
-  // que todavía no tienen cronograma cargado, y a esos hay que pedirles campos extra.
-  //
-  // Da 2 llamadas por refresco mientras no haya instrumentos `ind` (hoy no hay ninguno: los 88
-  // del Monitor y los 88 de ONs tienen su cronograma), y 4 en el peor caso. Unificar todo en 2
-  // pidiendo los 4 campos a todos NO ahorraría llamadas en el caso normal y multiplicaría por 4
-  // los créditos, porque 1816 cobra tickers x campos (medido contra la API el 2026-08-05:
-  // 10 tickers x 1 campo = 10 créditos; 10 x 4 = 40).
-  const porMoneda = {}; // clave -> [{ eco, t, grupo, moneda, ind }]
+  // Se agrupa por moneda y por qué campos necesita cada instrumento, porque 1816 cobra
+  // tickers x campos (medido contra la API el 2026-08-05: 10 tickers x 1 campo = 10 créditos,
+  // 10 x 4 = 40). Tres niveles:
+  //   - normal: sólo el precio.
+  //   - `par`:  precio + paridad. Son los que tienen cronograma pero sin los cupones ya pagados,
+  //             así que el frontend no puede computar los intereses corridos (26 ONs y 3
+  //             subsoberanos al 2026-08-07). Pedirles los 4 campos de `ind` costaría el doble
+  //             para usar sólo la paridad.
+  //   - `ind`:  precio + TIR + duration + paridad. Los que no tienen cronograma en absoluto.
+  // Cada grupo es una llamada más, y cada llamada es otra chance de comerse un 429, así que no
+  // conviene multiplicarlos: hoy son 2 en ONs y 3 en el Monitor.
+  const porMoneda = {}; // clave -> [{ eco, t, grupo, moneda, ind, par }]
   for (const it of items) {
     const eco = String(it.ticker || "").trim().toUpperCase();
     const grupo = String(it.grupo || "").trim();
@@ -222,8 +228,9 @@ async function computePrecios(env, items) {
     const m = map1816(grupo, eco);
     if (!m) continue;
     const ind = it.ind === true;
-    const clave = ind ? "ind:" + m.moneda : m.moneda;
-    (porMoneda[clave] ||= []).push({ eco, t: m.t, grupo, moneda: m.moneda, ind });
+    const par = !ind && it.par === true;
+    const clave = (ind ? "ind:" : par ? "par:" : "") + m.moneda;
+    (porMoneda[clave] ||= []).push({ eco, t: m.t, grupo, moneda: m.moneda, ind, par });
   }
 
   const result = {};
@@ -249,10 +256,10 @@ async function computePrecios(env, items) {
       const moneda = pares[0].moneda;
       // Deduplicar: los duales mandan 2 filas por ticker y gastarían cupo del lote de 50.
       const tickers = [...new Set(pares.map((p) => p.t))];
-      // A los marcados con `ind` se les piden además los indicadores que calcula 1816,
-      // porque no tenemos su cronograma para computarlos acá.
-      const pideInd = pares[0] && pares[0].ind;
-      const res = await fetch1816(apiKey, tickers, moneda, fecha, pideInd ? CAMPOS_IND : [CAMPO]);
+      const pideInd = !!(pares[0] && pares[0].ind);
+      const pidePar = !!(pares[0] && pares[0].par);
+      const campos = pideInd ? CAMPOS_IND : pidePar ? CAMPOS_PAR : [CAMPO];
+      const res = await fetch1816(apiKey, tickers, moneda, fecha, campos);
       const datos = res.datos;
       fallos.push(...res.fallos);
       for (const p of pares) {
@@ -263,6 +270,8 @@ async function computePrecios(env, items) {
           indicadores[p.eco] = {
             tea: fila.tea, durationMod: fila.durationMod, paridad: fila.paridad,
           };
+        } else if (pidePar) {
+          indicadores[p.eco] = { paridad: fila.paridad };
         }
       }
     }
