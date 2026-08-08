@@ -83,6 +83,7 @@
             color: var(--text-3); margin: 2px 0 12px 2px; }
   .gc-ley span { display: flex; align-items: center; gap: 6px; }
   .gc-ley i { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+  .gc-fuera { font-size: 11px; color: var(--text-3); font-style: italic; margin: 0 0 10px 2px; }
   .gc-wrap { position: relative; }
   .gc-svg  { width: 100%; height: auto; display: block; font-family: var(--sans); }
   .gc-grid { stroke: var(--border); stroke-width: 1; opacity: .45; }
@@ -290,12 +291,13 @@
   <!-- SECCIÓN GRÁFICO CURVAS LECAP vs CER -->
   <div class="bei-section">
     <div class="bei-title gc-titulo">Curvas de rendimiento · LECAPs vs CER</div>
-    <div class="gc-sub">Los CER se muestran con su TEA NOMINAL: se proyecta el CER al vencimiento con el REM de arriba, así son comparables con las LECAPs. Cambiando la inflación proyectada, los puntos CER se mueven. La curva CER se corta donde termina la de LECAPs: más allá no hay contra qué compararla.</div>
+    <div class="gc-sub">Los CER se muestran con su TEA NOMINAL: se proyecta el CER al vencimiento con el REM de arriba, así son comparables con las LECAPs. Cambiando la inflación proyectada, los puntos CER se mueven. Se muestra sólo el tramo donde hay LECAPs: más allá no hay contra qué comparar.</div>
     <div class="gc-ley">
       <span><i style="background:var(--navy)"></i>LECAPs</span>
       <span><i style="background:var(--cyan)"></i>CER · TEA nominal, con la inflación del REM adentro</span>
       <span><i style="background:var(--red)"></i>Outlier — más de 2σ de la curva</span>
     </div>
+    <div class="gc-fuera" id="gc-fuera"></div>
     <div class="gc-wrap" id="graf-curvas"></div>
     <div id="curvas-empty" style="display:none;" class="bei-empty"></div>
   </div>
@@ -1083,13 +1085,17 @@ function renderGraficoCurvas() {
   }
   empty.style.display = 'none';
 
-  // La curva de los CER se corta donde termina la de las LECAPs: más allá no hay contra qué
-  // compararla y extrapolar una parábola fuera del rango de datos de la otra familia sugiere
-  // una comparación que no existe. Los puntos CER sí se siguen dibujando enteros.
+  // El gráfico se limita al tramo donde HAY LECAPs: los CER más largos se descartan, puntos y
+  // curva. Comparar contra una curva que ahí no existe no dice nada, y dejar los puntos sueltos
+  // estiraba el eje y comprimía justamente la zona que sí se compara.
+  // La regresión se ajusta sobre los CER que quedan, para que la curva describa lo que se ve.
   const maxLecapMD = lec.length ? Math.max(...lec.map(p => p.x)) : Infinity;
+  const cerTotal = cer.length;
+  const cerVisible = cer.filter(p => p.x <= maxLecapMD);
+  const cerFuera = cerTotal - cerVisible.length;
 
   const series = [];
-  for (const f of [{ pts:lec, cls:'gc-lecap', label:'LECAPs' }, { pts:cer, cls:'gc-cer', label:'CER (nominal)' }]) {
+  for (const f of [{ pts:lec, cls:'gc-lecap', label:'LECAPs' }, { pts:cerVisible, cls:'gc-cer', label:'CER (nominal)' }]) {
     if (!f.pts.length) continue;
     const fn1 = regresionPoly2(f.pts.map(p=>({x:p.x,y:p.y})));
     const { normales, outliers } = detectarOutliers(f.pts.map(p=>({x:p.x,y:p.y,tk:p.tk})), fn1);
@@ -1097,12 +1103,17 @@ function renderGraficoCurvas() {
     const fn2 = normales.length >= 3 ? regresionPoly2(normales) : null;
     const curva = [];
     if (fn2) {
-      const a = Math.min(...normales.map(p=>p.x));
-      const b = Math.min(Math.max(...normales.map(p=>p.x)), maxLecapMD);
-      if (b > a) for (let i=0;i<=100;i++){ const x=a+(b-a)*i/100; curva.push({x, y:fn2(x)}); }
+      const a=Math.min(...normales.map(p=>p.x)), b=Math.max(...normales.map(p=>p.x));
+      for (let i=0;i<=100;i++){ const x=a+(b-a)*i/100; curva.push({x, y:fn2(x)}); }
     }
     series.push({ ...f, curva, esOut:setOut });
   }
+
+  // Nunca ocultar datos en silencio: se dice cuántos CER quedaron fuera del tramo comparable.
+  const aviso = document.getElementById('gc-fuera');
+  if (aviso) aviso.textContent = cerFuera
+    ? `${cerFuera} CER más largos que la LECAP más larga (${maxLecapMD.toFixed(2)} años de duration) quedan fuera del gráfico.`
+    : '';
 
   const todos = series.flatMap(s => [...s.pts, ...s.curva]);   // ejes por puntos y curvas visibles
   const W=1000, H=420, ML=64, MR=24, MT=18, MB=52;
