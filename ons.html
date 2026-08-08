@@ -465,6 +465,7 @@
       <label>Emisor <select id="f-emisor" onchange="onFiltroONs('emisor', this.value)"></select></label>
       <label>Industria <select id="f-industria" onchange="onFiltroONs('industria', this.value)"></select></label>
       <label>Rating <select id="f-rating" onchange="onFiltroONs('rating', this.value)"></select></label>
+      <label>Divisa <select id="f-divisa" onchange="onFiltroONs('divisa', this.value)"></select></label>
       <label>Vencimiento
         <input type="date" id="f-desde" onchange="onFiltroONs('desde', this.value)" title="Vence desde">
         <input type="date" id="f-hasta" onchange="onFiltroONs('hasta', this.value)" title="Vence hasta">
@@ -2680,7 +2681,7 @@ function outliersONs(pts, fn) {
   return { normales, outliers };
 }
 
-let filtrosONs = { emisor:'', industria:'', rating:'', desde:'', hasta:'' };
+let filtrosONs = { emisor:'', industria:'', rating:'', divisa:'', desde:'', hasta:'' };
 
 // Universo del gráfico: la ley activa, no vencidos y con duration y TIR calculadas.
 function puntosONs() {
@@ -2694,8 +2695,8 @@ function puntosONs() {
     const r = ratingDe(inst);
     out.push({ x:+m.md.toFixed(3), y:+m.tea.toFixed(3), tk:inst.ticker, nombre:inst.nombre||'',
                emisor:emisorDe(inst)||'—', industria:industriaDe(inst)||'—',
-               rating:r?r.r:null, agencia:r?r.a:null, venc:inst.venc, anio:(inst.venc||'').slice(0,4),
-               precio:m.precio });
+               rating:r?r.r:null, agencia:r?r.a:null, divisa:inst.divisa||'—',
+               venc:inst.venc, anio:(inst.venc||'').slice(0,4), precio:m.precio });
   }
   return out;
 }
@@ -2705,6 +2706,7 @@ function aplicaFiltros(p) {
   if (f.emisor    && p.emisor    !== f.emisor)    return false;
   if (f.industria && p.industria !== f.industria) return false;
   if (f.rating    && (p.rating||'—') !== f.rating) return false;
+  if (f.divisa    && p.divisa    !== f.divisa)    return false;
   // Fechas en ISO (YYYY-MM-DD): la comparación de strings ya ordena bien, sin parsear.
   if (f.desde && (p.venc || '') < f.desde) return false;
   if (f.hasta && (p.venc || '') > f.hasta) return false;
@@ -2721,6 +2723,7 @@ function pintarFiltrosONs(todos) {
   set('f-emisor',    opts(uniq(todos.map(p=>p.emisor)),    filtrosONs.emisor,    'Todos los emisores'));
   set('f-industria', opts(uniq(todos.map(p=>p.industria)), filtrosONs.industria, 'Todas las industrias'));
   set('f-rating',    opts(uniq(todos.map(p=>p.rating||'—')), filtrosONs.rating,  'Todos los ratings'));
+  set('f-divisa',    opts(uniq(todos.map(p=>p.divisa)),        filtrosONs.divisa,  'MEP y CCL'));
   // Los de vencimiento son <input type="date">: se acota el rango elegible al primer y último
   // vencimiento que hay en la ley activa, para no ofrecer fechas donde no hay nada.
   const vencs = uniq(todos.map(p=>p.venc));
@@ -2734,7 +2737,7 @@ function pintarFiltrosONs(todos) {
 
 function onFiltroONs(campo, valor) { filtrosONs[campo] = valor; renderGraficoONs(); }
 function limpiarFiltrosONs() {
-  filtrosONs = { emisor:'', industria:'', rating:'', desde:'', hasta:'' };
+  filtrosONs = { emisor:'', industria:'', rating:'', divisa:'', desde:'', hasta:'' };
   renderGraficoONs();
 }
 
@@ -2805,7 +2808,7 @@ function renderGraficoONs() {
     const cx=px(p.x).toFixed(1), cy=py(p.y).toFixed(1);
     return `<g class="go-pt" data-tk="${p.tk}" data-nom="${p.nombre}" data-emi="${p.emisor}"`
          + ` data-ind="${p.industria}" data-rat="${p.rating?p.rating+(p.agencia?' ('+p.agencia+')':''):'—'}"`
-         + ` data-venc="${fmtDate(p.venc)}" data-md="${p.x.toFixed(2)}" data-tir="${p.y.toFixed(2)}"`
+         + ` data-div="${p.divisa}" data-venc="${fmtDate(p.venc)}" data-md="${p.x.toFixed(2)}" data-tir="${p.y.toFixed(2)}"`
          + ` data-pr="${p.precio!=null?(+p.precio).toFixed(2):'—'}" data-out="${out?1:''}">`
          + `<circle cx="${cx}" cy="${cy}" r="13" fill="transparent"/>`
          + `<circle cx="${cx}" cy="${cy}" r="${out?5.5:4.5}" class="${out?'go-out':cls}"/>`
@@ -2843,7 +2846,7 @@ function renderGraficoONs() {
     el.addEventListener('mouseenter',()=>{
       tip.innerHTML=`<b>${el.dataset.tk}</b><span>${el.dataset.nom}</span>`
         +`<span>${el.dataset.emi} · ${el.dataset.ind}</span>`
-        +`<span>Rating <i>${el.dataset.rat}</i></span>`
+        +`<span>Rating <i>${el.dataset.rat}</i> &nbsp; Divisa <i>${el.dataset.div}</i></span>`
         +`<span>Vence <i>${el.dataset.venc}</i></span>`
         +`<span>M. Dur. <i>${el.dataset.md}</i> &nbsp; TIR <i>${el.dataset.tir}%</i></span>`
         +`<span>Precio <i>${el.dataset.pr}</i></span>`
