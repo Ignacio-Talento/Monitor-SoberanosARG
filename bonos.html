@@ -1591,7 +1591,7 @@ function subTeaNeta(f){
 // pregunta concreta. "Completa" mantiene el comportamiento anterior.
 const VISTAS = {
   operar:      { label:'Operar',      cols:['ticker','nombre','precio','ultop','voldia','tea','md','paridad','dias'] },
-  rendimiento: { label:'Rendimiento', cols:['ticker','nombre','precio','tna','tea','paridad','md','day','wtd','mtd','ytd'] },
+  rendimiento: { label:'Rendimiento', cols:['ticker','nombre','precio','tna','tea','tem','paridad','md','day','wtd','mtd','ytd'] },
   ficha:       { label:'Ficha',       cols:['ticker','nombre','rating','venc','dias','period','amort'] },
   completa:    { label:'Completa',    cols:null },
 };
@@ -1612,6 +1612,18 @@ function colEnVista(k){
   return !v || !v.cols || v.cols.includes(k);
 }
 
+// TEM = tasa efectiva MENSUAL, derivada de la TEA: (1+TEA)^(1/12) - 1.
+// Sólo se muestra en los instrumentos en pesos (ver colsDeGrupo): en los hard dollar la TEA ya
+// está en dólares y una "mensual" ahí se presta a confusión.
+// Ojo con qué mide en cada curva: en los CER la TEA es REAL (sobre inflación), así que su TEM
+// también es real, no comparable de una contra la nominal de una LECAP sin sumarle inflación.
+function temDeTea(tea) {
+  if (tea === null || tea === undefined || !isFinite(tea)) return null;
+  const t = 1 + tea / 100;
+  if (t <= 0) return null;                 // TEA < -100%: la raíz no está definida
+  return (Math.pow(t, 1 / 12) - 1) * 100;
+}
+
 const COLS = [
   { k:'ticker',  label:'Ticker',      w:8.0,  left:true, get:f=>f.inst.ticker,     cell:f=>`<td class="td-ticker">${f.inst.ticker}</td>` },
   { k:'nombre',  label:'Nombre',      w:13.0, left:true, get:f=>f.inst.nombre||'', cell:f=>`<td class="td-nombre">${f.inst.nombre||''}</td>` },
@@ -1626,6 +1638,8 @@ const COLS = [
   { k:'amort',   label:'Amortización', w:10.0, left:true, get:f=>tipoAmortDe(f.inst), cell:f=>`<td class="td-nombre">${tipoAmortDe(f.inst)}</td>` },
   { k:'tna',     label:'TNA %',       w:6.4,  get:f=>f.m.tna,     cell:f=>`<td>${dash(f.m.tna,2,'%','val-blue')}</td>` },
   { k:'tea',     label:'TEA %',       w:6.7,  get:f=>f.m.tea,     cell:f=>`<td>${dash(f.m.tea,2,'%','val-cyan')}${subTeaNeta(f)}</td>` },
+  { k:'tem',     label:'TEM %',       w:6.4,  get:f=>temDeTea(f.m.tea),
+    cell:f=>`<td title="Tasa efectiva mensual: (1+TEA)^(1/12) - 1">${dash(temDeTea(f.m.tea),2,'%','val-cyan')}</td>` },
   { k:'paridad', label:'Paridad %',   w:8.0,  get:f=>f.m.paridad, cell:f=>`<td>${dash(f.m.paridad,2,'%','val-text3')}</td>` },
   { k:'day',     label:'DAY %',       w:6.1,  get:f=>f.day, cell:f=>`<td>${renderVariacion(f.day)}</td>` },
   { k:'wtd',     label:'WTD %',       w:6.1,  get:f=>f.wtd, cell:f=>`<td>${renderVariacion(f.wtd)}</td>` },
@@ -1643,6 +1657,8 @@ const RATING_GRUPOS = ['usdbonares', 'usdglobales', 'usdbopreal', 'subsoberano']
 function colsDeGrupo(key){
   return COLS.map((c, i) => ({ c, i }))
              .filter(({ c }) => c.k !== 'rating' || RATING_GRUPOS.includes(key))
+             // La TEM sólo tiene sentido en las curvas en pesos.
+             .filter(({ c }) => c.k !== 'tem' || monedaDeGrupo(key) === 'pesos')
              .filter(({ c }) => colEnVista(c.k));
 }
 // Si la tabla no entra en el ancho del contenedor, se deja que la tarjeta ocupe todo el
