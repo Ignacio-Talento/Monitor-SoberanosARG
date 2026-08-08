@@ -2324,6 +2324,7 @@ const INDUSTRIA = {
   'Pampa Energia':'Energía', 'Edenor':'Energía eléctrica', 'Central Puerto':'Energía eléctrica',
   'Capex':'Energía eléctrica', 'GEMSA-CTR':'Energía eléctrica', 'Edemsa':'Energía eléctrica',
   'MSU Energy':'Energía eléctrica', 'YPF Luz':'Energía eléctrica',
+  'AES Argentina':'Energía eléctrica',
   'Genneia':'Energía renovable', 'MSU Green Energy':'Energía renovable', 'Luz de Tres Picos':'Energía renovable',
   'Telecom Argentina':'Telecomunicaciones',
   'B. Galicia':'Banco', 'B. Macro':'Banco', 'B. Mariva':'Banco', 'BBVA Argentina':'Banco',
@@ -2372,6 +2373,10 @@ const RATINGS = {
   "CGC": { nac: {r:"AA-(arg)", a:"FIX SCR", p:"Estable", f:"2026-07-29"}, glob: {r:"B-", a:"Fitch", p:"Estable", f:""} },
   "CNH": { nac: {r:"AA(arg)", a:"FIX SCR", p:"Estable", f:"2026-05-06"}, glob: null },
   "Capex": { nac: {r:"AA(arg)", a:"FIX SCR", p:"Estable", f:"2026-05-22"}, glob: null },
+  // AES Argentina Generación S.A.: FIX SCR confirmó AA-(arg) de emisor el 28-07-2026 y ese
+  // mismo día le asignó AA-(arg) a la ON Clase 3, que es justamente AEC3D. Sin nota
+  // internacional publicada; no hace falta, porque la ON es ley local y usa la escala nacional.
+  "AES Argentina": { nac: {r:"AA-(arg)", a:"FIX SCR", p:"Estable", f:"2026-07-28"}, glob: null },
   "Central Puerto": { nac: {r:"AA+(arg)", a:"FIX SCR", p:"Estable", f:"2026-05-08"}, glob: null },
   "Cresud": { nac: {r:"AAA(arg)", a:"FIX SCR", p:"Estable", f:"2026-04-24"}, glob: null },
   "Edemsa": { nac: {r:"A+(arg)", a:"FIX SCR", p:"Estable", f:"2026-07-24"}, glob: {r:"B", a:"S&P", p:"Estable", f:"2026-06-11"} },
