@@ -290,7 +290,7 @@
   <!-- SECCIÓN GRÁFICO CURVAS LECAP vs CER -->
   <div class="bei-section">
     <div class="bei-title gc-titulo">Curvas de rendimiento · LECAPs vs CER</div>
-    <div class="gc-sub">Los CER se muestran con su TEA NOMINAL: se proyecta el CER al vencimiento con el REM de arriba, así son comparables con las LECAPs. Cambiando la inflación proyectada, los puntos CER se mueven.</div>
+    <div class="gc-sub">Los CER se muestran con su TEA NOMINAL: se proyecta el CER al vencimiento con el REM de arriba, así son comparables con las LECAPs. Cambiando la inflación proyectada, los puntos CER se mueven. La curva CER se corta donde termina la de LECAPs: más allá no hay contra qué compararla.</div>
     <div class="gc-ley">
       <span><i style="background:var(--navy)"></i>LECAPs</span>
       <span><i style="background:var(--cyan)"></i>CER · TEA nominal, con la inflación del REM adentro</span>
@@ -1083,6 +1083,11 @@ function renderGraficoCurvas() {
   }
   empty.style.display = 'none';
 
+  // La curva de los CER se corta donde termina la de las LECAPs: más allá no hay contra qué
+  // compararla y extrapolar una parábola fuera del rango de datos de la otra familia sugiere
+  // una comparación que no existe. Los puntos CER sí se siguen dibujando enteros.
+  const maxLecapMD = lec.length ? Math.max(...lec.map(p => p.x)) : Infinity;
+
   const series = [];
   for (const f of [{ pts:lec, cls:'gc-lecap', label:'LECAPs' }, { pts:cer, cls:'gc-cer', label:'CER (nominal)' }]) {
     if (!f.pts.length) continue;
@@ -1092,13 +1097,14 @@ function renderGraficoCurvas() {
     const fn2 = normales.length >= 3 ? regresionPoly2(normales) : null;
     const curva = [];
     if (fn2) {
-      const a=Math.min(...normales.map(p=>p.x)), b=Math.max(...normales.map(p=>p.x));
-      for (let i=0;i<=100;i++){ const x=a+(b-a)*i/100; curva.push({x, y:fn2(x)}); }
+      const a = Math.min(...normales.map(p=>p.x));
+      const b = Math.min(Math.max(...normales.map(p=>p.x)), maxLecapMD);
+      if (b > a) for (let i=0;i<=100;i++){ const x=a+(b-a)*i/100; curva.push({x, y:fn2(x)}); }
     }
     series.push({ ...f, curva, esOut:setOut });
   }
 
-  const todos = series.flatMap(s => [...s.pts, ...s.curva]);
+  const todos = series.flatMap(s => [...s.pts, ...s.curva]);   // ejes por puntos y curvas visibles
   const W=1000, H=420, ML=64, MR=24, MT=18, MB=52;
   const ancho=W-ML-MR, alto=H-MT-MB;
   const ext=v=>{ const a=Math.min(...v), b=Math.max(...v); const d=(b-a)||Math.abs(a)||1; return [a-d*0.08, b+d*0.10]; };
