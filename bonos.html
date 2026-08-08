@@ -1290,6 +1290,25 @@ function calcMetricas(inst, precioAlt) {
     const t = (vencDate - liq) / (365 * 86400000);
     if (t <= 0) return { precio: precioP, dias, tna: null, tea: null, md: null, paridad };
 
+    // Guarda de escala. Una pata cuya paridad se va por encima de PARIDAD_MAX_DUAL no está
+    // "fuera del dinero": significa que el precio no está en la misma unidad que el valor final
+    // de esa pata, y la TIR que sale de ahí no quiere decir nada.
+    //
+    // Pasa hoy con la pata TAMAR de TMVE8: el precio del bono viene en la escala dólar linked
+    // (~137.000) y para la pata TAMAR se lo divide por 100 (precioDiv100), pero el factor real
+    // ronda 1.000, así que quedaba paridad 976% y TEA -78,6%. Con /1000 la paridad daría ~98%,
+    // pero no se hardcodea otro divisor a ojo: el factor correcto depende del tipo de cambio y
+    // el instrumento es de Fran. Preferimos no publicar un número inventado.
+    //
+    // OJO con no confundir esto con una pata legítimamente fuera del dinero: la pata LECAP de
+    // TTS26 da TEA -58,9% con paridad 109% y ESO SÍ es información válida —dice cuánto perderías
+    // si termina pagando la pata fija en vez de la TAMAR—, así que no se toca. En un dual cobrás
+    // el máximo de las dos patas; que una dé negativo es lo esperable.
+    const PARIDAD_MAX_DUAL = 300;
+    if (paridad !== null && paridad > PARIDAD_MAX_DUAL) {
+      return { precio: precioP, dias, tna: null, tea: null, md: null, paridad: null, escalaDudosa: true };
+    }
+
     const tea_dec = Math.pow(vf / precioP, 1 / t) - 1;
     const tea = tea_dec * 100;
     const tna = (Math.pow(1 + tea_dec, 1/365) - 1) * 365 * 100;
@@ -1737,9 +1756,15 @@ function renderTabla() {
     const m = calcMetricas(inst);
     const mc = calcMetricas(inst, precioConComision(m.precio));
     const th = tickerHistorico(inst);
+    // Las variaciones se comparan contra historicos.xlsx, que guarda el precio DE MERCADO, así
+    // que van con ese y no con m.precio. Difieren sólo en la pata TAMAR de los duales con pata
+    // Dólar Linked, donde m.precio viene dividido por 100 (precioDiv100): ahí el DAY% daba -99%
+    // por comparar 1.370 contra los ~137.000 del histórico. Es el mismo bono y una sola serie de
+    // precios, así que las dos patas deben mostrar la misma variación.
+    const precioMkt = precios[inst.ticker] || null;
     filas.push({ inst, m, mc, dias: m.dias,
-      day: calcDay(inst, th, m.precio), wtd: calcWTD(inst, th, m.precio),
-      mtd: calcMTD(inst, th, m.precio), ytd: calcYTD(inst, th, m.precio) });
+      day: calcDay(inst, th, precioMkt), wtd: calcWTD(inst, th, precioMkt),
+      mtd: calcMTD(inst, th, precioMkt), ytd: calcYTD(inst, th, precioMkt) });
   }
 
   // 2) Agrupar preservando el orden de aparición de los grupos
