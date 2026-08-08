@@ -88,7 +88,11 @@
   .go-filtros select { font-family: var(--sans); font-size: 12px; color: var(--text); background: var(--surface);
                        border: 1px solid var(--border); border-radius: var(--r-input); padding: 5px 8px;
                        max-width: 210px; text-transform: none; letter-spacing: 0; font-weight: 400; }
-  .go-filtros select:focus { outline: none; border-color: var(--cyan); }
+  .go-filtros input[type="date"] { font-family: var(--sans); font-size: 12px; color: var(--text);
+                       background: var(--surface); border: 1px solid var(--border);
+                       border-radius: var(--r-input); padding: 4px 8px; text-transform: none;
+                       letter-spacing: 0; font-weight: 400; }
+  .go-filtros select:focus, .go-filtros input[type="date"]:focus { outline: none; border-color: var(--cyan); }
   .go-limpiar { padding: 5px 14px; font-size: 11px; }
   .go-wrap { position: relative; }
   .go-svg  { width: 100%; height: auto; display: block; font-family: var(--sans); }
@@ -462,8 +466,8 @@
       <label>Industria <select id="f-industria" onchange="onFiltroONs('industria', this.value)"></select></label>
       <label>Rating <select id="f-rating" onchange="onFiltroONs('rating', this.value)"></select></label>
       <label>Vencimiento
-        <select id="f-desde" onchange="onFiltroONs('desde', this.value)"></select>
-        <select id="f-hasta" onchange="onFiltroONs('hasta', this.value)"></select>
+        <input type="date" id="f-desde" onchange="onFiltroONs('desde', this.value)" title="Vence desde">
+        <input type="date" id="f-hasta" onchange="onFiltroONs('hasta', this.value)" title="Vence hasta">
       </label>
       <button class="btn btn-ghost go-limpiar" onclick="limpiarFiltrosONs()">Limpiar filtros</button>
     </div>
@@ -2701,8 +2705,9 @@ function aplicaFiltros(p) {
   if (f.emisor    && p.emisor    !== f.emisor)    return false;
   if (f.industria && p.industria !== f.industria) return false;
   if (f.rating    && (p.rating||'—') !== f.rating) return false;
-  if (f.desde && p.anio < f.desde) return false;
-  if (f.hasta && p.anio > f.hasta) return false;
+  // Fechas en ISO (YYYY-MM-DD): la comparación de strings ya ordena bien, sin parsear.
+  if (f.desde && (p.venc || '') < f.desde) return false;
+  if (f.hasta && (p.venc || '') > f.hasta) return false;
   return true;
 }
 
@@ -2713,12 +2718,18 @@ function pintarFiltrosONs(todos) {
     `<option value="">${etiqTodos}</option>` +
     vals.map(v=>`<option value="${v}"${v===sel?' selected':''}>${v}</option>`).join('');
   const set = (id, html) => { const el=document.getElementById(id); if (el) el.innerHTML = html; };
-  const anios = uniq(todos.map(p=>p.anio));
   set('f-emisor',    opts(uniq(todos.map(p=>p.emisor)),    filtrosONs.emisor,    'Todos los emisores'));
   set('f-industria', opts(uniq(todos.map(p=>p.industria)), filtrosONs.industria, 'Todas las industrias'));
   set('f-rating',    opts(uniq(todos.map(p=>p.rating||'—')), filtrosONs.rating,  'Todos los ratings'));
-  set('f-desde',     opts(anios, filtrosONs.desde, 'Desde'));
-  set('f-hasta',     opts(anios, filtrosONs.hasta, 'Hasta'));
+  // Los de vencimiento son <input type="date">: se acota el rango elegible al primer y último
+  // vencimiento que hay en la ley activa, para no ofrecer fechas donde no hay nada.
+  const vencs = uniq(todos.map(p=>p.venc));
+  for (const [id, val] of [['f-desde', filtrosONs.desde], ['f-hasta', filtrosONs.hasta]]) {
+    const el = document.getElementById(id);
+    if (!el) continue;
+    if (vencs.length) { el.min = vencs[0]; el.max = vencs[vencs.length-1]; }
+    if (el.value !== (val || '')) el.value = val || '';
+  }
 }
 
 function onFiltroONs(campo, valor) { filtrosONs[campo] = valor; renderGraficoONs(); }
