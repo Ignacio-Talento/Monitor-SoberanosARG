@@ -2093,7 +2093,26 @@ function parsearExcel(buffer) {
 
 
 // ── FETCH PRECIOS (Eco Valores) ───────────────────────────────
+// Un solo refresco a la vez. Dos tandas en pocos segundos chocan contra el límite de 1 req/seg
+// de 1816: los lotes se quedan sin reintentos dentro del presupuesto de la request y el proxy
+// devuelve mitad de la tabla por Eco (visto en producción: fallos ["ars x50: HTTP 429"]).
+// No alcanzaba con deshabilitar el botón, porque acá entran también la carga inicial, el
+// refresco periódico y el auto-add del detector.
+let refrescoEnCurso = null;
 async function fetchPreciosYahoo(force = false) {
+  if (refrescoEnCurso) {
+    if (force) {
+      const st = document.getElementById('yahoo-st');
+      if (st) { st.textContent = 'Ya hay un refresco en curso...'; st.className = 'upload-st loading'; }
+    }
+    return refrescoEnCurso;   // se engancha al que ya está corriendo en vez de largar otro
+  }
+  refrescoEnCurso = fetchPreciosImpl(force);
+  try { return await refrescoEnCurso; }
+  finally { refrescoEnCurso = null; }
+}
+
+async function fetchPreciosImpl(force = false) {
   if (!instrumentos.length) { if (force) showAlert('Primero cargá el Excel'); return; }
   const btn = document.getElementById('btn-yahoo');
   const stEl = document.getElementById('yahoo-st');
