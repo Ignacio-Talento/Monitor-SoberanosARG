@@ -2692,8 +2692,19 @@ function puntosONs() {
     if (d !== null && d <= 0) continue;
     const m = calcMetricas(inst);
     if (m.md == null || m.tea == null || !isFinite(m.md) || !isFinite(m.tea)) continue;
+    // Duration con una convención ÚNICA para todo el gráfico. calcMetricas la devuelve en la
+    // convención de CADA bono —divide la Macaulay por (1+TIR)^(1/m), con m la frecuencia de
+    // cupón—, así que un trimestral y un semestral quedan medidos con varas distintas sobre el
+    // mismo eje. Acá hay 44 semestrales y 8 trimestrales, y como el ajuste depende del
+    // rendimiento no es un corrimiento parejo: mueve 0,07 años en promedio pero 0,61 en MR44D,
+    // deformando la curva. Se recupera la Macaulay y se re-modifica en base anual, igual para
+    // todos. Es el mismo criterio que se aplicó en Sendero CER.
+    const frec = frecuenciaCupon(inst) || 1;
+    const y = m.tea / 100;
+    const mdUnif = (m.md * Math.pow(1 + y, 1 / frec)) / (1 + y);
+    if (!isFinite(mdUnif)) continue;
     const r = ratingDe(inst);
-    out.push({ x:+m.md.toFixed(3), y:+m.tea.toFixed(3), tk:inst.ticker, nombre:inst.nombre||'',
+    out.push({ x:+mdUnif.toFixed(3), y:+m.tea.toFixed(3), tk:inst.ticker, nombre:inst.nombre||'',
                emisor:emisorDe(inst)||'—', industria:industriaDe(inst)||'—',
                rating:r?r.r:null, agencia:r?r.a:null, divisa:inst.divisa||'—',
                venc:inst.venc, anio:(inst.venc||'').slice(0,4), precio:m.precio });
