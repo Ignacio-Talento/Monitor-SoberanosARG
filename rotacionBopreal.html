@@ -678,51 +678,54 @@ function renderGrafico(){
     if(p.destino) grupos.get(k).destino=true;   // si comparte lugar con un destino, prevalece el cyan
   }
 
-  // Colocación de etiquetas: en vez de apilarlas todas hacia arriba (quedaban una encima de
-  // otra con líneas guía largas), se prueban posiciones ALREDEDOR del punto —arriba, a los
-  // costados, abajo— y se toma la primera que no pise ni otra etiqueta ni un punto. Con los
-  // cuatro S1 compartiendo duration, así se abren en abanico en vez de formar una columna.
-  const ocupado=[...grupos.values()].map(gr=>{
-    const x=+px(gr.md).toFixed(1), y=+py(gr.tir*100).toFixed(1);
-    return { x:x-9, y:y-9, w:18, h:18 };
-  });
-  const choca=(a)=>ocupado.some(b=>a.x<b.x+b.w && a.x+a.w>b.x && a.y<b.y+b.h && a.y+a.h>b.y);
-  function ubicarEtiqueta(cx, cy, texto){
-    const w=texto.length*6.3, h=13;
-    const cands=[
-      { dx:0,   dy:-12, an:'middle' }, { dx:12,  dy:4,   an:'start' },
-      { dx:-12, dy:4,   an:'end'    }, { dx:0,   dy:20,  an:'middle' },
-      { dx:12,  dy:-9,  an:'start'  }, { dx:-12, dy:-9,  an:'end'    },
-      { dx:12,  dy:17,  an:'start'  }, { dx:-12, dy:17,  an:'end'    },
-      { dx:0,   dy:-26, an:'middle' }, { dx:0,   dy:34,  an:'middle' },
-    ];
-    for(const c of cands){
-      const x=cx+c.dx, y=cy+c.dy;
-      const bx = c.an==='middle' ? x-w/2 : c.an==='start' ? x : x-w;
-      const caja={ x:bx, y:y-h+3, w, h };
-      if(caja.x<ML-4 || caja.x+caja.w>ML+ancho+4 || caja.y<MT-2 || caja.y+caja.h>MT+alto+2) continue;
-      if(choca(caja)) continue;
-      ocupado.push(caja);
-      return { x, y, an:c.an };
-    }
-    const caja={ x:cx-w/2, y:cy-25, w, h }; ocupado.push(caja);
-    return { x:cx, y:cy-22, an:'middle' };
-  }
-
   for(const gr of [...grupos.values()].sort((a,b)=>py(b.tir*100)-py(a.tir*100))){
     const cx=+px(gr.md).toFixed(1), cy=+py(gr.tir*100).toFixed(1);
     const nombres=gr.items.map(x=>x.b).join(' · ');
     const det=gr.items.map(x=>`<span>${x.b} &nbsp;precio <i>${x.precio.toFixed(2)}</i></span>`).join('');
-    const et=ubicarEtiqueta(cx,cy,nombres);
     g+=`<g class="gr-pt" data-nom="${nombres}" data-md="${gr.md.toFixed(2)}" data-tir="${(gr.tir*100).toFixed(2)}" data-det="${det.replace(/"/g,'&quot;')}">`
      + `<circle cx="${cx}" cy="${cy}" r="16" fill="transparent"/>`
      + `<circle cx="${cx}" cy="${cy}" r="6" class="${gr.destino?'gr-dest':'gr-orig'}"/>`
-     + `<text x="${et.x.toFixed(1)}" y="${et.y.toFixed(1)}" class="gr-lbl" text-anchor="${et.an}">${nombres}</text>`
+     + `<text x="${cx}" y="${(cy-12).toFixed(1)}" class="gr-lbl" text-anchor="middle" data-cx="${cx}" data-cy="${cy}">${nombres}</text>`
      + `</g>`;
   }
 
   cont.innerHTML=`<svg viewBox="0 0 ${W} ${H}" class="gr-svg" role="img" aria-label="TIR contra duration">${g}</svg>`
     + `<div class="gr-tip" id="gr-tip" hidden></div>`;
+
+  // Recolocación de etiquetas DESPUÉS de dibujar: se prueban posiciones alrededor del punto
+  // —arriba, a los costados, abajo— y se toma la primera que no pise ni otra etiqueta ni un
+  // punto. Antes se apilaban todas hacia arriba con líneas guía largas.
+  // El ancho se mide con getBBox() en vez de estimarlo por cantidad de caracteres: estimando
+  // 6,3 px por letra se quedaba ~18% corto en los tickers sueltos ("BPOD7" mide 37,5 y no 31,5)
+  // y BPOD7 terminaba solapando a BPOB7 · BPOC7.
+  const centros=[...cont.querySelectorAll('.gr-lbl')].map(t=>({ x:+t.dataset.cx, y:+t.dataset.cy }));
+  const ocupado=centros.map(c=>({ x:c.x-9, y:c.y-9, w:18, h:18 }));
+  const solapa=(a,b)=>a.x<b.x+b.w && a.x+a.w>b.x && a.y<b.y+b.h && a.y+a.h>b.y;
+  const CANDS=[
+    { dx:0, dy:-12, an:'middle' }, { dx:13, dy:4,  an:'start' }, { dx:-13, dy:4,  an:'end' },
+    { dx:0, dy:20,  an:'middle' }, { dx:13, dy:-9, an:'start' }, { dx:-13, dy:-9, an:'end' },
+    { dx:13, dy:17, an:'start'  }, { dx:-13, dy:17, an:'end'  }, { dx:0, dy:-26, an:'middle' },
+    { dx:0, dy:34,  an:'middle' },
+  ];
+  // De abajo hacia arriba: las de abajo conservan su lugar natural.
+  const etiquetas=[...cont.querySelectorAll('.gr-lbl')].sort((a,b)=>(+b.dataset.cy)-(+a.dataset.cy));
+  for(const t of etiquetas){
+    const cx=+t.dataset.cx, cy=+t.dataset.cy;
+    const bb=t.getBBox(), w=bb.width, h=bb.height;
+    let puesto=null;
+    for(const c of CANDS){
+      const x=cx+c.dx, y=cy+c.dy;
+      const bx = c.an==='middle' ? x-w/2 : c.an==='start' ? x : x-w;
+      const caja={ x:bx, y:y-h+3, w, h };
+      if(caja.x<ML-4 || caja.x+caja.w>ML+ancho+4 || caja.y<MT-2 || caja.y+caja.h>MT+alto+2) continue;
+      if(ocupado.some(o=>solapa(caja,o))) continue;
+      ocupado.push(caja); puesto={x,y,an:c.an}; break;
+    }
+    if(!puesto){ puesto={ x:cx, y:cy-24, an:'middle' }; ocupado.push({x:cx-w/2,y:cy-27,w,h}); }
+    t.setAttribute('x', puesto.x.toFixed(1));
+    t.setAttribute('y', puesto.y.toFixed(1));
+    t.setAttribute('text-anchor', puesto.an);
+  }
 
   // Tooltip: sigue al puntero dentro del contenedor.
   const tip=cont.querySelector('#gr-tip');
