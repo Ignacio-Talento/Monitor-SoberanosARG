@@ -1069,10 +1069,13 @@ function renderGraficoCurvas() {
     // OJO: calcTIR de esta página ya devuelve PORCENTAJE (termina en "* 100"), no fracción.
     const tirPct = calcTIR(ref.precio, vf, dias);
     if (tirPct == null || !isFinite(tirPct)) continue;
-    // Duration en la misma convención que el Monitor (semestral), descontando a la tasa nominal
-    // para que sea coherente con el eje Y.
+    // Duration con la MISMA convención que las LECAPs —anual, t/(1+TEA)— y descontando a la tasa
+    // nominal. El Monitor usa convenciones distintas por familia: las LECAPs dividen por (1+TEA)
+    // y los CER por (1+TEA)^0,5. En filas separadas no molesta, pero acá comparten eje X y la
+    // diferencia los desalinea: TZX27 y T30J7 vencen los dos el 30-06-2027 y quedaban en 0,775
+    // contra 0,695, con el CER cayéndose del tramo comparable por una convención, no por plazo.
     const t = dias / 365;
-    const md = t / Math.pow(1 + tirPct/100, 0.5);
+    const md = t / (1 + tirPct/100);
     cer.push({ x:+md.toFixed(3), y:+tirPct.toFixed(3), tk:b.ticker, precio:ref.precio,
                tipo:'CER', teaReal:ref.teaReal, proyectado:(ce.proyectado || cv.proyectado) });
   }
