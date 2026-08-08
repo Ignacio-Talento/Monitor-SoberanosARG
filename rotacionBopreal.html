@@ -127,7 +127,10 @@
      con ella y el header, que mide 100% del body, la sigue cubriendo al scrollear. */
   body { background: var(--bg); color: var(--text); font-family: var(--sans); min-height: 100vh;
          margin: 0; padding: 0; min-width: fit-content; }
-  .wrap { max-width: 1400px; margin: 0 auto; padding: 0 24px 24px; }
+  /* Mismo ancho que Monitor y ONs: la tabla tiene 20 columnas y con 1400 quedaban ocultas
+     casi la mitad, desperdiciando el espacio libre a los costados. Es además el ancho de
+     referencia con el que se alinea el header. */
+  .wrap { max-width: 1850px; margin: 0 auto; padding: 0 24px 24px; }
 
 
 
@@ -252,12 +255,13 @@
   .table-wrap { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-card); overflow-x: auto; box-shadow: var(--sh-card); }
   table.rot { width: 100%; border-collapse: collapse; min-width: 1500px; }
   table.rot thead tr { border-bottom: 2px solid var(--navy); }
-  table.rot th { padding: 9px 12px; font-size: 10px; font-weight: 600; letter-spacing: .05em; text-transform: uppercase; color: var(--text-3); text-align: right; background: var(--card); white-space: nowrap; font-family: var(--mono); vertical-align: bottom; }
+  /* 10px en vez de 12: con 20 columnas son ~80px que alcanzan para que entre la última. */
+  table.rot th { padding: 9px 10px; font-size: 10px; font-weight: 600; letter-spacing: .05em; text-transform: uppercase; color: var(--text-3); text-align: right; background: var(--card); white-space: nowrap; font-family: var(--mono); vertical-align: bottom; }
   table.rot th.lft { text-align: left; }
   table.rot tbody tr { border-bottom: 1px solid var(--border); }
   table.rot tbody tr:last-child { border-bottom: none; }
   table.rot tbody tr:hover { background: var(--row-hover); }
-  table.rot td { padding: 8px 12px; font-size: 12px; text-align: right; color: var(--text-2); white-space: nowrap; font-family: var(--mono); }
+  table.rot td { padding: 8px 10px; font-size: 12px; text-align: right; color: var(--text-2); white-space: nowrap; font-family: var(--mono); }
   table.rot td.lft { text-align: left; font-weight: 600; color: var(--text); }
   table.rot td.calc { color: var(--navy); font-weight: 500; }
   .flecha { color: var(--text-3); margin: 0 4px; }
@@ -418,7 +422,11 @@ function cargarPreciosMonitor(){
   if(st){ st.textContent = hay ? `✓ ${hay}/${bonos.length} precios del Monitor` : 'Sin precios — pasá por el Monitor'; st.className='precio-st '+(hay?'ok':'err'); }
 }
 
-function precioDe(bono){ return preciosMonitor[TICKER_MONITOR[bono]] ?? null; }
+// Los precios llegan del Monitor con ruido de punto flotante (102,14999999999999 por 102,15).
+// Se redondean a 2 decimales, igual que se muestran allá: la diferencia es de orden 1e-14 y no
+// mueve ninguna TIR, pero llenaba los inputs de dígitos.
+function red2(v){ return (v === null || v === undefined || !isFinite(v)) ? v : Math.round(v * 100) / 100; }
+function precioDe(bono){ return red2(preciosMonitor[TICKER_MONITOR[bono]] ?? null); }
 
 function initEstado(){
   estado=CASOS.map(c=>({ vn:c.vn, precioV:precioDe(c.origen), precioC:precioDe(c.destino), comV:c.comV, comC:c.comC }));
@@ -440,9 +448,9 @@ function buildTable(){
       <td class="lft">${c.origen}</td>
       <td class="lft"><span class="flecha">→</span>${c.destino}</td>
       <td><input class="rot-inp vn" type="number" step="1" value="${e.vn??''}" oninput="onInput(${i},'vn',this.value)"></td>
-      <td><input class="rot-inp" type="number" step="0.01" value="${e.precioV??''}" oninput="onInput(${i},'precioV',this.value)"></td>
+      <td><input class="rot-inp" type="number" step="0.01" value="${red2(e.precioV)??''}" oninput="onInput(${i},'precioV',this.value)"></td>
       <td class="calc" id="c-tiro-${i}">—</td>
-      <td><input class="rot-inp" type="number" step="0.01" value="${e.precioC??''}" oninput="onInput(${i},'precioC',this.value)"></td>
+      <td><input class="rot-inp" type="number" step="0.01" value="${red2(e.precioC)??''}" oninput="onInput(${i},'precioC',this.value)"></td>
       <td class="calc" id="c-tird-${i}">—</td>
       <td><input class="rot-inp com" type="number" step="0.01" value="${e.comV??''}" oninput="onInput(${i},'comV',this.value)"></td>
       <td><input class="rot-inp com" type="number" step="0.01" value="${e.comC??''}" oninput="onInput(${i},'comC',this.value)"></td>
