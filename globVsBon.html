@@ -75,8 +75,34 @@
   .toolbar { margin-bottom: 22px; }
   .indicadores { border-radius: var(--r-card); box-shadow: var(--sh-card); }
   .table-wrap { border-radius: var(--r-card); box-shadow: var(--sh-card); }
+
+  /* ── Gráfico TIR vs duration ── mismo lenguaje visual que Rotación BOPREAL ── */
+  .gb-wrap { position: relative; }
+  .gb-svg  { width: 100%; height: auto; display: block; font-family: var(--sans); }
+  .gb-grid { stroke: var(--border); stroke-width: 1; opacity: .45; }
+  .gb-eje  { stroke: var(--border-l); stroke-width: 1; }
+  .gb-tick { font-size: 11px; fill: var(--text-3); font-family: var(--mono); }
+  .gb-axis { font-size: 10px; fill: var(--text-3); letter-spacing: .1em; font-weight: 600; }
+  .gb-lbl  { font-size: 10.5px; fill: var(--navy); font-weight: 700; }
+  .gb-bon  { fill: var(--navy); }
+  .gb-glo  { fill: var(--cyan); }
+  .gb-out  { fill: var(--red); }
+  .gb-curva { fill: none; stroke-width: 2.5; opacity: .85; }
+  .gb-curva.gb-bon { stroke: var(--navy); }
+  .gb-curva.gb-glo { stroke: var(--cyan); }
+  .gb-pt:hover circle:not([fill="transparent"]) { stroke: var(--navy); stroke-width: 3; }
+  .gb-tip  { position: absolute; pointer-events: none; background: var(--navy); color: #fff;
+             border-radius: 6px; padding: 7px 10px; font-size: 11px; line-height: 1.5;
+             box-shadow: var(--sh-raised); white-space: nowrap; z-index: 5; }
+  .gb-tip b { display: block; font-size: 12px; letter-spacing: .04em; margin-bottom: 2px; }
+  .gb-tip span { display: block; color: rgba(255,255,255,.72); }
+  .gb-tip i { font-style: normal; color: #fff; font-family: var(--mono); }
+  .gb-tip-out { color: #ffb4a8 !important; margin-top: 3px; }
+  .gb-ley { display: flex; gap: 18px; align-items: center; flex-wrap: wrap; font-size: 11px;
+            color: var(--text-3); margin: 2px 0 12px 2px; }
+  .gb-ley span { display: flex; align-items: center; gap: 6px; }
+  .gb-ley i { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
 </style>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
   :root {
@@ -127,12 +153,14 @@
      con ella y el header, que mide 100% del body, la sigue cubriendo al scrollear. */
   body { background: var(--bg); color: var(--text); font-family: var(--sans); min-height: 100vh;
          margin: 0; padding: 0; min-width: fit-content; }
-  .wrap { max-width: 1400px; margin: 0 auto; padding: 0 24px 24px; }
+  /* Mismo ancho que Monitor, ONs y Rotacion BOPREAL, que es ademas la referencia con la
+     que se alinea el header. El grafico gana casi 450px de ancho util. */
+  .wrap { max-width: 1850px; margin: 0 auto; padding: 0 24px 24px; }
 
 
 
   .panel { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 20px 24px; margin-bottom: 16px; box-shadow: 0 1px 4px rgba(0,0,0,0.06); }
-  .panel-title { font-size: 11px; font-weight: 700; letter-spacing: .10em; text-transform: uppercase; color: var(--navy); font-family: var(--mono); margin-bottom: 16px; }
+  .panel-title { font-size: 11px; font-weight: 700; letter-spacing: .10em; text-transform: uppercase; color: var(--cyan); font-family: var(--sans); margin-bottom: 4px; }
   .legend-outlier { display: flex; align-items: center; gap: 6px; font-size: 10px; font-family: var(--mono); color: var(--text-3); margin-top: 10px; }
   .legend-outlier-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--red); flex-shrink: 0; }
 
@@ -181,14 +209,13 @@
   <!-- GRÁFICO CURVAS -->
   <div class="panel">
     <div class="panel-title">Curvas de rendimiento · Globales vs Bonares (USD)</div>
-    <div style="position:relative;height:460px;">
-      <canvas id="chart-gb"></canvas>
+    <div class="gb-ley">
+      <span><i style="background:var(--navy)"></i>Bonares (ley local)</span>
+      <span><i style="background:var(--cyan)"></i>Globales (ley NY)</span>
+      <span><i style="background:var(--red)"></i>Outlier — más de 2σ de la curva, excluido del suavizado</span>
     </div>
+    <div class="gb-wrap" id="graf-gb"></div>
     <div id="gb-empty" style="display:none;" class="bei-empty"></div>
-    <div class="legend-outlier">
-      <div class="legend-outlier-dot"></div>
-      Outlier (más de 2σ de la curva de regresión) — excluido del suavizado
-    </div>
   </div>
 
   <!-- TABLA CANJE -->
@@ -261,62 +288,127 @@ function generarCurva(fn, xMin, xMax, steps=100) {
 // ── GRÁFICO ──────────────────────────────────────────────────
 let chartGB = null;
 function renderGrafico(datos) {
-  const canvas = document.getElementById('chart-gb');
-  const empty  = document.getElementById('gb-empty');
+  const cont  = document.getElementById('graf-gb');
+  const empty = document.getElementById('gb-empty');
+  if (!cont) return;
 
   const fam = [
-    { key: 'usdglobales', label: 'Globales', color: '#0d2055' },
-    { key: 'usdbonares',  label: 'Bonares',  color: '#00a3e4' },
+    { key: 'usdbonares',  label: 'Bonares (ley local)', cls: 'gb-bon', color: 'var(--navy)' },
+    { key: 'usdglobales', label: 'Globales (ley NY)',   cls: 'gb-glo', color: 'var(--cyan)' },
   ];
 
-  if (chartGB) { chartGB.destroy(); chartGB = null; }
-
-  const datasets = [];
-  let hayPuntos = false;
-  let maxMD = 0;
-
-  fam.forEach(f => {
+  // Se calcula todo primero para poder escalar los ejes con puntos y curvas juntos.
+  const series = [];
+  for (const f of fam) {
     const pts = datos
       .filter(d => d.grupo === f.key && d.md != null && d.tea != null)
-      .map(d => ({ x: parseFloat(d.md.toFixed(2)), y: parseFloat(d.tea.toFixed(2)), ticker: d.ticker }))
-      .sort((a,b) => a.x - b.x);
-    if (!pts.length) return;
-    hayPuntos = true;
-    maxMD = Math.max(maxMD, ...pts.map(p => p.x));
-
+      .map(d => ({ x: +d.md.toFixed(2), y: +d.tea.toFixed(2), ticker: d.ticker, precio: d.precio }))
+      .sort((a, b) => a.x - b.x);
+    if (!pts.length) continue;
     const fn1 = regresionPoly2(pts);
     const { normales, outliers } = detectarOutliers(pts, fn1);
     const fn2 = normales.length >= 3 ? regresionPoly2(normales) : null;
-    if (fn2) {
-      const xMin = Math.min(...normales.map(p=>p.x));
-      const xMax = Math.max(...normales.map(p=>p.x));
-      datasets.push({ label: f.label, data: generarCurva(fn2, xMin, xMax), borderColor: f.color, backgroundColor: 'transparent', pointRadius: 0, borderWidth: 2.5, tension: 0, showLine: true, order: 2 });
-    }
-    datasets.push({ label: `${f.label} (puntos)`, data: normales, borderColor: f.color, backgroundColor: f.color + 'cc', pointRadius: 5, pointHoverRadius: 7, showLine: false, order: 1 });
-    if (outliers.length) datasets.push({ label: `${f.label} (outliers)`, data: outliers, borderColor: '#dc3545', backgroundColor: '#dc3545cc', pointRadius: 6, pointHoverRadius: 8, showLine: false, order: 0 });
-  });
+    const curva = fn2 ? generarCurva(fn2, Math.min(...normales.map(p=>p.x)), Math.max(...normales.map(p=>p.x))) : [];
+    series.push({ ...f, normales, outliers, curva });
+  }
 
-  if (!hayPuntos) {
-    canvas.style.display = 'none'; empty.style.display = 'block';
+  if (!series.length) {
+    cont.innerHTML = '';
+    empty.style.display = 'block';
     empty.textContent = 'No hay datos. Pasá por el Monitor y cargá precios de Globales y Bonares.';
     return;
   }
-  canvas.style.display = 'block'; empty.style.display = 'none';
+  empty.style.display = 'none';
 
-  chartGB = new Chart(canvas, {
-    type: 'scatter',
-    data: { datasets },
-    options: {
-      responsive: true, maintainAspectRatio: false,
-      plugins: {
-        legend: { position: 'top', labels: { font: { family: 'JetBrains Mono', size: 11 }, padding: 12, filter: item => !item.text.includes('(puntos)') && !item.text.includes('(outliers)') } },
-        tooltip: { callbacks: { label: ctx => { const p = ctx.raw; const o = ctx.dataset.label.includes('outliers'); return `${p.ticker || ''}  MD: ${p.x}  TIR: ${p.y}%${o ? '  ⚠ outlier' : ''}`; } }, bodyFont: { family: 'JetBrains Mono', size: 11 } }
-      },
-      scales: {
-        x: { type: 'linear', min: 0, max: parseFloat((maxMD * 1.05).toFixed(2)), title: { display: true, text: 'Duration Modificada (años)', font: { family: 'JetBrains Mono', size: 11 }, color: '#707070' }, grid: { color: '#e5e7eb' }, ticks: { font: { family: 'JetBrains Mono', size: 10 }, color: '#707070' } },
-        y: { title: { display: true, text: 'TIR USD %', font: { family: 'JetBrains Mono', size: 11 }, color: '#707070' }, grid: { color: '#e5e7eb' }, ticks: { font: { family: 'JetBrains Mono', size: 10 }, color: '#707070', callback: v => v + '%' } }
-      }
+  const todos = series.flatMap(s => [...s.normales, ...s.outliers, ...s.curva]);
+  const W=1000, H=430, ML=64, MR=24, MT=18, MB=52;
+  const ancho=W-ML-MR, alto=H-MT-MB;
+  const ext=(vals)=>{ const a=Math.min(...vals), b=Math.max(...vals); const d=(b-a)||Math.abs(a)||1; return [a-d*0.08, b+d*0.10]; };
+  const [x0,x1]=ext(todos.map(p=>p.x));
+  const [y0,y1]=ext(todos.map(p=>p.y));
+  const px=v=>ML+(v-x0)/(x1-x0)*ancho;
+  const py=v=>MT+alto-(v-y0)/(y1-y0)*alto;
+
+  const ticks=(a,b,n)=>{
+    const paso0=(b-a)/n, mag=Math.pow(10,Math.floor(Math.log10(paso0))), r=paso0/mag;
+    const paso=(r<=1?1:r<=2?2:r<=2.5?2.5:r<=5?5:10)*mag;
+    const out=[]; for(let v=Math.ceil(a/paso)*paso; v<=b+1e-9; v+=paso) out.push(+v.toFixed(10));
+    return out;
+  };
+  const tx=ticks(x0,x1,6), ty=ticks(y0,y1,5);
+
+  let g='';
+  for(const t of tx) g+=`<line x1="${px(t).toFixed(1)}" y1="${MT}" x2="${px(t).toFixed(1)}" y2="${MT+alto}" class="gb-grid"/>`;
+  for(const t of ty) g+=`<line x1="${ML}" y1="${py(t).toFixed(1)}" x2="${ML+ancho}" y2="${py(t).toFixed(1)}" class="gb-grid"/>`;
+  g+=`<line x1="${ML}" y1="${MT+alto}" x2="${ML+ancho}" y2="${MT+alto}" class="gb-eje"/>`;
+  g+=`<line x1="${ML}" y1="${MT}" x2="${ML}" y2="${MT+alto}" class="gb-eje"/>`;
+  for(const t of tx) g+=`<text x="${px(t).toFixed(1)}" y="${MT+alto+20}" class="gb-tick" text-anchor="middle">${t}</text>`;
+  for(const t of ty) g+=`<text x="${ML-10}" y="${(py(t)+4).toFixed(1)}" class="gb-tick" text-anchor="end">${t.toFixed(1)}%</text>`;
+  g+=`<text x="${ML+ancho/2}" y="${H-10}" class="gb-axis" text-anchor="middle">DURATION MODIFICADA (AÑOS)</text>`;
+  g+=`<text x="16" y="${MT+alto/2}" class="gb-axis" text-anchor="middle" transform="rotate(-90 16 ${MT+alto/2})">TIR USD %</text>`;
+
+  // Curvas de regresión primero, para que los puntos queden por encima.
+  for(const s of series){
+    if(!s.curva.length) continue;
+    const d=s.curva.map((p,i)=>`${i?'L':'M'}${px(p.x).toFixed(1)},${py(p.y).toFixed(1)}`).join(' ');
+    g+=`<path d="${d}" class="gb-curva ${s.cls}"/>`;
+  }
+
+  // Puntos. Los outliers van en rojo y con anillo, como en la leyenda.
+  for(const s of series){
+    for(const p of s.normales) g+=marca(s,p,false);
+    for(const p of s.outliers) g+=marca(s,p,true);
+  }
+  function marca(s,p,out){
+    const cx=px(p.x).toFixed(1), cy=py(p.y).toFixed(1);
+    return `<g class="gb-pt" data-tk="${p.ticker}" data-md="${p.x}" data-tir="${p.y}" data-pr="${p.precio!=null?(+p.precio).toFixed(2):'—'}" data-fam="${s.label}" data-out="${out?1:''}">`
+         + `<circle cx="${cx}" cy="${cy}" r="14" fill="transparent"/>`
+         + `<circle cx="${cx}" cy="${cy}" r="${out?6:5}" class="${out?'gb-out':s.cls}"/>`
+         + `<text x="${cx}" y="${(+cy-11).toFixed(1)}" class="gb-lbl" text-anchor="middle" data-cx="${cx}" data-cy="${cy}">${p.ticker}</text>`
+         + `</g>`;
+  }
+
+  cont.innerHTML=`<svg viewBox="0 0 ${W} ${H}" class="gb-svg" role="img" aria-label="TIR contra duration">${g}</svg><div class="gb-tip" id="gb-tip" hidden></div>`;
+
+  // Recolocar etiquetas midiendo el ancho REAL (getBBox): estimarlo por caracteres se queda corto.
+  const centros=[...cont.querySelectorAll('.gb-lbl')].map(t=>({x:+t.dataset.cx,y:+t.dataset.cy}));
+  const ocup=centros.map(c=>({x:c.x-8,y:c.y-8,w:16,h:16}));
+  const solapa=(a,b)=>a.x<b.x+b.w&&a.x+a.w>b.x&&a.y<b.y+b.h&&a.y+a.h>b.y;
+  const CANDS=[{dx:0,dy:-11,an:'middle'},{dx:11,dy:4,an:'start'},{dx:-11,dy:4,an:'end'},
+               {dx:0,dy:19,an:'middle'},{dx:11,dy:-8,an:'start'},{dx:-11,dy:-8,an:'end'},
+               {dx:11,dy:16,an:'start'},{dx:-11,dy:16,an:'end'},{dx:0,dy:-24,an:'middle'}];
+  for(const t of [...cont.querySelectorAll('.gb-lbl')].sort((a,b)=>(+b.dataset.cy)-(+a.dataset.cy))){
+    const cx=+t.dataset.cx, cy=+t.dataset.cy, bb=t.getBBox(), w=bb.width, h=bb.height;
+    let puesto=null;
+    for(const c of CANDS){
+      const x=cx+c.dx, y=cy+c.dy;
+      const bx=c.an==='middle'?x-w/2:c.an==='start'?x:x-w;
+      const caja={x:bx,y:y-h+3,w,h};
+      if(caja.x<ML-4||caja.x+caja.w>ML+ancho+4||caja.y<MT-2||caja.y+caja.h>MT+alto+2) continue;
+      if(ocup.some(o=>solapa(caja,o))) continue;
+      ocup.push(caja); puesto={x,y,an:c.an}; break;
     }
+    if(!puesto){ t.remove(); continue; }   // sin lugar: mejor no dibujarla, el tooltip la cubre
+    t.setAttribute('x',puesto.x.toFixed(1));
+    t.setAttribute('y',puesto.y.toFixed(1));
+    t.setAttribute('text-anchor',puesto.an);
+  }
+
+  const tip=cont.querySelector('#gb-tip');
+  cont.querySelectorAll('.gb-pt').forEach(el=>{
+    el.addEventListener('mouseenter',()=>{
+      tip.innerHTML=`<b>${el.dataset.tk}</b><span>${el.dataset.fam}</span>`
+        +`<span>M. Dur. <i>${el.dataset.md}</i></span><span>TIR <i>${el.dataset.tir}%</i></span>`
+        +`<span>Precio <i>${el.dataset.pr}</i></span>`
+        +(el.dataset.out?`<span class="gb-tip-out">Outlier — excluido del suavizado</span>`:'');
+      tip.hidden=false;
+    });
+    el.addEventListener('mousemove',ev=>{
+      const r=cont.getBoundingClientRect();
+      tip.style.left=Math.min(ev.clientX-r.left+14, r.width-180)+'px';
+      tip.style.top=(ev.clientY-r.top-10)+'px';
+    });
+    el.addEventListener('mouseleave',()=>{ tip.hidden=true; });
   });
 }
 
