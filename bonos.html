@@ -216,6 +216,9 @@
   td.td-nombre { text-align: left; color: var(--text-2); font-size: 11px; min-width: 160px; font-family: var(--sans); }
 
   .no-p { color: var(--text-3); font-style: italic; font-size: 11px; }
+  /* Pata de un dual que rinde menos que la otra: no va a pagar, se atenúa. */
+  .td-dominada { color: var(--text-3); }
+  .dom-mark { color: var(--border-l); font-weight: 700; }
   /* Comisión: control de la toolbar y sufijo de puntos básicos en la TEA */
   .com-box { display:flex; align-items:center; gap:6px; }
   .com-lbl { font-size:11px; color:var(--text-3); text-transform:uppercase; letter-spacing:.04em; }
@@ -1659,7 +1662,10 @@ function temDeTea(tea) {
 
 const COLS = [
   { k:'ticker',  label:'Ticker',      w:8.0,  left:true, get:f=>f.inst.ticker,     cell:f=>`<td class="td-ticker">${f.inst.ticker}</td>` },
-  { k:'nombre',  label:'Nombre',      w:13.0, left:true, get:f=>f.inst.nombre||'', cell:f=>`<td class="td-nombre">${f.inst.nombre||''}</td>` },
+  { k:'nombre',  label:'Nombre',      w:13.0, left:true, get:f=>f.inst.nombre||'',
+    cell:f=>f.m.dominada
+      ? `<td class="td-nombre td-dominada" title="Pata dominada: el dual paga el máximo de las dos y esta rinde menos, así que no va a pagar. 1816 tampoco publica su TIR.">${f.inst.nombre||''} <span class="dom-mark">·</span></td>`
+      : `<td class="td-nombre">${f.inst.nombre||''}</td>` },
   { k:'rating',  label:'Rating',      w:14.0, get:f=>ratingRank(f.inst), cell:f=>ratingCell(f.inst) },
   { k:'precio',  label:'Precio',      w:10.4, get:f=>f.m.precio, cell:f=>`<td><div class="pcell"><input class="precio-cell-input${f.m.precio?' has-value':''}" id="inp-${f.inst.ticker}" type="number" step="0.01" placeholder="—" value="${fmtPrecioInput(f.m.precio)}" oninput="onPrecioChange('${f.inst.ticker}', this.value)">${subPrecioEjec(f)}</div></td>` },
   { k:'ultop',   label:'Últ. op.',    w:9.0,  get:f=>actUltOpMs(f.inst.ticker), cell:f=>`<td style="font-size:11px">${fmtUltOp(actUltOp(f.inst.ticker))}</td>` },
@@ -1770,6 +1776,35 @@ function renderTabla() {
     filas.push({ inst, m, mc, dias: m.dias,
       day: calcDay(inst, th, precioMkt), wtd: calcWTD(inst, th, precioMkt),
       mtd: calcMTD(inst, th, precioMkt), ytd: calcYTD(inst, th, precioMkt) });
+  }
+
+  // En un dual cobrás el MÁXIMO de las dos patas, así que la de menor valor final no va a pagar:
+  // su TIR describe un escenario que no va a ocurrir. La pata LECAP de TTS26, por ejemplo, daba
+  // -58,93% —devenga a TEM 2,17% desde el 29-01-2025 y termina en 152,10 contra un precio de
+  // 166,05— pero la pata TAMAR proyecta 170,26, así que es la que manda y la fija nunca paga.
+  // Se muestra "—" en la dominada, igual que 1816: para "TTS26 @Tasa Fija" devuelve todo null y
+  // sólo publica el rendimiento efectivo (27,37%, el de la pata TAMAR).
+  //
+  // La comparación SÓLO vale entre patas nominales proyectadas al vencimiento: TAMAR contra
+  // tasa fija. NO se aplica a las patas CER ni Dólar Linked, y no es un detalle menor:
+  //   · CER: su valor final se devenga sólo hasta HOY (100 x CER_hoy/CER_emisión), sin la
+  //     inflación futura, así que siempre parecería dominada por la TAMAR, que sí se proyecta.
+  //     Además su TIR es REAL (sobre inflación) y es justamente el dato que se mira.
+  //   · Dólar Linked: otra unidad (TMVE8 da 139 contra 149.680), la comparación no significa nada.
+  const PATAS_COMPARABLES = ['TAMAR', 'LECAP'];
+  const vfsPorTicker = {};
+  for (const f of filas) {
+    if (f.inst.grupo === 'dual' && f.m.vf != null) (vfsPorTicker[f.inst.ticker] ||= []).push(f.m);
+  }
+  for (const f of filas) {
+    if (f.inst.grupo !== 'dual' || f.m.vf == null) continue;
+    const patas = instrumentos.filter(x => x.grupo === 'dual' && x.ticker === f.inst.ticker);
+    if (!patas.every(x => PATAS_COMPARABLES.includes(x.pata?.tipo))) continue;
+    const vfs = vfsPorTicker[f.inst.ticker].map(m => m.vf);
+    if (vfs.length < 2) continue;
+    if (f.m.vf < Math.max(...vfs) - 1e-9) {
+      f.m = { ...f.m, tna: null, tea: null, md: null, paridad: null, dominada: true };
+    }
   }
 
   // 2) Agrupar preservando el orden de aparición de los grupos
