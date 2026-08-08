@@ -276,7 +276,7 @@
   .status-line { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--text-3); font-family: var(--mono); margin-bottom: 14px; flex-wrap: wrap; }
   .dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; background: var(--text-3); }
   .dot.ok { background: var(--green); } .dot.err { background: var(--red); }
-  .intro { font-size: 12px; color: var(--text-3); font-family: var(--mono); margin-bottom: 16px; line-height: 1.6; max-width: 1100px; }
+  .intro { font-size: 12px; color: var(--text-3); font-family: var(--mono); margin-bottom: 16px; line-height: 1.6; }
   .toolbar { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; margin-bottom: 18px; }
   .liq-badge { font-size: 11px; font-family: var(--mono); color: var(--text-2); background: var(--cyan-bg); border: 1px solid var(--cyan); border-radius: var(--r-pill); padding: 6px 14px; }
   .precio-st { font-size: 11px; font-family: var(--mono); }
@@ -301,7 +301,7 @@
   .rot-inp.com { width: 62px; color: var(--text-2); font-weight: 500; }
   .rot-inp.vn { width: 96px; color: var(--text-2); font-weight: 500; }
   th.inp-col { color: var(--cyan); }
-  .nota { font-size: 11px; color: var(--text-3); font-family: var(--mono); line-height: 1.7; margin-top: 18px; padding: 14px 18px; background: var(--card); border-left: 3px solid var(--cyan); border-radius: 0 var(--r-input) var(--r-input) 0; max-width: 1100px; }
+  .nota { font-size: 11px; color: var(--text-3); font-family: var(--mono); line-height: 1.7; margin-top: 18px; padding: 14px 18px; background: var(--card); border-left: 3px solid var(--cyan); border-radius: 0 var(--r-input) var(--r-input) 0; }
   .nota b { color: var(--navy); }
   input[type=number]::-webkit-inner-spin-button, input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
   input[type=number] { -moz-appearance: textfield; appearance: textfield; }
@@ -367,7 +367,7 @@
 
   <div class="nota">
     <b>TIR de mercado</b>: XIRR con el precio (sucio) que ves y los flujos reales del bono, desde la liquidación T+1 hábil. &nbsp;·&nbsp;
-    <b>TIR Dest. NETA com.</b>: rendimiento del destino computando el costo de comprarlo, precio × (1 + comisión compra) — lo que efectivamente captura el cliente. &nbsp;·&nbsp;
+    <b>TIR Dest. NETA com.</b>: rendimiento del destino neto de las DOS comisiones, a un precio efectivo de precio × (1 + com. compra) ÷ (1 − com. venta) — lo que efectivamente captura el cliente al rotar. &nbsp;·&nbsp;
     <b>Pickup</b> = TIR destino − TIR origen; <b>Pickup NETO</b> = TIR destino neta − TIR origen. &nbsp;·&nbsp;
     <b>Costo Rotación %</b> = comisión total ÷ monto bruto de venta. &nbsp;·&nbsp;
     <b>Break-even (años)</b> = Costo Rotación % ÷ Pickup: más bajo, más conviene.<br>
@@ -519,7 +519,16 @@ function recompute(){
     const precioV=e.precioV, precioC=e.precioC, comV=(e.comV||0)/100, comC=(e.comC||0)/100, vn=e.vn||0;
     const tirO=tirBono(c.origen, precioV);
     const tirD=tirBono(c.destino, precioC);
-    const tirDN=tirBono(c.destino, precioC!=null?precioC*(1+comC):null);
+    // TIR del destino neta de AMBAS comisiones. Antes sólo entraba la de compra, así que subir
+    // la de venta movía el costo y el neto a reinvertir pero dejaba la TIR neta y el pickup neto
+    // clavados, y el pickup sobrestimaba lo que deja rotar.
+    // Por cada nominal de origen vendido recibís P_v/100 x (1-comV) y con eso comprás N unidades
+    // de destino: N x P_c/100 x (1+comC) = P_v/100 x (1-comV). Lo que resignás vale P_v/100, así
+    // que la TIR de la rotación es la del destino a un precio efectivo de
+    //     P_c x (1+comC) / (1-comV)
+    // El precio de venta se cancela: lo que importa es cuánto capital sobrevive al cambio.
+    const precioEfec=(precioC!=null && comV<1) ? precioC*(1+comC)/(1-comV) : null;
+    const tirDN=tirBono(c.destino, precioEfec);
     let montoBruto=null, comisV=null, neto=null, vnDest=null, comisC=null, comisTot=null, costo=null, pickup=null, be=null, pickupN=null;
     if(precioV!=null && vn){
       montoBruto = vn*precioV/100;          // L: Monto Bruto Venta
@@ -669,31 +678,46 @@ function renderGrafico(){
     if(p.destino) grupos.get(k).destino=true;   // si comparte lugar con un destino, prevalece el cyan
   }
 
-  // Las etiquetas se corren hacia arriba hasta no pisar ni otra etiqueta ni un punto. Los
-  // puntos se cargan primero como obstáculos: si no, con varios bonos apilados (los cuatro S1
-  // comparten duration) una etiqueta terminaba tachada por el círculo del bono de al lado.
-  const obst=[...grupos.values()].map(gr=>({ x:+px(gr.md).toFixed(1), y:+py(gr.tir*100).toFixed(1) }));
-  const yEtiqueta=(cx,cy)=>{
-    let y=cy-13;
-    for(let i=0;i<40;i++){
-      if(!obst.some(q=>Math.abs(q.x-cx)<70 && Math.abs(q.y-y)<13)) break;
-      y-=14;
+  // Colocación de etiquetas: en vez de apilarlas todas hacia arriba (quedaban una encima de
+  // otra con líneas guía largas), se prueban posiciones ALREDEDOR del punto —arriba, a los
+  // costados, abajo— y se toma la primera que no pise ni otra etiqueta ni un punto. Con los
+  // cuatro S1 compartiendo duration, así se abren en abanico en vez de formar una columna.
+  const ocupado=[...grupos.values()].map(gr=>{
+    const x=+px(gr.md).toFixed(1), y=+py(gr.tir*100).toFixed(1);
+    return { x:x-9, y:y-9, w:18, h:18 };
+  });
+  const choca=(a)=>ocupado.some(b=>a.x<b.x+b.w && a.x+a.w>b.x && a.y<b.y+b.h && a.y+a.h>b.y);
+  function ubicarEtiqueta(cx, cy, texto){
+    const w=texto.length*6.3, h=13;
+    const cands=[
+      { dx:0,   dy:-12, an:'middle' }, { dx:12,  dy:4,   an:'start' },
+      { dx:-12, dy:4,   an:'end'    }, { dx:0,   dy:20,  an:'middle' },
+      { dx:12,  dy:-9,  an:'start'  }, { dx:-12, dy:-9,  an:'end'    },
+      { dx:12,  dy:17,  an:'start'  }, { dx:-12, dy:17,  an:'end'    },
+      { dx:0,   dy:-26, an:'middle' }, { dx:0,   dy:34,  an:'middle' },
+    ];
+    for(const c of cands){
+      const x=cx+c.dx, y=cy+c.dy;
+      const bx = c.an==='middle' ? x-w/2 : c.an==='start' ? x : x-w;
+      const caja={ x:bx, y:y-h+3, w, h };
+      if(caja.x<ML-4 || caja.x+caja.w>ML+ancho+4 || caja.y<MT-2 || caja.y+caja.h>MT+alto+2) continue;
+      if(choca(caja)) continue;
+      ocupado.push(caja);
+      return { x, y, an:c.an };
     }
-    obst.push({x:cx,y});
-    return y;
-  };
+    const caja={ x:cx-w/2, y:cy-25, w, h }; ocupado.push(caja);
+    return { x:cx, y:cy-22, an:'middle' };
+  }
 
-  // De abajo hacia arriba: así las de más abajo conservan su lugar natural y suben las de arriba.
   for(const gr of [...grupos.values()].sort((a,b)=>py(b.tir*100)-py(a.tir*100))){
     const cx=+px(gr.md).toFixed(1), cy=+py(gr.tir*100).toFixed(1);
     const nombres=gr.items.map(x=>x.b).join(' · ');
     const det=gr.items.map(x=>`<span>${x.b} &nbsp;precio <i>${x.precio.toFixed(2)}</i></span>`).join('');
-    const ly=yEtiqueta(cx,cy);
+    const et=ubicarEtiqueta(cx,cy,nombres);
     g+=`<g class="gr-pt" data-nom="${nombres}" data-md="${gr.md.toFixed(2)}" data-tir="${(gr.tir*100).toFixed(2)}" data-det="${det.replace(/"/g,'&quot;')}">`
      + `<circle cx="${cx}" cy="${cy}" r="16" fill="transparent"/>`
      + `<circle cx="${cx}" cy="${cy}" r="6" class="${gr.destino?'gr-dest':'gr-orig'}"/>`
-     + (ly<cy-13 ? `<line x1="${cx}" y1="${cy-8}" x2="${cx}" y2="${ly+4}" class="gr-guia"/>` : '')
-     + `<text x="${cx}" y="${ly.toFixed(1)}" class="gr-lbl" text-anchor="middle">${nombres}</text>`
+     + `<text x="${et.x.toFixed(1)}" y="${et.y.toFixed(1)}" class="gr-lbl" text-anchor="${et.an}">${nombres}</text>`
      + `</g>`;
   }
 
