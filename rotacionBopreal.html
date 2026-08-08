@@ -75,6 +75,36 @@
   .toolbar { margin-bottom: 22px; }
   .indicadores { border-radius: var(--r-card); box-shadow: var(--sh-card); }
   .table-wrap { border-radius: var(--r-card); box-shadow: var(--sh-card); }
+
+  /* ── Gráfico TIR vs duration ── paleta Balanz: navy dominante, cyan de acento ── */
+  .graf-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-card);
+               box-shadow: var(--sh-card); padding: 16px 18px 8px; margin-bottom: 16px; }
+  .graf-titulo { font-size: 11px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase;
+                 color: var(--cyan); margin-bottom: 2px; }
+  .graf-sub { font-size: 11px; color: var(--text-3); margin-bottom: 10px; }
+  .graf-wrap { position: relative; }
+  .gr-svg { width: 100%; height: auto; display: block; font-family: var(--sans); }
+  .gr-grid { stroke: var(--border); stroke-width: 1; opacity: .45; }
+  .gr-eje  { stroke: var(--border-l); stroke-width: 1; }
+  .gr-tick { font-size: 11px; fill: var(--text-3); font-family: var(--mono); }
+  .gr-axis { font-size: 10px; fill: var(--text-3); letter-spacing: .1em; font-weight: 600; }
+  .gr-lbl  { font-size: 11px; fill: var(--navy); font-weight: 700; }
+  .gr-guia { stroke: var(--border-l); stroke-width: 1; }
+  .gr-orig { fill: var(--navy); }
+  .gr-dest { fill: var(--cyan); }
+  .gr-pt   { cursor: default; }
+  .gr-pt:hover .gr-orig, .gr-pt:hover .gr-dest { stroke: var(--navy); stroke-width: 3; }
+  .gr-tip  { position: absolute; pointer-events: none; background: var(--navy); color: #fff;
+             border-radius: 6px; padding: 7px 10px; font-size: 11px; line-height: 1.5;
+             box-shadow: var(--sh-raised); white-space: nowrap; z-index: 5; }
+  .gr-tip b { display: block; font-size: 12px; letter-spacing: .04em; margin-bottom: 2px; }
+  .gr-tip span { display: block; color: rgba(255,255,255,.72); }
+  .gr-tip i { font-style: normal; color: #fff; font-family: var(--mono); }
+  .graf-ley { display: flex; gap: 18px; align-items: center; font-size: 11px; color: var(--text-3);
+              margin: 4px 0 10px 2px; }
+  .graf-ley span { display: flex; align-items: center; gap: 6px; }
+  .graf-ley i { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+  .graf-vacio { padding: 40px; text-align: center; color: var(--text-3); font-size: 12px; font-style: italic; }
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
@@ -343,6 +373,16 @@
     <b>Break-even (años)</b> = Costo Rotación % ÷ Pickup: más bajo, más conviene.<br>
     Flujos (ByMA/Rava/BCRA): BOPREAL S1 (BPOA7/B7/C7/D7) 5% sem, amort 50% 30/04/27 + 50% 31/10/27. BOPREAL S4 (BPOA8/B8) 3% sem, bullet 31/10/28. Bonar AO27/AO28 6% mensual, bullet (29/10/27 y 31/10/28).
   </div>
+  <div class="graf-card">
+    <div class="graf-titulo">TIR vs Duration</div>
+    <div class="graf-sub">Los 8 instrumentos de la solapa, a los precios de la tabla. Pasá el puntero por un punto para ver el detalle.</div>
+    <div class="graf-ley">
+      <span><i style="background:var(--navy)"></i>BOPREAL (origen)</span>
+      <span><i style="background:var(--cyan)"></i>BONAR (destino)</span>
+    </div>
+    <div class="graf-wrap" id="graf-rot"></div>
+  </div>
+
 </div>
 
 <script>
@@ -391,10 +431,10 @@ const TICKER_MONITOR={ BPOA7:'BPA7D', BPOB7:'BPB7D', BPOC7:'BPC7D', BPOD7:'BPD7D
 
 // ── CASOS (los del Excel) ────────────────────────────────────
 const CASOS=[
-  { origen:'BPOA7', destino:'AO27', vn:10000, comV:0.2, comC:0.2 },
-  { origen:'BPOB7', destino:'AO27', vn:10000, comV:0.2, comC:0.2 },
+  { origen:'BPOA7', destino:'AO27', vn:10000, comV:0.5, comC:0.5 },
+  { origen:'BPOB7', destino:'AO27', vn:10000, comV:0.5, comC:0.5 },
   { origen:'BPOC7', destino:'AO27', vn:10000, comV:0.5, comC:0.5 },
-  { origen:'BPOD7', destino:'AO27', vn:10000, comV:0.2, comC:0.2 },
+  { origen:'BPOD7', destino:'AO27', vn:10000, comV:0.5, comC:0.5 },
   { origen:'BPOA8', destino:'AO28', vn:10000, comV:0.5, comC:0.5 },
   { origen:'BPOB8', destino:'AO28', vn:10000, comV:0.5, comC:0.5 },
 ];
@@ -511,6 +551,7 @@ function recompute(){
     set('c-tirdn-'+i, pct(tirDN));
     set('c-pickupn-'+i, pickupN==null?'—':(pickupN>=0?'+':'')+pickupN.toFixed(0), sgn(pickupN));
   });
+  renderGrafico();   // el gráfico usa los mismos precios de la tabla, así que se redibuja acá
 }
 
 async function init(){
@@ -526,6 +567,156 @@ async function init(){
   dot.className='dot ok'; st.textContent=CASOS.length+' casos · '+new Date().toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'});
 }
 init();
+
+// ── GRÁFICO TIR vs DURATION ──────────────────────────────────
+// Dispersión de los 8 instrumentos de la solapa: duration modificada en X, TIR en Y.
+// Usa los precios que están en la tabla (editables), así que se redibuja con cada cambio.
+
+// Frecuencia de cupón inferida del propio cronograma (mediana de días entre pagos): las S1/S4
+// pagan semestral y los Bonar mensual, y la convención de M.Dur depende de eso.
+function frecDe(bono){
+  const fs=(FLUJOS[bono]||[]).map(x=>parseLocalDate(x[0])).sort((a,b)=>a-b);
+  if(fs.length<2) return 1;
+  const difs=[]; for(let i=1;i<fs.length;i++) difs.push((fs[i]-fs[i-1])/86400000);
+  difs.sort((a,b)=>a-b);
+  const med=difs[Math.floor(difs.length/2)];
+  return med>0 ? Math.max(1, Math.round(365/med)) : 1;
+}
+
+// M.Dur con la misma convención que el Monitor: Macaulay / (1+TIR)^(1/m).
+function mdurBono(bono, precio){
+  const tir=tirBono(bono, precio);
+  if(tir==null || !precio || !t0) return null;
+  let num=0, den=0;
+  for(const [f,m] of (FLUJOS[bono]||[])){
+    const fd=parseLocalDate(f); if(!fd || fd<=t0) continue;
+    const t=(fd-t0)/(365*86400000);
+    const d=m/Math.pow(1+tir,t);
+    num+=t*d; den+=d;
+  }
+  if(!den) return null;
+  return (num/den)/Math.pow(1+tir, 1/frecDe(bono));
+}
+
+// Precio vigente de un bono en la tabla: el de venta si es origen, el de compra si es destino.
+function precioEnTabla(bono){
+  for(let i=0;i<CASOS.length;i++){
+    if(CASOS[i].origen===bono && estado[i] && estado[i].precioV!=null) return estado[i].precioV;
+    if(CASOS[i].destino===bono && estado[i] && estado[i].precioC!=null) return estado[i].precioC;
+  }
+  return null;
+}
+
+function puntosGrafico(){
+  const bonos=[...new Set(CASOS.flatMap(c=>[c.origen,c.destino]))];
+  const pts=[];
+  for(const b of bonos){
+    const precio=precioEnTabla(b);
+    if(precio==null) continue;
+    const tir=tirBono(b,precio), md=mdurBono(b,precio);
+    if(tir==null || md==null) continue;
+    pts.push({ b, md, tir, precio, destino: CASOS.some(c=>c.destino===b) });
+  }
+  return pts;
+}
+
+function renderGrafico(){
+  const cont=document.getElementById('graf-rot');
+  if(!cont) return;
+  const pts=puntosGrafico();
+  if(!pts.length){ cont.innerHTML='<div class="graf-vacio">Sin precios — pasá por el Monitor</div>'; return; }
+
+  const W=1000, H=380, ML=64, MR=24, MT=20, MB=52;   // viewBox: escala sola al ancho del contenedor
+  const ancho=W-ML-MR, alto=H-MT-MB;
+
+  // Escalas con un 12% de aire a cada lado para que ningún punto quede pegado al eje.
+  const ext=(vals)=>{ const a=Math.min(...vals), b=Math.max(...vals); const d=(b-a)||Math.abs(a)||1; return [a-d*0.12, b+d*0.12]; };
+  const [x0,x1]=ext(pts.map(p=>p.md));
+  const [y0,y1]=ext(pts.map(p=>p.tir*100));
+  const px=v=>ML+(v-x0)/(x1-x0)*ancho;
+  const py=v=>MT+alto-(v-y0)/(y1-y0)*alto;
+
+  // Ticks "redondos" (1, 2, 2.5 o 5 por década) para que las etiquetas no queden con decimales largos.
+  const ticks=(a,b,n)=>{
+    const paso0=(b-a)/n, mag=Math.pow(10,Math.floor(Math.log10(paso0))), r=paso0/mag;
+    const paso=(r<=1?1:r<=2?2:r<=2.5?2.5:r<=5?5:10)*mag;
+    const out=[]; for(let v=Math.ceil(a/paso)*paso; v<=b+1e-9; v+=paso) out.push(+v.toFixed(10));
+    return out;
+  };
+  const tx=ticks(x0,x1,6), ty=ticks(y0,y1,5);
+
+  let g='';
+  // Grilla
+  for(const t of tx) g+=`<line x1="${px(t).toFixed(1)}" y1="${MT}" x2="${px(t).toFixed(1)}" y2="${MT+alto}" class="gr-grid"/>`;
+  for(const t of ty) g+=`<line x1="${ML}" y1="${py(t).toFixed(1)}" x2="${ML+ancho}" y2="${py(t).toFixed(1)}" class="gr-grid"/>`;
+  // Ejes
+  g+=`<line x1="${ML}" y1="${MT+alto}" x2="${ML+ancho}" y2="${MT+alto}" class="gr-eje"/>`;
+  g+=`<line x1="${ML}" y1="${MT}" x2="${ML}" y2="${MT+alto}" class="gr-eje"/>`;
+  // Etiquetas
+  for(const t of tx) g+=`<text x="${px(t).toFixed(1)}" y="${MT+alto+20}" class="gr-tick" text-anchor="middle">${t}</text>`;
+  for(const t of ty) g+=`<text x="${ML-10}" y="${(py(t)+4).toFixed(1)}" class="gr-tick" text-anchor="end">${t.toFixed(1)}%</text>`;
+  g+=`<text x="${ML+ancho/2}" y="${H-10}" class="gr-axis" text-anchor="middle">DURATION MODIFICADA (AÑOS)</text>`;
+  g+=`<text x="16" y="${MT+alto/2}" class="gr-axis" text-anchor="middle" transform="rotate(-90 16 ${MT+alto/2})">TIR %</text>`;
+
+  // Bonos que caen en el MISMO punto se dibujan una sola vez con la etiqueta combinada: pasa
+  // con BPOB7 y BPOC7, que comparten precio y cronograma, así que su TIR y su duration son
+  // idénticas. Dibujar dos círculos superpuestos escondería uno y su tooltip.
+  const grupos=new Map();
+  for(const p of pts){
+    const k=p.md.toFixed(3)+'|'+(p.tir*100).toFixed(3);
+    if(!grupos.has(k)) grupos.set(k,{ md:p.md, tir:p.tir, destino:p.destino, items:[] });
+    grupos.get(k).items.push(p);
+    if(p.destino) grupos.get(k).destino=true;   // si comparte lugar con un destino, prevalece el cyan
+  }
+
+  // Las etiquetas se corren hacia arriba hasta no pisar ni otra etiqueta ni un punto. Los
+  // puntos se cargan primero como obstáculos: si no, con varios bonos apilados (los cuatro S1
+  // comparten duration) una etiqueta terminaba tachada por el círculo del bono de al lado.
+  const obst=[...grupos.values()].map(gr=>({ x:+px(gr.md).toFixed(1), y:+py(gr.tir*100).toFixed(1) }));
+  const yEtiqueta=(cx,cy)=>{
+    let y=cy-13;
+    for(let i=0;i<40;i++){
+      if(!obst.some(q=>Math.abs(q.x-cx)<70 && Math.abs(q.y-y)<13)) break;
+      y-=14;
+    }
+    obst.push({x:cx,y});
+    return y;
+  };
+
+  // De abajo hacia arriba: así las de más abajo conservan su lugar natural y suben las de arriba.
+  for(const gr of [...grupos.values()].sort((a,b)=>py(b.tir*100)-py(a.tir*100))){
+    const cx=+px(gr.md).toFixed(1), cy=+py(gr.tir*100).toFixed(1);
+    const nombres=gr.items.map(x=>x.b).join(' · ');
+    const det=gr.items.map(x=>`<span>${x.b} &nbsp;precio <i>${x.precio.toFixed(2)}</i></span>`).join('');
+    const ly=yEtiqueta(cx,cy);
+    g+=`<g class="gr-pt" data-nom="${nombres}" data-md="${gr.md.toFixed(2)}" data-tir="${(gr.tir*100).toFixed(2)}" data-det="${det.replace(/"/g,'&quot;')}">`
+     + `<circle cx="${cx}" cy="${cy}" r="16" fill="transparent"/>`
+     + `<circle cx="${cx}" cy="${cy}" r="6" class="${gr.destino?'gr-dest':'gr-orig'}"/>`
+     + (ly<cy-13 ? `<line x1="${cx}" y1="${cy-8}" x2="${cx}" y2="${ly+4}" class="gr-guia"/>` : '')
+     + `<text x="${cx}" y="${ly.toFixed(1)}" class="gr-lbl" text-anchor="middle">${nombres}</text>`
+     + `</g>`;
+  }
+
+  cont.innerHTML=`<svg viewBox="0 0 ${W} ${H}" class="gr-svg" role="img" aria-label="TIR contra duration">${g}</svg>`
+    + `<div class="gr-tip" id="gr-tip" hidden></div>`;
+
+  // Tooltip: sigue al puntero dentro del contenedor.
+  const tip=cont.querySelector('#gr-tip');
+  cont.querySelectorAll('.gr-pt').forEach(el=>{
+    el.addEventListener('mouseenter',()=>{
+      tip.innerHTML=`<b>${el.dataset.nom}</b><span>M. Dur. <i>${el.dataset.md}</i></span>`
+                   +`<span>TIR <i>${el.dataset.tir}%</i></span>${el.dataset.det}`;
+      tip.hidden=false;
+    });
+    el.addEventListener('mousemove',ev=>{
+      const r=cont.getBoundingClientRect();
+      tip.style.left=Math.min(ev.clientX-r.left+14, r.width-170)+'px';
+      tip.style.top=(ev.clientY-r.top-10)+'px';
+    });
+    el.addEventListener('mouseleave',()=>{ tip.hidden=true; });
+  });
+}
+
 </script>
 </body>
 </html>
