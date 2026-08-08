@@ -964,6 +964,16 @@ function valorTecnicoTF(inst, fechaLiq) {
 // Grupos que se calculan con parámetros (TEM, CER, TAMAR, TC): no necesitan cronograma.
 const GRUPOS_PARAMETRICOS = ['lecap', 'cer', 'tamar', 'usdlinked', 'dual'];
 
+// Días de TAMAR que se promedian para proyectar el tramo futuro del cupón (TAMAR y duales).
+// Son los mismos 5 que usa 1816 (su request manda diasPromedioTasaReferenciaProyectada: 5).
+// Medido contra sus TEA de la rueda del 2026-08-07 en los 6 TAMAR: con 3 días la diferencia
+// promedio era -0,28 pp y con 5 baja a -0,21; con 10 o 20 empeora. Queda un residuo chico que
+// NO viene de la proyección: M31G6, al que le quedan 23 días y casi no tiene tramo futuro,
+// se mueve apenas de -2,97 a -2,90. Ese resto es diferencia de metodología en el tramo ya
+// realizado (lag, conteo de días) y en TEA se ve grande sólo porque anualizar un plazo corto
+// amplifica: son 0,15% del valor final.
+const TAMAR_DIAS_PROY = 5;
+
 // ¿Este instrumento se resuelve con los indicadores que publica 1816 en vez de calcularse acá?
 // Criterio POR INSTRUMENTO, no por grupo: un bono con cupón que todavía no tiene su cronograma
 // cargado en Instrumentos.xlsx usa los indicadores de 1816. En cuanto se le agregan los flujos,
@@ -1144,11 +1154,11 @@ function calcMetricas(inst, precioAlt) {
 
     // 1) Promedio TAMAR + margen (TNA %).
     //    La serie conocida va de emisión-lag a hoy-lag (TAMAR realizada).
-    //    El tramo futuro (hoy → vencimiento) se completa con el PROMEDIO de los
-    //    últimos 3 datos de TAMAR disponibles, y el promedio se hace sobre la serie ampliada.
+    //    El tramo futuro (hoy → vencimiento) se completa con el PROMEDIO de los últimos
+    //    TAMAR_DIAS_PROY datos disponibles, y el promedio se hace sobre la serie ampliada.
     const lag = inst.tamar_aplicable || 10;
     const sumaConocida = serie.reduce((a,v) => a+v, 0);
-    const tamarProy    = promedioUltimosN(serie, 3); // proyección = promedio últimos 3
+    const tamarProy    = promedioUltimosN(serie, TAMAR_DIAS_PROY);
     const fechaHastaKnown = restarDiasHabiles(dateToStr(hoy), lag); // fin de la serie conocida
     const fechaVencLag    = restarDiasHabiles(inst.venc, lag);      // vencimiento con el mismo lag
     const diasFuturos  = contarDiasHabiles(fechaHastaKnown, fechaVencLag);
@@ -1250,11 +1260,10 @@ function calcMetricas(inst, precioAlt) {
     } else if (pata.tipo === 'TAMAR') {
       const serie = bcraData.tamar[inst.ticker + '_TAMAR'] || bcraData.tamar[inst.ticker] || [];
       if (serie.length) {
-        // Misma lógica que TAMAR simple: completar el tramo futuro (hoy → vto)
-        // con el PROMEDIO de los últimos 3 datos disponibles y promediar sobre la serie ampliada.
+        // Misma lógica y misma ventana de proyección que el TAMAR simple (TAMAR_DIAS_PROY).
         const lag = pata.tamar_aplicable || 10;
         const sumaConocida = serie.reduce((a,v) => a+v, 0);
-        const tamarProy    = promedioUltimosN(serie, 3);
+        const tamarProy    = promedioUltimosN(serie, TAMAR_DIAS_PROY);
         const fechaHastaKnown = restarDiasHabiles(dateToStr(hoy), lag);
         const fechaVencLag    = restarDiasHabiles(pata.venc, lag);
         const diasFuturos  = contarDiasHabiles(fechaHastaKnown, fechaVencLag);
