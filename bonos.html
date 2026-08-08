@@ -427,7 +427,9 @@ const FERIADOS_WORKER = 'https://feriados-proxy.granda-fra.workers.dev';
 // ── ESTADO ────────────────────────────────────────────────────
 let instrumentos = []; // array plano ordenado: { grupo, ...datos }
 let precios = cargarPreciosGuardados(); // persiste mientras la pestaña esté abierta (sessionStorage)
-let bcraData = { cer: {}, tamar: {}, usd: {}, usdHoy: null, tamarReciente: null, caucion1d: null, uva: null, plazo30d: null, riesgopais: null };
+let bcraData = { cer: {}, tamar: {}, tamarUltPub: {}, usd: {}, usdHoy: null, tamarReciente: null, caucion1d: null, uva: null, plazo30d: null, riesgopais: null };
+// tamarUltPub[ticker] = fecha del último dato de TAMAR publicado. Se necesita porque la serie
+// llega hasta donde publicó el BCRA (con 1-2 días de demora), no hasta una fecha fija.
 let historicos = {}; // { ticker: { 'YYYY-MM-DD': precio } }
 // Indicadores que calcula 1816 (tea/durationMod/paridad), sólo para los grupos de los que
 // NO tenemos cronograma de flujos y por eso no se computan localmente (hoy: subsoberanos).
@@ -1159,7 +1161,9 @@ function calcMetricas(inst, precioAlt) {
     const lag = inst.tamar_aplicable || 10;
     const sumaConocida = serie.reduce((a,v) => a+v, 0);
     const tamarProy    = promedioUltimosN(serie, TAMAR_DIAS_PROY);
-    const fechaHastaKnown = restarDiasHabiles(dateToStr(hoy), lag); // fin de la serie conocida
+    // Fin de lo conocido = fecha del último dato publicado, no hoy-lag: la serie ya trae las
+    // tasas de los próximos `lag` días hábiles de devengamiento (ver el fetch de TAMAR).
+    const fechaHastaKnown = bcraData.tamarUltPub[inst.ticker] || restarDiasHabiles(dateToStr(hoy), lag);
     const fechaVencLag    = restarDiasHabiles(inst.venc, lag);      // vencimiento con el mismo lag
     const diasFuturos  = contarDiasHabiles(fechaHastaKnown, fechaVencLag);
     const sumaTotal    = sumaConocida + tamarProy * diasFuturos;
@@ -1264,7 +1268,8 @@ function calcMetricas(inst, precioAlt) {
         const lag = pata.tamar_aplicable || 10;
         const sumaConocida = serie.reduce((a,v) => a+v, 0);
         const tamarProy    = promedioUltimosN(serie, TAMAR_DIAS_PROY);
-        const fechaHastaKnown = restarDiasHabiles(dateToStr(hoy), lag);
+        const claveSerie = bcraData.tamar[inst.ticker + '_TAMAR'] ? inst.ticker + '_TAMAR' : inst.ticker;
+        const fechaHastaKnown = bcraData.tamarUltPub[claveSerie] || restarDiasHabiles(dateToStr(hoy), lag);
         const fechaVencLag    = restarDiasHabiles(pata.venc, lag);
         const diasFuturos  = contarDiasHabiles(fechaHastaKnown, fechaVencLag);
         const tamarProm = (sumaConocida + tamarProy * diasFuturos) / (serie.length + diasFuturos);
@@ -2352,7 +2357,12 @@ async function fetchBCRA() {
     await fetchCerFecha(fechaEmis);
   }
 
-  // TAMAR: para cada bono fetchear serie completa desde emision-lag hasta hoy-lag
+  // TAMAR: serie desde emision-lag hasta HOY (no hasta hoy-lag).
+  // El cupón devenga con rezago: la tasa que se aplica el día D es la TAMAR publicada D-lag
+  // hábiles antes. Por eso los próximos `lag` días hábiles de devengamiento YA tienen su tasa
+  // publicada, y traer la serie sólo hasta hoy-lag obligaba a proyectarlos. Con la TAMAR en
+  // suba eso subestimaba el promedio: medido contra las TEA de 1816 del 2026-08-07, la
+  // diferencia en valor pasa de 0,18% promedio a 0,10% al usar los datos reales.
   // Incluir patas TAMAR de Duales (ahora cada pata es un instrumento separado)
   const bonosTamar = [
     ...instrumentos.filter(i => i.grupo === 'tamar'),
@@ -2364,7 +2374,7 @@ async function fetchBCRA() {
   ];
   for (const b of bonosTamar) {
     const fechaDesde = restarDiasHabiles(b.emision, b.tamar_aplicable);
-    const fechaHasta = restarDiasHabiles(hoy, b.tamar_aplicable);
+    const fechaHasta = hoy;   // en fetchBCRA `hoy` ya es string 'YYYY-MM-DD'
     try {
       const resp = await fetch(`${BCRA_WORKER}/?serie=tamar&desde=${fechaDesde}&hasta=${fechaHasta}`);
       const json = await resp.json();
@@ -2374,6 +2384,8 @@ async function fetchBCRA() {
       detalle.sort((a,b) => (a.fecha||'').localeCompare(b.fecha||''));
       // Guardar serie por ticker
       bcraData.tamar[b.ticker] = detalle.map(r => parseFloat(r.valor));
+      // Fecha del último dato: marca hasta dónde llega lo CONOCIDO (ver calcMetricas).
+      if (detalle.length) bcraData.tamarUltPub[b.ticker] = String(detalle[detalle.length - 1].fecha).slice(0, 10);
       console.log(`TAMAR ${b.ticker}: ${detalle.length} datos`);
       console.log(`TAMAR ${b.ticker}: ${detalle.length} datos, promedio: ${(bcraData.tamar[b.ticker].reduce((a,v)=>a+v,0)/bcraData.tamar[b.ticker].length).toFixed(4)}%`);
     } catch(e) {
