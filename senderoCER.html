@@ -75,9 +75,37 @@
   .toolbar { margin-bottom: 22px; }
   .indicadores { border-radius: var(--r-card); box-shadow: var(--sh-card); }
   .table-wrap { border-radius: var(--r-card); box-shadow: var(--sh-card); }
+
+  /* ── Gráfico LECAPs vs CER ── mismo lenguaje que Glob vs Bon y ONs ── */
+  .gc-titulo { color: var(--cyan) !important; font-family: var(--sans) !important; margin-bottom: 4px !important; }
+  .gc-sub { font-size: 11px; color: var(--text-3); margin-bottom: 10px; line-height: 1.6; }
+  .gc-ley { display: flex; gap: 18px; align-items: center; flex-wrap: wrap; font-size: 11px;
+            color: var(--text-3); margin: 2px 0 12px 2px; }
+  .gc-ley span { display: flex; align-items: center; gap: 6px; }
+  .gc-ley i { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+  .gc-wrap { position: relative; }
+  .gc-svg  { width: 100%; height: auto; display: block; font-family: var(--sans); }
+  .gc-grid { stroke: var(--border); stroke-width: 1; opacity: .45; }
+  .gc-eje  { stroke: var(--border-l); stroke-width: 1; }
+  .gc-tick { font-size: 11px; fill: var(--text-3); font-family: var(--mono); }
+  .gc-axis { font-size: 10px; fill: var(--text-3); letter-spacing: .1em; font-weight: 600; }
+  .gc-lbl  { font-size: 10px; fill: var(--navy); font-weight: 700; }
+  .gc-lecap { fill: var(--navy); }
+  .gc-cer   { fill: var(--cyan); }
+  .gc-out   { fill: var(--red); }
+  .gc-curva { fill: none; stroke-width: 2.5; opacity: .85; }
+  .gc-curva.gc-lecap { stroke: var(--navy); }
+  .gc-curva.gc-cer   { stroke: var(--cyan); }
+  .gc-pt:hover circle:not([fill="transparent"]) { stroke: var(--navy); stroke-width: 3; }
+  .gc-tip  { position: absolute; pointer-events: none; background: var(--navy); color: #fff;
+             border-radius: 6px; padding: 8px 11px; font-size: 11px; line-height: 1.5;
+             box-shadow: var(--sh-raised); white-space: nowrap; z-index: 5; }
+  .gc-tip b { display: block; font-size: 12px; letter-spacing: .04em; margin-bottom: 2px; }
+  .gc-tip span { display: block; color: rgba(255,255,255,.72); }
+  .gc-tip i { font-style: normal; color: #fff; font-family: var(--mono); }
+  .gc-tip-out { color: #ffb4a8 !important; margin-top: 3px; }
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
   :root {
@@ -261,10 +289,14 @@
 
   <!-- SECCIÓN GRÁFICO CURVAS LECAP vs CER -->
   <div class="bei-section">
-    <div class="bei-title">Curvas de rendimiento · LECAPs vs CER</div>
-    <div style="position:relative;height:420px;">
-      <canvas id="chart-curvas"></canvas>
+    <div class="bei-title gc-titulo">Curvas de rendimiento · LECAPs vs CER</div>
+    <div class="gc-sub">Los CER se muestran con su TEA NOMINAL: se proyecta el CER al vencimiento con el REM de arriba, así son comparables con las LECAPs. Cambiando la inflación proyectada, los puntos CER se mueven.</div>
+    <div class="gc-ley">
+      <span><i style="background:var(--navy)"></i>LECAPs</span>
+      <span><i style="background:var(--cyan)"></i>CER · TEA nominal, con la inflación del REM adentro</span>
+      <span><i style="background:var(--red)"></i>Outlier — más de 2σ de la curva</span>
     </div>
+    <div class="gc-wrap" id="graf-curvas"></div>
     <div id="curvas-empty" style="display:none;" class="bei-empty"></div>
   </div>
 </div>
@@ -1006,55 +1038,153 @@ function renderBEI() {
 // ── RENDER GRÁFICO CURVAS LECAP vs CER ────────────────────────
 let chartCurvas = null;
 function renderGraficoCurvas() {
-  const canvas = document.getElementById('chart-curvas');
-  const empty  = document.getElementById('curvas-empty');
+  const cont  = document.getElementById('graf-curvas');
+  const empty = document.getElementById('curvas-empty');
+  if (!cont) return;
   const datos = JSON.parse(localStorage.getItem('bonos_data') || '[]');
 
-  const lec = datos.filter(d => d.grupo === 'lecap' && d.md != null && d.tea != null).map(d => ({ x: parseFloat(d.md.toFixed(2)), y: parseFloat(d.tea.toFixed(2)), ticker: d.ticker }));
-  const cer = datos.filter(d => d.grupo === 'cer'   && d.md != null && d.tea != null).map(d => ({ x: parseFloat(d.md.toFixed(2)), y: parseFloat(d.tea.toFixed(2)), ticker: d.ticker }));
+  // LECAPs: su TEA ya es nominal, se toma tal cual del Monitor.
+  const lec = datos.filter(d => d.grupo === 'lecap' && d.md != null && d.tea != null)
+    .map(d => ({ x:+d.md.toFixed(3), y:+d.tea.toFixed(3), tk:d.ticker, precio:d.precio, tipo:'LECAP' }));
 
-  if (chartCurvas) { chartCurvas.destroy(); chartCurvas = null; }
+  // CER: la TEA que publica el Monitor es REAL (sobre inflación) y no es comparable con una
+  // nominal. Se recalcula igual que la tabla de esta página: se proyecta el CER al vencimiento
+  // con el REM que está cargado arriba, el valor final es 100 x CER_venc/CER_emisión y de ahí
+  // sale la TIR NOMINAL, que ya lleva la inflación proyectada adentro.
+  const precioCer = {};
+  datos.filter(d => d.grupo === 'cer').forEach(d => { precioCer[d.ticker] = { precio:d.precio, teaReal:d.tea, md:d.md }; });
+  const cer = [];
+  for (const b of bonosCER) {
+    const dias = diasAlVenc(b.venc);
+    if (dias === null || dias <= 0) continue;
+    const ref = precioCer[b.ticker];
+    if (!ref || ref.precio == null) continue;
+    const fe = b.emision ? restarDiasHabiles(b.emision, 10) : null;
+    const fv = b.venc    ? restarDiasHabiles(b.venc, 10)    : null;
+    const ce = fe ? getCER(fe) : null, cv = fv ? getCER(fv) : null;
+    if (!ce || !cv) continue;
+    const vf  = 100 * cv.valor / ce.valor;
+    // OJO: calcTIR de esta página ya devuelve PORCENTAJE (termina en "* 100"), no fracción.
+    const tirPct = calcTIR(ref.precio, vf, dias);
+    if (tirPct == null || !isFinite(tirPct)) continue;
+    // Duration en la misma convención que el Monitor (semestral), descontando a la tasa nominal
+    // para que sea coherente con el eje Y.
+    const t = dias / 365;
+    const md = t / Math.pow(1 + tirPct/100, 0.5);
+    cer.push({ x:+md.toFixed(3), y:+tirPct.toFixed(3), tk:b.ticker, precio:ref.precio,
+               tipo:'CER', teaReal:ref.teaReal, proyectado:(ce.proyectado || cv.proyectado) });
+  }
 
-  if (lec.length < 1 && cer.length < 1) {
-    canvas.style.display = 'none'; empty.style.display = 'block';
+  if (!lec.length && !cer.length) {
+    cont.innerHTML = '';
+    empty.style.display = 'block';
     empty.textContent = 'No hay datos. Cargá precios de LECAPs y CER en el Monitor primero.';
     return;
   }
-  canvas.style.display = 'block'; empty.style.display = 'none';
+  empty.style.display = 'none';
 
-  // Eje X restringido al máximo de las LECAPs
-  const maxLecapMD = lec.length ? Math.max(...lec.map(p => p.x)) : (cer.length ? Math.max(...cer.map(p => p.x)) : 1);
-
-  const datasets = [];
-  [{ pts: lec, label: 'LECAPs', color: '#0d2055' }, { pts: cer, label: 'CER', color: '#145e81' }].forEach(fam => {
-    if (!fam.pts.length) return;
-    const fn1 = regresionPoly2(fam.pts);
-    const { normales, outliers } = detectarOutliers(fam.pts, fn1);
+  const series = [];
+  for (const f of [{ pts:lec, cls:'gc-lecap', label:'LECAPs' }, { pts:cer, cls:'gc-cer', label:'CER (nominal)' }]) {
+    if (!f.pts.length) continue;
+    const fn1 = regresionPoly2(f.pts.map(p=>({x:p.x,y:p.y})));
+    const { normales, outliers } = detectarOutliers(f.pts.map(p=>({x:p.x,y:p.y,tk:p.tk})), fn1);
+    const setOut = new Set(outliers.map(p=>p.tk));
     const fn2 = normales.length >= 3 ? regresionPoly2(normales) : null;
-    // Curva suave, recortada al máximo de LECAPs
+    const curva = [];
     if (fn2) {
-      const xMin = Math.min(...normales.map(p => p.x));
-      const xMax = Math.min(Math.max(...normales.map(p => p.x)), maxLecapMD);
-      if (xMax > xMin) datasets.push({ label: fam.label, data: generarCurva(fn2, xMin, xMax), borderColor: fam.color, backgroundColor: 'transparent', pointRadius: 0, borderWidth: 2.5, tension: 0, showLine: true, order: 2 });
+      const a=Math.min(...normales.map(p=>p.x)), b=Math.max(...normales.map(p=>p.x));
+      for (let i=0;i<=100;i++){ const x=a+(b-a)*i/100; curva.push({x, y:fn2(x)}); }
     }
-    datasets.push({ label: `${fam.label} (puntos)`, data: normales, borderColor: fam.color, backgroundColor: fam.color + 'cc', pointRadius: 5, pointHoverRadius: 7, showLine: false, order: 1 });
-    if (outliers.length) datasets.push({ label: `${fam.label} (outliers)`, data: outliers, borderColor: '#dc3545', backgroundColor: '#dc3545cc', pointRadius: 6, pointHoverRadius: 8, showLine: false, order: 0 });
-  });
+    series.push({ ...f, curva, esOut:setOut });
+  }
 
-  chartCurvas = new Chart(canvas, {
-    type: 'scatter',
-    data: { datasets },
-    options: {
-      responsive: true, maintainAspectRatio: false,
-      plugins: {
-        legend: { position: 'top', labels: { font: { family: 'JetBrains Mono', size: 10 }, padding: 12, filter: item => !item.text.includes('(puntos)') && !item.text.includes('(outliers)') } },
-        tooltip: { callbacks: { label: ctx => { const p = ctx.raw; const o = ctx.dataset.label.includes('outliers'); return `${p.ticker || ''}  MD: ${p.x}  TEA: ${p.y}%${o ? '  ⚠ outlier' : ''}`; } }, bodyFont: { family: 'JetBrains Mono', size: 11 } }
-      },
-      scales: {
-        x: { type: 'linear', min: 0, max: parseFloat((maxLecapMD * 1.05).toFixed(2)), title: { display: true, text: 'Duration Modificada (años)', font: { family: 'JetBrains Mono', size: 11 }, color: '#707070' }, grid: { color: '#e5e7eb' }, ticks: { font: { family: 'JetBrains Mono', size: 10 }, color: '#707070' } },
-        y: { title: { display: true, text: 'TEA %', font: { family: 'JetBrains Mono', size: 11 }, color: '#707070' }, grid: { color: '#e5e7eb' }, ticks: { font: { family: 'JetBrains Mono', size: 10 }, color: '#707070', callback: v => v + '%' } }
-      }
+  const todos = series.flatMap(s => [...s.pts, ...s.curva]);
+  const W=1000, H=420, ML=64, MR=24, MT=18, MB=52;
+  const ancho=W-ML-MR, alto=H-MT-MB;
+  const ext=v=>{ const a=Math.min(...v), b=Math.max(...v); const d=(b-a)||Math.abs(a)||1; return [a-d*0.08, b+d*0.10]; };
+  const [x0,x1]=ext(todos.map(p=>p.x));
+  const [y0,y1]=ext(todos.map(p=>p.y));
+  const px=v=>ML+(v-x0)/(x1-x0)*ancho;
+  const py=v=>MT+alto-(v-y0)/(y1-y0)*alto;
+  const ticks=(a,b,n)=>{
+    const p0=(b-a)/n, mag=Math.pow(10,Math.floor(Math.log10(p0))), r=p0/mag;
+    const paso=(r<=1?1:r<=2?2:r<=2.5?2.5:r<=5?5:10)*mag;
+    const o=[]; for(let v=Math.ceil(a/paso)*paso; v<=b+1e-9; v+=paso) o.push(+v.toFixed(10));
+    return o;
+  };
+  const tx=ticks(x0,x1,6), ty=ticks(y0,y1,5);
+
+  let g='';
+  for(const t of tx) g+=`<line x1="${px(t).toFixed(1)}" y1="${MT}" x2="${px(t).toFixed(1)}" y2="${MT+alto}" class="gc-grid"/>`;
+  for(const t of ty) g+=`<line x1="${ML}" y1="${py(t).toFixed(1)}" x2="${ML+ancho}" y2="${py(t).toFixed(1)}" class="gc-grid"/>`;
+  g+=`<line x1="${ML}" y1="${MT+alto}" x2="${ML+ancho}" y2="${MT+alto}" class="gc-eje"/>`;
+  g+=`<line x1="${ML}" y1="${MT}" x2="${ML}" y2="${MT+alto}" class="gc-eje"/>`;
+  for(const t of tx) g+=`<text x="${px(t).toFixed(1)}" y="${MT+alto+20}" class="gc-tick" text-anchor="middle">${t}</text>`;
+  for(const t of ty) g+=`<text x="${ML-10}" y="${(py(t)+4).toFixed(1)}" class="gc-tick" text-anchor="end">${t.toFixed(1)}%</text>`;
+  g+=`<text x="${ML+ancho/2}" y="${H-10}" class="gc-axis" text-anchor="middle">DURATION MODIFICADA (AÑOS)</text>`;
+  g+=`<text x="16" y="${MT+alto/2}" class="gc-axis" text-anchor="middle" transform="rotate(-90 16 ${MT+alto/2})">TEA NOMINAL %</text>`;
+
+  for(const s of series){
+    if(!s.curva.length) continue;
+    const d=s.curva.map((p,i)=>`${i?'L':'M'}${px(p.x).toFixed(1)},${py(p.y).toFixed(1)}`).join(' ');
+    g+=`<path d="${d}" class="gc-curva ${s.cls}"/>`;
+  }
+  for(const s of series){
+    for(const p of s.pts){
+      const out=s.esOut.has(p.tk);
+      const cx=px(p.x).toFixed(1), cy=py(p.y).toFixed(1);
+      const extra = p.tipo==='CER'
+        ? ` data-real="${p.teaReal!=null?p.teaReal.toFixed(2):'—'}" data-proy="${p.proyectado?1:''}"` : '';
+      g+=`<g class="gc-pt" data-tk="${p.tk}" data-tipo="${p.tipo}" data-md="${p.x.toFixed(2)}"`
+       + ` data-tea="${p.y.toFixed(2)}" data-pr="${p.precio!=null?(+p.precio).toFixed(2):'—'}"`
+       + ` data-out="${out?1:''}"${extra}>`
+       + `<circle cx="${cx}" cy="${cy}" r="14" fill="transparent"/>`
+       + `<circle cx="${cx}" cy="${cy}" r="${out?5.5:5}" class="${out?'gc-out':s.cls}"/>`
+       + `<text x="${cx}" y="${(+cy-11).toFixed(1)}" class="gc-lbl" text-anchor="middle" data-cx="${cx}" data-cy="${cy}">${p.tk}</text>`
+       + `</g>`;
     }
+  }
+
+  cont.innerHTML=`<svg viewBox="0 0 ${W} ${H}" class="gc-svg" role="img" aria-label="TEA nominal contra duration">${g}</svg><div class="gc-tip" id="gc-tip" hidden></div>`;
+
+  // Etiquetas: se recolocan midiendo el ancho real con getBBox; si no entran, se omiten.
+  const ocup=[...cont.querySelectorAll('.gc-lbl')].map(t=>({x:+t.dataset.cx-8,y:+t.dataset.cy-8,w:16,h:16}));
+  const sol=(a,b)=>a.x<b.x+b.w&&a.x+a.w>b.x&&a.y<b.y+b.h&&a.y+a.h>b.y;
+  const CAND=[{dx:0,dy:-11,an:'middle'},{dx:11,dy:4,an:'start'},{dx:-11,dy:4,an:'end'},
+              {dx:0,dy:19,an:'middle'},{dx:11,dy:-8,an:'start'},{dx:-11,dy:-8,an:'end'}];
+  for(const t of [...cont.querySelectorAll('.gc-lbl')].sort((a,b)=>(+b.dataset.cy)-(+a.dataset.cy))){
+    const cx=+t.dataset.cx, cy=+t.dataset.cy, bb=t.getBBox(), w=bb.width, h=bb.height;
+    let ok=null;
+    for(const c of CAND){
+      const x=cx+c.dx, y=cy+c.dy;
+      const bx=c.an==='middle'?x-w/2:c.an==='start'?x:x-w;
+      const caja={x:bx,y:y-h+3,w,h};
+      if(caja.x<ML-4||caja.x+caja.w>ML+ancho+4||caja.y<MT-2||caja.y+caja.h>MT+alto+2) continue;
+      if(ocup.some(o=>sol(caja,o))) continue;
+      ocup.push(caja); ok={x,y,an:c.an}; break;
+    }
+    if(!ok){ t.remove(); continue; }
+    t.setAttribute('x',ok.x.toFixed(1)); t.setAttribute('y',ok.y.toFixed(1)); t.setAttribute('text-anchor',ok.an);
+  }
+
+  const tip=cont.querySelector('#gc-tip');
+  cont.querySelectorAll('.gc-pt').forEach(el=>{
+    el.addEventListener('mouseenter',()=>{
+      const esCer = el.dataset.tipo === 'CER';
+      tip.innerHTML=`<b>${el.dataset.tk}</b><span>${el.dataset.tipo}</span>`
+        +`<span>M. Dur. <i>${el.dataset.md}</i></span>`
+        +`<span>TEA nominal <i>${el.dataset.tea}%</i></span>`
+        +(esCer?`<span>TEA real <i>${el.dataset.real}%</i> ${el.dataset.proy?'· CER proyectado':''}</span>`:'')
+        +`<span>Precio <i>${el.dataset.pr}</i></span>`
+        +(el.dataset.out?`<span class="gc-tip-out">Outlier — excluido del suavizado</span>`:'');
+      tip.hidden=false;
+    });
+    el.addEventListener('mousemove',ev=>{
+      const r=cont.getBoundingClientRect();
+      tip.style.left=Math.min(ev.clientX-r.left+14, r.width-190)+'px';
+      tip.style.top=(ev.clientY-r.top-10)+'px';
+    });
+    el.addEventListener('mouseleave',()=>{ tip.hidden=true; });
   });
 }
 
