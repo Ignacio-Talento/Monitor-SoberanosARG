@@ -300,9 +300,18 @@ function renderGrafico(datos) {
   // Se calcula todo primero para poder escalar los ejes con puntos y curvas juntos.
   const series = [];
   for (const f of fam) {
+    // Duration con una convención ÚNICA. El Monitor la devuelve en la de CADA bono: divide la
+    // Macaulay por (1+TIR)^(1/m), con m la frecuencia de cupón. Acá conviven 12 semestrales y 3
+    // mensuales (AO27, AO28, AO29), así que sobre el mismo eje quedaban medidos con varas
+    // distintas. Se recupera la Macaulay y se re-modifica en base anual, igual para todos —el
+    // mismo criterio que en Sendero CER y en el gráfico de ONs.
     const pts = datos
-      .filter(d => d.grupo === f.key && d.md != null && d.tea != null)
-      .map(d => ({ x: +d.md.toFixed(2), y: +d.tea.toFixed(2), ticker: d.ticker, precio: d.precio }))
+      .filter(d => d.grupo === f.key && d.md != null && d.tea != null && d.frecCupon)
+      .map(d => {
+        const y = d.tea / 100;
+        const md = (d.md * Math.pow(1 + y, 1 / d.frecCupon)) / (1 + y);
+        return { x: +md.toFixed(2), y: +d.tea.toFixed(2), ticker: d.ticker, precio: d.precio };
+      })
       .sort((a, b) => a.x - b.x);
     if (!pts.length) continue;
     const fn1 = regresionPoly2(pts);

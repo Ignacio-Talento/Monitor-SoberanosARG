@@ -75,9 +75,34 @@
   .toolbar { margin-bottom: 22px; }
   .indicadores { border-radius: var(--r-card); box-shadow: var(--sh-card); }
   .table-wrap { border-radius: var(--r-card); box-shadow: var(--sh-card); }
+
+  /* ── Gráfico LECAPs vs sintético DL ── mismo lenguaje que el resto de las solapas ── */
+  .gd-titulo { color: var(--cyan) !important; font-family: var(--sans) !important; margin-bottom: 6px !important; }
+  .gd-ley { display: flex; gap: 18px; align-items: center; flex-wrap: wrap; font-size: 11px;
+            color: var(--text-3); margin: 2px 0 12px 2px; }
+  .gd-ley span { display: flex; align-items: center; gap: 6px; }
+  .gd-ley i { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+  .gd-wrap { position: relative; }
+  .gd-svg  { width: 100%; height: auto; display: block; font-family: var(--sans); }
+  .gd-grid { stroke: var(--border); stroke-width: 1; opacity: .45; }
+  .gd-eje  { stroke: var(--border-l); stroke-width: 1; }
+  .gd-tick { font-size: 11px; fill: var(--text-3); font-family: var(--mono); }
+  .gd-axis { font-size: 10px; fill: var(--text-3); letter-spacing: .1em; font-weight: 600; }
+  .gd-lbl  { font-size: 10px; fill: var(--navy); font-weight: 700; }
+  .gd-lecap { fill: var(--navy); }
+  .gd-sint  { fill: var(--cyan); }
+  .gd-linea { fill: none; stroke-width: 2.5; opacity: .85; }
+  .gd-linea.gd-lecap { stroke: var(--navy); }
+  .gd-linea.gd-sint  { stroke: var(--cyan); }
+  .gd-pt:hover circle:not([fill="transparent"]) { stroke: var(--navy); stroke-width: 3; }
+  .gd-tip  { position: absolute; pointer-events: none; background: var(--navy); color: #fff;
+             border-radius: 6px; padding: 8px 11px; font-size: 11px; line-height: 1.5;
+             box-shadow: var(--sh-raised); white-space: nowrap; z-index: 5; }
+  .gd-tip b { display: block; font-size: 12px; letter-spacing: .04em; margin-bottom: 2px; }
+  .gd-tip span { display: block; color: rgba(255,255,255,.72); }
+  .gd-tip i { font-style: normal; color: #fff; font-family: var(--mono); }
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
   :root {
@@ -232,14 +257,16 @@
 
   <!-- GRÁFICO LECAPs vs SINTÉTICO DL+FUTURO -->
   <div class="panel" style="margin-top:16px;">
-    <div class="panel-title">LECAPs vs Sintético Dólar Linked + Futuro</div>
+    <div class="panel-title gd-titulo">LECAPs vs Sintético Dólar Linked + Futuro</div>
     <div style="font-size:11px;color:var(--text-2);font-family:var(--sans);line-height:1.7;background:#e8edf5;border-left:3px solid var(--navy);border-radius:0 6px 6px 0;padding:12px 16px;margin-bottom:16px;">
       Compara la curva de <strong>tasa fija en pesos de las LECAPs</strong> contra la tasa en pesos <strong>sintética</strong> que se arma comprando una Dólar Linked y <strong>shorteando el futuro de dólar</strong> de su mismo vencimiento. Al vender el futuro se fija hoy el tipo de cambio de salida, por lo que la Dólar Linked cubierta queda con una tasa en pesos cierta.<br><br>
       Si la curva de <strong>LECAPs está por encima</strong> de la del sintético, conviene ir a <strong>LECAPs</strong>. Si está <strong>por debajo</strong>, conviene armar el <strong>sintético</strong> (Dólar Linked + short de futuro).
     </div>
-    <div style="position:relative;height:420px;">
-      <canvas id="chart-sintetico"></canvas>
+    <div class="gd-ley">
+      <span><i style="background:var(--navy)"></i>LECAPs · TEA en pesos</span>
+      <span><i style="background:var(--cyan)"></i>Sintético · Dólar Linked + Futuro</span>
     </div>
+    <div class="gd-wrap" id="graf-sintetico"></div>
     <div id="sintetico-empty" class="" style="display:none;font-size:12px;color:var(--text-3);font-family:var(--mono);font-style:italic;padding:16px 0;"></div>
   </div>
 </div>
@@ -711,10 +738,10 @@ function futuroCercano(vencStr) {
 }
 
 // ── GRÁFICO LECAPs vs SINTÉTICO ───────────────────────────────
-let chartSintetico = null;
 function renderGraficoSintetico() {
-  const canvas = document.getElementById('chart-sintetico');
-  const empty  = document.getElementById('sintetico-empty');
+  const cont  = document.getElementById('graf-sintetico');
+  const empty = document.getElementById('sintetico-empty');
+  if (!cont) return;
   const bonosData = JSON.parse(localStorage.getItem('bonos_data') || '[]');
 
   // Mapa de precios DL
@@ -757,34 +784,98 @@ function renderGraficoSintetico() {
   });
   puntosLecap.sort((a,b) => a.x - b.x);
 
-  if (chartSintetico) { chartSintetico.destroy(); chartSintetico = null; }
-
   if (!puntosSint.length && !puntosLecap.length) {
-    canvas.style.display = 'none';
+    cont.innerHTML = '';
     empty.style.display = 'block';
     empty.textContent = 'No hay datos suficientes. Asegurate de haber cargado precios en el Monitor y que haya futuros cotizando.';
     return;
   }
-  canvas.style.display = 'block';
   empty.style.display = 'none';
 
-  chartSintetico = new Chart(canvas, {
-    type: 'scatter',
-    data: { datasets: [
-      { label: 'LECAPs (TEA pesos)', data: puntosLecap, borderColor: '#0d2055', backgroundColor: '#0d2055cc', pointRadius: 5, pointHoverRadius: 7, showLine: true, borderWidth: 2.5, tension: 0.3, order: 1 },
-      { label: 'Sintético DL + Futuro', data: puntosSint, borderColor: '#00a3e4', backgroundColor: '#00a3e4cc', pointRadius: 5, pointHoverRadius: 7, showLine: true, borderWidth: 2.5, tension: 0.3, order: 0 },
-    ]},
-    options: {
-      responsive: true, maintainAspectRatio: false,
-      plugins: {
-        legend: { position: 'top', labels: { font: { family: 'JetBrains Mono', size: 11 }, padding: 12 } },
-        tooltip: { callbacks: { label: ctx => `${ctx.raw.ticker}  ·  plazo ${ctx.raw.x} a  ·  TEA ${ctx.raw.y}%` }, bodyFont: { family: 'JetBrains Mono', size: 11 } }
-      },
-      scales: {
-        x: { title: { display: true, text: 'Plazo (años)', font: { family: 'JetBrains Mono', size: 11 }, color: '#707070' }, grid: { color: '#e5e7eb' }, ticks: { font: { family: 'JetBrains Mono', size: 10 }, color: '#707070' } },
-        y: { title: { display: true, text: 'TEA en pesos %', font: { family: 'JetBrains Mono', size: 11 }, color: '#707070' }, grid: { color: '#e5e7eb' }, ticks: { font: { family: 'JetBrains Mono', size: 10 }, color: '#707070', callback: v => v + '%' } }
-      }
+  // A diferencia de los otros gráficos, acá las líneas UNEN los puntos reales en vez de ser una
+  // regresión: son dos estructuras de plazos con pocos puntos cada una, y suavizarlas escondería
+  // los quiebres, que es justo lo que se mira al comparar contra el sintético.
+  const series = [
+    { pts: puntosLecap, cls:'gd-lecap', label:'LECAPs' },
+    { pts: puntosSint,  cls:'gd-sint',  label:'Sintético' },
+  ].filter(s => s.pts.length);
+
+  const todos = series.flatMap(s => s.pts);
+  const W=1000, H=420, ML=64, MR=24, MT=18, MB=52;
+  const ancho=W-ML-MR, alto=H-MT-MB;
+  const ext=v=>{ const a=Math.min(...v), b=Math.max(...v); const d=(b-a)||Math.abs(a)||1; return [a-d*0.08, b+d*0.10]; };
+  const [x0,x1]=ext(todos.map(p=>p.x));
+  const [y0,y1]=ext(todos.map(p=>p.y));
+  const px=v=>ML+(v-x0)/(x1-x0)*ancho;
+  const py=v=>MT+alto-(v-y0)/(y1-y0)*alto;
+  const ticks=(a,b,n)=>{
+    const p0=(b-a)/n, mag=Math.pow(10,Math.floor(Math.log10(p0))), r=p0/mag;
+    const paso=(r<=1?1:r<=2?2:r<=2.5?2.5:r<=5?5:10)*mag;
+    const o=[]; for(let v=Math.ceil(a/paso)*paso; v<=b+1e-9; v+=paso) o.push(+v.toFixed(10));
+    return o;
+  };
+  const tx=ticks(x0,x1,6), ty=ticks(y0,y1,5);
+
+  let g='';
+  for(const t of tx) g+=`<line x1="${px(t).toFixed(1)}" y1="${MT}" x2="${px(t).toFixed(1)}" y2="${MT+alto}" class="gd-grid"/>`;
+  for(const t of ty) g+=`<line x1="${ML}" y1="${py(t).toFixed(1)}" x2="${ML+ancho}" y2="${py(t).toFixed(1)}" class="gd-grid"/>`;
+  g+=`<line x1="${ML}" y1="${MT+alto}" x2="${ML+ancho}" y2="${MT+alto}" class="gd-eje"/>`;
+  g+=`<line x1="${ML}" y1="${MT}" x2="${ML}" y2="${MT+alto}" class="gd-eje"/>`;
+  for(const t of tx) g+=`<text x="${px(t).toFixed(1)}" y="${MT+alto+20}" class="gd-tick" text-anchor="middle">${t}</text>`;
+  for(const t of ty) g+=`<text x="${ML-10}" y="${(py(t)+4).toFixed(1)}" class="gd-tick" text-anchor="end">${t.toFixed(1)}%</text>`;
+  g+=`<text x="${ML+ancho/2}" y="${H-10}" class="gd-axis" text-anchor="middle">PLAZO (AÑOS)</text>`;
+  g+=`<text x="16" y="${MT+alto/2}" class="gd-axis" text-anchor="middle" transform="rotate(-90 16 ${MT+alto/2})">TEA EN PESOS %</text>`;
+
+  for(const s of series){
+    if(s.pts.length>1){
+      const d=s.pts.map((p,i)=>`${i?'L':'M'}${px(p.x).toFixed(1)},${py(p.y).toFixed(1)}`).join(' ');
+      g+=`<path d="${d}" class="gd-linea ${s.cls}"/>`;
     }
+    for(const p of s.pts){
+      const cx=px(p.x).toFixed(1), cy=py(p.y).toFixed(1);
+      g+=`<g class="gd-pt" data-tk="${p.ticker}" data-serie="${s.label}" data-x="${p.x}" data-y="${p.y.toFixed(2)}">`
+       + `<circle cx="${cx}" cy="${cy}" r="13" fill="transparent"/>`
+       + `<circle cx="${cx}" cy="${cy}" r="5" class="${s.cls}"/>`
+       + `<text x="${cx}" y="${(+cy-11).toFixed(1)}" class="gd-lbl" text-anchor="middle" data-cx="${cx}" data-cy="${cy}">${String(p.ticker).split(' / ')[0]}</text>`
+       + `</g>`;
+    }
+  }
+
+  cont.innerHTML=`<svg viewBox="0 0 ${W} ${H}" class="gd-svg" role="img" aria-label="TEA en pesos contra plazo">${g}</svg><div class="gd-tip" id="gd-tip" hidden></div>`;
+
+  // Etiquetas: ancho real con getBBox y, si no hay lugar, se omiten.
+  const ocup=[...cont.querySelectorAll('.gd-lbl')].map(t=>({x:+t.dataset.cx-8,y:+t.dataset.cy-8,w:16,h:16}));
+  const sol=(a,b)=>a.x<b.x+b.w&&a.x+a.w>b.x&&a.y<b.y+b.h&&a.y+a.h>b.y;
+  const CAND=[{dx:0,dy:-11,an:'middle'},{dx:11,dy:4,an:'start'},{dx:-11,dy:4,an:'end'},
+              {dx:0,dy:19,an:'middle'},{dx:11,dy:-8,an:'start'},{dx:-11,dy:-8,an:'end'}];
+  for(const t of [...cont.querySelectorAll('.gd-lbl')].sort((a,b)=>(+b.dataset.cy)-(+a.dataset.cy))){
+    const cx=+t.dataset.cx, cy=+t.dataset.cy, bb=t.getBBox(), w=bb.width, h=bb.height;
+    let ok=null;
+    for(const c of CAND){
+      const x=cx+c.dx, y=cy+c.dy;
+      const bx=c.an==='middle'?x-w/2:c.an==='start'?x:x-w;
+      const caja={x:bx,y:y-h+3,w,h};
+      if(caja.x<ML-4||caja.x+caja.w>ML+ancho+4||caja.y<MT-2||caja.y+caja.h>MT+alto+2) continue;
+      if(ocup.some(o=>sol(caja,o))) continue;
+      ocup.push(caja); ok={x,y,an:c.an}; break;
+    }
+    if(!ok){ t.remove(); continue; }
+    t.setAttribute('x',ok.x.toFixed(1)); t.setAttribute('y',ok.y.toFixed(1)); t.setAttribute('text-anchor',ok.an);
+  }
+
+  const tip=cont.querySelector('#gd-tip');
+  cont.querySelectorAll('.gd-pt').forEach(el=>{
+    el.addEventListener('mouseenter',()=>{
+      tip.innerHTML=`<b>${el.dataset.tk}</b><span>${el.dataset.serie}</span>`
+        +`<span>Plazo <i>${el.dataset.x}</i> años</span><span>TEA <i>${el.dataset.y}%</i></span>`;
+      tip.hidden=false;
+    });
+    el.addEventListener('mousemove',ev=>{
+      const r=cont.getBoundingClientRect();
+      tip.style.left=Math.min(ev.clientX-r.left+14, r.width-190)+'px';
+      tip.style.top=(ev.clientY-r.top-10)+'px';
+    });
+    el.addEventListener('mouseleave',()=>{ tip.hidden=true; });
   });
 }
 

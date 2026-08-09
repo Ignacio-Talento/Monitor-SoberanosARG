@@ -1844,7 +1844,12 @@ function renderTabla() {
   try {
     const enriched = instrumentos.map(inst => {
       const m = calcMetricas(inst);
-      return { ticker: inst.ticker, grupo: inst.grupo, nombre: inst.nombre, venc: inst.venc, md: m.md, tea: m.tea, precio: m.precio, pataTipo: inst.pata?.tipo || null };
+      // frecCupon: la M.Dur que va acá está en la convención de CADA bono —dividida por
+      // (1+TIR)^(1/m)—, así que las páginas que grafican varias familias juntas necesitan m
+      // para poder llevarlas a una convención única (ver globVsBon).
+      return { ticker: inst.ticker, grupo: inst.grupo, nombre: inst.nombre, venc: inst.venc,
+               md: m.md, tea: m.tea, precio: m.precio, pataTipo: inst.pata?.tipo || null,
+               frecCupon: frecuenciaCupon(inst) || 1 };
     }).filter(d => d.md !== null && d.tea !== null);
     localStorage.setItem('bonos_data', JSON.stringify(enriched));
   } catch(e) { console.warn('localStorage error:', e); }
