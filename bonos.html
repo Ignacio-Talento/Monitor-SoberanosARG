@@ -1254,9 +1254,13 @@ function calcMetricas(inst, precioAlt) {
   if (inst.grupo === 'dual') {
     const pata = inst.pata;
     if (!pata) return { precio, dias, tna: null, tea: null, md: null, paridad: null };
-    // Duales TAMAR/Dólar Linked: la pata TAMAR cotiza en escala dólar linked → se normaliza el
-    // precio dividiéndolo por el TC oficial (mayorista A3500). Sin TC no se puede escalar → null.
-    const precioP = pata.precioDivTC ? ((precio && bcraData.usdHoy) ? precio / bcraData.usdHoy : null) : precio;
+    // Duales TAMAR/Dólar Linked: el precio viene en la escala dólar linked (~137.000) y hay que
+    // bajarlo a la escala del valor final de la pata (~100). El divisor es el TC de EMISIÓN, no el
+    // de hoy: la pata TAMAR devenga sobre el capital EN PESOS del día de emisión, que quedó fijo
+    // ahí. Con el TC de hoy el rendimiento de la pata se movería con el dólar —justo lo que esta
+    // pata no hace—: a TC 1800 la TEA de TMVE8 daría 55,8% en vez de 29,1%.
+    // Sin TC de emisión no se puede escalar → null (mejor "—" que un número inventado).
+    const precioP = pata.tcEmision ? (precio ? precio / pata.tcEmision : null) : precio;
 
     let vf = null;
     if (pata.tipo === 'LECAP') {
@@ -1304,7 +1308,7 @@ function calcMetricas(inst, precioAlt) {
     // de esa pata, y la TIR que sale de ahí no quiere decir nada.
     //
     // La pata TAMAR de TMVE8 cotiza en la escala dólar linked (~137.000); se normaliza dividiendo
-    // por el TC oficial (precioDivTC), lo que la deja en la escala del valor final (~100). La guarda
+    // por el TC de emisión (tcEmision), lo que la deja en la escala del valor final (~100). La guarda
     // queda como red de seguridad por si algún otro instrumento aparece en una unidad inesperada.
     //
     // OJO con no confundir esto con una pata legítimamente fuera del dinero: la pata LECAP de
@@ -1768,7 +1772,7 @@ function renderTabla() {
     const th = tickerHistorico(inst);
     // Las variaciones se comparan contra historicos.xlsx, que guarda el precio DE MERCADO, así
     // que van con ese y no con m.precio. Difieren sólo en la pata TAMAR de los duales con pata
-    // Dólar Linked, donde m.precio viene dividido por el TC oficial (precioDivTC): comparar ese
+    // Dólar Linked, donde m.precio viene dividido por el TC de emisión (tcEmision): comparar ese
     // valor normalizado contra el histórico daría un DAY% sin sentido. Es el mismo bono y una sola
     // serie de precios, así que las dos patas deben mostrar la misma variación.
     const precioMkt = precios[inst.ticker] || null;
@@ -2105,11 +2109,12 @@ function parsearExcel(buffer) {
       });
 
       Object.entries(patas).forEach(([ticker, ps]) => {
-        const tieneLinked = ps.some(p => p.tipo === 'LINKED');
+        const linked = ps.find(p => p.tipo === 'LINKED');
         ps.forEach(pata => {
-          // Duales TAMAR/Dólar Linked: la pata TAMAR cotiza en escala dólar linked → marcar para
-          // normalizar el precio dividiéndolo por el TC oficial.
-          if (pata.tipo === 'TAMAR' && tieneLinked) pata.precioDivTC = true;
+          // Duales TAMAR/Dólar Linked: la pata TAMAR cotiza en escala dólar linked → se normaliza
+          // el precio con el TC de EMISIÓN, que es fijo y viene en la columna "USD aplicable" de
+          // la pata Linked (para TMVE8, 1499,8387 = A3500 del 28/07, 3 hábiles antes del 31/07).
+          if (pata.tipo === 'TAMAR' && linked) pata.tcEmision = linked.usd_aplicable || null;
           result.push({
             grupo: 'dual',
             ticker,
