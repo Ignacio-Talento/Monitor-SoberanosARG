@@ -86,6 +86,36 @@ def escribir_hoja(ws, tickers, datos):
         ws.append([f] + [fila.get(t, "") for t in tickers])
 
 
+# 1816 limita a 1 request por segundo y el limitador es GLOBAL por API key. El cliente respeta
+# ese ritmo internamente, pero acá se arranca justo después de actualizar_historicos.py, que deja
+# la cuota caliente: en la primera corrida del job la hoja de TIR se comió un 429 por eso. Con
+# esperas crecientes el reintento entra sin problema y no hace falta espaciar los scripts.
+ESPERAS = [5, 15, 40]
+
+
+def pedir_con_reintentos(cli, nombre, tickers, campo, moneda, desde, hasta):
+    """-> filas, o None si no se pudo. Nunca tira: una hoja que falla no arrastra a las otras."""
+    import time
+    ultimo = None
+    for intento, espera in enumerate([0] + ESPERAS):
+        if espera:
+            print(f"  {nombre}: reintentando en {espera}s...")
+            time.sleep(espera)
+        try:
+            return cli.series(tickers, [campo], moneda=moneda,
+                              fecha_inicial=desde, fecha_final=hasta)
+        except Error1816 as e:
+            ultimo = e
+            if "429" not in str(e) and "Demasiadas" not in str(e):
+                break            # no es rate limit: reintentar no ayuda
+        except Exception as e:    # red, JSON roto, lo que sea
+            ultimo = e
+    # El archivo queda como estaba y mañana se reanuda desde donde quedó: por eso alcanza con
+    # avisar, sin cortar el resto de las hojas.
+    print(f"  {nombre}: 1816 falló ({ultimo}), se deja como estaba", file=sys.stderr)
+    return None
+
+
 def main():
     if not ARCHIVO.exists():
         print(f"ERROR: no está {ARCHIVO.name}. Se genera desde la solapa con 'Descargar respaldo'.",
@@ -118,12 +148,8 @@ def main():
             print(f"  {nombre}: al día ({ultima})")
             continue
 
-        try:
-            filas = cli.series(tickers, [campo], moneda=moneda, fecha_inicial=desde, fecha_final=hasta)
-        except Error1816 as e:
-            # No se aborta todo: puede fallar una hoja y las otras andar. El archivo queda con lo
-            # que se pudo y mañana se reintenta desde donde quedó.
-            print(f"  {nombre}: 1816 falló ({e}), se deja como estaba", file=sys.stderr)
+        filas = pedir_con_reintentos(cli, nombre, tickers, campo, moneda, desde, hasta)
+        if filas is None:
             continue
 
         nuevos = 0
