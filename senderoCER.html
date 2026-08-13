@@ -208,6 +208,11 @@
   .rec-lecap { color: #17336f; font-weight: 700; background: #dbeafe; padding: 2px 10px; border-radius: 4px; }
   .rec-neutro { color: var(--text-3); font-weight: 500; }
   .bei-empty { font-size: 12px; color: var(--text-3); font-family: var(--mono); font-style: italic; padding: 16px 0; }
+  /* Aviso de REM desactualizado: los meses vencidos se omiten, pero se dice cuáles y por qué. */
+  .bei-aviso { margin-top: 10px; padding: 8px 12px; font-size: 11.5px; line-height: 1.45;
+               color: var(--text-3); background: #FFF7E6; border-left: 3px solid #E08E16;
+               border-radius: 0 4px 4px 0; }
+  .bei-aviso b { color: var(--navy, #002060); font-weight: 700; }
   .bei-explicacion { background: #e8edf5; border-left: 3px solid var(--navy); border-radius: 0 6px 6px 0; padding: 12px 16px; margin-bottom: 16px; font-size: 11px; color: var(--text-2); line-height: 1.7; font-family: var(--sans); }
   .bei-explicacion strong { color: var(--navy); }
 </style>
@@ -987,6 +992,28 @@ function mdLecapAnual(d) {
   return d.plazo != null ? d.plazo / (1 + d.tea / 100) : d.md;
 }
 
+// Ancla cada mes del REM al calendario y devuelve su horizonte en años.
+//
+// Antes se asumía que la primera columna de la planilla era el mes en curso y se contaba
+// t = (i+1)/12 desde ahí. Eso obliga a actualizar `Indicadores.xlsx` todos los meses o TODOS los
+// horizontes quedan corridos, en silencio: el 2026-08-13 la planilla arrancaba en Julio —ya
+// terminado— y cada fila se comparaba contra un tramo de curva un mes más corto que el suyo.
+function horizontesREM(filas) {
+  const hoy = new Date(); hoy.setHours(0, 0, 0, 0);
+  let anio = hoy.getFullYear(), prev = -1;
+  return filas.map((r) => {
+    // MESES_ES (declarada arriba) viene capitalizada; el REM puede traer el mes en cualquier caja.
+    const nombre = String(r.mes).trim().toLowerCase();
+    const idx = MESES_ES.findIndex(m => m.toLowerCase() === nombre);
+    if (idx < 0) return { ...r, t: null };
+    if (prev >= 0 && idx < prev) anio++;      // la lista cruzó a enero: rueda el año
+    prev = idx;
+    const fin = new Date(anio, idx + 1, 0);   // último día del mes
+    fin.setHours(0, 0, 0, 0);
+    return { ...r, fin, t: (fin - hoy) / (365 * 86400000) };
+  });
+}
+
 function renderBEI() {
   const contenido = document.getElementById('bei-contenido');
   const datos = JSON.parse(localStorage.getItem('bonos_data') || '[]');
@@ -994,27 +1021,59 @@ function renderBEI() {
 
   const lec = datos.filter(d => d.grupo === 'lecap' && d.md != null && d.tea != null);
   const cer = datos.filter(d => d.grupo === 'cer'   && d.md != null && d.tea != null);
-  const fnL = lec.length >= 3 ? regresionPoly2(lec.map(d => ({ x: mdLecapAnual(d), y: d.tea }))) : null;
-  const fnC = cer.length >= 3 ? regresionPoly2(cer.map(d => ({ x: d.md, y: d.tea }))) : null;
-  const mdMinCer = cer.length ? Math.min(...cer.map(d => d.md)) : 0.1;
-
+  // Las curvas se ajustan contra el PLAZO al vencimiento, no contra la duration.
+  //
+  // El BEI es una función del horizonte: para el break-even a 12 meses hacen falta el rendimiento
+  // nominal y el real A 12 MESES. Antes se ajustaba contra la M.Dur y después se evaluaba en
+  // t = plazo, como si fueran la misma variable, y no lo son: con TEA del 28% una LECAP a 1 año
+  // tiene duration 0,78, así que fnL(1) devolvía el rendimiento de una LECAP a ~1,3 años. Y el
+  // desvío es distinto en cada curva —la TEA real de los CER ronda 5%, así que ahí duration y
+  // plazo casi coinciden—, o sea que además comparaba dos horizontes distintos entre sí. En el
+  // BEI a 12 meses eso valía 1,24 pp (19,93% contra 21,17% bien medido, el 2026-08-13).
+  const plazoDe = d => { const dd = diasAlVenc(d.venc); return dd == null ? null : dd / 365; };
+  const puntos = arr => arr.map(d => ({ x: plazoDe(d), y: d.tea })).filter(p => p.x != null && p.x > 0);
+  const pL = puntos(lec), pC = puntos(cer);
+  const fnL = pL.length >= 3 ? regresionPoly2(pL) : null;
+  const fnC = pC.length >= 3 ? regresionPoly2(pC) : null;
   if (!fnL || !fnC) { contenido.innerHTML = '<div class="bei-empty">Faltan datos: se necesitan al menos 3 LECAPs y 3 CER con precio cargado en el Monitor.</div>'; return; }
 
-  const mesesREM = remDataBEI.filter(r => r.mes !== '12 Meses');
+  // Rango con datos reales en LAS DOS curvas. Fuera de ahí una parábola ajustada se dispara, y un
+  // BEI extrapolado se lee igual que uno medido.
+  const tMin = Math.max(Math.min(...pL.map(p => p.x)), Math.min(...pC.map(p => p.x)));
+  const tMax = Math.min(Math.max(...pL.map(p => p.x)), Math.max(...pC.map(p => p.x)));
+  const enRango = t => t >= tMin && t <= tMax;
+  // BEI spot anual a horizonte t: (1 + nominal) / (1 + real) - 1. La TEA de los CER que publica
+  // el Monitor es REAL, que es justo lo que hace falta acá (en el gráfico, en cambio, se pasa a
+  // nominal para poder compararla visualmente contra las LECAPs).
+  const beiSpot = t => (1 + fnL(t) / 100) / (1 + fnC(t) / 100) - 1;
+  const indice  = t => Math.pow(1 + beiSpot(t), t);   // inflación acumulada implícita hasta t
+
+  const mesesREM = horizontesREM(remDataBEI.filter(r => r.mes !== '12 Meses'));
   const rem12    = remDataBEI.find(r => r.mes === '12 Meses');
+  const vencidos = mesesREM.filter(r => r.t != null && r.t <= 0).map(r => r.mes);
 
   let html = `<table class="bei-table"><thead><tr>
       <th>Período</th><th>BEI implícita %</th><th>REM %</th><th>Diferencia</th><th>Recomendación</th>
     </tr></thead><tbody>`;
 
-  mesesREM.forEach((r, i) => {
-    const esInicio = i === 0;
-    const t = (i + 1) / 12;
-    let beiFwd = null;
-    if (esInicio) beiFwd = r.valor;
-    else if (t >= mdMinCer) { const beiAnual = ((1 + fnL(t)/100) / (1 + fnC(t)/100) - 1); beiFwd = (Math.pow(1 + beiAnual, 1/12) - 1) * 100; }
-    const remVal = r.valor;
-    const diff = (!esInicio && beiFwd !== null) ? beiFwd - remVal : null;
+  // Primer mes que todavía no terminó: su tramo va desde HOY, así que cubre un mes parcial y no
+  // es comparable contra un pronóstico mensual completo. Desde el siguiente, cada forward cubre
+  // un mes calendario entero.
+  const futuros = mesesREM.filter(r => r.t != null && r.t > 0);
+  const tRef = {};   // mes -> t del cierre del mes anterior de la serie
+  futuros.forEach((r, i) => { tRef[r.mes] = i === 0 ? 0 : futuros[i - 1].t; });
+
+  futuros.forEach((r, i) => {
+    const parcial = i === 0;
+    // Forward del mes: cuánta inflación implica el mercado ENTRE el cierre del mes anterior y el
+    // de este. Antes se mostraba el BEI spot hasta t pasado a mensual, o sea el PROMEDIO mensual
+    // desde hoy, y se lo comparaba contra el pronóstico puntual de ese mes. Con un sendero que
+    // baja, el promedio queda sistemáticamente por encima del forward y la diferencia crece con
+    // el plazo: el 2026-08-13 la fila de diciembre daba 1,83% contra un forward real de 1,68%, y
+    // eso alcanzaba para dar vuelta la recomendación de LECAP a CER.
+    let bei = null;
+    if (!parcial && enRango(r.t) && enRango(tRef[r.mes])) bei = (indice(r.t) / indice(tRef[r.mes]) - 1) * 100;
+    const diff = bei !== null ? bei - r.valor : null;
     let rec = '<span class="rec-neutro">—</span>';
     if (diff !== null) {
       const diffR = parseFloat(diff.toFixed(2));
@@ -1024,28 +1083,41 @@ function renderBEI() {
       else if (diffR < 0) rec = '<span class="rec-cer">CER</span>';
       else rec = '<span class="rec-neutro">Neutro</span>';
     }
-    const beiCell = beiFwd !== null ? `${beiFwd.toFixed(2)}%` : `<span style="color:var(--text-3)">Sin datos</span>`;
-    html += `<tr${esInicio ? ' style="background:var(--card)"' : ''}>
-      <td>${r.mes}${esInicio ? ' <span style="font-size:10px;color:var(--text-3)">(en curso)</span>' : ''}</td>
+    const beiCell = bei !== null ? `${bei.toFixed(2)}%`
+      : `<span style="color:var(--text-3)" title="${parcial ? 'El mes está en curso: el tramo de curva va desde hoy y cubre sólo lo que queda, no es comparable contra un pronóstico mensual completo.' : 'Fuera del tramo con bonos en las dos curvas: extrapolar la parábola daría un número sin respaldo.'}">${parcial ? 'En curso' : 'Sin datos'}</span>`;
+    html += `<tr${parcial ? ' style="background:var(--card)"' : ''}>
+      <td>${r.mes}</td>
       <td>${beiCell}</td>
-      <td>${remVal.toFixed(2)}%</td>
+      <td>${r.valor.toFixed(2)}%</td>
       <td style="color:${diff === null ? 'var(--text-3)' : diff > 0 ? 'var(--red)' : 'var(--green)'}">${diff !== null ? (diff > 0 ? '+' : '') + diff.toFixed(2) + '%' : '—'}</td>
       <td>${rec}</td>
     </tr>`;
   });
 
   if (rem12) {
-    const bei12  = ((1 + fnL(1)/100) / (1 + fnC(1)/100) - 1) * 100;
-    const diff12 = bei12 - rem12.valor;
-    let rec12 = '<span class="rec-neutro">Neutro</span>';
-    const diff12R = parseFloat(diff12.toFixed(2));
-    if (diff12R > 0) rec12 = '<span class="rec-lecap">LECAP</span>'; else if (diff12R < 0) rec12 = '<span class="rec-cer">CER</span>';
+    const bei12  = enRango(1) ? beiSpot(1) * 100 : null;
+    const diff12 = bei12 !== null ? bei12 - rem12.valor : null;
+    let rec12 = '<span class="rec-neutro">—</span>';
+    if (diff12 !== null) {
+      const d12 = parseFloat(diff12.toFixed(2));
+      if (d12 > 0) rec12 = '<span class="rec-lecap">LECAP</span>';
+      else if (d12 < 0) rec12 = '<span class="rec-cer">CER</span>';
+      else rec12 = '<span class="rec-neutro">Neutro</span>';
+    }
     html += `<tr style="background:var(--card);font-weight:600">
-      <td>12 Meses (anualizado)</td><td>${bei12.toFixed(2)}%</td><td>${rem12.valor.toFixed(2)}%</td>
-      <td style="color:${diff12 > 0 ? 'var(--red)' : 'var(--green)'}">${(diff12>0?'+':'') + diff12.toFixed(2)}%</td><td>${rec12}</td>
+      <td>12 Meses (anualizado)</td>
+      <td>${bei12 !== null ? bei12.toFixed(2) + '%' : '<span style="color:var(--text-3)">Sin datos</span>'}</td>
+      <td>${rem12.valor.toFixed(2)}%</td>
+      <td style="color:${diff12 === null ? 'var(--text-3)' : diff12 > 0 ? 'var(--red)' : 'var(--green)'}">${diff12 !== null ? (diff12>0?'+':'') + diff12.toFixed(2) + '%' : '—'}</td>
+      <td>${rec12}</td>
     </tr>`;
   }
   html += '</tbody></table>';
+  // Los meses ya terminados no se ocultan sin avisar: que aparezcan quiere decir que la planilla
+  // de indicadores quedó vieja, y eso hay que verlo, no taparlo.
+  if (vencidos.length) {
+    html += `<div class="bei-aviso">El REM cargado en <b>Indicadores.xlsx</b> arranca en ${vencidos.join(', ')}, que ya ${vencidos.length > 1 ? 'terminaron' : 'terminó'}. Esas filas se omiten. Conviene actualizarlo con el último relevamiento.</div>`;
+  }
   contenido.innerHTML = html;
 }
 
