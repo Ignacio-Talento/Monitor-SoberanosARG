@@ -2317,14 +2317,44 @@ async function fetchPreciosImpl(force = false) {
 // ── PERSISTENCIA DE PRECIOS (sessionStorage) ──────────────────
 // Los precios cargados sobreviven la navegación entre solapas mientras la
 // pestaña esté abierta. Se borran al cerrar la pestaña o con "Limpiar precios".
+//
+// La clave de PRECIOS es compartida con ONs a propósito: los dos juegos de tickers son
+// disjuntos, así que se fusionan y cada página encuentra los suyos al volver. El resto del
+// estado va por página: son instrumentos distintos y mezclarlos haría que una solapa muestre
+// el cartel de fuentes de la otra.
+// Sin la extensión: Cloudflare sirve /bonos.html como /bonos, y si no se normaliza la clave
+// cambia según cómo hayas entrado y el estado no se encuentra al volver.
+const META_KEY = 'bonos_meta_v1:' + ((location.pathname.split('/').pop() || 'bonos').replace(/\.html$/, ''));
 function guardarPrecios() {
-  try { sessionStorage.setItem('bonos_precios_v2', JSON.stringify(precios)); } catch(e) {}
+  try {
+    sessionStorage.setItem('bonos_precios_v2', JSON.stringify(precios));
+    sessionStorage.setItem(META_KEY, JSON.stringify({ ts: Date.now(), fechaRueda, diag1816, indicadores1816 }));
+  } catch(e) {}
 }
 function cargarPreciosGuardados() {
   try {
     const raw = sessionStorage.getItem('bonos_precios_v2');
     return raw ? JSON.parse(raw) : {};
   } catch(e) { return {}; }
+}
+// Estado que dejó la corrida anterior de ESTA página (null si no hay). `ts` dice qué tan viejo es.
+function cargarMetaGuardada() {
+  try { return JSON.parse(sessionStorage.getItem(META_KEY) || 'null'); } catch(e) { return null; }
+}
+
+// Ventana de rueda, con margen a los costados. Se evalúa SIEMPRE en hora argentina: el navegador
+// puede estar en otro huso y el mercado no. Los feriados salen del Set que ya carga la página.
+const MERCADO_DESDE = 10 * 60 + 30, MERCADO_HASTA = 17 * 60 + 30;
+const PRECIOS_FRESCOS_MS = 60 * 1000;   // por debajo del CACHE_TTL del proxy (120 s)
+function mercadoAbierto() {
+  const p = Object.fromEntries(new Intl.DateTimeFormat('en-GB', {
+    timeZone: 'America/Argentina/Buenos_Aires', weekday: 'short', hour12: false,
+    year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit',
+  }).formatToParts(new Date()).map(x => [x.type, x.value]));
+  if (p.weekday === 'Sat' || p.weekday === 'Sun') return false;
+  if (feriados.has(`${p.year}-${p.month}-${p.day}`)) return false;
+  const min = (+p.hour) * 60 + (+p.minute);
+  return min >= MERCADO_DESDE && min <= MERCADO_HASTA;
 }
 
 function limpiarPrecios() {
@@ -2605,16 +2635,33 @@ async function cargarExcelGitHub() {
     // Fetchear BCRA histórico después de cargar instrumentos
     await fetchBCRA();
     await cargarHistoricos();
-    // Carga inicial de precios + auto-refresh cada 1 min, alineado con el CACHE_TTL de
-    // /api/precios (60 s): así cada pasada trae dato fresco. Se eligió 1 min porque 1816
-    // es casi en vivo y los papeles líquidos cambian de precio cada ~40 s (medido el
-    // 2026-07-20: AL30, 28 cambios en 18 min). El caché del proxy hace que las solapas y
-    // usuarios simultáneos compartan una sola consulta real por ventana. El botón
-    // "Actualizar precios" fuerza dato fresco igual (saltea el caché con ?fresh=1).
-    fetchPreciosYahoo(false);
+    // Estado que dejó la corrida anterior, si venís de otra solapa. Sin esto la tabla se
+    // rearmaba sin indicadores ni fecha de rueda y el cartel de fuentes arrancaba en blanco,
+    // aunque los precios ya estuvieran en sessionStorage.
+    const meta = cargarMetaGuardada();
+    if (meta) {
+      if (meta.fechaRueda) fechaRueda = meta.fechaRueda;
+      if (meta.diag1816)   diag1816   = meta.diag1816;
+      if (meta.indicadores1816) indicadores1816 = meta.indicadores1816;
+      renderTabla();
+    }
+    // Auto-refresh cada 1 min. El CACHE_TTL de /api/precios es de 120 s, así que en los hechos
+    // sale una consulta real a 1816 cada 2 minutos y el resto pega en caché (verificado en prod:
+    // cf-cache-status HIT, 40 ms). Se eligió 1 min porque 1816 es casi en vivo y los papeles
+    // líquidos cambian de precio cada ~40 s (medido el 2026-07-20: AL30, 28 cambios en 18 min).
+    // El botón "Actualizar precios" trae dato fresco igual (saltea el caché con ?fresh=1).
+    //
+    // Si los precios guardados son de recién, no se vuelve a pedir: al navegar entre solapas se
+    // volvía a entrar acá cada vez y se esperaban ~2,5 s por un dato que ya estaba en memoria.
+    const frescos = meta && Object.keys(precios).length && (Date.now() - meta.ts) < PRECIOS_FRESCOS_MS;
+    if (!frescos) fetchPreciosYahoo(false);
     if (!window._autoPreciosTimer) {
       window._autoPreciosTimer = setInterval(() => {
-        if (instrumentos.length && document.visibilityState !== 'hidden') fetchPreciosYahoo(false);
+        if (!instrumentos.length || document.visibilityState === 'hidden') return;
+        // Fuera de rueda el precio no se mueve: seguir pidiéndolo sólo quema créditos. Una
+        // pestaña olvidada abierta hacía ~30 consultas por hora toda la noche y el fin de semana.
+        if (!mercadoAbierto()) return;
+        fetchPreciosYahoo(false);
       }, 60 * 1000);
     }
     // Detectar altas/bajas de títulos vs el universo vivo de 1816 (no bloquea la carga).
