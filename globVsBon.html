@@ -118,6 +118,9 @@
   .hc-ley button i { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
   .hc-ley button.off { opacity: .32; text-decoration: line-through; }
   .hc-linea { fill: none; stroke-width: 2; opacity: .9; }
+  /* El rectángulo transparente que captura el mouse: cursor de mano para que se note que la
+     curva es clickeable (un clic sobre ella la apaga). */
+  .hc-cap { cursor: pointer; }
   .hc-hoy { stroke: var(--border-l); stroke-width: 1; stroke-dasharray: 3 3; }
   .gb-ley { display: flex; gap: 18px; align-items: center; flex-wrap: wrap; font-size: 11px;
             color: var(--text-3); margin: 2px 0 12px 2px; }
@@ -276,7 +279,10 @@
       mientras que la tabla de arriba usa el precio en vivo del Monitor: durante la rueda pueden no
       coincidir exactamente. Y los pares menos líquidos <strong>tienen menos puntos</strong>, porque
       sólo se grafican los días en que operaron los dos bonos del par: AL30/GD30 traen unas 1.230
-      ruedas y el resto alrededor de 550.
+      ruedas y el resto alrededor de 550.<br><br>
+      Para aislar un par, hacele clic a su curva —o al par en la leyenda— y se apaga. Vuelve desde
+      la leyenda. Este gráfico tiene su propio período y su propia leyenda, así que lo que prendas
+      o apagues acá no cambia el de abajo.
     </div>
     <div class="hc-barra">
       <div class="hc-periodos" id="hc-periodos"></div>
@@ -300,8 +306,9 @@
       tasa por la ley local. Cuanto más alto, más se está pagando por la legislación extranjera.
       Cuando el diferencial <strong>se acerca a cero</strong> el mercado deja de discriminar entre
       las dos leyes, y si se da vuelta es el Global el que rinde más.<br><br>
-      Tiene su <strong>propio selector de período</strong>, independiente del gráfico del canje, para
-      poder mirar un tramo largo arriba y uno corto acá. La leyenda de pares sí es compartida.
+      Tiene <strong>período y leyenda propios</strong>, independientes del gráfico del canje: se
+      puede mirar el rango completo arriba y los últimos tres meses acá, con pares distintos en
+      cada uno. Y también se apaga una curva <strong>haciéndole clic encima</strong>.
     </div>
     <div class="hc-barra">
       <div class="hc-periodos" id="tir-periodos"></div>
@@ -310,6 +317,7 @@
         <label>Hasta <input type="date" id="tir-hasta" onchange="onFecha('tir')"></label>
       </div>
     </div>
+    <div class="hc-ley" id="tir-ley"></div>
     <div class="gb-wrap" id="graf-tir"></div>
     <div id="tir-estado" style="font-size:12px;color:var(--text-3);font-family:var(--mono);font-style:italic;padding:12px 0;"></div>
   </div>
@@ -565,11 +573,13 @@ let canjeSeries = {};      // ticker -> { 'YYYY-MM-DD': precio }
 let teaSeries   = {};      // ticker -> { 'YYYY-MM-DD': TIR (DECIMAL, ver renderGraficoTIR) }
 // Cada gráfico tiene su propio período: sirve mirar un tramo largo en el canje y uno corto en el
 // diferencial de tasas, o al revés. Lo único compartido es qué pares están visibles.
+// `ocultos` también es por gráfico: se puede seguir un par en el canje y otro en el diferencial.
 const CTRL = {
-  canje: { periodo: '1Y', botones: 'hc-periodos',  desde: 'hc-desde',  hasta: 'hc-hasta'  },
-  tir:   { periodo: '1Y', botones: 'tir-periodos', desde: 'tir-desde', hasta: 'tir-hasta' },
+  canje: { periodo: '1Y', botones: 'hc-periodos',  desde: 'hc-desde',  hasta: 'hc-hasta',
+           ley: 'hc-ley',  ocultos: new Set() },
+  tir:   { periodo: '1Y', botones: 'tir-periodos', desde: 'tir-desde', hasta: 'tir-hasta',
+           ley: 'tir-ley', ocultos: new Set() },
 };
-let canjeOcultos = new Set();
 
 const hoyStr = () => { const d=new Date(); d.setHours(0,0,0,0); return dateToStr(d); };
 
@@ -681,18 +691,17 @@ function renderBotones(k) {
     `<button class="hc-per${CTRL[k].periodo === o ? ' on' : ''}" onclick="setPeriodo('${k}','${o}')">${lbl}</button>`).join('');
 }
 
-function renderLeyendaCanje() {
-  const cont = document.getElementById('hc-ley');
+function renderLeyenda(k) {
+  const cont = document.getElementById(CTRL[k].ley);
   cont.innerHTML = PARES_CANJE.map(p => {
-    const off = canjeOcultos.has(p.bonar) ? ' off' : '';
-    return `<button class="${off.trim()}" onclick="togglePar('${p.bonar}')"><i style="background:${p.color}"></i>${p.global} / ${p.bonar}</button>`;
+    const off = CTRL[k].ocultos.has(p.bonar) ? ' off' : '';
+    const lbl = k === 'tir' ? `${p.bonar} − ${p.global}` : `${p.global} / ${p.bonar}`;
+    return `<button class="${off.trim()}" onclick="togglePar('${k}','${p.bonar}')"><i style="background:${p.color}"></i>${lbl}</button>`;
   }).join('');
 }
-// La leyenda SÍ es compartida: qué pares mirar es una sola decisión, aunque cada gráfico tenga
-// su propio período. Por eso el toggle redibuja los dos.
-function togglePar(b) {
-  canjeOcultos.has(b) ? canjeOcultos.delete(b) : canjeOcultos.add(b);
-  renderLeyendaCanje(); renderGraficoCanje(); renderGraficoTIR();
+function togglePar(k, b) {
+  CTRL[k].ocultos.has(b) ? CTRL[k].ocultos.delete(b) : CTRL[k].ocultos.add(b);
+  renderLeyenda(k); redibujar(k);
 }
 
 // Rango activo de UN gráfico (cada uno tiene el suyo).
@@ -704,7 +713,7 @@ function rangoActivo(k) {
 // Dibuja N series temporales en un contenedor. La usan el gráfico del canje y el de TIRs: cambian
 // los datos y el rótulo del eje, no el dibujo.
 //   series = [{ label, color, dash, pts:[{f:'YYYY-MM-DD', y:Number}] }]
-function dibujarSerieTiempo(contId, series, ejeLabel) {
+function dibujarSerieTiempo(contId, series, ejeLabel, onClickSerie) {
   const cont = document.getElementById(contId);
   if (!cont) return;
   series = series.filter(s => s.pts.length);
@@ -798,14 +807,36 @@ function dibujarSerieTiempo(contId, series, ejeLabel) {
     tip.style.top=(ev.clientY-cr.top-10)+'px';
   });
   cap.addEventListener('mouseleave',()=>{ tip.hidden=true; });
+
+  // Clic sobre una curva: la apaga. Se busca el punto más cercano al cursor EN PÍXELES —no en
+  // fechas— porque lo que el usuario ve y apunta es la línea, y dos series pueden estar en la
+  // misma fecha a alturas muy distintas. Hay un radio máximo para que hacer clic en un lugar
+  // vacío no apague nada por accidente: sin eso, cualquier clic dentro del panel apagaría la
+  // serie que quedara más cerca, aunque estuviera lejísimos.
+  if (typeof onClickSerie === 'function') {
+    const RADIO = 18;   // en unidades del viewBox
+    cap.addEventListener('click', ev => {
+      const r = svg.getBoundingClientRect();
+      const sx = (ev.clientX - r.left) / r.width * W, sy = (ev.clientY - r.top) / r.height * H;
+      let mejor = null;
+      for (const s of series) {
+        for (const p of s.pts) {
+          const dx = px(tMs(p.f)) - sx, dy = py(p.y) - sy;
+          const d = dx*dx + dy*dy;
+          if (!mejor || d < mejor.d) mejor = { d, key: s.key };
+        }
+      }
+      if (mejor && mejor.key != null && Math.sqrt(mejor.d) <= RADIO) onClickSerie(mejor.key);
+    });
+  }
 }
 
 function renderGraficoCanje() {
   const { desde, hasta } = rangoActivo('canje');
-  dibujarSerieTiempo('graf-canje', PARES_CANJE.filter(p => !canjeOcultos.has(p.bonar)).map(p => ({
-    label: `${p.global}/${p.bonar}`, color: p.color,
+  dibujarSerieTiempo('graf-canje', PARES_CANJE.filter(p => !CTRL.canje.ocultos.has(p.bonar)).map(p => ({
+    key: p.bonar, label: `${p.global}/${p.bonar}`, color: p.color,
     pts: serieCanje(p).filter(d => d.f >= desde && d.f <= hasta),
-  })), 'CANJE %');
+  })), 'CANJE %', b => togglePar('canje', b));
 }
 
 // Diferencial de TIR de un par: TIR del Bonar menos TIR del Global, sólo en las fechas con dato
@@ -825,10 +856,10 @@ function serieDifTIR(par) {
 
 function renderGraficoTIR() {
   const { desde, hasta } = rangoActivo('tir');
-  dibujarSerieTiempo('graf-tir', PARES_CANJE.filter(p => !canjeOcultos.has(p.bonar)).map(p => ({
-    label: `${p.bonar}−${p.global}`, color: p.color,
+  dibujarSerieTiempo('graf-tir', PARES_CANJE.filter(p => !CTRL.tir.ocultos.has(p.bonar)).map(p => ({
+    key: p.bonar, label: `${p.bonar}−${p.global}`, color: p.color,
     pts: serieDifTIR(p).filter(d => d.f >= desde && d.f <= hasta),
-  })), 'TIR BONAR − TIR GLOBAL (pp)');
+  })), 'TIR BONAR − TIR GLOBAL (pp)', b => togglePar('tir', b));
 }
 
 // ── INIT ─────────────────────────────────────────────────────
@@ -837,7 +868,8 @@ renderGrafico(datos);
 renderSpread(datos);
 setPeriodo('canje', '1Y');
 setPeriodo('tir', '1Y');
-renderLeyendaCanje();
+renderLeyenda('canje');
+renderLeyenda('tir');
 cargarSeriesCanje();
 </script>
 
