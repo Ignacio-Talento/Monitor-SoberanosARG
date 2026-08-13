@@ -868,9 +868,15 @@ function promedioUltimosN(serie, n = 3) {
 }
 
 // CER con lag desde hoy
+// El CER aplicable se cuenta desde la fecha de LIQUIDACIÓN (T+1 hábil), no desde hoy: lo que se
+// está descontando es el precio de liquidar mañana, y el capital ajustado que se recibe es el de
+// esa fecha. Contarlo desde hoy dejaba el valor final un día de CER por debajo —con inflación al
+// 2% mensual son ~0,065%— y al anualizarlo se amplificaba en los plazos cortos: la TEA quedaba
+// hasta 0,47pp por debajo de la de 1816 en X30S6, y el desvío escalaba con 1/t a lo largo de toda
+// la curva. Corregido el 2026-08-12: 14 de los 16 CER pasan a coincidir con 1816 dentro de 0,014pp.
 function getCerConLag(lagDias) {
-  const fechaRef = restarDiasHabiles(dateToStr(new Date()), lagDias);
-  return buscarCerCache(fechaRef);
+  const hoy = new Date(); hoy.setHours(0, 0, 0, 0);
+  return buscarCerCache(restarDiasHabiles(dateToStr(sumarDiasHabiles(hoy, 1)), lagDias));
 }
 
 // CER con lag desde fecha de emisión
@@ -1105,9 +1111,17 @@ function calcMetricas(inst, precioAlt) {
     const tea_dec = Math.pow(vpv / precio, 365 / diasTir) - 1;
     const tea = tea_dec * 100;
     const tna = (Math.pow(1 + tea_dec, 1/365) - 1) * 365 * 100;
-    const md  = (diasTir / 365) / (1 + tea_dec);
+    // M.Dur en la convención de 1816, que es la de mercado para LECAPs: la sensibilidad se mide
+    // contra la tasa SIMPLE, no la efectiva. Con P = VPV/(1 + s·t) sale -(1/P)·dP/ds = t·P/VPV.
+    // Verificado el 2026-08-12 contra el campo durationMod de 1816 en las 12 LECAPs vivas: ajusta
+    // con error 0 a cinco decimales. La fórmula anterior, t/(1+TEA), mide contra la tasa efectiva
+    // y daba sistemáticamente por debajo (S31G6 0,039 contra 0,049; S16O6 0,138 contra 0,168).
+    const plazo = diasTir / 365;
+    const md  = plazo * (precio / vpv);
+    // `plazo` viaja a bonos_data: los gráficos que ponen LECAPs y CER sobre el mismo eje necesitan
+    // rearmar la duration en una convención común, y desde md ya no se puede despejar (ver senderoCER).
     // Paridad: no aplica a LECAPs (capitalizan al vencimiento, sin cupones). Se deja en blanco.
-    return { precio, dias, tna, tea, md, paridad: null };
+    return { precio, dias, tna, tea, md, paridad: null, plazo };
   }
 
   if (inst.grupo === 'tasafija') {
@@ -1852,7 +1866,7 @@ function renderTabla() {
       // para poder llevarlas a una convención única (ver globVsBon).
       return { ticker: inst.ticker, grupo: inst.grupo, nombre: inst.nombre, venc: inst.venc,
                md: m.md, tea: m.tea, precio: m.precio, pataTipo: inst.pata?.tipo || null,
-               frecCupon: frecuenciaCupon(inst) || 1 };
+               frecCupon: frecuenciaCupon(inst) || 1, plazo: m.plazo ?? null };
     }).filter(d => d.md !== null && d.tea !== null);
     localStorage.setItem('bonos_data', JSON.stringify(enriched));
   } catch(e) { console.warn('localStorage error:', e); }

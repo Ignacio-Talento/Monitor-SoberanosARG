@@ -826,9 +826,12 @@ function promedioUltimosN(serie, n = 3) {
 }
 
 // CER con lag desde hoy
+// El CER aplicable se cuenta desde la LIQUIDACIÓN (T+1 hábil), no desde hoy. Ver la nota larga
+// en bonos.html: contarlo desde hoy dejaba el valor final un día de CER corto y la TEA hasta
+// 0,47pp por debajo de la de 1816 en el tramo corto.
 function getCerConLag(lagDias) {
-  const fechaRef = restarDiasHabiles(dateToStr(new Date()), lagDias);
-  return buscarCerCache(fechaRef);
+  const hoy = new Date(); hoy.setHours(0, 0, 0, 0);
+  return buscarCerCache(restarDiasHabiles(dateToStr(sumarDiasHabiles(hoy, 1)), lagDias));
 }
 
 // CER con lag desde fecha de emisión
@@ -1026,7 +1029,9 @@ function calcMetricas(inst, precioAlt) {
     const tea_dec = Math.pow(vpv / precio, 365 / diasTir) - 1;
     const tea = tea_dec * 100;
     const tna = (Math.pow(1 + tea_dec, 1/365) - 1) * 365 * 100;
-    const md  = (diasTir / 365) / (1 + tea_dec);
+    // M.Dur en la convención de 1816 (sensibilidad contra la tasa SIMPLE): con P = VPV/(1 + s·t)
+    // sale -(1/P)·dP/ds = t·P/VPV. Igual que en bonos.html, ver la nota larga allá.
+    const md  = (diasTir / 365) * (precio / vpv);
     // Paridad: no aplica a LECAPs (capitalizan al vencimiento, sin cupones). Se deja en blanco.
     return { precio, dias, tna, tea, md, paridad: null };
   }

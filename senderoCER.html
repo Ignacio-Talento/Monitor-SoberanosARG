@@ -975,6 +975,18 @@ function generarCurva(fn, xMin, xMax, steps=100) {
 }
 
 // ── RENDER BEI vs REM ─────────────────────────────────────────
+// M.Dur de una LECAP en convención ANUAL EFECTIVA, t/(1+TEA).
+//
+// El Monitor publica la M.Dur de las LECAPs en la convención de 1816 —t·P/VPV, que mide contra la
+// tasa simple—, que es la correcta para leerla fila por fila. Pero acá las LECAPs comparten eje X
+// con los CER, y esa convención da valores más altos: sobre el mismo bono, 0,168 contra 0,138.
+// Mezclarlas correría toda la curva LECAP a la derecha y el spread contra CER se leería mal.
+// Por eso el Monitor manda también `plazo` (años a vencimiento): desde la M.Dur sola no se puede
+// despejar. Si un dato viejo de localStorage no lo trae, se usa la M.Dur tal cual.
+function mdLecapAnual(d) {
+  return d.plazo != null ? d.plazo / (1 + d.tea / 100) : d.md;
+}
+
 function renderBEI() {
   const contenido = document.getElementById('bei-contenido');
   const datos = JSON.parse(localStorage.getItem('bonos_data') || '[]');
@@ -982,7 +994,7 @@ function renderBEI() {
 
   const lec = datos.filter(d => d.grupo === 'lecap' && d.md != null && d.tea != null);
   const cer = datos.filter(d => d.grupo === 'cer'   && d.md != null && d.tea != null);
-  const fnL = lec.length >= 3 ? regresionPoly2(lec.map(d => ({ x: d.md, y: d.tea }))) : null;
+  const fnL = lec.length >= 3 ? regresionPoly2(lec.map(d => ({ x: mdLecapAnual(d), y: d.tea }))) : null;
   const fnC = cer.length >= 3 ? regresionPoly2(cer.map(d => ({ x: d.md, y: d.tea }))) : null;
   const mdMinCer = cer.length ? Math.min(...cer.map(d => d.md)) : 0.1;
 
@@ -1047,7 +1059,7 @@ function renderGraficoCurvas() {
 
   // LECAPs: su TEA ya es nominal, se toma tal cual del Monitor.
   const lec = datos.filter(d => d.grupo === 'lecap' && d.md != null && d.tea != null)
-    .map(d => ({ x:+d.md.toFixed(3), y:+d.tea.toFixed(3), tk:d.ticker, precio:d.precio, tipo:'LECAP' }));
+    .map(d => ({ x:+mdLecapAnual(d).toFixed(3), y:+d.tea.toFixed(3), tk:d.ticker, precio:d.precio, tipo:'LECAP' }));
 
   // CER: la TEA que publica el Monitor es REAL (sobre inflación) y no es comparable con una
   // nominal. Se recalcula igual que la tabla de esta página: se proyecta el CER al vencimiento
@@ -1069,11 +1081,11 @@ function renderGraficoCurvas() {
     // OJO: calcTIR de esta página ya devuelve PORCENTAJE (termina en "* 100"), no fracción.
     const tirPct = calcTIR(ref.precio, vf, dias);
     if (tirPct == null || !isFinite(tirPct)) continue;
-    // Duration con la MISMA convención que las LECAPs —anual, t/(1+TEA)— y descontando a la tasa
-    // nominal. El Monitor usa convenciones distintas por familia: las LECAPs dividen por (1+TEA)
-    // y los CER por (1+TEA)^0,5. En filas separadas no molesta, pero acá comparten eje X y la
-    // diferencia los desalinea: TZX27 y T30J7 vencen los dos el 30-06-2027 y quedaban en 0,775
-    // contra 0,695, con el CER cayéndose del tramo comparable por una convención, no por plazo.
+    // Duration anual efectiva —t/(1+TEA)— y descontando a la tasa nominal, la misma que devuelve
+    // mdLecapAnual() para el otro lado del gráfico. El Monitor usa una convención distinta por
+    // familia: LECAPs t·P/VPV (la de 1816), CER (1+TEA)^0,5. En filas separadas no molesta, pero
+    // acá comparten eje X y la diferencia los desalinea: TZX27 y T30J7 vencen los dos el
+    // 30-06-2027 y quedaban en 0,775 contra 0,695, o sea separados por una convención, no por plazo.
     const t = dias / 365;
     const md = t / (1 + tirPct/100);
     cer.push({ x:+md.toFixed(3), y:+tirPct.toFixed(3), tk:b.ticker, precio:ref.precio,
