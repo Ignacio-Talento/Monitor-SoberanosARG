@@ -161,6 +161,32 @@
   .alert.show { display: block; }
   .alert.info { background:#f0fdf4; border:1px solid #86efac; color:var(--green); }
   .alert.err { background:#fef2f2; border:1px solid #fecaca; color:var(--red); }
+
+  /* ── Gráfico TAMAR vs LECAPs ── mismo lenguaje que el resto de las solapas ── */
+  .gt-titulo { color: var(--cyan) !important; font-family: var(--sans) !important; margin-bottom: 6px !important; }
+  .gt-ley { display: flex; gap: 18px; align-items: center; flex-wrap: wrap; font-size: 11px;
+            color: var(--text-3); margin: 2px 0 12px 2px; }
+  .gt-ley span { display: flex; align-items: center; gap: 6px; }
+  .gt-ley i { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+  .gt-wrap { position: relative; }
+  .gt-svg  { width: 100%; height: auto; display: block; font-family: var(--sans); }
+  .gt-grid { stroke: var(--border); stroke-width: 1; opacity: .45; }
+  .gt-eje  { stroke: var(--border-l); stroke-width: 1; }
+  .gt-tick { font-size: 11px; fill: var(--text-3); font-family: var(--mono); }
+  .gt-axis { font-size: 10px; fill: var(--text-3); letter-spacing: .1em; font-weight: 600; }
+  .gt-lbl  { font-size: 10px; fill: var(--navy); font-weight: 700; }
+  .gt-lecap { fill: var(--navy); }
+  .gt-tam   { fill: var(--cyan); }
+  .gt-linea { fill: none; stroke-width: 2.5; opacity: .85; }
+  .gt-linea.gt-lecap { stroke: var(--navy); }
+  .gt-linea.gt-tam   { stroke: var(--cyan); }
+  .gt-pt:hover circle:not([fill="transparent"]) { stroke: var(--navy); stroke-width: 3; }
+  .gt-tip  { position: absolute; pointer-events: none; background: var(--navy); color: #fff;
+             border-radius: 6px; padding: 8px 11px; font-size: 11px; line-height: 1.5;
+             box-shadow: var(--sh-raised); white-space: nowrap; z-index: 5; }
+  .gt-tip b { display: block; font-size: 12px; letter-spacing: .04em; margin-bottom: 2px; }
+  .gt-tip span { display: block; color: rgba(255,255,255,.72); }
+  .gt-tip i { font-style: normal; color: #fff; font-family: var(--mono); }
 </style>
 </head>
 <body>
@@ -221,6 +247,21 @@
         <tr><td colspan="9" style="text-align:center;padding:24px;color:var(--text-3);font-style:italic;font-family:var(--mono)">Cargando series de TAMAR del BCRA...</td></tr>
       </tbody>
     </table>
+  </div>
+
+  <!-- GRÁFICO TAMAR vs LECAPs -->
+  <div class="panel" style="margin-top:16px;">
+    <div class="panel-title gt-titulo">TAMAR vs LECAPs</div>
+    <div style="font-size:11px;color:var(--text-2);font-family:var(--sans);line-height:1.7;background:#e8edf5;border-left:3px solid var(--navy);border-radius:0 6px 6px 0;padding:12px 16px;margin-bottom:16px;">
+      Compara la curva de <strong>tasa fija en pesos de las LECAPs</strong> contra la <strong>TIR de los TAMAR</strong>, que sale de proyectar la tasa mayorista con el sendero del REM que está arriba. Si movés esos valores, el gráfico se recalcula.<br><br>
+      Donde la curva <strong>TAMAR está por encima</strong>, el bono a tasa variable rinde más que la LECAP de plazo equivalente <em>si la TAMAR sigue el sendero proyectado</em>. Ahí está el supuesto: es una comparación entre una tasa cierta y una que depende de lo que haga el BCRA.
+    </div>
+    <div class="gt-ley">
+      <span><i style="background:var(--navy)"></i>LECAPs · TEA en pesos</span>
+      <span><i style="background:var(--cyan)"></i>TAMAR · TIR proyectada</span>
+    </div>
+    <div class="gt-wrap" id="graf-tamar"></div>
+    <div id="tamar-empty" style="display:none;font-size:12px;color:var(--text-3);font-family:var(--mono);font-style:italic;padding:16px 0;"></div>
   </div>
 </div>
 
@@ -496,6 +537,7 @@ function renderTabla() {
   });
 
   let html = '';
+  const puntosTamar = [];   // se llenan acá para no recalcular la TIR en el gráfico
 
   ordenados.forEach(bono => {
     const dias = diasAlVenc(bono.venc);
@@ -531,6 +573,7 @@ function renderTabla() {
     }
 
     const spread = (tir !== null && lecapTEA !== null) ? (tir - lecapTEA) : null;
+    if (tir !== null && dias > 0) puntosTamar.push({ x: dias / 365, y: tir, ticker: bono.ticker, venc: bono.venc });
 
     html += `<tr>
       <td>${bono.ticker}</td>
@@ -546,6 +589,124 @@ function renderTabla() {
   });
 
   tbody.innerHTML = html || '<tr><td colspan="9" style="text-align:center;padding:24px;color:var(--text-3);font-style:italic;font-family:var(--mono)">Sin datos</td></tr>';
+
+  // Curva LECAP: TODAS las que tengan precio, no sólo las que quedaron como comparables en la
+  // tabla. La comparación fila a fila exige vencimientos a menos de 20 días; el gráfico muestra
+  // la curva entera, que es justo lo que deja ver dónde se cruzan.
+  const puntosLecap = lecaps.map(l => {
+    const dias = diasAlVenc(l.venc);
+    const p = bonosData.find(d => d.ticker === l.ticker);
+    if (dias === null || dias <= 0 || !p || !p.precio) return null;
+    const tea = calcTEALecap(l, p.precio);
+    return tea == null ? null : { x: dias / 365, y: tea, ticker: l.ticker, venc: l.venc };
+  }).filter(Boolean).sort((a, b) => a.x - b.x);
+
+  renderGraficoTAMAR(puntosTamar.sort((a, b) => a.x - b.x), puntosLecap);
+}
+
+// ── GRÁFICO TAMAR vs LECAPs ───────────────────────────────────
+// Eje X = PLAZO en años, no duration. Igual criterio que Sendero DL: acá lo que se compara son
+// dos formas de llegar a la misma fecha, así que el plazo es la variable natural y además evita
+// tener que unificar convenciones de duration entre dos familias que capitalizan distinto.
+// Las líneas UNEN los puntos reales en vez de ser una regresión: son pocos puntos por curva y
+// suavizarlos escondería los quiebres, que es lo que se mira al buscar dónde se cruzan.
+function renderGraficoTAMAR(puntosTamar, puntosLecap) {
+  const cont  = document.getElementById('graf-tamar');
+  const empty = document.getElementById('tamar-empty');
+  if (!cont) return;
+
+  if (!puntosTamar.length && !puntosLecap.length) {
+    cont.innerHTML = '';
+    empty.style.display = 'block';
+    empty.textContent = 'No hay datos suficientes. Pasá por el Monitor y cargá los precios.';
+    return;
+  }
+  empty.style.display = 'none';
+
+  const series = [
+    { pts: puntosLecap, cls: 'gt-lecap', label: 'LECAPs' },
+    { pts: puntosTamar, cls: 'gt-tam',   label: 'TAMAR' },
+  ].filter(s => s.pts.length);
+
+  const todos = series.flatMap(s => s.pts);
+  const W=1000, H=420, ML=64, MR=24, MT=18, MB=52;
+  const ancho=W-ML-MR, alto=H-MT-MB;
+  const ext=v=>{ const a=Math.min(...v), b=Math.max(...v); const d=(b-a)||Math.abs(a)||1; return [a-d*0.08, b+d*0.10]; };
+  const [x0,x1]=ext(todos.map(p=>p.x));
+  const [y0,y1]=ext(todos.map(p=>p.y));
+  const px=v=>ML+(v-x0)/(x1-x0)*ancho;
+  const py=v=>MT+alto-(v-y0)/(y1-y0)*alto;
+  const ticks=(a,b,n)=>{
+    const p0=(b-a)/n, mag=Math.pow(10,Math.floor(Math.log10(p0))), r=p0/mag;
+    const paso=(r<=1?1:r<=2?2:r<=2.5?2.5:r<=5?5:10)*mag;
+    const o=[]; for(let v=Math.ceil(a/paso)*paso; v<=b+1e-9; v+=paso) o.push(+v.toFixed(10));
+    return o;
+  };
+  const tx=ticks(x0,x1,6), ty=ticks(y0,y1,5);
+
+  let g='';
+  for(const t of tx) g+=`<line x1="${px(t).toFixed(1)}" y1="${MT}" x2="${px(t).toFixed(1)}" y2="${MT+alto}" class="gt-grid"/>`;
+  for(const t of ty) g+=`<line x1="${ML}" y1="${py(t).toFixed(1)}" x2="${ML+ancho}" y2="${py(t).toFixed(1)}" class="gt-grid"/>`;
+  g+=`<line x1="${ML}" y1="${MT+alto}" x2="${ML+ancho}" y2="${MT+alto}" class="gt-eje"/>`;
+  g+=`<line x1="${ML}" y1="${MT}" x2="${ML}" y2="${MT+alto}" class="gt-eje"/>`;
+  for(const t of tx) g+=`<text x="${px(t).toFixed(1)}" y="${MT+alto+20}" class="gt-tick" text-anchor="middle">${t}</text>`;
+  for(const t of ty) g+=`<text x="${ML-10}" y="${(py(t)+4).toFixed(1)}" class="gt-tick" text-anchor="end">${t.toFixed(1)}%</text>`;
+  g+=`<text x="${ML+ancho/2}" y="${H-10}" class="gt-axis" text-anchor="middle">PLAZO (AÑOS)</text>`;
+  g+=`<text x="16" y="${MT+alto/2}" class="gt-axis" text-anchor="middle" transform="rotate(-90 16 ${MT+alto/2})">TEA EN PESOS %</text>`;
+
+  for(const s of series){
+    if(s.pts.length>1){
+      const d=s.pts.map((p,i)=>`${i?'L':'M'}${px(p.x).toFixed(1)},${py(p.y).toFixed(1)}`).join(' ');
+      g+=`<path d="${d}" class="gt-linea ${s.cls}"/>`;
+    }
+    for(const p of s.pts){
+      const cx=px(p.x).toFixed(1), cy=py(p.y).toFixed(1);
+      g+=`<g class="gt-pt" data-tk="${p.ticker}" data-serie="${s.label}" data-venc="${fmtDate(p.venc)}" data-x="${p.x.toFixed(2)}" data-y="${p.y.toFixed(2)}">`
+       + `<circle cx="${cx}" cy="${cy}" r="13" fill="transparent"/>`
+       + `<circle cx="${cx}" cy="${cy}" r="5" class="${s.cls}"/>`
+       + `<text x="${cx}" y="${(+cy-11).toFixed(1)}" class="gt-lbl" text-anchor="middle" data-cx="${cx}" data-cy="${cy}">${p.ticker}</text>`
+       + `</g>`;
+    }
+  }
+
+  cont.innerHTML=`<svg viewBox="0 0 ${W} ${H}" class="gt-svg" role="img" aria-label="TEA en pesos contra plazo: TAMAR contra LECAPs">${g}</svg><div class="gt-tip" id="gt-tip" hidden></div>`;
+
+  // Etiquetas: se recolocan midiendo el ancho real con getBBox; si no entran, se omiten. Estimarlo
+  // por cantidad de caracteres se queda corto y las deja pisadas.
+  const ocup=[...cont.querySelectorAll('.gt-lbl')].map(t=>({x:+t.dataset.cx-8,y:+t.dataset.cy-8,w:16,h:16}));
+  const sol=(a,b)=>a.x<b.x+b.w&&a.x+a.w>b.x&&a.y<b.y+b.h&&a.y+a.h>b.y;
+  const CAND=[{dx:0,dy:-11,an:'middle'},{dx:11,dy:4,an:'start'},{dx:-11,dy:4,an:'end'},
+              {dx:0,dy:19,an:'middle'},{dx:11,dy:-8,an:'start'},{dx:-11,dy:-8,an:'end'}];
+  for(const t of [...cont.querySelectorAll('.gt-lbl')].sort((a,b)=>(+b.dataset.cy)-(+a.dataset.cy))){
+    const cx=+t.dataset.cx, cy=+t.dataset.cy, bb=t.getBBox(), w=bb.width, h=bb.height;
+    let ok=null;
+    for(const c of CAND){
+      const x=cx+c.dx, y=cy+c.dy;
+      const bx=c.an==='middle'?x-w/2:c.an==='start'?x:x-w;
+      const caja={x:bx,y:y-h+3,w,h};
+      if(caja.x<ML-4||caja.x+caja.w>ML+ancho+4||caja.y<MT-2||caja.y+caja.h>MT+alto+2) continue;
+      if(ocup.some(o=>sol(caja,o))) continue;
+      ocup.push(caja); ok={x,y,an:c.an}; break;
+    }
+    if(!ok){ t.remove(); continue; }
+    t.setAttribute('x',ok.x.toFixed(1)); t.setAttribute('y',ok.y.toFixed(1)); t.setAttribute('text-anchor',ok.an);
+  }
+
+  const tip=cont.querySelector('#gt-tip');
+  cont.querySelectorAll('.gt-pt').forEach(el=>{
+    el.addEventListener('mouseenter',()=>{
+      tip.innerHTML=`<b>${el.dataset.tk}</b><span>${el.dataset.serie}</span>`
+        +`<span>Vence <i>${el.dataset.venc}</i></span>`
+        +`<span>Plazo <i>${el.dataset.x}</i> años</span><span>TEA <i>${el.dataset.y}%</i></span>`;
+      tip.hidden=false;
+    });
+    el.addEventListener('mousemove',ev=>{
+      const r=cont.getBoundingClientRect();
+      tip.style.left=Math.min(ev.clientX-r.left+14, r.width-190)+'px';
+      tip.style.top=(ev.clientY-r.top-10)+'px';
+    });
+    el.addEventListener('mouseleave',()=>{ tip.hidden=true; });
+  });
 }
 
 // ── INIT ──────────────────────────────────────────────────────
