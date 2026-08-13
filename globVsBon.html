@@ -328,18 +328,18 @@
     <div class="comentario">
       Cuánto más caro sale el dólar cable que el dólar MEP, día por día. Es el costo de sacar los
       dólares afuera en lugar de dejarlos en una cuenta local.<br><br>
-      La fuente es el <strong>Índice Dólar BYMA</strong>: BYMA publica un índice MEP y uno CCL
-      armados con una canasta de instrumentos, así que el spread no depende de que un bono puntual
-      haya operado. Cubre desde el <strong>2 de enero de 2024</strong>, que es cuando arranca la
-      serie.<br><br>
-      <strong>Si abajo dice que el índice no está disponible</strong>, el gráfico cae a un cálculo
-      de respaldo: el mismo título cotiza en los dos segmentos, así que el spread sale del cociente
-      entre esos dos precios —el precio en pesos se cancela y queda <em>precio MEP / precio
-      CCL − 1</em>—. En ese modo van dos líneas, una por bono testigo, que deberían pisarse; si se
-      separan es que alguno operó poco. Y ojo con el tramo anterior a 2024: el segmento CCL de
-      estos bonos casi no operaba —AL30 tiene 3 ruedas en todo 2022 y 6 en 2023, contra 155 en
-      2024— así que ahí aparecen valores como +28% o −16% que salen de un puñado de precios
-      sueltos y no representan nada.
+      Se calcula sobre <strong>AL30</strong>, que es el bono más operado en los dos segmentos. El
+      mismo título cotiza en MEP y en CCL, así que el spread sale del cociente entre esos dos
+      precios: el precio en pesos se cancela —está en los dos dólares implícitos— y queda
+      <em>precio MEP / precio CCL − 1</em>.<br><br>
+      Lo ideal sería el <strong>Índice Dólar BYMA</strong>, que se arma con una canasta y no
+      depende de un bono puntual, pero es un producto pago: tanto su API como el widget del
+      histórico piden credenciales. El monitor ya está preparado para usarlo — si algún día se
+      contrata, se cargan las claves y el gráfico cambia de fuente solo.<br><br>
+      <strong>Cuidado con el tramo anterior a 2024.</strong> El segmento CCL de AL30 casi no
+      operaba: 3 ruedas en todo 2022 y 6 en 2023, contra 155 en 2024 y 243 en 2025. Los valores de
+      esos años salen de un puñado de precios sueltos —hay un +28% y un −16% en diciembre de
+      2023— y no representan nada. La serie utilizable arranca en 2024.
     </div>
     <div class="hc-barra">
       <div class="hc-periodos" id="fx-periodos"></div>
@@ -616,11 +616,12 @@ const CTRL = {
   fx:    { periodo: '1Y', botones: 'fx-periodos',  desde: 'fx-desde',  hasta: 'fx-hasta',
            ley: 'fx-ley',  ocultos: new Set() },
 };
-// Bonos testigo del spread CCL/MEP: los dos más líquidos de cada ley. Alcanza con dos —el spread
-// es una propiedad del mercado, no del bono— y tenerlos duplicados sirve de control cruzado.
+// Bono testigo del spread CCL/MEP. Va uno solo, AL30: es el más operado del mercado en los dos
+// segmentos —1.432 ruedas en MEP contra 1.238 de GD30— así que es el que menos huecos deja.
+// GD30 estuvo un tiempo como control cruzado y se sacó: al ser menos líquido metía dientes de
+// sierra propios que se leían como movimientos del spread y no lo eran.
 const BENCH_FX = [
   { ticker: 'AL30', color: '#002060' },
-  { ticker: 'GD30', color: '#00B0F0' },
 ];
 
 const hoyStr = () => { const d=new Date(); d.setHours(0,0,0,0); return dateToStr(d); };
@@ -949,12 +950,14 @@ async function cargarBymaFX() {
       bymaFX = j.series;
       est.textContent = '';
     } else if (j.sinCredenciales) {
-      est.textContent = 'Índice BYMA no disponible (faltan credenciales): se muestra el spread derivado de AL30 y GD30.';
+      // Estado normal, no una falla: el índice de BYMA es un producto pago. Se dice la fuente que
+      // se está usando y nada más, sin cartel de error para algo que no se rompió.
+      est.textContent = 'Fuente: AL30 (el índice de BYMA requiere suscripción).';
     } else if (j.error) {
-      est.textContent = `Índice BYMA no disponible (${j.error}): se muestra el spread derivado de los bonos.`;
+      est.textContent = `Índice BYMA no disponible (${j.error}): se muestra el spread derivado de AL30.`;
     }
   } catch (e) {
-    est.textContent = `Índice BYMA no disponible (${e.message || e}): se muestra el spread derivado de los bonos.`;
+    est.textContent = `Índice BYMA no disponible (${e.message || e}): se muestra el spread derivado de AL30.`;
   }
   renderGraficoFX();
 }
