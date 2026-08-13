@@ -825,6 +825,18 @@ function esHabil(d) {
   return !feriados.has(dateToStr(d));
 }
 
+// Fecha en la que un flujo se COBRA de verdad: si la nominal cae sábado, domingo o feriado, se
+// paga el hábil siguiente. Descontar a la nominal adelanta el flujo y sobreestima la TIR —poco en
+// un bono largo, mucho en uno corto—. El último cupón de TO26 vence el sábado 17-10-2026 y se
+// paga el lunes 19: descontándolo a la nominal daba TEA 26,38% contra el 25,499% de 1816, y con
+// la fecha efectiva da 25,499% exacto. Al 2026-08-12 hay 85 flujos futuros en día no hábil
+// (AL29, AL30, AL35, TY30P y varios más), aunque en los largos el efecto es de centésimas.
+function fechaPagoEfectiva(fecha) {
+  const f = new Date(fecha);
+  while (!esHabil(f)) f.setDate(f.getDate() + 1);
+  return f;
+}
+
 function restarDiasHabiles(fechaStr, n) {
   const d = parseLocalDate(fechaStr) || new Date();
   let restantes = n;
@@ -1133,7 +1145,7 @@ function calcMetricas(inst, precioAlt) {
     const flujos = inst.flujos.map(f => {
       const fd = parseLocalDate(f.fecha);
       if (!fd) return null;
-      const t = (fd - liq) / (365 * 86400000);
+      const t = (fechaPagoEfectiva(fd) - liq) / (365 * 86400000);
       return t > 0 ? { t, monto: f.total } : null;
     }).filter(Boolean);
     if (!flujos.length) return { precio, dias, tna: null, tea: null, md: null, paridad };
@@ -1251,7 +1263,7 @@ function calcMetricas(inst, precioAlt) {
     const flujos = inst.flujos.map(f => {
       const fd = parseLocalDate(f.fecha);
       if (!fd) return null;
-      const t = (fd - liq) / (365 * 86400000);
+      const t = (fechaPagoEfectiva(fd) - liq) / (365 * 86400000);
       return t > 0 ? { t, monto: f.total } : null;
     }).filter(Boolean);
     if (!flujos.length) return { precio, dias, tna: null, tea: null, md: null, paridad };
@@ -1350,7 +1362,7 @@ function calcMetricas(inst, precioAlt) {
     const flujos = inst.flujos.map(f => {
       const fd = parseLocalDate(f.fecha);
       if (!fd) return null;
-      const t = (fd - liq) / (365 * 86400000);
+      const t = (fechaPagoEfectiva(fd) - liq) / (365 * 86400000);
       return t > 0 ? { t, monto: f.total } : null;
     }).filter(Boolean);
     if (!flujos.length) return { precio, dias, tna: null, tea: null, md: null, paridad };
@@ -1370,7 +1382,7 @@ function calcMetricas(inst, precioAlt) {
     const flujos = inst.flujos.map(f => {
       const fd = parseLocalDate(f.fecha);
       if (!fd) return null;
-      const t = (fd - liq) / (365 * 86400000);
+      const t = (fechaPagoEfectiva(fd) - liq) / (365 * 86400000);
       return t > 0 ? { t, monto: f.total } : null;
     }).filter(Boolean);
     if (!flujos.length) return { precio, dias, tna: null, tea: null, md: null, paridad };
