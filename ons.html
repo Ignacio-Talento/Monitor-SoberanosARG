@@ -1670,13 +1670,19 @@ function renderTabla() {
   renderGraficoONs();   // el gráfico sigue a la ley activa y a los precios cargados
   aplicarFiltros(); // re-aplica los filtros activos tras cada render (p. ej. auto-refresh)
 
-  // Guardar datos enriquecidos en localStorage para curvas.html
+  // Datos enriquecidos de las ONs, en SU PROPIA clave.
+  //
+  // Esta página nació como copia del Monitor y se trajo el bloque de persistencia tal cual,
+  // escribiendo en 'bonos_data'. Pero esa clave es del Monitor y la leen seis páginas —Sendero
+  // CER y DL, Glob vs Bon, Rotación BOPREAL, Caución vs LECAP y Duales—, así que pasar por ONs
+  // la pisaba entera: quedaban 87 ONs y ni una LECAP, y todas esas solapas mostraban "faltan
+  // datos" hasta volver al Monitor. Ninguna de ellas consume ONs, así que van a claves separadas.
   try {
     const enriched = instrumentos.map(inst => {
       const m = calcMetricas(inst);
       return { ticker: inst.ticker, grupo: inst.grupo, nombre: inst.nombre, venc: inst.venc, md: m.md, tea: m.tea, precio: m.precio, pataTipo: inst.pata?.tipo || null };
     }).filter(d => d.md !== null && d.tea !== null);
-    localStorage.setItem('bonos_data', JSON.stringify(enriched));
+    localStorage.setItem('ons_data', JSON.stringify(enriched));
   } catch(e) { console.warn('localStorage error:', e); }
 }
 
