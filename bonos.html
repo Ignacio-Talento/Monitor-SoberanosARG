@@ -1818,7 +1818,12 @@ function renderTabla() {
     const diasInst = diasAlVenc(inst.venc);
     if (diasInst !== null && diasInst <= 0) continue;               // saltar vencidos
     const m = calcMetricas(inst);
-    const mc = calcMetricas(inst, precioConComision(m.precio));
+    // OJO: calcMetricas espera el precio en unidades de MERCADO y normaliza adentro. Pasarle
+    // m.precio lo normalizaba dos veces en la pata TAMAR de los duales Dólar Linked, que es la
+    // única donde m.precio != precio de mercado: para TMVE8 daba 91,27 / 1499,84 = 0,06 y una TEA
+    // con comisión de 19.426%. Con el precio de mercado queda bien, y para todo el resto es el
+    // mismo número de antes.
+    const mc = calcMetricas(inst, precioConComision(precios[inst.ticker] ?? null));
     const th = tickerHistorico(inst);
     // Las variaciones se comparan contra historicos.xlsx, que guarda el precio DE MERCADO, así
     // que van con ese y no con m.precio. Difieren sólo en la pata TAMAR de los duales con pata
