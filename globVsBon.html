@@ -350,8 +350,27 @@
     <div class="gb-wrap" id="graf-fx"></div>
     <div id="fx-estado" style="font-size:12px;color:var(--text-3);font-family:var(--mono);font-style:italic;padding:12px 0;"></div>
   </div>
+
+  <!-- RESPALDO -->
+  <div class="panel">
+    <div class="panel-title">Respaldo de las series</div>
+    <div class="comentario">
+      Las series de 1816 de esta solapa quedan guardadas en el navegador. Si se limpian los datos
+      del sitio hay que bajar seis años de nuevo, así que en el repositorio vive
+      <strong>series_globvsbon.xlsx</strong> como piso: cuando el navegador no tiene nada, se
+      arranca de ahí y a 1816 sólo se le piden los días posteriores al archivo.<br><br>
+      Ese archivo <strong>no se actualiza solo</strong>. Cuanto más viejo, más días tiene que
+      recuperar el incremental — nada se rompe, sólo cuesta un poco más esa primera carga. Para
+      renovarlo: tocá el botón, que baja un Excel con todo lo que hay ahora, y reemplazá el del
+      repositorio con ese. Cada tanto alcanza.
+      <span id="bk-info" style="display:block;margin-top:8px;font-family:var(--mono);font-size:11px"></span>
+    </div>
+    <button class="hc-per" style="border-radius:4px;border-left-width:1px;padding:6px 14px" onclick="descargarRespaldo()">Descargar respaldo</button>
+  </div>
 </div>
 
+<!-- SheetJS: sólo para leer y escribir el respaldo series_globvsbon.xlsx. -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script>
 // ── HELPERS FECHA ────────────────────────────────────────────
 function parseLocalDate(s) { if (!s) return null; const p = String(s).split('-').map(Number); return new Date(p[0], p[1]-1, p[2]); }
@@ -627,11 +646,61 @@ const hoyStr = () => { const d=new Date(); d.setHours(0,0,0,0); return dateToStr
 // Trae la serie de precios y la guarda en localStorage. La primera vez baja los ~6 años completos
 // —unos 21.600 créditos de 1816— y después SÓLO el tramo nuevo desde el último día guardado, que
 // son un par de cientos. Sin eso, cada visita costaría la historia entera.
+// Respaldo en el repo: series_globvsbon.xlsx, una hoja por serie con las fechas en filas y los
+// tickers en columnas. NO se usa en el arranque normal —para eso está el localStorage— sino sólo
+// cuando el navegador no tiene nada guardado: sin él, limpiar los datos del sitio obliga a bajar
+// seis años de 1816 otra vez, unos 21.600 créditos por serie. Con el respaldo, ese caso cuesta una
+// descarga de 1,2 MB y sólo se le piden a 1816 los días posteriores al archivo.
+//
+// El archivo NO se actualiza solo: es un piso, no un espejo. Cuanto más viejo, más días tiene que
+// recuperar el incremental, y nada más. Se regenera con el botón "Descargar respaldo".
+const BACKUP_URL = 'series_globvsbon.xlsx';
+const HOJA_DE = { precioDirty_mep: 'Precio MEP', tea_mep: 'TIR', precioDirty_ccl: 'Precio CCL' };
+let _backupProm = null;
+function leerBackup() {
+  if (_backupProm) return _backupProm;
+  _backupProm = (async () => {
+    const r = await fetch(BACKUP_URL);
+    if (!r.ok) throw new Error('sin respaldo (' + r.status + ')');
+    const wb = XLSX.read(await r.arrayBuffer(), { type: 'array' });
+    const out = {};
+    for (const nombre of wb.SheetNames) {
+      const filas = XLSX.utils.sheet_to_json(wb.Sheets[nombre], { header: 1, defval: '' });
+      const cab = filas[0] || [];
+      const serie = {};
+      for (let i = 1; i < filas.length; i++) {
+        const f = String(filas[i][0] || '').slice(0, 10);
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(f)) continue;
+        for (let c = 1; c < cab.length; c++) {
+          const v = parseFloat(filas[i][c]);
+          if (isFinite(v)) (serie[cab[c]] ||= {})[f] = v;
+        }
+      }
+      out[nombre] = serie;
+    }
+    return out;
+  })().catch(e => { console.warn('respaldo:', e.message || e); return {}; });
+  return _backupProm;
+}
+
 async function cargarSerie({ campo, moneda = 'mep', tickers, cacheKey, destino, estadoId, onDato }) {
   const est = document.getElementById(estadoId);
   let guardado = null;
   try { guardado = JSON.parse(localStorage.getItem(cacheKey) || 'null'); } catch {}
   if (guardado && guardado.series) Object.assign(destino, guardado.series);
+
+  // Sin nada en el navegador, se arranca del respaldo antes de tocar 1816.
+  if (!guardado || !guardado.hasta) {
+    est.textContent = 'Cargando el respaldo del repositorio...';
+    const bk = await leerBackup();
+    const hoja = bk[HOJA_DE[`${campo}_${moneda}`]];
+    if (hoja && Object.keys(hoja).length) {
+      Object.assign(destino, hoja);
+      const fs = Object.values(hoja).flatMap(s => Object.keys(s)).sort();
+      guardado = { hasta: fs[fs.length - 1] };
+      onDato();
+    }
+  }
 
   const hasta = hoyStr();
   // Se reanuda desde la última fecha CON DATO, inclusive —no desde el día siguiente—: así esa
@@ -709,6 +778,39 @@ async function cargarSeriesCanje() {
   await cargarSerie({ campo: 'precioDirty', moneda: 'ccl', tickers: bench, cacheKey: CCL_CACHE,
                       destino: cclSeries, estadoId: 'fx-estado', onDato: renderGraficoFX });
 }
+
+// Genera el respaldo con lo que hay AHORA en el navegador. Se arma acá y no en el servidor porque
+// los datos ya están bajados: regenerarlo desde 1816 costaría los créditos que el respaldo existe
+// justamente para no gastar. El índice de BYMA no va: es abierto y se pide de nuevo sin costo.
+function descargarRespaldo() {
+  const leer = k => { try { return JSON.parse(localStorage.getItem(k) || 'null'); } catch { return null; } };
+  const aHoja = (series, tickers) => {
+    const fechas = [...new Set(Object.values(series || {}).flatMap(s => Object.keys(s)))].sort();
+    const aoa = [['Fecha', ...tickers]];
+    for (const f of fechas) aoa.push([f, ...tickers.map(t => series[t]?.[f] ?? '')]);
+    return aoa;
+  };
+  const p = leer(CANJE_CACHE), t = leer(TEA_CACHE), c = leer(CCL_CACHE);
+  if (!p?.series && !t?.series && !c?.series) { alert('Todavía no hay series cargadas.'); return; }
+  const TK = PARES_CANJE.flatMap(x => [x.bonar, x.global]);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(aHoja(p?.series, TK)), 'Precio MEP');
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(aHoja(t?.series, TK)), 'TIR');
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(aHoja(c?.series, BENCH_FX.map(b => b.ticker))), 'Precio CCL');
+  XLSX.writeFile(wb, 'series_globvsbon.xlsx');
+}
+
+// Cuán viejo está el respaldo del repo, para que se vea sin tener que abrirlo.
+(async () => {
+  const el = document.getElementById('bk-info');
+  try {
+    const bk = await leerBackup();
+    const fs = Object.values(bk).flatMap(h => Object.values(h).flatMap(s => Object.keys(s))).sort();
+    el.textContent = fs.length
+      ? `Respaldo en el repositorio: hasta el ${fmtDate(fs[fs.length - 1])}.`
+      : 'No hay respaldo cargado en el repositorio.';
+  } catch { el.textContent = 'No se pudo leer el respaldo del repositorio.'; }
+})();
 
 // El índice de BYMA va aparte y primero: es otra API, no consume créditos de 1816 y si contesta
 // reemplaza el cálculo por bonos sin esperar a que baje ninguna serie.
