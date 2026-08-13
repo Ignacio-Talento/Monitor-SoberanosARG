@@ -217,17 +217,16 @@
 
   .no-p { color: var(--text-3); font-style: italic; font-size: 11px; }
   /* Pata de un dual que rinde menos que la otra: no va a pagar, se atenúa. */
-  /* Nota al pie debajo de las tablas: aclaración de criterio, no un dato. Discreta y con el
-     mismo ancho que la tabla, para que se lea como parte del bloque y no como un aviso. */
-  /* sticky a la izquierda y con ancho de lectura acotado: las tablas son más anchas que la
-     ventana, así que sin esto la nota se estiraba a 1.724px y había que scrollear para
-     terminar de leerla. Con el tope queda siempre visible y el texto envuelve. */
-  .nota-pie { position: sticky; left: 2px; margin: 10px 2px 22px; padding: 9px 12px;
-              max-width: min(880px, calc(100vw - 56px));
-              font-size: 11.5px; line-height: 1.5;
-              color: var(--text-3); background: #F2F4F8; border-left: 3px solid #00B0F0;
-              border-radius: 0 4px 4px 0; }
-  .nota-pie b { color: var(--navy, #002060); font-weight: 700; }
+  /* Selector de segmento (MEP/CCL) en el título de cada familia hard-dollar. Va dentro del
+     th del título, alineado a la derecha, para que se lea como propiedad de esa tabla. */
+  .seg-sel { float: right; display: inline-flex; gap: 0; margin-top: -2px; }
+  .seg-btn { font-family: var(--mono); font-size: 9.5px; font-weight: 700; letter-spacing: .05em;
+             padding: 2px 8px; cursor: pointer; background: #fff; color: var(--text-3);
+             border: 1px solid var(--border-l); }
+  .seg-btn:first-child { border-radius: 3px 0 0 3px; }
+  .seg-btn:last-child  { border-radius: 0 3px 3px 0; border-left: none; }
+  .seg-btn:hover { color: var(--navy, #002060); }
+  .seg-btn.on { background: #00B0F0; border-color: #00B0F0; color: #fff; }
   .td-dominada { color: var(--text-3); }
   .dom-mark { color: var(--border-l); font-weight: 700; }
   /* Pata in the money del dual: la que va a pagar. Cyan de marca, discreto —son 7 filas de 14
@@ -509,6 +508,30 @@ const GRUPOS_OCULTOS = ['onusd'];
 const GRUPOS_DOLAR = ['usdlinked', 'usdbonares', 'usdglobales', 'usdbopreal', 'onusd', 'subsoberano'];
 function monedaDeGrupo(grupo) { return GRUPOS_DOLAR.includes(grupo) ? 'dolares' : 'pesos'; }
 let monedaActiva = 'pesos'; // 'pesos' (default) | 'dolares'
+
+// ── SEGMENTO DE VALUACIÓN POR FAMILIA (MEP / CCL) ─────────────
+// Los hard-dollar se valúan al MEP por default, que es como los pide el job diario y por lo
+// tanto la única forma de que las variaciones contra el histórico tengan sentido. Se puede
+// pasar una familia a CCL para mirarla en ese segmento; la elección persiste por navegador.
+const GRUPOS_SEGMENTO = ['usdbonares', 'usdglobales', 'usdbopreal', 'onusd', 'subsoberano'];
+let segmentoGrupo = {};
+try { segmentoGrupo = JSON.parse(localStorage.getItem('monitor_segmento') || '{}') || {}; } catch { segmentoGrupo = {}; }
+function segmentoDe(grupo) {
+  return (GRUPOS_SEGMENTO.includes(grupo) && segmentoGrupo[grupo] === 'ccl') ? 'ccl' : 'mep';
+}
+function setSegmento(grupo, seg) {
+  if (!GRUPOS_SEGMENTO.includes(grupo) || segmentoDe(grupo) === seg) return;
+  segmentoGrupo[grupo] = seg;
+  try { localStorage.setItem('monitor_segmento', JSON.stringify(segmentoGrupo)); } catch {}
+  // Los precios que hay guardados son del segmento anterior. Se borran los de esta familia para
+  // no mostrar un MEP rotulado como CCL durante el segundo que tarda el refresco.
+  instrumentos.filter(i => i.grupo === grupo).forEach(i => { delete precios[i.ticker]; });
+  guardarPrecios();
+  renderTabla();
+  // Sin `fresh`: el payload cambió, así que igual va a fallar el caché del proxy la primera vez,
+  // pero volver al segmento anterior dentro de la ventana de 120 s no gasta créditos de nuevo.
+  fetchPreciosYahoo(false);
+}
 
 // ── HELPERS FECHA ─────────────────────────────────────────────
 function excelSerialToDate(serial) {
@@ -1850,9 +1873,14 @@ function renderTabla() {
     // valor normalizado contra el histórico daría un DAY% sin sentido. Es el mismo bono y una sola
     // serie de precios, así que las dos patas deben mostrar la misma variación.
     const precioMkt = precios[inst.ticker] || null;
-    filas.push({ inst, m, mc, dias: m.dias,
-      day: calcDay(inst, th, precioMkt), wtd: calcWTD(inst, th, precioMkt),
-      mtd: calcMTD(inst, th, precioMkt), ytd: calcYTD(inst, th, precioMkt) });
+    // Las variaciones sólo valen si el precio de hoy y el histórico son del MISMO segmento.
+    // historicos.xlsx se guarda siempre en MEP (MONEDA_1816 en actualizar_historicos.py), así que
+    // una familia puesta en CCL compararía CCL contra MEP y el "retorno" sería en realidad el
+    // canje del día. Se muestran "—" en vez de un número que parece un rendimiento y no lo es.
+    const enCCL = segmentoDe(inst.grupo) === 'ccl';
+    filas.push({ inst, m, mc, dias: m.dias, enCCL,
+      day: enCCL ? null : calcDay(inst, th, precioMkt), wtd: enCCL ? null : calcWTD(inst, th, precioMkt),
+      mtd: enCCL ? null : calcMTD(inst, th, precioMkt), ytd: enCCL ? null : calcYTD(inst, th, precioMkt) });
   }
 
   // En un dual cobrás el MÁXIMO de las dos patas, así que la de menor valor final no va a pagar:
@@ -1919,6 +1947,16 @@ function renderTabla() {
 
   // 3) Render: una <table> por grupo, con su header propio (título + columnas ordenables)
   let html = '';
+  // Selector MEP/CCL en el título, sólo en las familias hard-dollar (en pesos no aplica).
+  const selectorSegmento = (grupo) => {
+    if (!GRUPOS_SEGMENTO.includes(grupo)) return '';
+    const act = segmentoDe(grupo);
+    const tit = { mep: 'Valuar al dólar MEP (default). Es el segmento con el que se guarda el histórico, así que las variaciones son comparables.',
+                  ccl: 'Valuar al dólar CCL. Ojo: el histórico está en MEP, así que las variaciones (DAY/WTD/MTD/YTD) se dejan en blanco.' };
+    return `<span class="seg-sel">` + ['mep', 'ccl'].map(s =>
+      `<button class="seg-btn${act === s ? ' on' : ''}" title="${tit[s]}" onclick="setSegmento('${grupo}','${s}')">${s.toUpperCase()}</button>`
+    ).join('') + `</span>`;
+  };
   for (const g of grupos) {
     const label = GRUPOS.find(x => x.key === g.key)?.label || g.key;
     const st = sortState[g.key];
@@ -1933,21 +1971,11 @@ function renderTabla() {
     const rows = g.filas.map(f => `<tr class="data-row">${cg.map(({ c }) => c.cell(f)).join('')}</tr>`).join('');
     html += `<table class="tabla-grupo" style="min-width:${Math.max(760, nCols*96)}px"><colgroup>${colgroupHTML(g.key)}</colgroup>
       <thead>
-        <tr><th class="grupo-titulo" colspan="${nCols}">${label}</th></tr>
+        <tr><th class="grupo-titulo" colspan="${nCols}">${label}${selectorSegmento(g.key)}</th></tr>
         <tr class="col-header-row">${ths}</tr>
       </thead>
       <tbody>${rows}</tbody>
     </table>`;
-  }
-
-  // Nota al pie: en qué segmento se valúan los hard-dollar. Va sólo en la vista de dólares, que
-  // es donde se ven esos grupos. El criterio está en un solo lugar —MONEDA en functions/api/
-  // precios.js y MONEDA_1816 en actualizar_historicos.py, los dos en 'mep'— así que si eso
-  // cambia, este texto queda desactualizado: es una nota, no una lectura del código.
-  if (html && monedaActiva === 'dolares') {
-    html += `<div class="nota-pie">Bonares, Globales y BOPREALes se valúan al <b>dólar MEP</b>,
-      igual que los subsoberanos y las ON en dólares. Los precios vienen de 1816 en ese segmento y
-      la serie histórica se guarda con el mismo criterio, así que las variaciones son comparables.</div>`;
   }
 
   cont.innerHTML = html || `<div class="empty-state" style="padding:40px;">No hay instrumentos en ${monedaActiva === 'pesos' ? 'pesos' : 'dólares'}</div>`;
@@ -2358,6 +2386,7 @@ async function fetchPreciosImpl(force = false) {
       // que identifica la pata IN THE MONEY (ver renderTabla). Son 7 tickers —el proxy dedupe, no
       // 14 patas— así que el costo extra son 21 créditos por consulta real a 1816.
       body: JSON.stringify(vivos.map(i => ({ ticker: i.ticker, grupo: i.grupo,
+                                             moneda: segmentoDe(i.grupo),
                                              ind: usaIndicadores1816(i) || i.grupo === 'dual',
                                              par: usaParidad1816(i) }))),
     });

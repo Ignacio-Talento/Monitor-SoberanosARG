@@ -54,9 +54,13 @@ const MAPA_BOPREAL = {
 };
 
 // Devuelve { t: <ticker 1816>, moneda } o null si no mapea (=> fallback a Eco)
-function map1816(grupo, ticker) {
-  const moneda = MONEDA[grupo];
-  if (!moneda) return null;
+// Segmentos que el frontend puede pedir explícitamente. Sólo aplica a los hard-dollar: un
+// instrumento en pesos no cotiza en CCL, así que ahí el override se ignora y manda el default.
+const SEG_OVERRIDE = new Set(["mep", "ccl"]);
+function map1816(grupo, ticker, segPedido) {
+  const base = MONEDA[grupo];
+  if (!base) return null;
+  const moneda = (base === "mep" && SEG_OVERRIDE.has(segPedido)) ? segPedido : base;
   let t;
   if (grupo === "usdbonares" || grupo === "usdglobales") t = ticker;               // llega sin la D
   else if (grupo === "usdbopreal") t = MAPA_BOPREAL[ticker] || null;
@@ -225,7 +229,7 @@ async function computePrecios(env, items) {
     const eco = String(it.ticker || "").trim().toUpperCase();
     const grupo = String(it.grupo || "").trim();
     if (!eco || !grupo) continue;
-    const m = map1816(grupo, eco);
+    const m = map1816(grupo, eco, String(it.moneda || "").toLowerCase());
     if (!m) continue;
     const ind = it.ind === true;
     const par = !ind && it.par === true;
@@ -279,13 +283,21 @@ async function computePrecios(env, items) {
 
   // Fallback a Eco SOLO para lo que 1816 no resolvió. Acotado: cada uno es un subrequest
   // y Cloudflare corta en ~50 por request (si no, un día sin datos deja la respuesta a medias).
-  const grupoDe = {};
-  for (const it of items) grupoDe[String(it.ticker || "").trim().toUpperCase()] = String(it.grupo || "").trim();
+  const grupoDe = {}, pidioCCL = {};
+  for (const it of items) {
+    const k = String(it.ticker || "").trim().toUpperCase();
+    grupoDe[k] = String(it.grupo || "").trim();
+    if (String(it.moneda || "").toLowerCase() === "ccl") pidioCCL[k] = true;
+  }
   const SIN_ECO = new Set(["subsoberano", "onlocal", "onny"]);
   const pendientes = [...new Set(
     items.map((it) => String(it.ticker || "").trim().toUpperCase())
          // Subsoberanos y ONs de ley local/NY no están en Eco: pedirlos sólo gastaría subrequests.
-         .filter((eco) => eco && !(eco in result) && !SIN_ECO.has(grupoDe[eco]))
+         .filter((eco) => eco && !(eco in result) && !SIN_ECO.has(grupoDe[eco])
+         // Si se pidió CCL, Eco no sirve: publica el precio del segmento local y lo devolvería
+         // sin avisar, mezclando segmentos en la misma tabla. Mejor "—" que un precio de otro
+         // mercado disfrazado del que se pidió.
+                       && !pidioCCL[eco])
   )].slice(0, MAX_ECO_FALLBACK);
   const de1816 = Object.keys(result).length;
   for (const eco of pendientes) {
