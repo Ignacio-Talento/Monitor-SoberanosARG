@@ -178,14 +178,25 @@ function fechaART(offsetDias) {
 // y es justo la llamada que más chance tiene de comerse el 429 porque va primera y sin espacio
 // previo. La rueda cambia como mucho una vez por día, así que 5 minutos de memo es de sobra.
 let _fechaMemo = null, _fechaMemoExp = 0;
-async function resolverFecha(apiKey, tickerRef, moneda) {
+async function resolverFecha(apiKey, tickerRef, moneda, fallos) {
   if (_fechaMemo !== null && Date.now() < _fechaMemoExp) return _fechaMemo.v;
   for (let i = 0; i <= 7; i++) {
     const d = fechaART(i);
     const dow = d.getUTCDay();
     if (dow === 0 || dow === 6) continue;             // fin de semana: ni consultamos
     const fecha = i === 0 ? null : d.toISOString().slice(0, 10);
-    const { datos } = await fetch1816(apiKey, [tickerRef], moneda, fecha);
+    const { datos, fallos: fallosFecha } = await fetch1816(apiKey, [tickerRef], moneda, fecha);
+    // Una consulta que FALLA (429, 5xx, red) devuelve `datos` vacío, exactamente igual que un día
+    // en que el bono no operó. Tomarlas por lo mismo hacía que la búsqueda siguiera retrocediendo
+    // y terminara fijando una rueda vieja —y el memo la dejaba pegada 5 minutos—, así que el
+    // monitor mostraba los precios de otro día como si fueran los de hoy, y sin marcar nada:
+    // el error se consumía acá y `fallos` de los precios quedaba vacío. Pasó el 2026-08-12,
+    // durante un bloqueo de 1816: resolvió el 10-08 y sirvió esos precios rotulados como del día.
+    // Ante un fallo se corta la búsqueda: mejor no resolver la rueda que resolverla mal.
+    if (fallosFecha && fallosFecha.length) {
+      fallos.push(`no se pudo resolver la rueda (${fallosFecha[0]}); se usa la última que publique 1816`);
+      return null;   // sin memo, para que el próximo request vuelva a intentar
+    }
     // Ojo: 1816 devuelve el instrumento aunque no haya operado (con el campo en null),
     // así que hay que mirar el precio, no la presencia de la clave.
     if (datos[tickerRef] && typeof datos[tickerRef][CAMPO] === "number") {
@@ -248,8 +259,11 @@ async function computePrecios(env, items) {
   if (apiKey && monedas.length) {
     // Una sola resolución de fecha para todas las monedas (fin de semana/feriado -> última rueda).
     const ref = porMoneda[monedas[0]][0];
-    const fecha = await resolverFecha(apiKey, ref.t, ref.moneda);
-    // resolverFecha devuelve null cuando la rueda es la de hoy.
+    const fecha = await resolverFecha(apiKey, ref.t, ref.moneda, fallos);
+    // resolverFecha devuelve null cuando la rueda es la de hoy Y TAMBIÉN cuando no la pudo
+    // resolver. Los dos casos terminan igual: se consulta sin fecha, que es como 1816 devuelve
+    // la última que tenga. La diferencia es que el segundo deja un aviso en `fallos`, así que el
+    // frontend puede mostrar que el rótulo de la rueda no está verificado.
     fechaRueda = fecha || fechaART(0).toISOString().slice(0, 10);
     for (const clave of monedas) {
       const pares = porMoneda[clave];
