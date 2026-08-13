@@ -323,8 +323,14 @@ function json(obj, status = 200, extra = {}) {
     headers: { "content-type": "application/json; charset=utf-8", ...extra },
   });
 }
+// La clave tiene que incluir TODO lo que cambia la respuesta, no sólo qué instrumentos se piden.
+// Faltaban `moneda`, `ind` y `par`: con el selector MEP/CCL eso hacía que la consulta en CCL se
+// sirviera del caché de la de MEP —misma clave— y devolviera precios del otro segmento rotulados
+// como CCL, en silencio. Se veía en diag.segmentos: pedías ccl y respondía ["mep"].
 function hashItems(items) {
-  const s = items.map((i) => `${i.ticker}:${i.grupo}`).sort().join(",");
+  const s = items.map((i) =>
+    `${i.ticker}:${i.grupo}:${String(i.moneda || "").toLowerCase()}:${i.ind === true ? 1 : 0}:${i.par === true ? 1 : 0}`
+  ).sort().join(",");
   let h = 0;
   for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0;
   return (h >>> 0).toString(16);
