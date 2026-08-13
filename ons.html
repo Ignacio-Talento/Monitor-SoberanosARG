@@ -1230,8 +1230,9 @@ function calcMetricas(inst, precioAlt) {
     const tea = tea_dec * 100;
     const tna = (Math.pow(1 + tea_dec, 1/365) - 1) * 365 * 100;
     // Convención de M.Dur según la pata: CER=semestral, TAMAR=cada 32 días, LECAP=efectiva anual (1816)
-    const invMdual = pata.tipo === 'CER' ? 1/2 : (pata.tipo === 'TAMAR' ? 32/365 : 1);
-    const md  = t / Math.pow(1 + tea_dec, invMdual);
+    // Convención del INSTRUMENTO (TAMAR, cada 32 días) para las dos patas, igual que 1816.
+    // Ver la nota larga en bonos.html.
+    const md  = t / Math.pow(1 + tea_dec, 32/365);
     return { precio, dias, tna, tea, md, paridad, vf };
   }
 

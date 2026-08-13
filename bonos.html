@@ -1360,8 +1360,14 @@ function calcMetricas(inst, precioAlt) {
     const tea = tea_dec * 100;
     const tna = (Math.pow(1 + tea_dec, 1/365) - 1) * 365 * 100;
     // Convención de M.Dur según la pata: CER=semestral, TAMAR=cada 32 días, LINKED=semestral, LECAP=efectiva anual (1816)
-    const invMdual = pata.tipo === 'CER' ? 1/2 : pata.tipo === 'TAMAR' ? 32/365 : pata.tipo === 'LINKED' ? 1/2 : 1;
-    const md  = t / Math.pow(1 + tea_dec, invMdual);
+    // Convención de M.Dur: la del INSTRUMENTO, no la de cada pata. Todos los duales del monitor
+    // tienen una pata TAMAR, que capitaliza cada 32 días, y 1816 aplica esa misma base a las dos
+    // patas. Verificado el 2026-08-12 contra su durationMod: las 5 patas CER dan error 0 con
+    // 32/365 y quedaban 0,04 a 0,10 por debajo con la semestral que usábamos (TXMJ0: 3,7562
+    // contra 3,8551). Las patas TAMAR ya coincidían. De LECAP y LINKED no hay con qué comparar
+    // —1816 sólo publica la pata que está in the money— pero siguen la misma base por coherencia:
+    // las dos patas de un dual se leen en filas contiguas y medirlas distinto no tiene sentido.
+    const md  = t / Math.pow(1 + tea_dec, 32/365);
     return { precio: precioP, dias, tna, tea, md, paridad, vf };
   }
 
