@@ -634,13 +634,12 @@ async function cargarSerie({ campo, moneda = 'mep', tickers, cacheKey, destino, 
   if (guardado && guardado.series) Object.assign(destino, guardado.series);
 
   const hasta = hoyStr();
-  // Desde dónde falta: el día siguiente al último guardado, o todo si no hay nada.
+  // Se reanuda desde la última fecha CON DATO, inclusive —no desde el día siguiente—: así esa
+  // rueda se vuelve a pedir por si cuando se guardó todavía era provisoria. Son un par de días
+  // por visita, y el caché del proxy hace que varias pestañas no lo pidan de nuevo.
   let desde = CANJE_DESDE;
-  if (guardado && guardado.hasta && guardado.hasta < hasta) {
-    const d = parseLocalDate(guardado.hasta); d.setDate(d.getDate() + 1); desde = dateToStr(d);
-  } else if (guardado && guardado.hasta >= hasta) {
-    est.textContent = ''; onDato(); return;   // ya está al día
-  }
+  if (guardado && guardado.hasta) desde = guardado.hasta;
+  if (desde > hasta) { est.textContent = ''; onDato(); return; }
 
   const completa = desde === CANJE_DESDE;
   est.textContent = completa
@@ -674,8 +673,22 @@ async function cargarSerie({ campo, moneda = 'mep', tickers, cacheKey, destino, 
     onDato();   // se va dibujando a medida que llega
   }
 
-  try { localStorage.setItem(cacheKey, JSON.stringify({ hasta, series: destino })); }
-  catch (e) { console.warn(`no se pudo guardar la serie de ${campo}/${moneda}:`, e); }
+  // Se anota la última fecha REALMENTE recibida, no "hoy".
+  //
+  // Anotar hoy tenía un agujero: si la página se abre antes del cierre, 1816 todavía no publicó la
+  // rueda del día, pero quedaba marcada como cubierta. La visita siguiente del mismo día cortaba
+  // por "ya está al día" y la del día siguiente arrancaba el incremental un día después, así que
+  // esa rueda no entraba nunca. Con la fecha real del último dato, el tramo pendiente siempre
+  // vuelve a incluirla.
+  const ultimaFecha = Object.values(destino).reduce((m, s) => {
+    const ks = Object.keys(s);
+    const u = ks.length ? ks.sort()[ks.length - 1] : null;
+    return (u && (!m || u > m)) ? u : m;
+  }, null);
+  if (ultimaFecha) {
+    try { localStorage.setItem(cacheKey, JSON.stringify({ hasta: ultimaFecha, series: destino })); }
+    catch (e) { console.warn(`no se pudo guardar la serie de ${campo}/${moneda}:`, e); }
+  }
 
   est.textContent = fallos.length ? `1816 falló en parte del rango: ${fallos.slice(0, 2).join(' · ')}` : '';
   onDato();
