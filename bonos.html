@@ -1248,11 +1248,19 @@ function calcMetricas(inst, precioAlt) {
 
   // ── USD LINKED ──────────────────────────────────────────────
   if (inst.grupo === 'usdlinked') {
-    // TC aplicable: el que rige 3 días hábiles antes de la fecha de vencimiento.
-    // Como esa serie es futura y no está disponible, hasta el vencimiento se usa el
-    // TC aplicable a hoy: 3 días hábiles previos a la fecha de liquidación (T+1 hábil).
-    const fechaTC = restarDiasHabiles(dateToStr(liq), 3);
-    const tcHoy = buscarUsdCache(fechaTC);
+    // TC del valor teórico: el ÚLTIMO A3500 publicado, no uno rezagado.
+    //
+    // El rezago de 3 días hábiles fija el monto que se paga AL VENCIMIENTO; no es que el capital
+    // de hoy valga el dólar de hace tres ruedas. La valuación corriente va contra el TC corriente.
+    // Antes se usaba el de 3 hábiles antes de la liquidación y eso metía un desfase parejo: el
+    // 2026-08-12 tomaba el TC del 10-08 (1498,09) contra el de hoy (1492,55), 0,373% de más en el
+    // valor teórico. La paridad quedaba 0,37 pp baja en los 6 y la TEA se iba de escala en el
+    // tramo corto por la anualización: D31G6 daba 21,13% contra 12,35% de 1816.
+    //
+    // Verificado el 2026-08-12: con el último publicado, TEA y paridad coinciden con 1816 con
+    // diferencia 0,0000 en los 6 que publica. El TC implícito en sus paridades da 1492,548 en los
+    // seis, o sea exactamente el A3500 del día.
+    const tcHoy = bcraData.usdHoy;
     // Valor teórico = 100 × TC aplicable
     const valorTeo = tcHoy ? 100 * tcHoy : null;
     const paridad  = (precio && valorTeo) ? precio / valorTeo * 100 : null;
@@ -1330,11 +1338,11 @@ function calcMetricas(inst, precioAlt) {
         vf = 100 * Math.pow(1 + tamarTEM, meses);
       }
     } else if (pata.tipo === 'LINKED') {
-      // Valor final = 100 × TC aplicable (3 días hábiles antes de la liquidación T+1),
-      // igual que el USD Linked simple. La serie de venc es futura, se usa el TC de hoy.
-      const fechaTC = restarDiasHabiles(dateToStr(liq), 3);
-      const tcHoy = buscarUsdCache(fechaTC);
-      vf = tcHoy ? 100 * tcHoy : null;
+      // Valor final = 100 × último A3500 publicado, igual que el USD Linked simple (ver la nota
+      // larga en esa rama: el rezago de 3 hábiles fija el pago al vencimiento, no la valuación de
+      // hoy). Acá no se puede contrastar contra 1816 —para TMVE8 publica la pata TAMAR, que es la
+      // que está in the money— pero se mantiene alineado con el simple, que sí quedó verificado.
+      vf = bcraData.usdHoy ? 100 * bcraData.usdHoy : null;
     }
 
     const paridad = (precioP && vf) ? precioP / vf * 100 : null;

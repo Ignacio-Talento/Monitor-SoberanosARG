@@ -1142,11 +1142,10 @@ function calcMetricas(inst, precioAlt) {
 
   // ── USD LINKED ──────────────────────────────────────────────
   if (inst.grupo === 'usdlinked') {
-    // TC aplicable: el que rige 3 días hábiles antes de la fecha de vencimiento.
-    // Como esa serie es futura y no está disponible, hasta el vencimiento se usa el
-    // TC aplicable a hoy: 3 días hábiles previos a la fecha de liquidación (T+1 hábil).
-    const fechaTC = restarDiasHabiles(dateToStr(liq), 3);
-    const tcHoy = buscarUsdCache(fechaTC);
+    // TC del valor teórico: el ÚLTIMO A3500 publicado. El rezago de 3 hábiles fija el pago al
+    // vencimiento, no la valuación de hoy. Ver la nota larga en bonos.html: con el rezagado la
+    // paridad quedaba 0,37 pp baja contra 1816 y la TEA se iba de escala en el tramo corto.
+    const tcHoy = bcraData.usdHoy;
     // Valor teórico = 100 × TC aplicable
     const valorTeo = tcHoy ? 100 * tcHoy : null;
     const paridad  = (precio && valorTeo) ? precio / valorTeo * 100 : null;
