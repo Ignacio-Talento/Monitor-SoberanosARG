@@ -2621,18 +2621,7 @@ async function cargarFeriados() {
     const resultados = await Promise.all(anios.map(y =>
       fetch(`${FERIADOS_WORKER}/?anio=${y}`).then(r => r.ok ? r.json() : []).catch(() => [])
     ));
-    // Los "puente turístico no laborable" (tipo 'puente') NO son feriados bancarios: el mercado
-    // opera y hay rueda. Verificado con los históricos: el 10-07-2026 fue puente y trae una rueda
-    // real —139 precios, sólo 3 repetidos del día anterior—, mientras que el 09-07 (Independencia,
-    // inamovible) y el 15-06 (Güemes, trasladable) traen 69 precios y los 69 idénticos al día
-    // previo, que es la firma de la fila congelada de un día cerrado.
-    //
-    // Contarlos como feriado corría un día hábil TODOS los lags (CER, TAMAR, liquidación T+1)
-    // cada vez que un puente caía dentro de la ventana. Se veía en TZXM8/TZXM9: emitidos el
-    // 31-03-2026, con el puente del 23-03 adentro, el CER de emisión daba el del 13-03 en vez del
-    // 16-03 que usa 1816, y la TEA quedaba 0,20pp arriba. Los feriados trasladables sí cuentan:
-    // la lista ya devuelve la fecha corrida, no la original.
-    resultados.flat().forEach(f => { if (f && f.fecha && f.tipo !== 'puente') set.add(String(f.fecha).slice(0, 10)); });
+    resultados.flat().forEach(f => { if (f && f.fecha) set.add(String(f.fecha).slice(0, 10)); });
     if (set.size) {
       feriados = set;
       try { localStorage.setItem('bonos_feriados', JSON.stringify([...set])); } catch(e) {}
