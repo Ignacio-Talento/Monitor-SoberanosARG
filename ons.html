@@ -310,6 +310,14 @@
   input[type=number] { -moz-appearance: textfield; appearance: textfield; }
 
   .empty-state { padding: 40px; text-align: center; color: var(--text-3); font-size: 12px; font-family: var(--mono); font-style: italic; }
+  /* Nota al pie debajo de las tablas, igual que en el Monitor. Sticky a la izquierda porque las
+     tablas son más anchas que la ventana: sin eso se estira al ancho de la tabla y hay que
+     scrollear para terminar de leerla. En una sola línea, así que nowrap. */
+  .nota-pie { position: sticky; left: 2px; display: inline-block; white-space: nowrap;
+              margin: 10px 2px 22px; padding: 8px 12px; font-size: 11.5px; line-height: 1.4;
+              color: var(--text-3); background: #F2F4F8; border-left: 3px solid #00B0F0;
+              border-radius: 0 4px 4px 0; }
+  .nota-pie b { color: var(--navy, #002060); font-weight: 700; }
 
   /* PANEL INDICADORES */
   .indicadores { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; margin-bottom: 20px; overflow: hidden; box-shadow: 0 1px 4px rgba(0,0,0,0.06); }
@@ -1647,6 +1655,14 @@ function renderTabla() {
       </thead>
       <tbody>${rows}</tbody>
     </table>`;
+  }
+
+  // Nota al pie: con qué segmento se valúan. Vale para las dos leyes. La segunda oración no es
+  // un detalle: la columna "Divisa de pago" dice CCL en 40 de las 89 —las 34 de ley NY y 6 de ley
+  // local— y es fácil leer eso como el segmento de valuación. Es el domicilio de pago que
+  // scrapeamos de 1816, sirve para informar y filtrar, y no toca el precio.
+  if (html) {
+    html += `<div class="nota-pie">Todas las ONs, de las dos leyes, se valúan al <b>dólar MEP</b>. La columna “Divisa de pago” indica dónde paga cada emisión, no cómo se valúa.</div>`;
   }
 
   cont.innerHTML = html || `<div class="empty-state" style="padding:40px;">No hay ONs de ${monedaActiva === 'local' ? 'ley local' : 'ley extranjera'} con datos</div>`;
