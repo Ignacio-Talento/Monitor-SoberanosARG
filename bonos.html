@@ -219,7 +219,12 @@
   /* Pata de un dual que rinde menos que la otra: no va a pagar, se atenúa. */
   /* Nota al pie debajo de las tablas: aclaración de criterio, no un dato. Discreta y con el
      mismo ancho que la tabla, para que se lea como parte del bloque y no como un aviso. */
-  .nota-pie { margin: 10px 2px 22px; padding: 9px 12px; font-size: 11.5px; line-height: 1.5;
+  /* sticky a la izquierda y con ancho de lectura acotado: las tablas son más anchas que la
+     ventana, así que sin esto la nota se estiraba a 1.724px y había que scrollear para
+     terminar de leerla. Con el tope queda siempre visible y el texto envuelve. */
+  .nota-pie { position: sticky; left: 2px; margin: 10px 2px 22px; padding: 9px 12px;
+              max-width: min(880px, calc(100vw - 56px));
+              font-size: 11.5px; line-height: 1.5;
               color: var(--text-3); background: #F2F4F8; border-left: 3px solid #00B0F0;
               border-radius: 0 4px 4px 0; }
   .nota-pie b { color: var(--navy, #002060); font-weight: 700; }
