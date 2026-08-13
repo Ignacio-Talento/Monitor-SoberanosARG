@@ -1608,7 +1608,10 @@ function renderTabla() {
     const diasInst = diasAlVenc(inst.venc);
     if (diasInst !== null && diasInst <= 0) continue;               // saltar vencidos
     const m = calcMetricas(inst);
-    const mc = calcMetricas(inst, precioConComision(m.precio));
+    // calcMetricas espera el precio en unidades de MERCADO y normaliza adentro; pasarle
+    // m.precio lo normaliza dos veces donde ambos difieren. Acá hoy no hay ningún caso así,
+    // pero el código es compartido con bonos.html y no conviene que divergan. Ver la nota allá.
+    const mc = calcMetricas(inst, precioConComision(precios[inst.ticker] ?? null));
     const th = tickerHistorico(inst);
     filas.push({ inst, m, mc, dias: m.dias,
       day: calcDay(inst, th, m.precio), wtd: calcWTD(inst, th, m.precio),
