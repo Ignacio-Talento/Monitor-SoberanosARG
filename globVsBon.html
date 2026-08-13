@@ -289,6 +289,21 @@
     <div class="gb-wrap" id="graf-canje"></div>
     <div id="hc-estado" style="font-size:12px;color:var(--text-3);font-family:var(--mono);font-style:italic;padding:12px 0;"></div>
   </div>
+
+  <!-- HISTÓRICO DE TIRs -->
+  <div class="panel">
+    <div class="panel-title">TIR histórica · Bonar vs Global</div>
+    <div class="comentario">
+      Las mismas TIR de la tabla, día por día. Por par van <strong>dos líneas del mismo color</strong>:
+      el Bonar con línea llena y el Global punteada. Se manejan con los mismos botones de período y
+      la misma leyenda del gráfico de arriba, así que apagando pares se aísla el que interese.<br><br>
+      Lo que se mira acá no es el nivel de cada uno sino <strong>cuánto se separan</strong>: esa
+      brecha es el canje del gráfico anterior visto en tasa en vez de en precio. Cuando las dos
+      líneas se juntan, la ley deja de pagarse.
+    </div>
+    <div class="gb-wrap" id="graf-tir"></div>
+    <div id="tir-estado" style="font-size:12px;color:var(--text-3);font-family:var(--mono);font-style:italic;padding:12px 0;"></div>
+  </div>
 </div>
 
 <script>
@@ -531,9 +546,14 @@ const PARES_CANJE = [
   { bonar: 'AL41', global: 'GD41', color: '#0F4C68' },
 ];
 const CANJE_CACHE = 'canje_series_v2';
-const CANJE_DESDE = '2020-09-01';   // canje de deuda: antes de esa fecha estos bonos no existen
+const TEA_CACHE   = 'canje_tea_v1';
+// Antes de esta fecha no hay nada que traer, y no es un límite del bono sino de la fuente:
+// verificado el 2026-08-13, 1816 tampoco tiene AY24, AO20 ni DICA —todos anteriores al canje de
+// deuda— así que su cobertura arranca justo cuando se emitieron estos bonos.
+const CANJE_DESDE = '2020-09-01';
 
 let canjeSeries = {};      // ticker -> { 'YYYY-MM-DD': precio }
+let teaSeries   = {};      // ticker -> { 'YYYY-MM-DD': TIR % }
 let canjePeriodo = '1Y';
 let canjeOcultos = new Set();
 
@@ -542,12 +562,12 @@ const hoyStr = () => { const d=new Date(); d.setHours(0,0,0,0); return dateToStr
 // Trae la serie de precios y la guarda en localStorage. La primera vez baja los ~6 años completos
 // —unos 21.600 créditos de 1816— y después SÓLO el tramo nuevo desde el último día guardado, que
 // son un par de cientos. Sin eso, cada visita costaría la historia entera.
-async function cargarSeriesCanje() {
-  const est = document.getElementById('hc-estado');
+async function cargarSerie(campo, cacheKey, destino, estadoId, onDato) {
+  const est = document.getElementById(estadoId);
   const tickers = PARES_CANJE.flatMap(p => [p.bonar, p.global]);
   let guardado = null;
-  try { guardado = JSON.parse(localStorage.getItem(CANJE_CACHE) || 'null'); } catch {}
-  if (guardado && guardado.series) canjeSeries = guardado.series;
+  try { guardado = JSON.parse(localStorage.getItem(cacheKey) || 'null'); } catch {}
+  if (guardado && guardado.series) Object.assign(destino, guardado.series);
 
   const hasta = hoyStr();
   // Desde dónde falta: el día siguiente al último guardado, o todo si no hay nada.
@@ -555,14 +575,14 @@ async function cargarSeriesCanje() {
   if (guardado && guardado.hasta && guardado.hasta < hasta) {
     const d = parseLocalDate(guardado.hasta); d.setDate(d.getDate() + 1); desde = dateToStr(d);
   } else if (guardado && guardado.hasta >= hasta) {
-    est.textContent = ''; return;   // ya está al día
+    est.textContent = ''; onDato(); return;   // ya está al día
   }
 
   const completa = desde === CANJE_DESDE;
   est.textContent = completa
     ? 'Bajando el histórico completo de 1816 (una sola vez, puede tardar)...'
     : 'Actualizando el tramo nuevo...';
-  renderGraficoCanje();
+  onDato();
 
   // La API cobra tickers x días y el endpoint corta en 20.000, así que la carga inicial va en
   // tramos de 2 años. Los incrementales entran de una.
@@ -579,22 +599,30 @@ async function cargarSeriesCanje() {
   for (const [a, b] of tramos) {
     try {
       const r = await fetch('/api/series', { method: 'POST', headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ tickers, moneda: 'mep', desde: a, hasta: b }) });
+        body: JSON.stringify({ tickers, moneda: 'mep', desde: a, hasta: b, campo }) });
       const j = await r.json();
       if (!r.ok) { fallos.push(j.error || ('HTTP ' + r.status)); continue; }
       for (const [tk, serie] of Object.entries(j.series || {})) {
-        canjeSeries[tk] = Object.assign(canjeSeries[tk] || {}, serie);
+        destino[tk] = Object.assign(destino[tk] || {}, serie);
       }
       if (j.diag && j.diag.fallos && j.diag.fallos.length) fallos.push(...j.diag.fallos);
     } catch (e) { fallos.push(String(e.message || e)); }
-    renderGraficoCanje();   // se va dibujando a medida que llega
+    onDato();   // se va dibujando a medida que llega
   }
 
-  try { localStorage.setItem(CANJE_CACHE, JSON.stringify({ hasta, series: canjeSeries })); }
-  catch (e) { console.warn('no se pudo guardar la serie del canje:', e); }
+  try { localStorage.setItem(cacheKey, JSON.stringify({ hasta, series: destino })); }
+  catch (e) { console.warn(`no se pudo guardar la serie de ${campo}:`, e); }
 
   est.textContent = fallos.length ? `1816 falló en parte del rango: ${fallos.slice(0, 2).join(' · ')}` : '';
-  renderGraficoCanje();
+  onDato();
+}
+
+// Las dos series van EN SERIE, no en paralelo: 1816 admite 1 request por segundo y es un límite
+// global por API key, así que dispararlas juntas se comería 429 de entrada. Primero el precio,
+// que es el gráfico de arriba y el que el usuario está mirando.
+async function cargarSeriesCanje() {
+  await cargarSerie('precioDirty', CANJE_CACHE, canjeSeries, 'hc-estado', renderGraficoCanje);
+  await cargarSerie('tea',         TEA_CACHE,   teaSeries,   'tir-estado', renderGraficoTIR);
 }
 
 // Canje por fecha para un par: sólo las fechas con precio en LOS DOS bonos.
@@ -611,6 +639,8 @@ function rangoPeriodo() {
   const d = parseLocalDate(hasta);
   if (canjePeriodo === '1W') d.setDate(d.getDate() - 7);
   else if (canjePeriodo === '1M') d.setMonth(d.getMonth() - 1);
+  else if (canjePeriodo === '3M') d.setMonth(d.getMonth() - 3);
+  else if (canjePeriodo === '6M') d.setMonth(d.getMonth() - 6);
   else if (canjePeriodo === 'YTD') { d.setMonth(0); d.setDate(1); }
   else if (canjePeriodo === '1Y') d.setFullYear(d.getFullYear() - 1);
   else if (canjePeriodo === 'ALL') return { desde: CANJE_DESDE, hasta };
@@ -629,7 +659,7 @@ function onFechaCanje() { canjePeriodo = 'custom'; renderBotonesCanje(); renderG
 
 function renderBotonesCanje() {
   const cont = document.getElementById('hc-periodos');
-  const opts = [['1W','1S'],['1M','1M'],['YTD','YTD'],['1Y','1A'],['ALL','Todo']];
+  const opts = [['1W','1S'],['1M','1M'],['3M','3M'],['6M','6M'],['YTD','YTD'],['1Y','1A'],['ALL','Todo']];
   cont.innerHTML = opts.map(([k, lbl]) =>
     `<button class="hc-per${canjePeriodo === k ? ' on' : ''}" onclick="setPeriodoCanje('${k}')">${lbl}</button>`).join('');
 }
@@ -643,16 +673,19 @@ function renderLeyendaCanje() {
 }
 function togglePar(b) { canjeOcultos.has(b) ? canjeOcultos.delete(b) : canjeOcultos.add(b); renderLeyendaCanje(); renderGraficoCanje(); }
 
-function renderGraficoCanje() {
-  const cont = document.getElementById('graf-canje');
+// Rango activo, común a los dos gráficos.
+function rangoActivo() {
+  return { desde: document.getElementById('hc-desde').value || CANJE_DESDE,
+           hasta: document.getElementById('hc-hasta').value || hoyStr() };
+}
+
+// Dibuja N series temporales en un contenedor. La usan el gráfico del canje y el de TIRs: cambian
+// los datos y el rótulo del eje, no el dibujo.
+//   series = [{ label, color, dash, pts:[{f:'YYYY-MM-DD', y:Number}] }]
+function dibujarSerieTiempo(contId, series, ejeLabel) {
+  const cont = document.getElementById(contId);
   if (!cont) return;
-  const desde = document.getElementById('hc-desde').value || CANJE_DESDE;
-  const hasta = document.getElementById('hc-hasta').value || hoyStr();
-
-  const series = PARES_CANJE.filter(p => !canjeOcultos.has(p.bonar)).map(p => ({
-    par: p, pts: serieCanje(p).filter(d => d.f >= desde && d.f <= hasta),
-  })).filter(s => s.pts.length);
-
+  series = series.filter(s => s.pts.length);
   if (!series.length) { cont.innerHTML = ''; return; }
 
   const tMs = f => parseLocalDate(f).getTime();
@@ -665,7 +698,6 @@ function renderGraficoCanje() {
   const px=v=>ML+((v-x0)/((x1-x0)||1))*ancho;
   const py=v=>MT+alto-((v-y0)/((y1-y0)||1))*alto;
 
-  // Ticks del eje X: fechas repartidas, con formato según cuánto abarque el rango.
   const meses=(x1-x0)/(30*86400000);
   // Sin el año en rangos largos las etiquetas se repetían: con 7 ticks sobre 6 años el espaciado
   // es de ~10 meses, así que dos ticks consecutivos caían en el mismo año y se leía "2024, 2024".
@@ -691,7 +723,7 @@ function renderGraficoCanje() {
   g+=`<line x1="${ML}" y1="${MT}" x2="${ML}" y2="${MT+alto}" class="gb-eje"/>`;
   for(const t of tx) g+=`<text x="${px(t).toFixed(1)}" y="${MT+alto+18}" class="gb-tick" text-anchor="middle">${fmtX(new Date(t))}</text>`;
   for(const t of ty) g+=`<text x="${ML-9}" y="${(py(t)+4).toFixed(1)}" class="gb-tick" text-anchor="end">${t.toFixed(1)}%</text>`;
-  g+=`<text x="16" y="${MT+alto/2}" class="gb-axis" text-anchor="middle" transform="rotate(-90 16 ${MT+alto/2})">CANJE %</text>`;
+  g+=`<text x="16" y="${MT+alto/2}" class="gb-axis" text-anchor="middle" transform="rotate(-90 16 ${MT+alto/2})">${ejeLabel}</text>`;
 
   // La línea se CORTA cuando hay un hueco largo entre ruedas. Los pares menos líquidos tienen
   // tramos enteros sin operar —GD29/AL29 casi no cotizó entre 2021 y 2024— y unir esos puntos
@@ -704,24 +736,24 @@ function renderGraficoCanje() {
       d += `${(prev===null || t-prev>HUECO_MAX) ? 'M' : 'L'}${px(t).toFixed(1)},${py(p.y).toFixed(1)} `;
       prev=t;
     }
-    g+=`<path d="${d.trim()}" class="hc-linea" stroke="${s.par.color}"/>`;
+    g+=`<path d="${d.trim()}" class="hc-linea" stroke="${s.color}"${s.dash?` stroke-dasharray="${s.dash}"`:''}/>`;
     // Los puntos sueltos (los que quedan aislados entre dos huecos) no se ven con sólo el path:
     // un 'M' seguido de otro 'M' no dibuja nada. Se les pone un círculo chico.
     s.pts.forEach((p,i)=>{
       const t=tMs(p.f);
       const solo = (i===0 || t-tMs(s.pts[i-1].f)>HUECO_MAX) && (i===s.pts.length-1 || tMs(s.pts[i+1].f)-t>HUECO_MAX);
-      if(solo) g+=`<circle cx="${px(t).toFixed(1)}" cy="${py(p.y).toFixed(1)}" r="1.8" fill="${s.par.color}" opacity=".9"/>`;
+      if(solo) g+=`<circle cx="${px(t).toFixed(1)}" cy="${py(p.y).toFixed(1)}" r="1.8" fill="${s.color}" opacity=".9"/>`;
     });
     const ult=s.pts[s.pts.length-1];
-    g+=`<circle cx="${px(tMs(ult.f)).toFixed(1)}" cy="${py(ult.y).toFixed(1)}" r="3.5" fill="${s.par.color}"/>`;
+    g+=`<circle cx="${px(tMs(ult.f)).toFixed(1)}" cy="${py(ult.y).toFixed(1)}" r="3.5" fill="${s.color}"/>`;
   }
 
-  cont.innerHTML=`<svg viewBox="0 0 ${W} ${H}" class="gb-svg" role="img" aria-label="Canje histórico por par">${g}<rect x="${ML}" y="${MT}" width="${ancho}" height="${alto}" fill="transparent" id="hc-cap"/></svg><div class="gb-tip" id="hc-tip" hidden></div>`;
+  cont.innerHTML=`<svg viewBox="0 0 ${W} ${H}" class="gb-svg" role="img" aria-label="${ejeLabel} en el tiempo">${g}<rect x="${ML}" y="${MT}" width="${ancho}" height="${alto}" fill="transparent" class="hc-cap"/></svg><div class="gb-tip hc-tip" hidden></div>`;
 
   // Tooltip: en vez de un punto por dato —serían miles— se busca la fecha más cercana al mouse y
-  // se muestran TODOS los pares visibles en esa fecha, que es como se lee un gráfico de series.
-  const tip=cont.querySelector('#hc-tip');
-  const cap=cont.querySelector('#hc-cap');
+  // se muestran TODAS las series visibles en esa fecha, que es como se lee un gráfico temporal.
+  const tip=cont.querySelector('.hc-tip');
+  const cap=cont.querySelector('.hc-cap');
   const svg=cont.querySelector('svg');
   cap.addEventListener('mousemove',ev=>{
     const r=svg.getBoundingClientRect();
@@ -734,7 +766,7 @@ function renderGraficoCanje() {
     }
     if(!mejor) return;
     const filas=series.map(s=>{ const p=s.pts.find(q=>q.f===mejor.f); return p
-      ? `<span style="color:${s.par.color}">■</span> ${s.par.global}/${s.par.bonar} <i>${p.y.toFixed(2)}%</i>` : null; }).filter(Boolean);
+      ? `<span style="color:${s.color}">■</span> ${s.label} <i>${p.y.toFixed(2)}%</i>` : null; }).filter(Boolean);
     tip.innerHTML=`<b>${fmtDate(mejor.f)}</b>${filas.map(f=>`<span>${f}</span>`).join('')}`;
     tip.hidden=false;
     const cr=cont.getBoundingClientRect();
@@ -742,6 +774,31 @@ function renderGraficoCanje() {
     tip.style.top=(ev.clientY-cr.top-10)+'px';
   });
   cap.addEventListener('mouseleave',()=>{ tip.hidden=true; });
+}
+
+function renderGraficoCanje() {
+  const { desde, hasta } = rangoActivo();
+  dibujarSerieTiempo('graf-canje', PARES_CANJE.filter(p => !canjeOcultos.has(p.bonar)).map(p => ({
+    label: `${p.global}/${p.bonar}`, color: p.color,
+    pts: serieCanje(p).filter(d => d.f >= desde && d.f <= hasta),
+  })), 'CANJE %');
+  renderGraficoTIR();
+}
+
+// Segundo gráfico: las mismas TIR que muestra la tabla, en el tiempo. Por par van DOS líneas del
+// mismo color —el Bonar llena y el Global punteada— para que se lea de a par: lo que importa no es
+// el nivel de cada uno sino cuánto se separan, que es el canje del gráfico de arriba visto en tasa.
+function renderGraficoTIR() {
+  const { desde, hasta } = rangoActivo();
+  const series = [];
+  PARES_CANJE.filter(p => !canjeOcultos.has(p.bonar)).forEach(p => {
+    for (const [tk, dash] of [[p.bonar, ''], [p.global, '5 3']]) {
+      const s = teaSeries[tk] || {};
+      const pts = Object.keys(s).filter(f => f >= desde && f <= hasta).sort().map(f => ({ f, y: s[f] }));
+      if (pts.length) series.push({ label: tk, color: p.color, dash, pts });
+    }
+  });
+  dibujarSerieTiempo('graf-tir', series, 'TIR %');
 }
 
 // ── INIT ─────────────────────────────────────────────────────

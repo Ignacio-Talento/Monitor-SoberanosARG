@@ -19,7 +19,13 @@
  */
 
 const BASE_1816 = "https://api.1816.com.ar";
-const CAMPO     = "precioDirty";
+const CAMPO_DEF = "precioDirty";
+// Campos que 1816 acepta en /series (son los que tienen sentido como serie temporal, a diferencia
+// de los de /indicadores). Se valida contra esta lista para no mandarle basura y comerse un 400.
+const CAMPOS_OK = new Set([
+  "currentYield", "duration", "durationMod", "paridad", "precioClean", "precioDirty",
+  "spread", "tea", "tem", "tna", "valorTecnico", "volumenMontoDiario", "volumenNominalDiario",
+]);
 // 6 h. Lo único que cambia dentro del día es el último punto de la serie, y para eso está el
 // Monitor: acá interesa la forma histórica, no el tick.
 const CACHE_TTL = 21600;
@@ -102,7 +108,7 @@ function ventanas(desde, hasta) {
   return out;
 }
 
-async function traerSeries(apiKey, tickers, moneda, desde, hasta) {
+async function traerSeries(apiKey, tickers, moneda, desde, hasta, campo) {
   const series = {};   // ticker -> { fecha: valor }
   const fallos = [];
   for (const [ini, fin] of ventanas(desde, hasta)) {
@@ -110,7 +116,7 @@ async function traerSeries(apiKey, tickers, moneda, desde, hasta) {
       const lote = tickers.slice(i, i + MAX_TICKERS_REQ);
       const qs = new URLSearchParams();
       lote.forEach((t) => qs.append("tickers", t));
-      qs.append("campos", CAMPO);
+      qs.append("campos", campo);
       qs.append("moneda", moneda);
       qs.append("fechaInicial", ini);
       qs.append("fechaFinal", fin);
@@ -127,7 +133,7 @@ async function traerSeries(apiKey, tickers, moneda, desde, hasta) {
         if (!campos) continue;
         // 1816 devuelve { campo: [[fecha, valor], ...] }. Se pivotea a { fecha: valor } y se
         // saltean los null: un día sin operar viene con el valor vacío, no ausente.
-        const puntos = campos[CAMPO] || [];
+        const puntos = campos[campo] || [];
         for (const p of puntos) {
           if (!Array.isArray(p) || p.length < 2) continue;
           const [f, v] = p;
@@ -162,10 +168,12 @@ export async function onRequest(context) {
   const tickers = [...new Set((body.tickers || []).map((t) => String(t || "").trim().toUpperCase()).filter(Boolean))];
   const moneda  = String(body.moneda || "mep").toLowerCase();
   const desde   = String(body.desde || "").slice(0, 10);
+  const campo   = String(body.campo || CAMPO_DEF);
   const hasta   = String(body.hasta || "").slice(0, 10);
 
   if (!tickers.length) return json({ error: "faltan tickers" }, 400);
   if (!MONEDAS_OK.has(moneda)) return json({ error: "moneda inválida" }, 400);
+  if (!CAMPOS_OK.has(campo)) return json({ error: `campo inválido: ${campo}` }, 400);
   if (!/^\d{4}-\d{2}-\d{2}$/.test(desde) || !/^\d{4}-\d{2}-\d{2}$/.test(hasta)) {
     return json({ error: "fechas inválidas (YYYY-MM-DD)" }, 400);
   }
@@ -184,7 +192,7 @@ export async function onRequest(context) {
 
   const u = new URL(request.url);
   const fresh = u.searchParams.get("fresh") === "1";
-  const clave = `https://series.cache/${moneda}/${desde}/${hasta}/${tickers.slice().sort().join(",")}`;
+  const clave = `https://series.cache/${campo}/${moneda}/${desde}/${hasta}/${tickers.slice().sort().join(",")}`;
   const cache = caches.default;
   if (!fresh) {
     const hit = await cache.match(new Request(clave));
@@ -192,10 +200,10 @@ export async function onRequest(context) {
   }
 
   _plazo = Date.now() + 25000;   // presupuesto de tiempo para toda la request
-  const { series, fallos } = await traerSeries(apiKey, tickers, moneda, desde, hasta);
+  const { series, fallos } = await traerSeries(apiKey, tickers, moneda, desde, hasta, campo);
   const puntos = Object.values(series).reduce((a, s) => a + Object.keys(s).length, 0);
 
-  const res = json({ series, diag: { tickers: tickers.length, dias, costoEstimado: costo, puntos, fallos } });
+  const res = json({ series, diag: { campo, tickers: tickers.length, dias, costoEstimado: costo, puntos, fallos } });
   // Sólo se cachea si vino algo. Cachear un fallo lo congelaría 6 h, que acá duele mucho más que
   // en los precios: el usuario vería el gráfico vacío toda la tarde sin forma de forzarlo.
   if (puntos && !fallos.length) {
