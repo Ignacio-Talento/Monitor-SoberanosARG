@@ -31,11 +31,20 @@ jobs:
         env:
           API_1816_KEY: ${{ secrets.API_1816_KEY }}
         run: python actualizar_historicos.py
- 
+
+      # Respaldo de las series que grafica "Glob vs Bon". Va con continue-on-error a propósito:
+      # es un archivo de respaldo, no el dato del día, y si 1816 falla acá no tiene por qué
+      # arrastrar al historicos.xlsx que ya se actualizó bien en el paso anterior.
+      - name: Completar el respaldo de Glob vs Bon
+        continue-on-error: true
+        env:
+          API_1816_KEY: ${{ secrets.API_1816_KEY }}
+        run: python actualizar_series_globvsbon.py
+
       - name: Commit y push si hay cambios
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          git add historicos.xlsx
+          git add historicos.xlsx series_globvsbon.xlsx
           git diff --staged --quiet || git commit -m "Actualizar historicos $(date +'%Y-%m-%d')"
           git push

@@ -689,14 +689,24 @@ async function cargarSerie({ campo, moneda = 'mep', tickers, cacheKey, destino, 
   try { guardado = JSON.parse(localStorage.getItem(cacheKey) || 'null'); } catch {}
   if (guardado && guardado.series) Object.assign(destino, guardado.series);
 
-  // Sin nada en el navegador, se arranca del respaldo antes de tocar 1816.
-  if (!guardado || !guardado.hasta) {
+  // Se arranca del respaldo cuando el navegador no tiene nada, y TAMBIÉN cuando lo que tiene
+  // quedó muy atrasado: el job diario mantiene el archivo al día, así que recuperar tres semanas
+  // de ahí es gratis mientras que pedírselas a 1816 son cientos de créditos. El corte en 10 días
+  // deja el caso normal —abrir la solapa cada tantos días— resolviéndose por el incremental, que
+  // es más liviano que bajar 1,2 MB.
+  const DIAS_PARA_RESPALDO = 10;
+  const atraso = guardado && guardado.hasta
+    ? Math.round((parseLocalDate(hoyStr()) - parseLocalDate(guardado.hasta)) / 86400000)
+    : Infinity;
+  if (atraso > DIAS_PARA_RESPALDO) {
     est.textContent = 'Cargando el respaldo del repositorio...';
     const bk = await leerBackup();
     const hoja = bk[HOJA_DE[`${campo}_${moneda}`]];
     if (hoja && Object.keys(hoja).length) {
-      Object.assign(destino, hoja);
-      const fs = Object.values(hoja).flatMap(s => Object.keys(s)).sort();
+      // Se fusiona en vez de reemplazar: si el navegador tenía algo más nuevo que el archivo, no
+      // se pierde.
+      for (const [tk, s] of Object.entries(hoja)) destino[tk] = Object.assign({}, s, destino[tk] || {});
+      const fs = Object.values(destino).flatMap(s => Object.keys(s)).sort();
       guardado = { hasta: fs[fs.length - 1] };
       onDato();
     }
