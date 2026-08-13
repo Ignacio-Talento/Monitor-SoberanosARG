@@ -308,7 +308,11 @@ async function computePrecios(env, items) {
   // simplemente no operó y no había manera de distinguirlos desde el frontend.
   return {
     precios: result, indicadores, fecha: fechaRueda,
-    diag: { de1816, deEco: Object.keys(result).length - de1816, fallos },
+    // `segmentos` deja ver contra qué segmento de 1816 se pidió cada lote. Sirve para verificar
+    // el selector MEP/CCL desde el frontend: sin esto, si dos segmentos devuelven el mismo precio
+    // no hay forma de distinguir "cotizan igual" de "el override no se aplicó".
+    diag: { de1816, deEco: Object.keys(result).length - de1816, fallos,
+            segmentos: [...new Set(Object.values(porMoneda).map((ps) => ps[0].moneda))].sort() },
   };
 }
 
