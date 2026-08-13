@@ -794,7 +794,9 @@ function renderGraficoTIR() {
   PARES_CANJE.filter(p => !canjeOcultos.has(p.bonar)).forEach(p => {
     for (const [tk, dash] of [[p.bonar, ''], [p.global, '5 3']]) {
       const s = teaSeries[tk] || {};
-      const pts = Object.keys(s).filter(f => f >= desde && f <= hasta).sort().map(f => ({ f, y: s[f] }));
+      // OJO: 1816 devuelve `tea` en DECIMAL (0,0754), no en porcentaje. Es la misma trampa que en
+      // /indicadores. Se guarda tal cual viene de la fuente y se convierte sólo acá, al dibujar.
+      const pts = Object.keys(s).filter(f => f >= desde && f <= hasta).sort().map(f => ({ f, y: s[f] * 100 }));
       if (pts.length) series.push({ label: tk, color: p.color, dash, pts });
     }
   });
