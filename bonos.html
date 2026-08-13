@@ -219,6 +219,12 @@
   /* Pata de un dual que rinde menos que la otra: no va a pagar, se atenúa. */
   .td-dominada { color: var(--text-3); }
   .dom-mark { color: var(--border-l); font-weight: 700; }
+  /* Pata in the money del dual: la que va a pagar. Cyan de marca, discreto —son 7 filas de 14
+     y el resaltado tiene que leerse de un vistazo sin competir con los datos. */
+  .td-itm { font-weight: 600; }
+  .itm-mark { font-size: 8.5px; font-weight: 700; letter-spacing: .04em; color: #00B0F0;
+              border: 1px solid rgba(0,176,240,.45); border-radius: 3px; padding: 0 3px;
+              margin-left: 4px; vertical-align: 1px; }
   /* Comisión: control de la toolbar y sufijo de puntos básicos en la TEA */
   .com-box { display:flex; align-items:center; gap:6px; }
   .com-lbl { font-size:11px; color:var(--text-3); text-transform:uppercase; letter-spacing:.04em; }
@@ -1710,6 +1716,8 @@ const COLS = [
   { k:'nombre',  label:'Nombre',      w:13.0, left:true, get:f=>f.inst.nombre||'',
     cell:f=>f.m.dominada
       ? `<td class="td-nombre td-dominada" title="Pata dominada: el dual paga el máximo de las dos y esta rinde menos, así que no va a pagar. 1816 tampoco publica su TIR.">${f.inst.nombre||''} <span class="dom-mark">·</span></td>`
+      : f.itm
+      ? `<td class="td-nombre td-itm" title="Pata in the money: es la que hoy está pagando más y, si nada cambia, la que va a cobrar el bono. Se identifica por la pata para la que 1816 publica indicadores.">${f.inst.nombre||''} <span class="itm-mark">ITM</span></td>`
       : `<td class="td-nombre">${f.inst.nombre||''}</td>` },
   { k:'rating',  label:'Rating',      w:14.0, get:f=>ratingRank(f.inst), cell:f=>ratingCell(f.inst) },
   { k:'precio',  label:'Precio',      w:10.4, get:f=>f.m.precio, cell:f=>`<td><div class="pcell"><input class="precio-cell-input${f.m.precio?' has-value':''}" id="inp-${f.inst.ticker}" type="number" step="0.01" placeholder="—" value="${fmtPrecioInput(f.m.precio)}" oninput="onPrecioChange('${f.inst.ticker}', this.value)">${subPrecioEjec(f)}</div></td>` },
@@ -1836,6 +1844,28 @@ function renderTabla() {
   //     inflación futura, así que siempre parecería dominada por la TAMAR, que sí se proyecta.
   //     Además su TIR es REAL (sobre inflación) y es justamente el dato que se mira.
   //   · Dólar Linked: otra unidad (TMVE8 da 139 contra 149.680), la comparación no significa nada.
+  // Pata IN THE MONEY: la que efectivamente va a pagar. No se puede deducir comparando los
+  // valores finales salvo entre patas nominales (ver abajo), porque la CER se devenga sólo hasta
+  // hoy y la Dólar Linked está en otra unidad. Se usa la señal de 1816, que publica indicadores
+  // SÓLO para la pata que manda —para "TTS26 @Tasa Fija" devuelve todo null—: la pata cuya TEA
+  // coincide con la suya es la que paga. Verificado el 2026-08-12 en los 7 duales: la elegida
+  // difiere de 1816 en menos de 0,08 pp y la otra en decenas de puntos, así que no es ambiguo.
+  // La tolerancia es la red de seguridad por si el indicador viene viejo o de otra rueda.
+  const ITM_TOL_PP = 1.0;
+  const itmPorTicker = {};
+  for (const f of filas) {
+    if (f.inst.grupo !== 'dual' || f.m.tea == null) continue;
+    const tea1816 = indicadores1816[String(f.inst.ticker).toUpperCase()]?.tea;
+    if (typeof tea1816 !== 'number' || !isFinite(tea1816)) continue;
+    const d = Math.abs(f.m.tea - tea1816 * 100);
+    if (d > ITM_TOL_PP) continue;
+    const prev = itmPorTicker[f.inst.ticker];
+    if (!prev || d < prev.d) itmPorTicker[f.inst.ticker] = { d, pata: f.inst.pata?.tipo };
+  }
+  for (const f of filas) {
+    if (f.inst.grupo === 'dual' && itmPorTicker[f.inst.ticker]?.pata === f.inst.pata?.tipo) f.itm = true;
+  }
+
   const PATAS_COMPARABLES = ['TAMAR', 'LECAP'];
   const vfsPorTicker = {};
   for (const f of filas) {
@@ -1851,6 +1881,10 @@ function renderTabla() {
       f.m = { ...f.m, tna: null, tea: null, md: null, paridad: null, dominada: true };
     }
   }
+
+  // Índice ticker|pata -> ITM, para poder volcarlo a bonos_data más abajo.
+  const filasPorClave = {};
+  for (const f of filas) if (f.itm) filasPorClave[f.inst.ticker + '|' + (f.inst.pata?.tipo || '')] = true;
 
   // 2) Agrupar preservando el orden de aparición de los grupos
   const grupos = []; const gidx = {};
@@ -1894,7 +1928,10 @@ function renderTabla() {
       // para poder llevarlas a una convención única (ver globVsBon).
       return { ticker: inst.ticker, grupo: inst.grupo, nombre: inst.nombre, venc: inst.venc,
                md: m.md, tea: m.tea, precio: m.precio, pataTipo: inst.pata?.tipo || null,
-               frecCupon: frecuenciaCupon(inst) || 1, plazo: m.plazo ?? null };
+               frecCupon: frecuenciaCupon(inst) || 1, plazo: m.plazo ?? null,
+               // `itm` se resuelve en renderTabla contra el indicador de 1816, así que las
+               // páginas que leen esto (duales.html) no pueden recalcularlo por su cuenta.
+               itm: !!filasPorClave[inst.ticker + '|' + (inst.pata?.tipo || '')] };
     }).filter(d => d.md !== null && d.tea !== null);
     localStorage.setItem('bonos_data', JSON.stringify(enriched));
   } catch(e) { console.warn('localStorage error:', e); }
@@ -2283,8 +2320,11 @@ async function fetchPreciosImpl(force = false) {
       // `ind` pide TIR + duration + paridad (bonos sin cronograma). `par` pide sólo la paridad,
       // que sale la mitad: son los que tienen cronograma pero sin los cupones ya pagados, donde
       // no se pueden computar los intereses corridos acá (ver paridadDe).
+      // A los duales se les pide `ind` aunque sus métricas se calculen acá: la TEA de 1816 es lo
+      // que identifica la pata IN THE MONEY (ver renderTabla). Son 7 tickers —el proxy dedupe, no
+      // 14 patas— así que el costo extra son 21 créditos por consulta real a 1816.
       body: JSON.stringify(vivos.map(i => ({ ticker: i.ticker, grupo: i.grupo,
-                                             ind: usaIndicadores1816(i),
+                                             ind: usaIndicadores1816(i) || i.grupo === 'dual',
                                              par: usaParidad1816(i) }))),
     });
     if (!resp.ok) throw new Error('proxy HTTP ' + resp.status);

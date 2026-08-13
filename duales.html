@@ -143,6 +143,11 @@
   td:nth-child(2), td:nth-child(5) { text-align: left; }
   tr.dual-sep td { border-top: 2px solid var(--navy); }
   .badge-pata { font-size: 10px; font-weight: 600; padding: 2px 8px; border-radius: 4px; }
+  /* Pata in the money: la que va a pagar. Lo resuelve el Monitor contra el indicador de 1816
+     y viaja en bonos_data; acá no se puede recalcular. */
+  .itm-mark { font-size: 8.5px; font-weight: 700; letter-spacing: .04em; color: #00B0F0;
+              border: 1px solid rgba(0,176,240,.45); border-radius: 3px; padding: 0 3px;
+              margin-left: 5px; vertical-align: 1px; }
   .badge-cer { background: #e8edf5; color: var(--navy); border: 1px solid var(--navy); }
   .badge-tamar { background: #dbeafe; color: #17336f; border: 1px solid #17336f; }
   .badge-lecap { background: #e2f4fc; color: var(--blue); border: 1px solid var(--blue); }
@@ -288,7 +293,7 @@ function renderTabla() {
       const sep = (j === 0 && idx > 0) ? ' class="dual-sep"' : '';
       html += `<tr${sep}>
         <td>${j === 0 ? tk : ''}</td>
-        <td>${badgePata(pata.pataTipo)}</td>
+        <td>${badgePata(pata.pataTipo)}${pata.itm ? '<span class="itm-mark" title="Pata in the money: es la que hoy paga más y, si nada cambia, la que va a cobrar el bono.">ITM</span>' : ''}</td>
         <td>${fmtDate(pata.venc)}</td>
         <td class="val-amber">${tirDual.toFixed(2)}%</td>
         <td>${puro ? puro.ticker : '<span class="no-comp">Sin comparable</span>'}</td>
