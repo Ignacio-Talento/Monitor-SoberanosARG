@@ -1124,10 +1124,13 @@ function renderBEI() {
     </tr>`;
   }
   html += '</tbody></table>';
-  // Los meses ya terminados no se ocultan sin avisar: que aparezcan quiere decir que la planilla
-  // de indicadores quedó vieja, y eso hay que verlo, no taparlo.
+  // Los meses ya cerrados se omiten, pero se dice cuáles y por qué. Que estén en la planilla NO
+  // quiere decir que esté desactualizada: el REM sigue publicando el mes en curso hasta que sale
+  // el dato del INDEC, así que en agosto el relevamiento todavía trae julio como pronóstico. Lo
+  // que no se puede es sacarlo de la curva: el break-even se mide entre dos fechas futuras, y un
+  // mes que ya terminó no tiene tramo de curva propio.
   if (vencidos.length) {
-    html += `<div class="bei-aviso">El REM cargado en <b>Indicadores.xlsx</b> arranca en ${vencidos.join(', ')}, que ya ${vencidos.length > 1 ? 'terminaron' : 'terminó'}. Esas filas se omiten. Conviene actualizarlo con el último relevamiento.</div>`;
+    html += `<div class="bei-aviso">${vencidos.join(', ')} ya ${vencidos.length > 1 ? 'cerraron' : 'cerró'}, así que no ${vencidos.length > 1 ? 'tienen' : 'tiene'} tramo de curva propio y se ${vencidos.length > 1 ? 'omiten' : 'omite'}. Si el INDEC todavía no publicó ${vencidos.length > 1 ? 'esos meses' : 'ese mes'}, el REM lo sigue informando como pronóstico y su inflación está incorporada en el break-even de los meses siguientes.</div>`;
   }
   contenido.innerHTML = html;
 }
