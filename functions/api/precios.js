@@ -54,13 +54,9 @@ const MAPA_BOPREAL = {
 };
 
 // Devuelve { t: <ticker 1816>, moneda } o null si no mapea (=> fallback a Eco)
-// Segmentos que el frontend puede pedir explícitamente. Sólo aplica a los hard-dollar: un
-// instrumento en pesos no cotiza en CCL, así que ahí el override se ignora y manda el default.
-const SEG_OVERRIDE = new Set(["mep", "ccl"]);
-function map1816(grupo, ticker, segPedido) {
-  const base = MONEDA[grupo];
-  if (!base) return null;
-  const moneda = (base === "mep" && SEG_OVERRIDE.has(segPedido)) ? segPedido : base;
+function map1816(grupo, ticker) {
+  const moneda = MONEDA[grupo];
+  if (!moneda) return null;
   let t;
   if (grupo === "usdbonares" || grupo === "usdglobales") t = ticker;               // llega sin la D
   else if (grupo === "usdbopreal") t = MAPA_BOPREAL[ticker] || null;
@@ -229,7 +225,7 @@ async function computePrecios(env, items) {
     const eco = String(it.ticker || "").trim().toUpperCase();
     const grupo = String(it.grupo || "").trim();
     if (!eco || !grupo) continue;
-    const m = map1816(grupo, eco, String(it.moneda || "").toLowerCase());
+    const m = map1816(grupo, eco);
     if (!m) continue;
     const ind = it.ind === true;
     const par = !ind && it.par === true;
@@ -283,21 +279,13 @@ async function computePrecios(env, items) {
 
   // Fallback a Eco SOLO para lo que 1816 no resolvió. Acotado: cada uno es un subrequest
   // y Cloudflare corta en ~50 por request (si no, un día sin datos deja la respuesta a medias).
-  const grupoDe = {}, pidioCCL = {};
-  for (const it of items) {
-    const k = String(it.ticker || "").trim().toUpperCase();
-    grupoDe[k] = String(it.grupo || "").trim();
-    if (String(it.moneda || "").toLowerCase() === "ccl") pidioCCL[k] = true;
-  }
+  const grupoDe = {};
+  for (const it of items) grupoDe[String(it.ticker || "").trim().toUpperCase()] = String(it.grupo || "").trim();
   const SIN_ECO = new Set(["subsoberano", "onlocal", "onny"]);
   const pendientes = [...new Set(
     items.map((it) => String(it.ticker || "").trim().toUpperCase())
          // Subsoberanos y ONs de ley local/NY no están en Eco: pedirlos sólo gastaría subrequests.
-         .filter((eco) => eco && !(eco in result) && !SIN_ECO.has(grupoDe[eco])
-         // Si se pidió CCL, Eco no sirve: publica el precio del segmento local y lo devolvería
-         // sin avisar, mezclando segmentos en la misma tabla. Mejor "—" que un precio de otro
-         // mercado disfrazado del que se pidió.
-                       && !pidioCCL[eco])
+         .filter((eco) => eco && !(eco in result) && !SIN_ECO.has(grupoDe[eco]))
   )].slice(0, MAX_ECO_FALLBACK);
   const de1816 = Object.keys(result).length;
   for (const eco of pendientes) {
@@ -308,9 +296,9 @@ async function computePrecios(env, items) {
   // simplemente no operó y no había manera de distinguirlos desde el frontend.
   return {
     precios: result, indicadores, fecha: fechaRueda,
-    // `segmentos` deja ver contra qué segmento de 1816 se pidió cada lote. Sirve para verificar
-    // el selector MEP/CCL desde el frontend: sin esto, si dos segmentos devuelven el mismo precio
-    // no hay forma de distinguir "cotizan igual" de "el override no se aplicó".
+    // `segmentos` deja ver contra qué segmento de 1816 se pidió cada lote. Hoy son siempre los
+    // defaults de MONEDA —los hard-dollar en mep, el resto en ars— pero tenerlo explícito es lo
+    // que permite verificar de afuera que la valuación es la que dice la nota al pie del monitor.
     diag: { de1816, deEco: Object.keys(result).length - de1816, fallos,
             segmentos: [...new Set(Object.values(porMoneda).map((ps) => ps[0].moneda))].sort() },
   };
@@ -324,12 +312,13 @@ function json(obj, status = 200, extra = {}) {
   });
 }
 // La clave tiene que incluir TODO lo que cambia la respuesta, no sólo qué instrumentos se piden.
-// Faltaban `moneda`, `ind` y `par`: con el selector MEP/CCL eso hacía que la consulta en CCL se
-// sirviera del caché de la de MEP —misma clave— y devolviera precios del otro segmento rotulados
-// como CCL, en silencio. Se veía en diag.segmentos: pedías ccl y respondía ["mep"].
+// `ind` y `par` faltaban: dos consultas sobre el mismo set con distinto `ind` compartían clave y
+// la segunda se servía de la primera, así que podía volver sin indicadores (o con ellos) según
+// quién hubiera pegado antes. Con el frontend actual los flags son determinísticos por
+// instrumento y no se cruzan, pero es una colisión silenciosa y sale una línea evitarla.
 function hashItems(items) {
   const s = items.map((i) =>
-    `${i.ticker}:${i.grupo}:${String(i.moneda || "").toLowerCase()}:${i.ind === true ? 1 : 0}:${i.par === true ? 1 : 0}`
+    `${i.ticker}:${i.grupo}:${i.ind === true ? 1 : 0}:${i.par === true ? 1 : 0}`
   ).sort().join(",");
   let h = 0;
   for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0;
