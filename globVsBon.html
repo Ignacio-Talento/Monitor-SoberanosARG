@@ -98,6 +98,27 @@
   .gb-tip span { display: block; color: rgba(255,255,255,.72); }
   .gb-tip i { font-style: normal; color: #fff; font-family: var(--mono); }
   .gb-tip-out { color: #ffb4a8 !important; margin-top: 3px; }
+  /* ── Histórico del canje: barra de período + leyenda con toggles ── */
+  .hc-barra { display: flex; gap: 16px; align-items: center; flex-wrap: wrap; justify-content: space-between; margin-bottom: 12px; }
+  .hc-periodos { display: inline-flex; }
+  .hc-per { font-family: var(--mono); font-size: 10px; font-weight: 700; letter-spacing: .05em;
+            padding: 4px 10px; cursor: pointer; background: #fff; color: var(--text-3);
+            border: 1px solid var(--border-l); border-left-width: 0; }
+  .hc-per:first-child { border-left-width: 1px; border-radius: 4px 0 0 4px; }
+  .hc-per:last-child  { border-radius: 0 4px 4px 0; }
+  .hc-per:hover { color: var(--navy); }
+  .hc-per.on { background: var(--cyan); border-color: var(--cyan); color: #fff; }
+  .hc-fechas { display: flex; gap: 12px; align-items: center; font-size: 11px; color: var(--text-3); font-family: var(--sans); }
+  .hc-fechas input { font-family: var(--mono); font-size: 11px; padding: 3px 6px; margin-left: 5px;
+                     border: 1px solid var(--border-l); border-radius: 4px; color: var(--navy); background: #fff; }
+  .hc-ley { display: flex; gap: 14px; align-items: center; flex-wrap: wrap; font-size: 11px;
+            color: var(--text-3); margin: 2px 0 12px 2px; }
+  .hc-ley button { display: inline-flex; align-items: center; gap: 6px; background: none; border: none;
+                   cursor: pointer; font-size: 11px; color: var(--text-3); font-family: var(--sans); padding: 2px 0; }
+  .hc-ley button i { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+  .hc-ley button.off { opacity: .32; text-decoration: line-through; }
+  .hc-linea { fill: none; stroke-width: 2; opacity: .9; }
+  .hc-hoy { stroke: var(--border-l); stroke-width: 1; stroke-dasharray: 3 3; }
   .gb-ley { display: flex; gap: 18px; align-items: center; flex-wrap: wrap; font-size: 11px;
             color: var(--text-3); margin: 2px 0 12px 2px; }
   .gb-ley span { display: flex; align-items: center; gap: 6px; }
@@ -241,12 +262,37 @@
       </tbody>
     </table>
   </div>
+
+  <!-- HISTÓRICO DEL CANJE -->
+  <div class="panel">
+    <div class="panel-title">Canje histórico · por par</div>
+    <div class="comentario">
+      El mismo canje de la tabla de arriba, día por día. La serie sale de 1816 y arranca en la
+      emisión del canje de deuda de <strong>2020</strong>, así que cubre todo el historial de estos
+      bonos.<br><br>
+      Sirve para ubicar el canje de hoy contra su propio rango: si un par está en el piso de los
+      últimos dos años, el Global está barato contra su Bonar gemelo, y al revés.
+    </div>
+    <div class="hc-barra">
+      <div class="hc-periodos" id="hc-periodos"></div>
+      <div class="hc-fechas">
+        <label>Desde <input type="date" id="hc-desde" onchange="onFechaCanje()"></label>
+        <label>Hasta <input type="date" id="hc-hasta" onchange="onFechaCanje()"></label>
+      </div>
+    </div>
+    <div class="hc-ley" id="hc-ley"></div>
+    <div class="gb-wrap" id="graf-canje"></div>
+    <div id="hc-estado" style="font-size:12px;color:var(--text-3);font-family:var(--mono);font-style:italic;padding:12px 0;"></div>
+  </div>
 </div>
 
 <script>
 // ── HELPERS FECHA ────────────────────────────────────────────
 function parseLocalDate(s) { if (!s) return null; const p = String(s).split('-').map(Number); return new Date(p[0], p[1]-1, p[2]); }
 function fmtDate(s) { if (!s) return '—'; try { const d = parseLocalDate(s); return `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getFullYear()).slice(2)}`; } catch { return s; } }
+// Date -> 'YYYY-MM-DD' en hora LOCAL. toISOString() no sirve: convierte a UTC y en Argentina
+// (UTC-3) devuelve el día anterior para cualquier hora antes de las 21.
+function dateToStr(d) { return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; }
 
 // ── REGRESIÓN ────────────────────────────────────────────────
 function regresionPoly2(puntos) {
@@ -466,10 +512,222 @@ function renderSpread(datos) {
   tbody.innerHTML = html;
 }
 
+// ── HISTÓRICO DEL CANJE ──────────────────────────────────────
+//
+// Los pares van explícitos y no derivados de bonos_data como en la tabla. Dos motivos: el gráfico
+// tiene que poder dibujarse aunque no se haya pasado por el Monitor, y el emparejamiento por
+// número de año es ambiguo en el 29 —conviven AL29, AO29 y AN29— así que acá se fija cuál es el
+// gemelo de GD29 en vez de depender del orden en que vengan.
+const PARES_CANJE = [
+  { bonar: 'AL29', global: 'GD29', color: '#002060' },
+  { bonar: 'AL30', global: 'GD30', color: '#145E81' },
+  { bonar: 'AL35', global: 'GD35', color: '#00B0F0' },
+  { bonar: 'AE38', global: 'GD38', color: '#6B7280' },
+  { bonar: 'AL41', global: 'GD41', color: '#0F4C68' },
+];
+const CANJE_CACHE = 'canje_series_v2';
+const CANJE_DESDE = '2020-09-01';   // canje de deuda: antes de esa fecha estos bonos no existen
+
+let canjeSeries = {};      // ticker -> { 'YYYY-MM-DD': precio }
+let canjePeriodo = '1Y';
+let canjeOcultos = new Set();
+
+const hoyStr = () => { const d=new Date(); d.setHours(0,0,0,0); return dateToStr(d); };
+
+// Trae la serie de precios y la guarda en localStorage. La primera vez baja los ~6 años completos
+// —unos 21.600 créditos de 1816— y después SÓLO el tramo nuevo desde el último día guardado, que
+// son un par de cientos. Sin eso, cada visita costaría la historia entera.
+async function cargarSeriesCanje() {
+  const est = document.getElementById('hc-estado');
+  const tickers = PARES_CANJE.flatMap(p => [p.bonar, p.global]);
+  let guardado = null;
+  try { guardado = JSON.parse(localStorage.getItem(CANJE_CACHE) || 'null'); } catch {}
+  if (guardado && guardado.series) canjeSeries = guardado.series;
+
+  const hasta = hoyStr();
+  // Desde dónde falta: el día siguiente al último guardado, o todo si no hay nada.
+  let desde = CANJE_DESDE;
+  if (guardado && guardado.hasta && guardado.hasta < hasta) {
+    const d = parseLocalDate(guardado.hasta); d.setDate(d.getDate() + 1); desde = dateToStr(d);
+  } else if (guardado && guardado.hasta >= hasta) {
+    est.textContent = ''; return;   // ya está al día
+  }
+
+  const completa = desde === CANJE_DESDE;
+  est.textContent = completa
+    ? 'Bajando el histórico completo de 1816 (una sola vez, puede tardar)...'
+    : 'Actualizando el tramo nuevo...';
+  renderGraficoCanje();
+
+  // La API cobra tickers x días y el endpoint corta en 20.000, así que la carga inicial va en
+  // tramos de 2 años. Los incrementales entran de una.
+  const tramos = [];
+  let ini = desde;
+  while (ini <= hasta) {
+    const f = parseLocalDate(ini); f.setFullYear(f.getFullYear() + 2);
+    const fin = dateToStr(f) < hasta ? dateToStr(f) : hasta;
+    tramos.push([ini, fin]);
+    const sig = parseLocalDate(fin); sig.setDate(sig.getDate() + 1); ini = dateToStr(sig);
+  }
+
+  const fallos = [];
+  for (const [a, b] of tramos) {
+    try {
+      const r = await fetch('/api/series', { method: 'POST', headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ tickers, moneda: 'mep', desde: a, hasta: b }) });
+      const j = await r.json();
+      if (!r.ok) { fallos.push(j.error || ('HTTP ' + r.status)); continue; }
+      for (const [tk, serie] of Object.entries(j.series || {})) {
+        canjeSeries[tk] = Object.assign(canjeSeries[tk] || {}, serie);
+      }
+      if (j.diag && j.diag.fallos && j.diag.fallos.length) fallos.push(...j.diag.fallos);
+    } catch (e) { fallos.push(String(e.message || e)); }
+    renderGraficoCanje();   // se va dibujando a medida que llega
+  }
+
+  try { localStorage.setItem(CANJE_CACHE, JSON.stringify({ hasta, series: canjeSeries })); }
+  catch (e) { console.warn('no se pudo guardar la serie del canje:', e); }
+
+  est.textContent = fallos.length ? `1816 falló en parte del rango: ${fallos.slice(0, 2).join(' · ')}` : '';
+  renderGraficoCanje();
+}
+
+// Canje por fecha para un par: sólo las fechas con precio en LOS DOS bonos.
+function serieCanje(par) {
+  const b = canjeSeries[par.bonar] || {}, g = canjeSeries[par.global] || {};
+  return Object.keys(b)
+    .filter(f => g[f] != null && b[f])
+    .sort()
+    .map(f => ({ f, y: (g[f] - b[f]) / b[f] * 100 }));
+}
+
+function rangoPeriodo() {
+  const hasta = hoyStr();
+  const d = parseLocalDate(hasta);
+  if (canjePeriodo === '1W') d.setDate(d.getDate() - 7);
+  else if (canjePeriodo === '1M') d.setMonth(d.getMonth() - 1);
+  else if (canjePeriodo === 'YTD') { d.setMonth(0); d.setDate(1); }
+  else if (canjePeriodo === '1Y') d.setFullYear(d.getFullYear() - 1);
+  else if (canjePeriodo === 'ALL') return { desde: CANJE_DESDE, hasta };
+  else return null;   // 'custom': mandan los inputs de fecha
+  return { desde: dateToStr(d), hasta };
+}
+
+function setPeriodoCanje(p) {
+  canjePeriodo = p;
+  const r = rangoPeriodo();
+  if (r) { document.getElementById('hc-desde').value = r.desde; document.getElementById('hc-hasta').value = r.hasta; }
+  renderBotonesCanje();
+  renderGraficoCanje();
+}
+function onFechaCanje() { canjePeriodo = 'custom'; renderBotonesCanje(); renderGraficoCanje(); }
+
+function renderBotonesCanje() {
+  const cont = document.getElementById('hc-periodos');
+  const opts = [['1W','1S'],['1M','1M'],['YTD','YTD'],['1Y','1A'],['ALL','Todo']];
+  cont.innerHTML = opts.map(([k, lbl]) =>
+    `<button class="hc-per${canjePeriodo === k ? ' on' : ''}" onclick="setPeriodoCanje('${k}')">${lbl}</button>`).join('');
+}
+
+function renderLeyendaCanje() {
+  const cont = document.getElementById('hc-ley');
+  cont.innerHTML = PARES_CANJE.map(p => {
+    const off = canjeOcultos.has(p.bonar) ? ' off' : '';
+    return `<button class="${off.trim()}" onclick="togglePar('${p.bonar}')"><i style="background:${p.color}"></i>${p.global} / ${p.bonar}</button>`;
+  }).join('');
+}
+function togglePar(b) { canjeOcultos.has(b) ? canjeOcultos.delete(b) : canjeOcultos.add(b); renderLeyendaCanje(); renderGraficoCanje(); }
+
+function renderGraficoCanje() {
+  const cont = document.getElementById('graf-canje');
+  if (!cont) return;
+  const desde = document.getElementById('hc-desde').value || CANJE_DESDE;
+  const hasta = document.getElementById('hc-hasta').value || hoyStr();
+
+  const series = PARES_CANJE.filter(p => !canjeOcultos.has(p.bonar)).map(p => ({
+    par: p, pts: serieCanje(p).filter(d => d.f >= desde && d.f <= hasta),
+  })).filter(s => s.pts.length);
+
+  if (!series.length) { cont.innerHTML = ''; return; }
+
+  const tMs = f => parseLocalDate(f).getTime();
+  const todos = series.flatMap(s => s.pts);
+  const W=1000, H=400, ML=58, MR=18, MT=16, MB=46;
+  const ancho=W-ML-MR, alto=H-MT-MB;
+  const x0=Math.min(...todos.map(d=>tMs(d.f))), x1=Math.max(...todos.map(d=>tMs(d.f)));
+  const ext=v=>{ const a=Math.min(...v), b=Math.max(...v); const d=(b-a)||Math.abs(a)||1; return [a-d*0.10, b+d*0.10]; };
+  const [y0,y1]=ext(todos.map(d=>d.y));
+  const px=v=>ML+((v-x0)/((x1-x0)||1))*ancho;
+  const py=v=>MT+alto-((v-y0)/((y1-y0)||1))*alto;
+
+  // Ticks del eje X: fechas repartidas, con formato según cuánto abarque el rango.
+  const meses=(x1-x0)/(30*86400000);
+  const fmtX = meses>26 ? (d=>String(d.getFullYear()))
+             : meses>3  ? (d=>`${['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'][d.getMonth()]}-${String(d.getFullYear()).slice(2)}`)
+             : (d=>`${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}`);
+  const NX=Math.min(7, Math.max(2, Math.round(ancho/140)));
+  const tx=[...Array(NX+1)].map((_,i)=>x0+(x1-x0)*i/NX);
+  const ticks=(a,b,n)=>{
+    const p0=(b-a)/n, mag=Math.pow(10,Math.floor(Math.log10(Math.abs(p0)||1))), r=p0/mag;
+    const paso=(r<=1?1:r<=2?2:r<=2.5?2.5:r<=5?5:10)*mag;
+    const o=[]; for(let v=Math.ceil(a/paso)*paso; v<=b+1e-9; v+=paso) o.push(+v.toFixed(10));
+    return o;
+  };
+  const ty=ticks(y0,y1,5);
+
+  let g='';
+  for(const t of tx) g+=`<line x1="${px(t).toFixed(1)}" y1="${MT}" x2="${px(t).toFixed(1)}" y2="${MT+alto}" class="gb-grid"/>`;
+  for(const t of ty) g+=`<line x1="${ML}" y1="${py(t).toFixed(1)}" x2="${ML+ancho}" y2="${py(t).toFixed(1)}" class="gb-grid"/>`;
+  // Línea del cero: el canje puede darse vuelta y ahí el signo es lo que importa.
+  if (y0 < 0 && y1 > 0) g+=`<line x1="${ML}" y1="${py(0).toFixed(1)}" x2="${ML+ancho}" y2="${py(0).toFixed(1)}" class="hc-hoy"/>`;
+  g+=`<line x1="${ML}" y1="${MT+alto}" x2="${ML+ancho}" y2="${MT+alto}" class="gb-eje"/>`;
+  g+=`<line x1="${ML}" y1="${MT}" x2="${ML}" y2="${MT+alto}" class="gb-eje"/>`;
+  for(const t of tx) g+=`<text x="${px(t).toFixed(1)}" y="${MT+alto+18}" class="gb-tick" text-anchor="middle">${fmtX(new Date(t))}</text>`;
+  for(const t of ty) g+=`<text x="${ML-9}" y="${(py(t)+4).toFixed(1)}" class="gb-tick" text-anchor="end">${t.toFixed(1)}%</text>`;
+  g+=`<text x="16" y="${MT+alto/2}" class="gb-axis" text-anchor="middle" transform="rotate(-90 16 ${MT+alto/2})">CANJE %</text>`;
+
+  for(const s of series){
+    const d=s.pts.map((p,i)=>`${i?'L':'M'}${px(tMs(p.f)).toFixed(1)},${py(p.y).toFixed(1)}`).join(' ');
+    g+=`<path d="${d}" class="hc-linea" stroke="${s.par.color}"/>`;
+    const ult=s.pts[s.pts.length-1];
+    g+=`<circle cx="${px(tMs(ult.f)).toFixed(1)}" cy="${py(ult.y).toFixed(1)}" r="3.5" fill="${s.par.color}"/>`;
+  }
+
+  cont.innerHTML=`<svg viewBox="0 0 ${W} ${H}" class="gb-svg" role="img" aria-label="Canje histórico por par">${g}<rect x="${ML}" y="${MT}" width="${ancho}" height="${alto}" fill="transparent" id="hc-cap"/></svg><div class="gb-tip" id="hc-tip" hidden></div>`;
+
+  // Tooltip: en vez de un punto por dato —serían miles— se busca la fecha más cercana al mouse y
+  // se muestran TODOS los pares visibles en esa fecha, que es como se lee un gráfico de series.
+  const tip=cont.querySelector('#hc-tip');
+  const cap=cont.querySelector('#hc-cap');
+  const svg=cont.querySelector('svg');
+  cap.addEventListener('mousemove',ev=>{
+    const r=svg.getBoundingClientRect();
+    const xv=x0+((ev.clientX-r.left)/r.width*W-ML)/ancho*(x1-x0);
+    let mejor=null;
+    for(const s of series){
+      let c=null;
+      for(const p of s.pts){ const d=Math.abs(tMs(p.f)-xv); if(!c||d<c.d) c={d,p}; }
+      if(c && (!mejor||c.d<mejor.d)) mejor={d:c.d,f:c.p.f};
+    }
+    if(!mejor) return;
+    const filas=series.map(s=>{ const p=s.pts.find(q=>q.f===mejor.f); return p
+      ? `<span style="color:${s.par.color}">■</span> ${s.par.global}/${s.par.bonar} <i>${p.y.toFixed(2)}%</i>` : null; }).filter(Boolean);
+    tip.innerHTML=`<b>${fmtDate(mejor.f)}</b>${filas.map(f=>`<span>${f}</span>`).join('')}`;
+    tip.hidden=false;
+    const cr=cont.getBoundingClientRect();
+    tip.style.left=Math.min(ev.clientX-cr.left+14, cr.width-210)+'px';
+    tip.style.top=(ev.clientY-cr.top-10)+'px';
+  });
+  cap.addEventListener('mouseleave',()=>{ tip.hidden=true; });
+}
+
 // ── INIT ─────────────────────────────────────────────────────
 const datos = JSON.parse(localStorage.getItem('bonos_data') || '[]');
 renderGrafico(datos);
 renderSpread(datos);
+setPeriodoCanje('1Y');
+renderLeyendaCanje();
+cargarSeriesCanje();
 </script>
 
 
