@@ -667,9 +667,11 @@ function renderGraficoCanje() {
 
   // Ticks del eje X: fechas repartidas, con formato según cuánto abarque el rango.
   const meses=(x1-x0)/(30*86400000);
-  const fmtX = meses>26 ? (d=>String(d.getFullYear()))
-             : meses>3  ? (d=>`${['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'][d.getMonth()]}-${String(d.getFullYear()).slice(2)}`)
-             : (d=>`${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}`);
+  // Sin el año en rangos largos las etiquetas se repetían: con 7 ticks sobre 6 años el espaciado
+  // es de ~10 meses, así que dos ticks consecutivos caían en el mismo año y se leía "2024, 2024".
+  const fmtX = meses>3
+    ? (d=>`${['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'][d.getMonth()]}-${String(d.getFullYear()).slice(2)}`)
+    : (d=>`${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}`);
   const NX=Math.min(7, Math.max(2, Math.round(ancho/140)));
   const tx=[...Array(NX+1)].map((_,i)=>x0+(x1-x0)*i/NX);
   const ticks=(a,b,n)=>{
@@ -691,9 +693,25 @@ function renderGraficoCanje() {
   for(const t of ty) g+=`<text x="${ML-9}" y="${(py(t)+4).toFixed(1)}" class="gb-tick" text-anchor="end">${t.toFixed(1)}%</text>`;
   g+=`<text x="16" y="${MT+alto/2}" class="gb-axis" text-anchor="middle" transform="rotate(-90 16 ${MT+alto/2})">CANJE %</text>`;
 
+  // La línea se CORTA cuando hay un hueco largo entre ruedas. Los pares menos líquidos tienen
+  // tramos enteros sin operar —GD29/AL29 casi no cotizó entre 2021 y 2024— y unir esos puntos
+  // dibujaba una recta que parecía una tendencia suave cuando en realidad no hay ningún dato.
+  const HUECO_MAX = 21 * 86400000;   // 3 semanas
   for(const s of series){
-    const d=s.pts.map((p,i)=>`${i?'L':'M'}${px(tMs(p.f)).toFixed(1)},${py(p.y).toFixed(1)}`).join(' ');
-    g+=`<path d="${d}" class="hc-linea" stroke="${s.par.color}"/>`;
+    let d='', prev=null;
+    for(const p of s.pts){
+      const t=tMs(p.f);
+      d += `${(prev===null || t-prev>HUECO_MAX) ? 'M' : 'L'}${px(t).toFixed(1)},${py(p.y).toFixed(1)} `;
+      prev=t;
+    }
+    g+=`<path d="${d.trim()}" class="hc-linea" stroke="${s.par.color}"/>`;
+    // Los puntos sueltos (los que quedan aislados entre dos huecos) no se ven con sólo el path:
+    // un 'M' seguido de otro 'M' no dibuja nada. Se les pone un círculo chico.
+    s.pts.forEach((p,i)=>{
+      const t=tMs(p.f);
+      const solo = (i===0 || t-tMs(s.pts[i-1].f)>HUECO_MAX) && (i===s.pts.length-1 || tMs(s.pts[i+1].f)-t>HUECO_MAX);
+      if(solo) g+=`<circle cx="${px(t).toFixed(1)}" cy="${py(p.y).toFixed(1)}" r="1.8" fill="${s.par.color}" opacity=".9"/>`;
+    });
     const ult=s.pts[s.pts.length-1];
     g+=`<circle cx="${px(tMs(ult.f)).toFixed(1)}" cy="${py(ult.y).toFixed(1)}" r="3.5" fill="${s.par.color}"/>`;
   }
