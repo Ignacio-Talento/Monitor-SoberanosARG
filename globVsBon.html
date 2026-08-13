@@ -281,8 +281,8 @@
     <div class="hc-barra">
       <div class="hc-periodos" id="hc-periodos"></div>
       <div class="hc-fechas">
-        <label>Desde <input type="date" id="hc-desde" onchange="onFechaCanje()"></label>
-        <label>Hasta <input type="date" id="hc-hasta" onchange="onFechaCanje()"></label>
+        <label>Desde <input type="date" id="hc-desde" onchange="onFecha('canje')"></label>
+        <label>Hasta <input type="date" id="hc-hasta" onchange="onFecha('canje')"></label>
       </div>
     </div>
     <div class="hc-ley" id="hc-ley"></div>
@@ -292,14 +292,23 @@
 
   <!-- HISTÓRICO DE TIRs -->
   <div class="panel">
-    <div class="panel-title">TIR histórica · Bonar vs Global</div>
+    <div class="panel-title">Diferencial de TIR · Bonar − Global</div>
     <div class="comentario">
-      Las mismas TIR de la tabla, día por día. Por par van <strong>dos líneas del mismo color</strong>:
-      el Bonar con línea llena y el Global punteada. Se manejan con los mismos botones de período y
-      la misma leyenda del gráfico de arriba, así que apagando pares se aísla el que interese.<br><br>
-      Lo que se mira acá no es el nivel de cada uno sino <strong>cuánto se separan</strong>: esa
-      brecha es el canje del gráfico anterior visto en tasa en vez de en precio. Cuando las dos
-      líneas se juntan, la ley deja de pagarse.
+      Una línea por par: <strong>TIR del Bonar menos TIR del Global</strong>, día por día. Es el
+      canje del gráfico de arriba visto <strong>en tasa</strong> en vez de en precio.<br><br>
+      Un valor positivo quiere decir que el Bonar rinde más, que es lo habitual: se le exige más
+      tasa por la ley local. Cuanto más alto, más se está pagando por la legislación extranjera.
+      Cuando el diferencial <strong>se acerca a cero</strong> el mercado deja de discriminar entre
+      las dos leyes, y si se da vuelta es el Global el que rinde más.<br><br>
+      Tiene su <strong>propio selector de período</strong>, independiente del gráfico del canje, para
+      poder mirar un tramo largo arriba y uno corto acá. La leyenda de pares sí es compartida.
+    </div>
+    <div class="hc-barra">
+      <div class="hc-periodos" id="tir-periodos"></div>
+      <div class="hc-fechas">
+        <label>Desde <input type="date" id="tir-desde" onchange="onFecha('tir')"></label>
+        <label>Hasta <input type="date" id="tir-hasta" onchange="onFecha('tir')"></label>
+      </div>
     </div>
     <div class="gb-wrap" id="graf-tir"></div>
     <div id="tir-estado" style="font-size:12px;color:var(--text-3);font-family:var(--mono);font-style:italic;padding:12px 0;"></div>
@@ -553,8 +562,13 @@ const TEA_CACHE   = 'canje_tea_v1';
 const CANJE_DESDE = '2020-09-01';
 
 let canjeSeries = {};      // ticker -> { 'YYYY-MM-DD': precio }
-let teaSeries   = {};      // ticker -> { 'YYYY-MM-DD': TIR % }
-let canjePeriodo = '1Y';
+let teaSeries   = {};      // ticker -> { 'YYYY-MM-DD': TIR (DECIMAL, ver renderGraficoTIR) }
+// Cada gráfico tiene su propio período: sirve mirar un tramo largo en el canje y uno corto en el
+// diferencial de tasas, o al revés. Lo único compartido es qué pares están visibles.
+const CTRL = {
+  canje: { periodo: '1Y', botones: 'hc-periodos',  desde: 'hc-desde',  hasta: 'hc-hasta'  },
+  tir:   { periodo: '1Y', botones: 'tir-periodos', desde: 'tir-desde', hasta: 'tir-hasta' },
+};
 let canjeOcultos = new Set();
 
 const hoyStr = () => { const d=new Date(); d.setHours(0,0,0,0); return dateToStr(d); };
@@ -634,34 +648,37 @@ function serieCanje(par) {
     .map(f => ({ f, y: (g[f] - b[f]) / b[f] * 100 }));
 }
 
-function rangoPeriodo() {
+function rangoPeriodo(k) {
+  const p = CTRL[k].periodo;
   const hasta = hoyStr();
   const d = parseLocalDate(hasta);
-  if (canjePeriodo === '1W') d.setDate(d.getDate() - 7);
-  else if (canjePeriodo === '1M') d.setMonth(d.getMonth() - 1);
-  else if (canjePeriodo === '3M') d.setMonth(d.getMonth() - 3);
-  else if (canjePeriodo === '6M') d.setMonth(d.getMonth() - 6);
-  else if (canjePeriodo === 'YTD') { d.setMonth(0); d.setDate(1); }
-  else if (canjePeriodo === '1Y') d.setFullYear(d.getFullYear() - 1);
-  else if (canjePeriodo === 'ALL') return { desde: CANJE_DESDE, hasta };
+  if (p === '1W') d.setDate(d.getDate() - 7);
+  else if (p === '1M') d.setMonth(d.getMonth() - 1);
+  else if (p === '3M') d.setMonth(d.getMonth() - 3);
+  else if (p === '6M') d.setMonth(d.getMonth() - 6);
+  else if (p === 'YTD') { d.setMonth(0); d.setDate(1); }
+  else if (p === '1Y') d.setFullYear(d.getFullYear() - 1);
+  else if (p === 'ALL') return { desde: CANJE_DESDE, hasta };
   else return null;   // 'custom': mandan los inputs de fecha
   return { desde: dateToStr(d), hasta };
 }
 
-function setPeriodoCanje(p) {
-  canjePeriodo = p;
-  const r = rangoPeriodo();
-  if (r) { document.getElementById('hc-desde').value = r.desde; document.getElementById('hc-hasta').value = r.hasta; }
-  renderBotonesCanje();
-  renderGraficoCanje();
-}
-function onFechaCanje() { canjePeriodo = 'custom'; renderBotonesCanje(); renderGraficoCanje(); }
+const redibujar = k => k === 'canje' ? renderGraficoCanje() : renderGraficoTIR();
 
-function renderBotonesCanje() {
-  const cont = document.getElementById('hc-periodos');
+function setPeriodo(k, p) {
+  CTRL[k].periodo = p;
+  const r = rangoPeriodo(k);
+  if (r) { document.getElementById(CTRL[k].desde).value = r.desde; document.getElementById(CTRL[k].hasta).value = r.hasta; }
+  renderBotones(k);
+  redibujar(k);
+}
+function onFecha(k) { CTRL[k].periodo = 'custom'; renderBotones(k); redibujar(k); }
+
+function renderBotones(k) {
+  const cont = document.getElementById(CTRL[k].botones);
   const opts = [['1W','1S'],['1M','1M'],['3M','3M'],['6M','6M'],['YTD','YTD'],['1Y','1A'],['ALL','Todo']];
-  cont.innerHTML = opts.map(([k, lbl]) =>
-    `<button class="hc-per${canjePeriodo === k ? ' on' : ''}" onclick="setPeriodoCanje('${k}')">${lbl}</button>`).join('');
+  cont.innerHTML = opts.map(([o, lbl]) =>
+    `<button class="hc-per${CTRL[k].periodo === o ? ' on' : ''}" onclick="setPeriodo('${k}','${o}')">${lbl}</button>`).join('');
 }
 
 function renderLeyendaCanje() {
@@ -671,12 +688,17 @@ function renderLeyendaCanje() {
     return `<button class="${off.trim()}" onclick="togglePar('${p.bonar}')"><i style="background:${p.color}"></i>${p.global} / ${p.bonar}</button>`;
   }).join('');
 }
-function togglePar(b) { canjeOcultos.has(b) ? canjeOcultos.delete(b) : canjeOcultos.add(b); renderLeyendaCanje(); renderGraficoCanje(); }
+// La leyenda SÍ es compartida: qué pares mirar es una sola decisión, aunque cada gráfico tenga
+// su propio período. Por eso el toggle redibuja los dos.
+function togglePar(b) {
+  canjeOcultos.has(b) ? canjeOcultos.delete(b) : canjeOcultos.add(b);
+  renderLeyendaCanje(); renderGraficoCanje(); renderGraficoTIR();
+}
 
-// Rango activo, común a los dos gráficos.
-function rangoActivo() {
-  return { desde: document.getElementById('hc-desde').value || CANJE_DESDE,
-           hasta: document.getElementById('hc-hasta').value || hoyStr() };
+// Rango activo de UN gráfico (cada uno tiene el suyo).
+function rangoActivo(k) {
+  return { desde: document.getElementById(CTRL[k].desde).value || CANJE_DESDE,
+           hasta: document.getElementById(CTRL[k].hasta).value || hoyStr() };
 }
 
 // Dibuja N series temporales en un contenedor. La usan el gráfico del canje y el de TIRs: cambian
@@ -779,37 +801,42 @@ function dibujarSerieTiempo(contId, series, ejeLabel) {
 }
 
 function renderGraficoCanje() {
-  const { desde, hasta } = rangoActivo();
+  const { desde, hasta } = rangoActivo('canje');
   dibujarSerieTiempo('graf-canje', PARES_CANJE.filter(p => !canjeOcultos.has(p.bonar)).map(p => ({
     label: `${p.global}/${p.bonar}`, color: p.color,
     pts: serieCanje(p).filter(d => d.f >= desde && d.f <= hasta),
   })), 'CANJE %');
-  renderGraficoTIR();
 }
 
-// Segundo gráfico: las mismas TIR que muestra la tabla, en el tiempo. Por par van DOS líneas del
-// mismo color —el Bonar llena y el Global punteada— para que se lea de a par: lo que importa no es
-// el nivel de cada uno sino cuánto se separan, que es el canje del gráfico de arriba visto en tasa.
+// Diferencial de TIR de un par: TIR del Bonar menos TIR del Global, sólo en las fechas con dato
+// en LOS DOS. Mostrar la resta y no las dos curvas por separado es lo que hace legible el gráfico:
+// con cinco pares eran diez líneas casi superpuestas, y lo que se quiere leer —cuánto paga la ley
+// extranjera— era justamente la distancia entre ellas, que es lo más difícil de estimar a ojo.
+//
+// OJO: 1816 devuelve `tea` en DECIMAL (0,0754), no en porcentaje. Es la misma trampa que en
+// /indicadores. Se guarda tal cual viene de la fuente y se convierte acá, al calcular.
+function serieDifTIR(par) {
+  const b = teaSeries[par.bonar] || {}, g = teaSeries[par.global] || {};
+  return Object.keys(b)
+    .filter(f => g[f] != null)
+    .sort()
+    .map(f => ({ f, y: (b[f] - g[f]) * 100 }));
+}
+
 function renderGraficoTIR() {
-  const { desde, hasta } = rangoActivo();
-  const series = [];
-  PARES_CANJE.filter(p => !canjeOcultos.has(p.bonar)).forEach(p => {
-    for (const [tk, dash] of [[p.bonar, ''], [p.global, '5 3']]) {
-      const s = teaSeries[tk] || {};
-      // OJO: 1816 devuelve `tea` en DECIMAL (0,0754), no en porcentaje. Es la misma trampa que en
-      // /indicadores. Se guarda tal cual viene de la fuente y se convierte sólo acá, al dibujar.
-      const pts = Object.keys(s).filter(f => f >= desde && f <= hasta).sort().map(f => ({ f, y: s[f] * 100 }));
-      if (pts.length) series.push({ label: tk, color: p.color, dash, pts });
-    }
-  });
-  dibujarSerieTiempo('graf-tir', series, 'TIR %');
+  const { desde, hasta } = rangoActivo('tir');
+  dibujarSerieTiempo('graf-tir', PARES_CANJE.filter(p => !canjeOcultos.has(p.bonar)).map(p => ({
+    label: `${p.bonar}−${p.global}`, color: p.color,
+    pts: serieDifTIR(p).filter(d => d.f >= desde && d.f <= hasta),
+  })), 'TIR BONAR − TIR GLOBAL (pp)');
 }
 
 // ── INIT ─────────────────────────────────────────────────────
 const datos = JSON.parse(localStorage.getItem('bonos_data') || '[]');
 renderGrafico(datos);
 renderSpread(datos);
-setPeriodoCanje('1Y');
+setPeriodo('canje', '1Y');
+setPeriodo('tir', '1Y');
 renderLeyendaCanje();
 cargarSeriesCanje();
 </script>
