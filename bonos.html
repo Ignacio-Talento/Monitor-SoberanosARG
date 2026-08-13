@@ -989,13 +989,23 @@ const GRUPOS_PARAMETRICOS = ['lecap', 'cer', 'tamar', 'usdlinked', 'dual'];
 
 // Días de TAMAR que se promedian para proyectar el tramo futuro del cupón (TAMAR y duales).
 // Son los mismos 5 que usa 1816 (su request manda diasPromedioTasaReferenciaProyectada: 5).
-// Medido contra sus TEA de la rueda del 2026-08-07 en los 6 TAMAR: con 3 días la diferencia
-// promedio era -0,28 pp y con 5 baja a -0,21; con 10 o 20 empeora. Queda un residuo chico que
-// NO viene de la proyección: M31G6, al que le quedan 23 días y casi no tiene tramo futuro,
-// se mueve apenas de -2,97 a -2,90. Ese resto es diferencia de metodología en el tramo ya
-// realizado (lag, conteo de días) y en TEA se ve grande sólo porque anualizar un plazo corto
-// amplifica: son 0,15% del valor final.
-const TAMAR_DIAS_PROY = 5;
+// Pasó de 5 a 10 el 2026-08-12. La nota anterior decía que 10 empeoraba, pero medía el PROMEDIO
+// de los 6 TAMAR, y ese promedio estaba dominado por M31G6 (-2,97), que arrastraba un problema
+// distinto —los días hábiles sin publicación que no se rellenaban, ver el fetch de TAMAR—. Medido
+// por bono contra 1816 en la rueda del 2026-08-12, los 5 con tramo futuro relevante dan:
+//
+//        N=5   +0,13 a +0,22 pp        N=8   +0,03 a +0,13        N=10  -0,03 a -0,12
+//
+// El motivo de fondo para agrandar la ventana no es ese ajuste, que es de un día y podría dar
+// distinto mañana: es que proyectar un promedio de 1 a 2 años con 5 observaciones diarias de una
+// serie ruidosa es pobre. La TAMAR se movió 22,4-23,9 en las últimas 10 ruedas, y el promedio de
+// 5 días salta 0,089 pp por día contra 0,057 con 10 (medido sobre las últimas 60 ruedas). O sea
+// que con 5 la TEA publicada tiembla por ruido de la serie, no porque cambie el bono.
+//
+// El residuo que queda (<0,13 pp) no se va con ningún N: entre el 07-08 y el 12-08 el signo del
+// desvío se dio vuelta, así que 1816 no está usando un promedio móvil como el nuestro. Perseguirlo
+// con esta constante es ajustar ruido.
+const TAMAR_DIAS_PROY = 10;
 
 // ¿Este instrumento se resuelve con los indicadores que publica 1816 en vez de calcularse acá?
 // Criterio POR INSTRUMENTO, no por grupo: un bono con cupón que todavía no tiene su cronograma
@@ -2484,7 +2494,25 @@ async function fetchBCRA() {
       // revés, y el cálculo necesita que serie[length-1] sea el dato MÁS RECIENTE.
       detalle.sort((a,b) => (a.fecha||'').localeCompare(b.fecha||''));
       // Guardar serie por ticker
-      bcraData.tamar[b.ticker] = detalle.map(r => parseFloat(r.valor));
+      // Rellenar los días hábiles SIN publicación arrastrando la última tasa. El cupón devenga
+      // todos los días hábiles: el que no tiene dato nuevo devenga a la última publicada. Saltearlos
+      // no era neutro, porque el promedio se hace sobre serie.length y los saca del peso. En la
+      // ventana de M31G6 faltaban 3 —06-11-2025 (Día del Bancario), 24-12 y 31-12—, los tres con la
+      // TAMAR bastante más alta que la de hoy (36%, 29%, 29% contra 23%), así que el promedio
+      // quedaba tirado para abajo y con él el valor final.
+      const porFecha = new Map(detalle.map(r => [String(r.fecha).slice(0, 10), parseFloat(r.valor)]));
+      const ultimaFecha = detalle.length ? String(detalle[detalle.length - 1].fecha).slice(0, 10) : null;
+      const serieRell = [];
+      if (ultimaFecha) {
+        let arrastre = null;
+        for (const d = parseLocalDate(fechaDesde); dateToStr(d) <= ultimaFecha; d.setDate(d.getDate() + 1)) {
+          if (!esHabil(d)) continue;
+          const v = porFecha.get(dateToStr(d));
+          if (v != null) arrastre = v;
+          if (arrastre != null) serieRell.push(arrastre);
+        }
+      }
+      bcraData.tamar[b.ticker] = serieRell;
       // Fecha del último dato: marca hasta dónde llega lo CONOCIDO (ver calcMetricas).
       if (detalle.length) bcraData.tamarUltPub[b.ticker] = String(detalle[detalle.length - 1].fecha).slice(0, 10);
       console.log(`TAMAR ${b.ticker}: ${detalle.length} datos`);
