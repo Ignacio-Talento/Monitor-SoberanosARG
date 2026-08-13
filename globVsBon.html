@@ -328,18 +328,16 @@
     <div class="comentario">
       Cuánto más caro sale el dólar cable que el dólar MEP, día por día. Es el costo de sacar los
       dólares afuera en lugar de dejarlos en una cuenta local.<br><br>
-      Se calcula sobre <strong>AL30</strong>, que es el bono más operado en los dos segmentos. El
-      mismo título cotiza en MEP y en CCL, así que el spread sale del cociente entre esos dos
-      precios: el precio en pesos se cancela —está en los dos dólares implícitos— y queda
-      <em>precio MEP / precio CCL − 1</em>.<br><br>
-      Lo ideal sería el <strong>Índice Dólar BYMA</strong>, que se arma con una canasta y no
-      depende de un bono puntual, pero es un producto pago: tanto su API como el widget del
-      histórico piden credenciales. El monitor ya está preparado para usarlo — si algún día se
-      contrata, se cargan las claves y el gráfico cambia de fuente solo.<br><br>
-      <strong>Cuidado con el tramo anterior a 2024.</strong> El segmento CCL de AL30 casi no
-      operaba: 3 ruedas en todo 2022 y 6 en 2023, contra 155 en 2024 y 243 en 2025. Los valores de
-      esos años salen de un puñado de precios sueltos —hay un +28% y un −16% en diciembre de
-      2023— y no representan nada. La serie utilizable arranca en 2024.
+      La fuente es el <strong>Índice Dólar BYMA</strong> y el <strong>Índice CCL BYMA</strong>, los
+      dos de referencia del mercado. BYMA los arma con una canasta de instrumentos, así que el
+      spread no queda a merced de que un bono puntual haya operado. La serie arranca el
+      <strong>3 de enero de 2024</strong>, que es cuando empiezan los índices.<br><br>
+      Si por algún motivo el índice no está disponible, el gráfico cae a calcularlo sobre
+      <strong>AL30</strong>: el mismo título cotiza en los dos segmentos, así que el spread sale
+      del cociente de esos precios —el peso se cancela y queda <em>precio MEP / precio CCL − 1</em>—.
+      Da prácticamente lo mismo en nivel (el 12/08 el índice marcaba 3,98% y AL30 3,91%) pero es
+      más ruidoso, y antes de 2024 no sirve: el segmento CCL de AL30 tuvo 3 ruedas en todo 2022 y
+      6 en 2023. El cartel de abajo dice cuál de las dos se está usando.
     </div>
     <div class="hc-barra">
       <div class="hc-periodos" id="fx-periodos"></div>
@@ -937,10 +935,10 @@ function serieSpreadFX(bench) {
 
 // Índice Dólar BYMA. Es la fuente PREFERIDA: BYMA arma los dos índices con una canasta de
 // instrumentos, así que no depende de que un bono puntual haya operado ni de un print raro en un
-// segmento fino, que es la debilidad de derivarlo de AL30/GD30.
+// segmento fino, que es la debilidad de derivarlo de AL30.
 //
-// Requiere credenciales (ver functions/api/byma-dolar.js). Mientras no estén cargadas el endpoint
-// contesta 503 con `sinCredenciales` y acá se sigue con el cálculo por bonos, que ya funciona.
+// Si el endpoint falla se sigue con el cálculo por bono, que es equivalente en el nivel —medido
+// el 2026-08-12: índice 3,98% contra 3,91% por AL30— pero más ruidoso.
 async function cargarBymaFX() {
   const est = document.getElementById('fx-estado');
   try {
@@ -949,10 +947,6 @@ async function cargarBymaFX() {
     if (r.ok && Array.isArray(j.series) && j.series.length) {
       bymaFX = j.series;
       est.textContent = '';
-    } else if (j.sinCredenciales) {
-      // Estado normal, no una falla: el índice de BYMA es un producto pago. Se dice la fuente que
-      // se está usando y nada más, sin cartel de error para algo que no se rompió.
-      est.textContent = 'Fuente: AL30 (el índice de BYMA requiere suscripción).';
     } else if (j.error) {
       est.textContent = `Índice BYMA no disponible (${j.error}): se muestra el spread derivado de AL30.`;
     }
