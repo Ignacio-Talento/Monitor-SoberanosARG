@@ -2390,7 +2390,10 @@ async function cargarFeriados() {
     const resultados = await Promise.all(anios.map(y =>
       fetch(`${FERIADOS_WORKER}/?anio=${y}`).then(r => r.ok ? r.json() : []).catch(() => [])
     ));
-    resultados.flat().forEach(f => { if (f && f.fecha) set.add(String(f.fecha).slice(0, 10)); });
+    // Los "puente turístico no laborable" no son feriados bancarios: el mercado opera y hay rueda
+    // (verificado con los históricos del 10-07-2026). Contarlos corría un día hábil todos los
+    // lags. Ver la nota larga en bonos.html.
+    resultados.flat().forEach(f => { if (f && f.fecha && f.tipo !== 'puente') set.add(String(f.fecha).slice(0, 10)); });
     if (set.size) {
       feriados = set;
       try { localStorage.setItem('bonos_feriados', JSON.stringify([...set])); } catch(e) {}
