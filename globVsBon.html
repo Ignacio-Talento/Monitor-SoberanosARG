@@ -328,19 +328,18 @@
     <div class="comentario">
       Cuánto más caro sale el dólar cable que el dólar MEP, día por día. Es el costo de sacar los
       dólares afuera en lugar de dejarlos en una cuenta local.<br><br>
-      Sale de los mismos bonos, no de un índice aparte: <strong>el mismo título cotiza en los dos
-      segmentos</strong>, así que el spread es el cociente entre esos dos precios. El precio en
-      pesos se cancela —está en los dos dólares implícitos— y queda simplemente
-      <strong>precio MEP / precio CCL − 1</strong>. Por eso no hace falta traer ninguna serie de
-      tipo de cambio.<br><br>
-      Van dos líneas, una por bono testigo. <strong>Deberían pisarse</strong>: si se separan, es que
-      uno de los dos está operando poco y su precio quedó desactualizado en algún segmento.<br><br>
-      <strong>Cuidado con el tramo anterior a 2024.</strong> El segmento CCL de estos bonos casi no
-      operaba: AL30 tiene 3 ruedas en todo 2022 y 6 en 2023, contra 155 en 2024 y 243 en 2025. Los
-      valores de esos años salen de un puñado de precios sueltos y dan cualquier cosa —hay un
-      +28% y un −16% en diciembre de 2023—, así que no son representativos de nada. La serie
-      utilizable arranca en 2024. Se dejan igual porque el dato es el que hay, pero conviene mirar
-      esos años con la lupa puesta en la cantidad de puntos, no en el nivel.
+      La fuente es el <strong>Índice Dólar BYMA</strong>: BYMA publica un índice MEP y uno CCL
+      armados con una canasta de instrumentos, así que el spread no depende de que un bono puntual
+      haya operado. Cubre desde el <strong>2 de enero de 2024</strong>, que es cuando arranca la
+      serie.<br><br>
+      <strong>Si abajo dice que el índice no está disponible</strong>, el gráfico cae a un cálculo
+      de respaldo: el mismo título cotiza en los dos segmentos, así que el spread sale del cociente
+      entre esos dos precios —el precio en pesos se cancela y queda <em>precio MEP / precio
+      CCL − 1</em>—. En ese modo van dos líneas, una por bono testigo, que deberían pisarse; si se
+      separan es que alguno operó poco. Y ojo con el tramo anterior a 2024: el segmento CCL de
+      estos bonos casi no operaba —AL30 tiene 3 ruedas en todo 2022 y 6 en 2023, contra 155 en
+      2024— así que ahí aparecen valores como +28% o −16% que salen de un puñado de precios
+      sueltos y no representan nada.
     </div>
     <div class="hc-barra">
       <div class="hc-periodos" id="fx-periodos"></div>
@@ -605,6 +604,7 @@ const CANJE_DESDE = '2020-09-01';
 let canjeSeries = {};      // ticker -> { 'YYYY-MM-DD': precio }
 let teaSeries   = {};      // ticker -> { 'YYYY-MM-DD': TIR (DECIMAL, ver renderGraficoTIR) }
 let cclSeries   = {};      // ticker -> { 'YYYY-MM-DD': precio en el segmento CCL }
+let bymaFX      = null;    // [{ date, mep, ccl }] del Índice Dólar BYMA, o null si no hay acceso
 // Cada gráfico tiene su propio período: sirve mirar un tramo largo en el canje y uno corto en el
 // diferencial de tasas, o al revés. Lo único compartido es qué pares están visibles.
 // `ocultos` también es por gráfico: se puede seguir un par en el canje y otro en el diferencial.
@@ -698,6 +698,10 @@ async function cargarSeriesCanje() {
                       destino: cclSeries, estadoId: 'fx-estado', onDato: renderGraficoFX });
 }
 
+// El índice de BYMA va aparte y primero: es otra API, no consume créditos de 1816 y si contesta
+// reemplaza el cálculo por bonos sin esperar a que baje ninguna serie.
+cargarBymaFX();
+
 // Canje por fecha para un par: sólo las fechas con precio en LOS DOS bonos.
 function serieCanje(par) {
   const b = canjeSeries[par.bonar] || {}, g = canjeSeries[par.global] || {};
@@ -745,6 +749,14 @@ function renderLeyenda(k) {
   // El gráfico del spread no va por pares sino por bono testigo, así que su leyenda sale de otra
   // lista. Los otros dos comparten los pares pero rotulan distinto: el canje es un cociente y el
   // diferencial una resta, y la etiqueta tiene que decir cuál de los dos se está mirando.
+  // Con el índice de BYMA hay una sola serie y no hay nada que prender ni apagar: la leyenda pasa
+  // a ser un rótulo de fuente. Los toggles sólo tienen sentido en el modo derivado de bonos.
+  if (k === 'fx' && bymaFX) {
+    cont.innerHTML = `<span style="display:flex;align-items:center;gap:6px">` +
+      `<i style="width:10px;height:10px;border-radius:50%;display:inline-block;background:#002060"></i>` +
+      `Índice Dólar BYMA · cierre diario</span>`;
+    return;
+  }
   const items = k === 'fx'
     ? BENCH_FX.map(b => ({ key: b.ticker, color: b.color, lbl: b.ticker }))
     : PARES_CANJE.map(p => ({ key: p.bonar, color: p.color,
@@ -922,12 +934,49 @@ function serieSpreadFX(bench) {
     .map(f => ({ f, y: (mep[f] / ccl[f] - 1) * 100 }));
 }
 
+// Índice Dólar BYMA. Es la fuente PREFERIDA: BYMA arma los dos índices con una canasta de
+// instrumentos, así que no depende de que un bono puntual haya operado ni de un print raro en un
+// segmento fino, que es la debilidad de derivarlo de AL30/GD30.
+//
+// Requiere credenciales (ver functions/api/byma-dolar.js). Mientras no estén cargadas el endpoint
+// contesta 503 con `sinCredenciales` y acá se sigue con el cálculo por bonos, que ya funciona.
+async function cargarBymaFX() {
+  const est = document.getElementById('fx-estado');
+  try {
+    const r = await fetch('/api/byma-dolar');
+    const j = await r.json();
+    if (r.ok && Array.isArray(j.series) && j.series.length) {
+      bymaFX = j.series;
+      est.textContent = '';
+    } else if (j.sinCredenciales) {
+      est.textContent = 'Índice BYMA no disponible (faltan credenciales): se muestra el spread derivado de AL30 y GD30.';
+    } else if (j.error) {
+      est.textContent = `Índice BYMA no disponible (${j.error}): se muestra el spread derivado de los bonos.`;
+    }
+  } catch (e) {
+    est.textContent = `Índice BYMA no disponible (${e.message || e}): se muestra el spread derivado de los bonos.`;
+  }
+  renderGraficoFX();
+}
+
 function renderGraficoFX() {
   const { desde, hasta } = rangoActivo('fx');
-  dibujarSerieTiempo('graf-fx', BENCH_FX.filter(b => !CTRL.fx.ocultos.has(b.ticker)).map(b => ({
-    key: b.ticker, label: b.ticker, color: b.color,
-    pts: serieSpreadFX(b).filter(d => d.f >= desde && d.f <= hasta),
-  })), 'CCL / MEP − 1 (%)', t => togglePar('fx', t));
+  let series;
+  if (bymaFX) {
+    // Una sola línea: el índice ya es el agregado del mercado, no hay nada que cruzar contra nada.
+    const pts = bymaFX
+      .filter(d => d.mep && d.ccl && d.date >= desde && d.date <= hasta)
+      .map(d => ({ f: d.date, y: (d.ccl / d.mep - 1) * 100 }));
+    series = [{ key: 'BYMA', label: 'Índice BYMA', color: '#002060', pts }];
+  } else {
+    series = BENCH_FX.filter(b => !CTRL.fx.ocultos.has(b.ticker)).map(b => ({
+      key: b.ticker, label: b.ticker, color: b.color,
+      pts: serieSpreadFX(b).filter(d => d.f >= desde && d.f <= hasta),
+    }));
+  }
+  dibujarSerieTiempo('graf-fx', series, 'CCL / MEP − 1 (%)', t => togglePar('fx', t));
+  // La leyenda cambia de contenido según la fuente que se haya podido usar.
+  renderLeyenda('fx');
 }
 
 function renderGraficoTIR() {
