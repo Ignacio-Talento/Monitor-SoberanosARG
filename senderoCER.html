@@ -208,6 +208,10 @@
   .rec-lecap { color: #17336f; font-weight: 700; background: #dbeafe; padding: 2px 10px; border-radius: 4px; }
   .rec-neutro { color: var(--text-3); font-weight: 500; }
   .bei-empty { font-size: 12px; color: var(--text-3); font-family: var(--mono); font-style: italic; padding: 16px 0; }
+  /* Marca de valor extrapolado: el punto cae más allá del último bono de la curva. */
+  .bei-ext { font-size: 8.5px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase;
+             color: #E08E16; border: 1px solid rgba(224,142,22,.45); border-radius: 3px;
+             padding: 0 3px; margin-left: 4px; vertical-align: 1px; cursor: help; }
   /* Aviso de REM desactualizado: los meses vencidos se omiten, pero se dice cuáles y por qué. */
   .bei-aviso { margin-top: 10px; padding: 8px 12px; font-size: 11.5px; line-height: 1.45;
                color: var(--text-3); background: #FFF7E6; border-left: 3px solid #E08E16;
@@ -1042,6 +1046,13 @@ function renderBEI() {
   const tMin = Math.max(Math.min(...pL.map(p => p.x)), Math.min(...pC.map(p => p.x)));
   const tMax = Math.min(Math.max(...pL.map(p => p.x)), Math.max(...pC.map(p => p.x)));
   const enRango = t => t >= tMin && t <= tMax;
+  // Se tolera estirar hasta un 30% más allá del último bono, pero marcado. El caso típico es el
+  // BEI a 12 meses: hoy la LECAP más larga vence en 0,88 años, así que t=1 se pasa apenas y sin
+  // esto la fila más mirada de la tabla queda vacía. Más allá de eso no se dibuja: una parábola
+  // ajustada se dispara rápido y un número extrapolado se lee igual que uno medido.
+  const estirable = t => t >= tMin && t <= tMax * 1.30;
+  const marca = t => enRango(t) ? '' :
+    ` <span class="bei-ext" title="Extrapolado: el último bono de la curva vence en ${tMax.toFixed(2)} años y este punto está en ${t.toFixed(2)}.">ext</span>`;
   // BEI spot anual a horizonte t: (1 + nominal) / (1 + real) - 1. La TEA de los CER que publica
   // el Monitor es REAL, que es justo lo que hace falta acá (en el gráfico, en cambio, se pasa a
   // nominal para poder compararla visualmente contra las LECAPs).
@@ -1072,7 +1083,7 @@ function renderBEI() {
     // el plazo: el 2026-08-13 la fila de diciembre daba 1,83% contra un forward real de 1,68%, y
     // eso alcanzaba para dar vuelta la recomendación de LECAP a CER.
     let bei = null;
-    if (!parcial && enRango(r.t) && enRango(tRef[r.mes])) bei = (indice(r.t) / indice(tRef[r.mes]) - 1) * 100;
+    if (!parcial && estirable(r.t) && estirable(tRef[r.mes])) bei = (indice(r.t) / indice(tRef[r.mes]) - 1) * 100;
     const diff = bei !== null ? bei - r.valor : null;
     let rec = '<span class="rec-neutro">—</span>';
     if (diff !== null) {
@@ -1083,7 +1094,7 @@ function renderBEI() {
       else if (diffR < 0) rec = '<span class="rec-cer">CER</span>';
       else rec = '<span class="rec-neutro">Neutro</span>';
     }
-    const beiCell = bei !== null ? `${bei.toFixed(2)}%`
+    const beiCell = bei !== null ? `${bei.toFixed(2)}%${marca(r.t)}`
       : `<span style="color:var(--text-3)" title="${parcial ? 'El mes está en curso: el tramo de curva va desde hoy y cubre sólo lo que queda, no es comparable contra un pronóstico mensual completo.' : 'Fuera del tramo con bonos en las dos curvas: extrapolar la parábola daría un número sin respaldo.'}">${parcial ? 'En curso' : 'Sin datos'}</span>`;
     html += `<tr${parcial ? ' style="background:var(--card)"' : ''}>
       <td>${r.mes}</td>
@@ -1095,7 +1106,7 @@ function renderBEI() {
   });
 
   if (rem12) {
-    const bei12  = enRango(1) ? beiSpot(1) * 100 : null;
+    const bei12  = estirable(1) ? beiSpot(1) * 100 : null;
     const diff12 = bei12 !== null ? bei12 - rem12.valor : null;
     let rec12 = '<span class="rec-neutro">—</span>';
     if (diff12 !== null) {
@@ -1106,7 +1117,7 @@ function renderBEI() {
     }
     html += `<tr style="background:var(--card);font-weight:600">
       <td>12 Meses (anualizado)</td>
-      <td>${bei12 !== null ? bei12.toFixed(2) + '%' : '<span style="color:var(--text-3)">Sin datos</span>'}</td>
+      <td>${bei12 !== null ? bei12.toFixed(2) + '%' + marca(1) : '<span style="color:var(--text-3)">Sin datos</span>'}</td>
       <td>${rem12.valor.toFixed(2)}%</td>
       <td style="color:${diff12 === null ? 'var(--text-3)' : diff12 > 0 ? 'var(--red)' : 'var(--green)'}">${diff12 !== null ? (diff12>0?'+':'') + diff12.toFixed(2) + '%' : '—'}</td>
       <td>${rec12}</td>
