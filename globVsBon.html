@@ -321,6 +321,32 @@
     <div class="gb-wrap" id="graf-tir"></div>
     <div id="tir-estado" style="font-size:12px;color:var(--text-3);font-family:var(--mono);font-style:italic;padding:12px 0;"></div>
   </div>
+
+  <!-- SPREAD CCL / MEP -->
+  <div class="panel">
+    <div class="panel-title">Spread CCL / MEP</div>
+    <div class="comentario">
+      Cuánto más caro sale el dólar cable que el dólar MEP, día por día. Es el costo de sacar los
+      dólares afuera en lugar de dejarlos en una cuenta local.<br><br>
+      Sale de los mismos bonos, no de un índice aparte: <strong>el mismo título cotiza en los dos
+      segmentos</strong>, así que el spread es el cociente entre esos dos precios. El precio en
+      pesos se cancela —está en los dos dólares implícitos— y queda simplemente
+      <strong>precio MEP / precio CCL − 1</strong>. Por eso no hace falta traer ninguna serie de
+      tipo de cambio.<br><br>
+      Van dos líneas, una por bono testigo. <strong>Deberían pisarse</strong>: si se separan, es que
+      uno de los dos está operando poco y su precio quedó desactualizado en algún segmento.
+    </div>
+    <div class="hc-barra">
+      <div class="hc-periodos" id="fx-periodos"></div>
+      <div class="hc-fechas">
+        <label>Desde <input type="date" id="fx-desde" onchange="onFecha('fx')"></label>
+        <label>Hasta <input type="date" id="fx-hasta" onchange="onFecha('fx')"></label>
+      </div>
+    </div>
+    <div class="hc-ley" id="fx-ley"></div>
+    <div class="gb-wrap" id="graf-fx"></div>
+    <div id="fx-estado" style="font-size:12px;color:var(--text-3);font-family:var(--mono);font-style:italic;padding:12px 0;"></div>
+  </div>
 </div>
 
 <script>
@@ -564,6 +590,7 @@ const PARES_CANJE = [
 ];
 const CANJE_CACHE = 'canje_series_v2';
 const TEA_CACHE   = 'canje_tea_v1';
+const CCL_CACHE   = 'canje_ccl_v1';
 // Antes de esta fecha no hay nada que traer, y no es un límite del bono sino de la fuente:
 // verificado el 2026-08-13, 1816 tampoco tiene AY24, AO20 ni DICA —todos anteriores al canje de
 // deuda— así que su cobertura arranca justo cuando se emitieron estos bonos.
@@ -571,6 +598,7 @@ const CANJE_DESDE = '2020-09-01';
 
 let canjeSeries = {};      // ticker -> { 'YYYY-MM-DD': precio }
 let teaSeries   = {};      // ticker -> { 'YYYY-MM-DD': TIR (DECIMAL, ver renderGraficoTIR) }
+let cclSeries   = {};      // ticker -> { 'YYYY-MM-DD': precio en el segmento CCL }
 // Cada gráfico tiene su propio período: sirve mirar un tramo largo en el canje y uno corto en el
 // diferencial de tasas, o al revés. Lo único compartido es qué pares están visibles.
 // `ocultos` también es por gráfico: se puede seguir un par en el canje y otro en el diferencial.
@@ -579,16 +607,23 @@ const CTRL = {
            ley: 'hc-ley',  ocultos: new Set() },
   tir:   { periodo: '1Y', botones: 'tir-periodos', desde: 'tir-desde', hasta: 'tir-hasta',
            ley: 'tir-ley', ocultos: new Set() },
+  fx:    { periodo: '1Y', botones: 'fx-periodos',  desde: 'fx-desde',  hasta: 'fx-hasta',
+           ley: 'fx-ley',  ocultos: new Set() },
 };
+// Bonos testigo del spread CCL/MEP: los dos más líquidos de cada ley. Alcanza con dos —el spread
+// es una propiedad del mercado, no del bono— y tenerlos duplicados sirve de control cruzado.
+const BENCH_FX = [
+  { ticker: 'AL30', color: '#002060' },
+  { ticker: 'GD30', color: '#00B0F0' },
+];
 
 const hoyStr = () => { const d=new Date(); d.setHours(0,0,0,0); return dateToStr(d); };
 
 // Trae la serie de precios y la guarda en localStorage. La primera vez baja los ~6 años completos
 // —unos 21.600 créditos de 1816— y después SÓLO el tramo nuevo desde el último día guardado, que
 // son un par de cientos. Sin eso, cada visita costaría la historia entera.
-async function cargarSerie(campo, cacheKey, destino, estadoId, onDato) {
+async function cargarSerie({ campo, moneda = 'mep', tickers, cacheKey, destino, estadoId, onDato }) {
   const est = document.getElementById(estadoId);
-  const tickers = PARES_CANJE.flatMap(p => [p.bonar, p.global]);
   let guardado = null;
   try { guardado = JSON.parse(localStorage.getItem(cacheKey) || 'null'); } catch {}
   if (guardado && guardado.series) Object.assign(destino, guardado.series);
@@ -623,7 +658,7 @@ async function cargarSerie(campo, cacheKey, destino, estadoId, onDato) {
   for (const [a, b] of tramos) {
     try {
       const r = await fetch('/api/series', { method: 'POST', headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ tickers, moneda: 'mep', desde: a, hasta: b, campo }) });
+        body: JSON.stringify({ tickers, moneda, desde: a, hasta: b, campo }) });
       const j = await r.json();
       if (!r.ok) { fallos.push(j.error || ('HTTP ' + r.status)); continue; }
       for (const [tk, serie] of Object.entries(j.series || {})) {
@@ -635,7 +670,7 @@ async function cargarSerie(campo, cacheKey, destino, estadoId, onDato) {
   }
 
   try { localStorage.setItem(cacheKey, JSON.stringify({ hasta, series: destino })); }
-  catch (e) { console.warn(`no se pudo guardar la serie de ${campo}:`, e); }
+  catch (e) { console.warn(`no se pudo guardar la serie de ${campo}/${moneda}:`, e); }
 
   est.textContent = fallos.length ? `1816 falló en parte del rango: ${fallos.slice(0, 2).join(' · ')}` : '';
   onDato();
@@ -645,8 +680,16 @@ async function cargarSerie(campo, cacheKey, destino, estadoId, onDato) {
 // global por API key, así que dispararlas juntas se comería 429 de entrada. Primero el precio,
 // que es el gráfico de arriba y el que el usuario está mirando.
 async function cargarSeriesCanje() {
-  await cargarSerie('precioDirty', CANJE_CACHE, canjeSeries, 'hc-estado', renderGraficoCanje);
-  await cargarSerie('tea',         TEA_CACHE,   teaSeries,   'tir-estado', renderGraficoTIR);
+  const todos = PARES_CANJE.flatMap(p => [p.bonar, p.global]);
+  const bench = BENCH_FX.map(b => b.ticker);
+  await cargarSerie({ campo: 'precioDirty', tickers: todos, cacheKey: CANJE_CACHE,
+                      destino: canjeSeries, estadoId: 'hc-estado', onDato: renderGraficoCanje });
+  await cargarSerie({ campo: 'tea', tickers: todos, cacheKey: TEA_CACHE,
+                      destino: teaSeries, estadoId: 'tir-estado', onDato: renderGraficoTIR });
+  // Para el spread CCL/MEP alcanza con los dos testigos, y sólo en CCL: el lado MEP ya vino
+  // arriba. Son ~2.900 créditos la primera vez contra los ~21.600 de una serie completa.
+  await cargarSerie({ campo: 'precioDirty', moneda: 'ccl', tickers: bench, cacheKey: CCL_CACHE,
+                      destino: cclSeries, estadoId: 'fx-estado', onDato: renderGraficoFX });
 }
 
 // Canje por fecha para un par: sólo las fechas con precio en LOS DOS bonos.
@@ -673,7 +716,7 @@ function rangoPeriodo(k) {
   return { desde: dateToStr(d), hasta };
 }
 
-const redibujar = k => k === 'canje' ? renderGraficoCanje() : renderGraficoTIR();
+const redibujar = k => ({ canje: renderGraficoCanje, tir: renderGraficoTIR, fx: renderGraficoFX }[k])();
 
 function setPeriodo(k, p) {
   CTRL[k].periodo = p;
@@ -693,10 +736,16 @@ function renderBotones(k) {
 
 function renderLeyenda(k) {
   const cont = document.getElementById(CTRL[k].ley);
-  cont.innerHTML = PARES_CANJE.map(p => {
-    const off = CTRL[k].ocultos.has(p.bonar) ? ' off' : '';
-    const lbl = k === 'tir' ? `${p.bonar} − ${p.global}` : `${p.global} / ${p.bonar}`;
-    return `<button class="${off.trim()}" onclick="togglePar('${k}','${p.bonar}')"><i style="background:${p.color}"></i>${lbl}</button>`;
+  // El gráfico del spread no va por pares sino por bono testigo, así que su leyenda sale de otra
+  // lista. Los otros dos comparten los pares pero rotulan distinto: el canje es un cociente y el
+  // diferencial una resta, y la etiqueta tiene que decir cuál de los dos se está mirando.
+  const items = k === 'fx'
+    ? BENCH_FX.map(b => ({ key: b.ticker, color: b.color, lbl: b.ticker }))
+    : PARES_CANJE.map(p => ({ key: p.bonar, color: p.color,
+        lbl: k === 'tir' ? `${p.bonar} − ${p.global}` : `${p.global} / ${p.bonar}` }));
+  cont.innerHTML = items.map(it => {
+    const off = CTRL[k].ocultos.has(it.key) ? ' off' : '';
+    return `<button class="${off.trim()}" onclick="togglePar('${k}','${it.key}')"><i style="background:${it.color}"></i>${it.lbl}</button>`;
   }).join('');
 }
 function togglePar(k, b) {
@@ -854,6 +903,27 @@ function serieDifTIR(par) {
     .map(f => ({ f, y: (b[f] - g[f]) * 100 }));
 }
 
+// Spread CCL/MEP a partir de UN bono. El mismo título cotiza en los dos segmentos, así que:
+//   CCL implícito = precio en pesos / precio CCL      MEP implícito = precio en pesos / precio MEP
+//   spread = CCL/MEP − 1 = (pesos/ccl) / (pesos/mep) − 1 = precio MEP / precio CCL − 1
+// El precio en pesos se cancela, así que no hace falta traerlo ni depender de ningún índice de
+// tipo de cambio: el spread está contenido en los dos precios del mismo bono.
+function serieSpreadFX(bench) {
+  const mep = canjeSeries[bench.ticker] || {}, ccl = cclSeries[bench.ticker] || {};
+  return Object.keys(mep)
+    .filter(f => ccl[f])
+    .sort()
+    .map(f => ({ f, y: (mep[f] / ccl[f] - 1) * 100 }));
+}
+
+function renderGraficoFX() {
+  const { desde, hasta } = rangoActivo('fx');
+  dibujarSerieTiempo('graf-fx', BENCH_FX.filter(b => !CTRL.fx.ocultos.has(b.ticker)).map(b => ({
+    key: b.ticker, label: b.ticker, color: b.color,
+    pts: serieSpreadFX(b).filter(d => d.f >= desde && d.f <= hasta),
+  })), 'CCL / MEP − 1 (%)', t => togglePar('fx', t));
+}
+
 function renderGraficoTIR() {
   const { desde, hasta } = rangoActivo('tir');
   dibujarSerieTiempo('graf-tir', PARES_CANJE.filter(p => !CTRL.tir.ocultos.has(p.bonar)).map(p => ({
@@ -866,10 +936,7 @@ function renderGraficoTIR() {
 const datos = JSON.parse(localStorage.getItem('bonos_data') || '[]');
 renderGrafico(datos);
 renderSpread(datos);
-setPeriodo('canje', '1Y');
-setPeriodo('tir', '1Y');
-renderLeyenda('canje');
-renderLeyenda('tir');
+for (const k of ['canje', 'tir', 'fx']) { setPeriodo(k, '1Y'); renderLeyenda(k); }
 cargarSeriesCanje();
 </script>
 
