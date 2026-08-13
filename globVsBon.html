@@ -699,9 +699,11 @@ function dibujarSerieTiempo(contId, series, ejeLabel) {
   const py=v=>MT+alto-((v-y0)/((y1-y0)||1))*alto;
 
   const meses=(x1-x0)/(30*86400000);
-  // Sin el año en rangos largos las etiquetas se repetían: con 7 ticks sobre 6 años el espaciado
-  // es de ~10 meses, así que dos ticks consecutivos caían en el mismo año y se leía "2024, 2024".
-  const fmtX = meses>3
+  // El formato depende de cuánto abarque el rango, y el corte NO es arbitrario: con 7 marcas, para
+  // que dos consecutivas no caigan en el mismo mes el rango tiene que superar los 7 meses. Con el
+  // corte en 3 que tenía antes, un rango de 6 meses mostraba "may-26" dos veces. Misma razón por
+  // la que no se usa sólo el año: sobre 6 años el espaciado es de ~10 meses y repetía "2024".
+  const fmtX = meses>8
     ? (d=>`${['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'][d.getMonth()]}-${String(d.getFullYear()).slice(2)}`)
     : (d=>`${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}`);
   const NX=Math.min(7, Math.max(2, Math.round(ancho/140)));
