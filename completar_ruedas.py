@@ -110,8 +110,17 @@ def faltantes(datos, fecha, candidatos, sanas):
 
 
 def pedir(cli, tickers, moneda, fecha):
-    """-> {ticker: precio} para esa fecha, o None si 1816 no contestó."""
+    """-> {ticker: precio} para esa fecha, o None si 1816 no contestó.
+
+    Se pide una ventana de dos días y se filtra, en vez de pedir la fecha sola: con
+    fechaInicial == fechaFinal la API contesta 200 pero sin un solo punto. Cuesta el doble
+    (el costo es tickers x campos x días) y sigue siendo mucho más barato que pedir el rango
+    entero: para las seis ruedas son ~950 créditos contra ~4.000.
+    """
     import time
+    from datetime import date as _date, timedelta
+    y, m, d = map(int, fecha.split("-"))
+    hasta = (_date(y, m, d) + timedelta(days=1)).isoformat()
     ultimo = None
     for espera in [0] + ESPERAS:
         if espera:
@@ -119,9 +128,11 @@ def pedir(cli, tickers, moneda, fecha):
             time.sleep(espera)
         try:
             filas = cli.series(tickers, [CAMPO_1816], moneda=moneda,
-                               fecha_inicial=fecha, fecha_final=fecha)
-            return {r["ticker"]: r[CAMPO_1816] for r in filas
-                    if str(r.get("fecha", ""))[:10] == fecha and r.get(CAMPO_1816) is not None}
+                               fecha_inicial=fecha, fecha_final=hasta)
+            res = {r["ticker"]: r[CAMPO_1816] for r in filas
+                   if str(r.get("fecha", ""))[:10] == fecha and r.get(CAMPO_1816) is not None}
+            print(f"      {len(filas)} filas, {len(res)} con precio en {fecha}")
+            return res
         except Error1816 as e:
             ultimo = e
             if "429" not in str(e) and "Demasiadas" not in str(e):
