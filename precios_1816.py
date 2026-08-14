@@ -76,7 +76,11 @@ MAX_TICKERS_POR_REQUEST = 50      # límite de la API en /mercado/precios
 # ("La lista debe contener como máximo 10 elemento(s)"). Es un límite distinto por endpoint,
 # no un error de este cliente. Detectado el 2026-08-14 pidiendo 94 tickers de una.
 MAX_TICKERS_SERIES = 10
-MIN_SEGUNDOS_ENTRE_REQUESTS = 1.0  # plan Base: máx 1 request/seg
+# Plan Base: máx 1 request/seg. Se deja 1.2 y no 1.0 porque el reloj del runner y la latencia de
+# red hacen que dos requests espaciados exactamente un segundo caigan a veces en la misma ventana
+# del limitador, y el 429 no cuesta un reintento: aborta el lote entero. El 20% de margen es
+# gratis (el job diario hace cuatro requests) y saca de encima toda una clase de falla.
+MIN_SEGUNDOS_ENTRE_REQUESTS = 1.2
 
 # Ubicación del cache de token y del archivo de key (misma carpeta que el script).
 _DIR = Path(__file__).resolve().parent
