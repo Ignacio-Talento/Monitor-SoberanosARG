@@ -47,6 +47,10 @@ except ImportError:
 # falta distinguir "no operó" de "falló la API": ningún día normal se acerca a este número.
 UMBRAL_ROTA = 20
 
+# Bono de referencia para saber si un día fue rueda de mercado. AL30 sirve porque opera todos los
+# días que BYMA abre: si 1816 no tiene ni AL30, no hubo mercado.
+BENCH = "AL30"
+
 # Reintentos ante 429. Mismo criterio que el respaldo de Glob vs Bon: el limitador de 1816 es
 # global por API key, así que si otro proceso está consumiendo hay que esperar de verdad.
 ESPERAS = [15, 45, 90]
@@ -180,9 +184,32 @@ def main(argv):
     for f in objetivo:
         print(f"  {f}: {len(datos[f]):3d} tickers, faltan {len(plan[f]):3d}")
     if dry:
+        # El costo de arriba es el techo. En la corrida real se descuenta lo que caiga en días sin
+        # rueda, que no se piden: eso no se puede saber en seco sin gastar créditos.
+        print("(techo: en la corrida real se saltean los días que no fueron rueda)")
         return 0
 
     cli = Cliente1816()
+
+    # Antes de pedir nada en serio, preguntar por un solo bono líquido: si 1816 no tiene ni eso,
+    # ese día no hubo rueda y no hay nada que completar. Cuesta dos créditos por fecha y evita
+    # gastar cientos persiguiendo precios que no existen.
+    #
+    # No es hipotético: de las seis "ruedas incompletas" que detectó este script la primera vez,
+    # dos eran feriados —el 15/06 (Güemes movido al lunes) y el 09/07 (Independencia)— donde el
+    # mercado estuvo cerrado. Las filas existen igual en historicos.xlsx porque el job diario
+    # corre de lunes a viernes sin mirar el calendario y guarda lo que le devuelva la fuente.
+    # Que esas filas existan es un problema aparte, y no se arregla rellenándolas.
+    vivas = []
+    for f in objetivo:
+        if pedir(cli, [BENCH], "mep", f):
+            vivas.append(f)
+        else:
+            print(f"{f}: 1816 no tiene ni {BENCH}, no hubo rueda. Se saltea.")
+    objetivo = vivas
+    if not objetivo:
+        print("\nNinguna de las fechas es una rueda de mercado.")
+        return 0
     escritos = raros = 0
 
     for f in objetivo:
