@@ -71,7 +71,11 @@ CAMPOS_SERIES_VALIDOS = {
     "volumenMontoDiario", "volumenNominalDiario",
 }
 
-MAX_TICKERS_POR_REQUEST = 50      # límite de la API
+MAX_TICKERS_POR_REQUEST = 50      # límite de la API en /mercado/precios
+# /mercado/series topea en 10, no en 50: con más devuelve HTTP 400 invalid_params
+# ("La lista debe contener como máximo 10 elemento(s)"). Es un límite distinto por endpoint,
+# no un error de este cliente. Detectado el 2026-08-14 pidiendo 94 tickers de una.
+MAX_TICKERS_SERIES = 10
 MIN_SEGUNDOS_ENTRE_REQUESTS = 1.0  # plan Base: máx 1 request/seg
 
 # Ubicación del cache de token y del archivo de key (misma carpeta que el script).
@@ -269,7 +273,8 @@ class Cliente1816:
         """
         Devuelve series históricas en formato "tidy": una fila por (ticker, fecha).
 
-        tickers: lista de strings (se procesa en lotes de 50 automáticamente).
+        tickers: lista de strings (se procesa en lotes de 10 automáticamente: este endpoint
+            topea en 10, a diferencia de /precios que acepta 50).
         campos:  lista de strings (ver CAMPOS_SERIES_VALIDOS).
         fecha_inicial / fecha_final: 'AAAA-MM-DD'. Si el rango supera 1 año, se parte
             automáticamente en varias requests (la API no acepta >1 año por llamada).
@@ -332,8 +337,8 @@ class Cliente1816:
                         fecha_inicial, fecha_final, convencion_tna, acumulado):
         """Trae UNA ventana (<=1 año) y vuelca los puntos en `acumulado`. Devuelve meta."""
         meta = {}
-        for i in range(0, len(tickers), MAX_TICKERS_POR_REQUEST):
-            lote = tickers[i:i + MAX_TICKERS_POR_REQUEST]
+        for i in range(0, len(tickers), MAX_TICKERS_SERIES):
+            lote = tickers[i:i + MAX_TICKERS_SERIES]
             params = {"tickers": lote, "campos": campos_pedidos}
             if fuente:
                 params["fuente"] = fuente

@@ -29,7 +29,11 @@ const CAMPOS_OK = new Set([
 // 6 h. Lo único que cambia dentro del día es el último punto de la serie, y para eso está el
 // Monitor: acá interesa la forma histórica, no el tick.
 const CACHE_TTL = 21600;
-const MAX_TICKERS_REQ = 50;    // límite de 1816 por request
+// 10 y no 50: /mercado/series topea en 10 tickers por request y con más devuelve HTTP 400
+// invalid_params. Es un límite propio de este endpoint —/mercado/precios sí acepta 50—, así que
+// no conviene "unificarlo" con el otro proxy. Acá no se había notado porque Glob vs Bon pide
+// exactamente 10; el backfill de las ONs, que pide 75, sí se rompía.
+const MAX_TICKERS_REQ = 10;
 const MAX_DIAS_VENTANA = 360;  // límite de 1816 por request de series
 // Tope de costo por pedido, en créditos (= tickers x días con 1 campo). 20.000 es una quinta
 // parte del presupuesto diario: alcanza para 10 tickers x 5 años y corta cualquier cosa mayor.
