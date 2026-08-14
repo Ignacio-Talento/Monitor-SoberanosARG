@@ -1,0 +1,55 @@
+# Relleno de ruedas incompletas. NO tiene schedule a propósito: se dispara a mano cuando una
+# corrida diaria se comió un 429 y dejó la rueda con ~70 tickers en vez de ~165. Gasta créditos
+# de 1816 (uno por ticker por día), así que conviene correrlo primero con dry_run.
+name: Completar Ruedas Incompletas
+
+on:
+  workflow_dispatch:
+    inputs:
+      fechas:
+        description: 'Fechas AAAA-MM-DD separadas por espacio (vacío = detectar solo)'
+        required: false
+        default: ''
+      dry_run:
+        description: 'Sólo listar qué haría y cuánto costaría'
+        type: boolean
+        default: true
+
+permissions:
+  contents: write
+
+jobs:
+  completar:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repositorio
+        uses: actions/checkout@v4
+
+      - name: Configurar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Instalar dependencias
+        run: pip install requests openpyxl
+
+      - name: Completar ruedas
+        env:
+          API_1816_KEY: ${{ secrets.API_1816_KEY }}
+          # Por variable de entorno y no interpolado en el `run`: lo que se escriba en el input
+          # llegaría al shell tal cual, y un input es texto libre.
+          FECHAS: ${{ inputs.fechas }}
+          DRY: ${{ inputs.dry_run }}
+        run: |
+          [ "$DRY" = "true" ] && FLAG=--dry-run || FLAG=
+          python completar_ruedas.py $FLAG $FECHAS
+
+      - name: Commit y push si hay cambios
+        if: ${{ !inputs.dry_run }}
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git add historicos.xlsx
+          git diff --staged --quiet || git commit -m "Completar ruedas incompletas $(date +'%Y-%m-%d')"
+          git push
