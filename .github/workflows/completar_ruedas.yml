@@ -14,6 +14,10 @@ on:
         description: 'Sólo listar qué haría y cuánto costaría'
         type: boolean
         default: true
+      probe:
+        description: 'Diagnóstico: tickers separados por coma para consultar a /series y ver qué devuelve. Si se completa, no se toca historicos.xlsx.'
+        required: false
+        default: ''
 
 permissions:
   contents: write
@@ -34,7 +38,22 @@ jobs:
       - name: Instalar dependencias
         run: pip install requests openpyxl
 
+      # Sondeo. Existe porque cuando /series contesta "sin datos" no hay forma de saber desde acá
+      # si el problema es el ticker, la moneda o que 1816 directamente no publica histórico de ese
+      # instrumento. Los flags son fijos a propósito: el input es texto libre y no tiene por qué
+      # poder armar una línea de comando arbitraria dentro del runner.
+      - name: Sondear /series
+        if: ${{ inputs.probe != '' }}
+        env:
+          API_1816_KEY: ${{ secrets.API_1816_KEY }}
+          PROBE: ${{ inputs.probe }}
+          DESDE: ${{ inputs.fechas }}
+        run: |
+          python precios_1816.py --serie --tickers "$PROBE" --campos precioDirty \
+            --moneda mep --desde "${DESDE:-2026-07-06}" --hasta 2026-07-15
+
       - name: Completar ruedas
+        if: ${{ inputs.probe == '' }}
         env:
           API_1816_KEY: ${{ secrets.API_1816_KEY }}
           # Por variable de entorno y no interpolado en el `run`: lo que se escriba en el input
