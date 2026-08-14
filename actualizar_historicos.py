@@ -199,28 +199,42 @@ def fetch_precios_1816(items, fecha=None):
         return {}
 
     resultado = {}
-    try:
-        for moneda, pares in por_moneda.items():
-            tickers = [t for _, t in pares]
-            # Reintentar ante 429: un rate limit transitorio no debe mandar TODO a Eco.
-            for intento in range(3):
-                try:
-                    filas = cli.precios(tickers, [CAMPO_1816], moneda=moneda, fecha_operacion=fecha)
-                    break
-                except Exception:
-                    if intento == 2:
-                        raise
-                    time.sleep(3 * (intento + 1))
-            valor_por_t = {f['ticker']: f.get(CAMPO_1816) for f in filas}
-            for eco, t in pares:
-                v = valor_por_t.get(t)
-                if isinstance(v, (int, float)):
-                    resultado[eco] = v
-    except Exception as e:
-        print(f"AVISO: 1816 no disponible ({e}); se usará Eco para todo.")
-        return {}
+    fallaron = []
+    for moneda, pares in por_moneda.items():
+        tickers = [t for _, t in pares]
+        # Esperas largas a propósito. El limitador de 1816 es GLOBAL por API key y el job del repo
+        # del colega corría con el MISMO cron que éste, así que los dos empezaban juntos y el que
+        # llegaba segundo se comía el 429. Como ese job tarda uno o dos minutos en soltar la cuota,
+        # reintentar a los 3 y 6 segundos no servía de nada: había que esperar en esa escala.
+        # (El cron de este repo se corrió 15 minutos para no depender sólo de esto.)
+        filas = None
+        for espera in (0, 15, 45, 90):
+            if espera:
+                print(f"  {moneda}: reintentando en {espera}s...")
+                time.sleep(espera)
+            try:
+                filas = cli.precios(tickers, [CAMPO_1816], moneda=moneda, fecha_operacion=fecha)
+                break
+            except Exception as e:
+                ultimo = e
+        if filas is None:
+            # Este grupo se pierde, pero los que YA se trajeron se conservan: antes un fallo en el
+            # último grupo descartaba todo lo anterior y mandaba los 171 tickers a Eco, que no
+            # cubre subsoberanos ni ONs. Así se perdían ~95 precios por un rate limit transitorio
+            # (pasó el 12 y el 14 de agosto de 2026: 71 y 70 tickers guardados contra los ~165
+            # habituales). Ahora Eco cubre sólo los huecos reales.
+            print(f"AVISO: 1816 falló en {moneda} ({ultimo}); esos tickers van a Eco.")
+            fallaron.append(moneda)
+            continue
+        valor_por_t = {f['ticker']: f.get(CAMPO_1816) for f in filas}
+        for eco, t in pares:
+            v = valor_por_t.get(t)
+            if isinstance(v, (int, float)):
+                resultado[eco] = v
 
-    print(f"1816: {len(resultado)} precios obtenidos de {sum(len(v) for v in por_moneda.values())} consultables.")
+    total = sum(len(v) for v in por_moneda.values())
+    extra = f" (falló: {', '.join(fallaron)})" if fallaron else ""
+    print(f"1816: {len(resultado)} precios obtenidos de {total} consultables{extra}.")
     return resultado
 
 # ── FECHA DE LA RUEDA A REGISTRAR ─────────────────────────────

@@ -2,9 +2,14 @@ name: Actualizar Históricos de Precios
  
 on:
   schedule:
-    # 17:05 hora Argentina (UTC-3) = 20:05 UTC
-    # Solo días de semana (lunes a viernes)
-    - cron: '5 20 * * 1-5'
+    # 17:20 hora Argentina (UTC-3) = 20:20 UTC. Solo días de semana.
+    #
+    # NO son las 17:05 a propósito. El repo del colega corre su propio job con ese cron y con la
+    # MISMA API key de 1816, cuyo limitador es global: los dos arrancaban juntos y el que llegaba
+    # segundo se comía un 429. Cuando eso pasaba, la corrida caía a Eco Valores, que no publica
+    # subsoberanos ni ONs, y la rueda quedaba con ~70 tickers en vez de ~165 (pasó el 12 y el 14
+    # de agosto de 2026). Quince minutos alcanzan de sobra: ese job tarda uno o dos.
+    - cron: '20 20 * * 1-5'
   workflow_dispatch: # Permite ejecución manual desde GitHub
 
 permissions:
