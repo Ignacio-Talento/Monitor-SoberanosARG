@@ -47,10 +47,13 @@ jobs:
         env:
           API_1816_KEY: ${{ secrets.API_1816_KEY }}
           PROBE: ${{ inputs.probe }}
-          DESDE: ${{ inputs.fechas }}
+          # El input `fechas` se reusa acá como "desde hasta". Con un solo ticker líquido esto
+          # devuelve el calendario de ruedas reales: las fechas que faltan son feriados.
+          RANGO: ${{ inputs.fechas }}
         run: |
+          set -- ${RANGO:-2026-07-06 2026-07-15}
           python precios_1816.py --serie --tickers "$PROBE" --campos precioDirty \
-            --moneda mep --desde "${DESDE:-2026-07-06}" --hasta 2026-07-15
+            --moneda mep --desde "$1" --hasta "${2:-$1}"
 
       - name: Completar ruedas
         if: ${{ inputs.probe == '' }}
