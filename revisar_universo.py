@@ -72,7 +72,9 @@ def leer_monitor():
     Las hojas de flujos no tienen columna de vencimiento: ahí el vencimiento es la última fecha de
     cashflow del ticker.
     """
-    wb = load_workbook(INSTRUMENTOS_FILE, read_only=True, data_only=True)
+    # Sin read_only: ver el comentario en leer_tickers(). Un <dimension> viejo esconde filas, y
+    # este script justamente existe para que no se escape ningún instrumento.
+    wb = load_workbook(INSTRUMENTOS_FILE, data_only=True)
     universo = {}
     for hoja in wb.sheetnames:
         if hoja in HOJAS_NO_INSTRUMENTOS:

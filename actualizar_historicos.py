@@ -115,7 +115,12 @@ def leer_tickers():
         print(f"ERROR: No se encontró {INSTRUMENTOS_FILE}")
         return []
 
-    wb = load_workbook(INSTRUMENTOS_FILE, read_only=True, data_only=True)
+    # read_only=False a propósito. En modo read_only openpyxl confía en el <dimension> que declara
+    # la hoja, y si ese rango quedó viejo IGNORA las filas que estén más abajo: D15E7 estaba cargado
+    # desde el 31/07 en la fila 10 de "USD Linked" con el dimension en A1:F9, así que el job dejó de
+    # pedirle precio el 10/08 sin decir nada. El archivo pesa 200 KB; leerlo entero no se nota, y
+    # perder un instrumento en silencio sí.
+    wb = load_workbook(INSTRUMENTOS_FILE, data_only=True)
     items = []
     vistos = set()
 
