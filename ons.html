@@ -2467,6 +2467,7 @@ const INDUSTRIA = {
   'Tecpetrol':'Petróleo y Gas', 'Pan American Energy':'Petróleo y Gas', 'CGC':'Petróleo y Gas',
   'Oleoductos del Valle':'Petróleo (midstream)', 'Pecom Servicios Energia':'Servicios petroleros',
   'Transportadora de Gas del Sur':'Gas (transporte)', 'PCR':'Energía',
+  'Compañía Mega':'Petroquímica',
   'Pampa Energia':'Energía', 'Edenor':'Energía eléctrica', 'Central Puerto':'Energía eléctrica',
   'Capex':'Energía eléctrica', 'GEMSA-CTR':'Energía eléctrica', 'Edemsa':'Energía eléctrica',
   'MSU Energy':'Energía eléctrica', 'YPF Luz':'Energía eléctrica',
@@ -2524,6 +2525,12 @@ const RATINGS = {
   // internacional publicada; no hace falta, porque la ON es ley local y usa la escala nacional.
   "AES Argentina": { nac: {r:"AA-(arg)", a:"FIX SCR", p:"Estable", f:"2026-07-28"}, glob: null },
   "Central Puerto": { nac: {r:"AA+(arg)", a:"FIX SCR", p:"Estable", f:"2026-05-08"}, glob: null },
+  // Compañía Mega S.A.: FIX SCR le confirmó AAA(arg) de emisor y le asignó esa misma nota a la ON
+  // Clase 1, que es EMC1D (USD 59,5 M al 7,5% a 24 meses, colocada en julio de 2025). La fecha es
+  // la del informe que pudo verificarse; el resto del mapa tiene revisiones de 2026, así que puede
+  // haber una más nueva. Sin nota internacional, y no hace falta: la ON es ley local y va por la
+  // escala nacional.
+  "Compañía Mega": { nac: {r:"AAA(arg)", a:"FIX SCR", p:"Estable", f:"2025-06-26"}, glob: null },
   "Cresud": { nac: {r:"AAA(arg)", a:"FIX SCR", p:"Estable", f:"2026-04-24"}, glob: null },
   "Edemsa": { nac: {r:"A+(arg)", a:"FIX SCR", p:"Estable", f:"2026-07-24"}, glob: {r:"B", a:"S&P", p:"Estable", f:"2026-06-11"} },
   "Edenor": { nac: {r:"A+(arg)", a:"FIX SCR", p:"Estable", f:"2026-06-29"}, glob: {r:"B-", a:"Fitch", p:"Estable", f:""} },
