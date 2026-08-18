@@ -1,0 +1,39 @@
+# Repaso semanal del universo: qué venció y qué emitieron que el monitor todavía no sigue.
+# Manual a propósito: el resultado se lee y se decide, no hay nada que automatizar. El alta la
+# completa una persona porque 1816 no trae cupones, margen ni lag.
+name: Revisar Universo de Instrumentos
+
+on:
+  workflow_dispatch:
+    inputs:
+      solo_bajas:
+        description: 'Sólo vencidos (no consulta 1816, no gasta créditos)'
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  revisar:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repositorio
+        uses: actions/checkout@v4
+
+      - name: Configurar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Instalar dependencias
+        run: pip install requests openpyxl
+
+      - name: Revisar universo
+        env:
+          API_1816_KEY: ${{ secrets.API_1816_KEY }}
+          SOLO: ${{ inputs.solo_bajas }}
+        run: |
+          [ "$SOLO" = "true" ] && FLAG=--bajas || FLAG=
+          python revisar_universo.py $FLAG

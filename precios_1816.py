@@ -380,11 +380,19 @@ class Cliente1816:
         """Devuelve el balance de créditos del usuario."""
         return self._get("/v1/creditos/balance", {})
 
-    def instrumentos(self, texto=None, solo_performing=False):
-        """Lista instrumentos disponibles (opcionalmente filtrados por texto)."""
+    def instrumentos(self, texto=None, solo_performing=False, curva_id=None):
+        """Lista instrumentos disponibles (opcionalmente filtrados por texto o por curva).
+
+        Con `curva_id` devuelve el universo de esa curva de 1816 (9 = LECAPs, 8 = Bonares,
+        16 = Corporativos USD, etc.). Es la forma de saber qué emitieron que el monitor
+        todavía no sigue. Cada item trae ticker, fechaEmision, fechaVencimiento, isinCode,
+        monedaDenom y emisorNombre.
+        """
         params = {"soloPerforming": str(solo_performing).lower()}
         if texto:
             params["texto"] = texto
+        if curva_id is not None:
+            params["curvaId"] = curva_id
         return self._get("/v1/mercado/instrumentos", params)
 
 
