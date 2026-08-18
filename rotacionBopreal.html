@@ -279,6 +279,13 @@
   .intro { font-size: 12px; color: var(--text-3); font-family: var(--mono); margin-bottom: 16px; line-height: 1.6; }
   .toolbar { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; margin-bottom: 18px; }
   .liq-badge { font-size: 11px; font-family: var(--mono); color: var(--text-2); background: var(--cyan-bg); border: 1px solid var(--cyan); border-radius: var(--r-pill); padding: 6px 14px; }
+  /* Comisión única de la solapa. Vive acá arriba y no en cada fila: es una condición del cliente,
+     la misma para toda la rotación, y tenerla repetida seis veces invitaba a dejarlas desparejas
+     sin querer —y ahí el pickup de una fila no era comparable con el de la de al lado—. */
+  .com-global { display: flex; align-items: center; gap: 8px; font-size: 11px; font-family: var(--mono); color: var(--text-2); text-transform: uppercase; letter-spacing: .04em; }
+  .com-global .com-input { width: 76px; background: var(--bg); border: 1px solid var(--border-l); color: var(--navy); font-family: var(--mono); font-size: 13px; font-weight: 600; text-align: right; padding: 6px 9px; }
+  .com-global .com-input:focus { outline: none; border-color: var(--cyan); }
+  .com-hint { text-transform: none; letter-spacing: 0; color: var(--text-3); }
   .precio-st { font-size: 11px; font-family: var(--mono); }
   .precio-st.ok { color: var(--green); } .precio-st.err { color: var(--red); }
 
@@ -298,7 +305,6 @@
   .pos { color: var(--green); font-weight: 600; } .neg { color: var(--red); font-weight: 600; }
   .rot-inp { width: 92px; background: var(--bg); border: 1px solid var(--border-l); border-radius: var(--r-input); color: var(--navy); font-family: var(--mono); font-size: 12px; font-weight: 600; text-align: right; padding: 5px 8px; }
   .rot-inp:focus { outline: none; border-color: var(--cyan); }
-  .rot-inp.com { width: 62px; color: var(--text-2); font-weight: 500; }
   .rot-inp.vn { width: 96px; color: var(--text-2); font-weight: 500; }
   th.inp-col { color: var(--cyan); }
   .nota { font-size: 11px; color: var(--text-3); font-family: var(--mono); line-height: 1.7; margin-top: 18px; padding: 14px 18px; background: var(--card); border-left: 3px solid var(--cyan); border-radius: 0 var(--r-input) var(--r-input) 0; }
@@ -326,11 +332,16 @@
   </div>
 
   <div class="intro">
-    Rotación <b>BOPREAL → BONAR</b>. Los precios (sucios, con intereses corridos) se traen del Monitor y son editables. Con la comisión de venta y compra, se calcula por XIRR la TIR de mercado de cada bono, el costo de la rotación, el <b>pickup</b> (bps de TIR que ganás), el <b>break-even</b> (en cuánto tiempo el pickup repaga la comisión) y la <b>TIR neta de comisión</b> del destino. Liquidación T+1 hábil.
+    Rotación <b>BOPREAL → BONAR</b>. Los precios (sucios, con intereses corridos) se traen del Monitor y son editables. La <b>comisión se fija una sola vez arriba</b> y rige para las dos puntas de todas las filas. Con eso se calcula por XIRR la TIR de mercado de cada bono, el costo de la rotación, el <b>pickup</b> (bps de TIR que ganás), el <b>break-even</b> (en cuánto tiempo el pickup repaga la comisión) y la <b>TIR neta de comisión</b> del destino. Liquidación T+1 hábil.
   </div>
 
   <div class="toolbar">
     <button class="btn btn-green" onclick="recargarPrecios()">↻ Recargar precios del Monitor</button>
+    <label class="com-global">Comisión %
+      <input id="com-global" class="com-input" type="number" step="0.01" min="0" value="0.5"
+             oninput="onComision(this.value)">
+      <span class="com-hint">se aplica a la venta y a la compra de todas las filas</span>
+    </label>
     <span class="liq-badge" id="liq-badge">Liquidación: —</span>
     <span class="precio-st" id="precio-st"></span>
   </div>
@@ -346,8 +357,6 @@
           <th>TIR Origen</th>
           <th class="inp-col">Precio Compra<br>Destino</th>
           <th>TIR Destino</th>
-          <th class="inp-col">Com. Venta %</th>
-          <th class="inp-col">Com. Compra %</th>
           <th>Monto Bruto<br>Venta</th>
           <th>Comisión<br>Venta $</th>
           <th>Neto a<br>Reinvertir</th>
@@ -431,15 +440,21 @@ const TICKER_MONITOR={ BPOA7:'BPA7D', BPOB7:'BPB7D', BPOC7:'BPC7D', BPOD7:'BPD7D
 
 // ── CASOS (los del Excel) ────────────────────────────────────
 const CASOS=[
-  { origen:'BPOA7', destino:'AO27', vn:10000, comV:0.5, comC:0.5 },
-  { origen:'BPOB7', destino:'AO27', vn:10000, comV:0.5, comC:0.5 },
-  { origen:'BPOC7', destino:'AO27', vn:10000, comV:0.5, comC:0.5 },
-  { origen:'BPOD7', destino:'AO27', vn:10000, comV:0.5, comC:0.5 },
-  { origen:'BPOA8', destino:'AO28', vn:10000, comV:0.5, comC:0.5 },
-  { origen:'BPOB8', destino:'AO28', vn:10000, comV:0.5, comC:0.5 },
+  { origen:'BPOA7', destino:'AO27', vn:10000 },
+  { origen:'BPOB7', destino:'AO27', vn:10000 },
+  { origen:'BPOC7', destino:'AO27', vn:10000 },
+  { origen:'BPOD7', destino:'AO27', vn:10000 },
+  { origen:'BPOA8', destino:'AO28', vn:10000 },
+  { origen:'BPOB8', destino:'AO28', vn:10000 },
 ];
 
-let estado=[];   // { vn, precioV, precioC, comV, comC } por fila
+// Comisión única para toda la solapa, en %. Se aplica igual a la punta vendedora y a la compradora
+// (es la misma condición del cliente), pero el cálculo las sigue tratando por separado: si alguna
+// vez hay que cobrar distinto de cada lado, alcanza con partir esto en dos.
+const COMISION_DEFECTO=0.5;
+let comision=COMISION_DEFECTO;
+
+let estado=[];   // { vn, precioV, precioC } por fila
 let t0=null;     // fecha de liquidación T+1 hábil
 let preciosMonitor={};
 
@@ -469,8 +484,11 @@ function red2(v){ return (v === null || v === undefined || !isFinite(v)) ? v : M
 function precioDe(bono){ return red2(preciosMonitor[TICKER_MONITOR[bono]] ?? null); }
 
 function initEstado(){
-  estado=CASOS.map(c=>({ vn:c.vn, precioV:precioDe(c.origen), precioC:precioDe(c.destino), comV:c.comV, comC:c.comC }));
+  estado=CASOS.map(c=>({ vn:c.vn, precioV:precioDe(c.origen), precioC:precioDe(c.destino) }));
 }
+// Cambiar la comisión no toca la estructura de la tabla, así que alcanza con recalcular: los
+// precios que el usuario haya tipeado a mano quedan donde están.
+function onComision(val){ const v=parseFloat(val); comision=isNaN(v)?0:Math.max(0,v); recompute(); }
 function recargarPrecios(){ cargarPreciosMonitor(); estado.forEach((e,i)=>{ e.precioV=precioDe(CASOS[i].origen); e.precioC=precioDe(CASOS[i].destino); }); buildTable(); recompute(); }
 function onInput(i,campo,val){ const v=parseFloat(val); estado[i][campo]=isNaN(v)?null:v; recompute(); }
 
@@ -492,8 +510,6 @@ function buildTable(){
       <td class="calc" id="c-tiro-${i}">—</td>
       <td><input class="rot-inp" type="number" step="0.01" value="${red2(e.precioC)??''}" oninput="onInput(${i},'precioC',this.value)"></td>
       <td class="calc" id="c-tird-${i}">—</td>
-      <td><input class="rot-inp com" type="number" step="0.01" value="${e.comV??''}" oninput="onInput(${i},'comV',this.value)"></td>
-      <td><input class="rot-inp com" type="number" step="0.01" value="${e.comC??''}" oninput="onInput(${i},'comC',this.value)"></td>
       <td class="calc" id="c-montobruto-${i}">—</td>
       <td class="calc" id="c-comisv-${i}">—</td>
       <td class="calc" id="c-neto-${i}">—</td>
@@ -516,7 +532,8 @@ function recompute(){
   const set=(id,txt,cls)=>{ const el=document.getElementById(id); if(el){ el.textContent=txt; if(cls!==undefined) el.className=cls; } };
   estado.forEach((e,i)=>{
     const c=CASOS[i];
-    const precioV=e.precioV, precioC=e.precioC, comV=(e.comV||0)/100, comC=(e.comC||0)/100, vn=e.vn||0;
+    const precioV=e.precioV, precioC=e.precioC, vn=e.vn||0;
+    const comV=comision/100, comC=comision/100;   // misma comisión de las dos puntas
     const tirO=tirBono(c.origen, precioV);
     const tirD=tirBono(c.destino, precioC);
     // TIR del destino neta de AMBAS comisiones. Antes sólo entraba la de compra, así que subir
