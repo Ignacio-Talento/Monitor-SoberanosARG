@@ -18,6 +18,14 @@ on:
         description: 'Diagnóstico: tickers separados por coma para consultar a /series y ver qué devuelve. Si se completa, no se toca historicos.xlsx.'
         required: false
         default: ''
+      campos:
+        description: 'Campos del sondeo (default precioDirty). Ej: tea,durationMod'
+        required: false
+        default: ''
+      moneda:
+        description: 'Moneda del sondeo: ars, mep o ccl (default mep)'
+        required: false
+        default: ''
 
 permissions:
   contents: write
@@ -47,13 +55,15 @@ jobs:
         env:
           API_1816_KEY: ${{ secrets.API_1816_KEY }}
           PROBE: ${{ inputs.probe }}
+          CAMPOS: ${{ inputs.campos }}
+          MONEDA: ${{ inputs.moneda }}
           # El input `fechas` se reusa acá como "desde hasta". Con un solo ticker líquido esto
           # devuelve el calendario de ruedas reales: las fechas que faltan son feriados.
           RANGO: ${{ inputs.fechas }}
         run: |
           set -- ${RANGO:-2026-07-06 2026-07-15}
-          python precios_1816.py --serie --tickers "$PROBE" --campos precioDirty \
-            --moneda mep --desde "$1" --hasta "${2:-$1}"
+          python precios_1816.py --serie --tickers "$PROBE" --campos "${CAMPOS:-precioDirty}" \
+            --moneda "${MONEDA:-mep}" --desde "$1" --hasta "${2:-$1}"
 
       - name: Completar ruedas
         if: ${{ inputs.probe == '' }}
