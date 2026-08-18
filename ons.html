@@ -2657,12 +2657,20 @@ async function autoAgregarLiquidos() {
       cargadas.add(i.ticker.toUpperCase());
       if (i.ticker.endsWith('D')) cargadas.add((i.ticker.slice(0, -1) + 'O').toUpperCase());
     }
+    // La misma lista que respeta el detector. Sin esto el auto-add reponía en la tabla lo que se
+    // había ignorado a propósito: DN1AO es otra especie del bono que ya se sigue como DNCAD
+    // —misma Clase 10 de Edenor, mismo 28/04/2033— y volvía a aparecer en cada carga, encima
+    // clasificada como ley local porque 1816 todavía no le asignó ISIN. Ignorar tiene que valer
+    // para los dos caminos o no vale para nada.
+    await cargarIgnorarRepo();
+    const ignorados = getDetectorIgnorados();
     const hoyMs = Date.now(), ventMs = AUTOADD_DIAS * 86400000;
     const cand = universo.filter(x => {
       if (x.grupo !== 'onusd') return false;   // sólo corporativos hard-dollar (como los cargados)
       if (String(x.monedaDenom || '').toUpperCase() !== 'USD') return false; // hard-dollar
       const tk = String(x.ticker || '').toUpperCase();
       if (!tk || tk.includes('@') || tk.includes(' ') || cargadas.has(tk)) return false;
+      if (ignorados.has(tk)) return false;
       const ven = x.venc ? new Date(x.venc) : null; if (ven && ven.getTime() <= hoyMs) return false;
       const emi = x.emision ? new Date(x.emision) : null;
       if (!emi || (hoyMs - emi.getTime()) > ventMs) return false;         // sólo nuevas
