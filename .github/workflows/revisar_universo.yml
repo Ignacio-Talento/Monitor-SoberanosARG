@@ -10,6 +10,10 @@ on:
         description: 'Sólo vencidos (no consulta 1816, no gasta créditos)'
         type: boolean
         default: false
+      detalle:
+        description: 'Tickers separados por coma: vuelca sus datos crudos de 1816 (vencimiento, ISIN, emisor) para poder darlos de alta'
+        required: false
+        default: ''
 
 permissions:
   contents: read
@@ -34,6 +38,9 @@ jobs:
         env:
           API_1816_KEY: ${{ secrets.API_1816_KEY }}
           SOLO: ${{ inputs.solo_bajas }}
+          DET: ${{ inputs.detalle }}
         run: |
-          [ "$SOLO" = "true" ] && FLAG=--bajas || FLAG=
+          if [ -n "$DET" ]; then FLAG="--detalle=$DET"
+          elif [ "$SOLO" = "true" ]; then FLAG=--bajas
+          else FLAG=; fi
           python revisar_universo.py $FLAG

@@ -123,7 +123,47 @@ def volumenes(cli, tickers):
     return out
 
 
+def detalle(tickers):
+    """Vuelca los campos crudos de 1816 para unos tickers puntuales.
+
+    Es el paso previo a dar de alta algo en Instrumentos.xlsx: de acá salen el vencimiento y el
+    ISIN, que es lo que decide la ley (los que arrancan con AR son locales y los US, ley Nueva
+    York). El nombre del emisor sirve para rotular y para cruzarlo contra el mapa de ratings.
+    """
+    from precios_1816 import Cliente1816, Error1816
+    cli = Cliente1816()
+    buscados = {t.strip().upper() for t in tickers}
+    encontrados = {}
+    for curva, grupo in CURVAS.items():
+        if not (buscados - set(encontrados)):
+            break
+        try:
+            items = cli.instrumentos(curva_id=curva)
+        except Error1816 as e:
+            print(f"AVISO: curva {curva} fallo: {e}", file=sys.stderr)
+            continue
+        for it in items or []:
+            t = str(it.get("ticker") or "").strip()
+            if t in buscados and t not in encontrados:
+                encontrados[t] = (grupo, it)
+    for t in sorted(buscados):
+        if t not in encontrados:
+            print(f"{t}: no aparece en ninguna curva")
+            continue
+        grupo, it = encontrados[t]
+        isin = it.get("isinCode") or ""
+        ley = "local" if isin.startswith("AR") else ("ny" if isin.startswith("US") else "?")
+        print(f"{t}: grupo={grupo} venc={a_fecha(it.get('fechaVencimiento'))} "
+              f"emision={a_fecha(it.get('fechaEmision'))} isin={isin} ley={ley} "
+              f"moneda={it.get('monedaDenom')} emisor={it.get('emisorNombre')}")
+    return 0
+
+
 def main(argv):
+    det = [a for a in argv if a.startswith("--detalle=")]
+    if det:
+        return detalle(det[0].split("=", 1)[1].split(","))
+
     hoy = hoy_art()
     monitor = leer_monitor()
     print(f"{len(monitor)} instrumentos en {INSTRUMENTOS_FILE} - hoy {hoy}\n")
