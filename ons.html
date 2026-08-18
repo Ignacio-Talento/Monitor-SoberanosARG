@@ -2540,6 +2540,8 @@ const RATINGS = {
   // Argentina con ".ar". No hay S&P/Moody's/Fitch global. Por eso sus ONs de ley NY —MR45D y
   // MR46D— muestran "—" en la columna Rating y está bien que así sea: la nota nacional mide riesgo
   // relativo dentro de Argentina y sustituirla sería mezclar escalas.
+  // Y si aparece un BBB+.ar de Moody's Local para GEMSA, NO reemplaza al D(arg): ese comunicado es
+  // del 05/06/2024, casi dos años anterior al default. El dato vigente es el de FIX del 14/04/2026.
   "GEMSA-CTR": { nac: {r:"D(arg)", a:"FIX SCR", p:"—", f:"2026-04-14"}, glob: null },
   "Genneia": { nac: {r:"AA+.ar", a:"Moody's Local AR", p:"Estable", f:"2026-04-21"}, glob: {r:"B", a:"S&P", p:"Estable", f:"2026-06-11"} },
   "Grupo ST": { nac: {r:"A+(arg)", a:"FIX SCR", p:"Estable", f:"2026-04-13"}, glob: null },
