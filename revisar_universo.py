@@ -26,7 +26,7 @@ except ImportError:
     print("ERROR: falta openpyxl", file=sys.stderr)
     sys.exit(1)
 
-from actualizar_historicos import GRUPOS_CON_D, HOJAS_NO_INSTRUMENTOS, INSTRUMENTOS_FILE
+from actualizar_historicos import HOJAS_NO_INSTRUMENTOS, INSTRUMENTOS_FILE, leer_tickers
 
 # curvaId de 1816 -> grupo del monitor. Espejo de CURVAS en functions/api/instrumentos.js.
 CURVAS = {
@@ -104,6 +104,23 @@ def leer_monitor():
     return universo
 
 
+def volumenes(cli, tickers):
+    """-> {ticker: volumen diario}. Un lote que falla no tira abajo el resto del repaso."""
+    from precios_1816 import Error1816
+    out = {}
+    for i in range(0, len(tickers), 50):
+        try:
+            filas = cli.precios(tickers[i:i + 50], ["volumenMontoDiario"], moneda="mep")
+        except Error1816 as e:
+            print(f"AVISO: no se pudo medir volumen de un lote: {e}", file=sys.stderr)
+            continue
+        for f in filas:
+            v = f.get("volumenMontoDiario")
+            if isinstance(v, (int, float)):
+                out[f["ticker"]] = v
+    return out
+
+
 def main(argv):
     hoy = hoy_art()
     monitor = leer_monitor()
@@ -132,11 +149,15 @@ def main(argv):
     from precios_1816 import Cliente1816, Error1816
     cli = Cliente1816()
 
-    # Los Bonares y Globales viven en el archivo con la D que agrega Eco; 1816 los nombra sin ella.
+    # El nombre en el archivo casi nunca es el nombre en 1816: los Bonares y Globales llevan la D
+    # que agrega Eco, las ONs cambian la D final por O y los bopreales tienen un mapa propio. Eso
+    # ya lo resuelve leer_tickers(), así que se reusa en vez de reimplementarlo. La primera versión
+    # comparaba con los nombres del archivo y daba diez altas que ya estaban seguidas: los seis
+    # bopreales, BYCVD, T662D, PLC7D y YMCXD.
     conocidos = set(monitor)
-    for t, (h, _v) in monitor.items():
-        if h in GRUPOS_CON_D and t.endswith("D"):
-            conocidos.add(t[:-1])
+    for it in leer_tickers():
+        if it["t1816"]:
+            conocidos.add(it["t1816"])
 
     nuevos = {}
     for curva, grupo in CURVAS.items():
@@ -163,9 +184,12 @@ def main(argv):
     falta_sob = {t: v for t, v in nuevos.items() if v["grupo"] in EXHAUSTIVAS}
     falta_otro = {t: v for t, v in nuevos.items() if v["grupo"] not in EXHAUSTIVAS}
 
+    vol = volumenes(cli, sorted(falta_sob))
     print(f"\n=== ALTAS: soberanos que 1816 lista y el monitor no sigue ({len(falta_sob)}) ===")
     for t, v in sorted(falta_sob.items(), key=lambda x: (x[1]["emision"] or date.min)):
-        print(f"  {t:8s} {v['grupo']:12s} emision {v['emision']}  vence {v['venc']}")
+        marca = "  <-- liquido" if (vol.get(t) or 0) >= PISO_VOLUMEN else ""
+        print(f"  {t:8s} {v['grupo']:12s} emision {v['emision']}  vence {v['venc']}"
+              f"  vol {vol.get(t) or 0:>12,.0f}{marca}")
     if not falta_sob:
         print("  (ninguno: el monitor esta al dia)")
 
@@ -173,19 +197,8 @@ def main(argv):
     # faltante se mide con volumen antes de proponer nada.
     print(f"\n=== CANDIDATOS provinciales/corporativos no seguidos: {len(falta_otro)} ===")
     if falta_otro:
-        liquidos = []
-        tickers = sorted(falta_otro)
-        for i in range(0, len(tickers), 50):
-            lote = tickers[i:i + 50]
-            try:
-                filas = cli.precios(lote, ["volumenMontoDiario"], moneda="mep")
-            except Error1816 as e:
-                print(f"AVISO: no se pudo medir volumen de un lote: {e}", file=sys.stderr)
-                continue
-            for f in filas:
-                vol = f.get("volumenMontoDiario")
-                if isinstance(vol, (int, float)) and vol >= PISO_VOLUMEN:
-                    liquidos.append((vol, f["ticker"]))
+        vo = volumenes(cli, sorted(falta_otro))
+        liquidos = [(v, t) for t, v in vo.items() if v >= PISO_VOLUMEN]
         print(f"  con volumen >= {PISO_VOLUMEN:,}: {len(liquidos)}")
         for vol, t in sorted(liquidos, reverse=True):
             v = falta_otro[t]
