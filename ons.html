@@ -2534,6 +2534,12 @@ const RATINGS = {
   "Cresud": { nac: {r:"AAA(arg)", a:"FIX SCR", p:"Estable", f:"2026-04-24"}, glob: null },
   "Edemsa": { nac: {r:"A+(arg)", a:"FIX SCR", p:"Estable", f:"2026-07-24"}, glob: {r:"B", a:"S&P", p:"Estable", f:"2026-06-11"} },
   "Edenor": { nac: {r:"A+(arg)", a:"FIX SCR", p:"Estable", f:"2026-06-29"}, glob: {r:"B-", a:"Fitch", p:"Estable", f:""} },
+  // GEMSA-CTR (Generación Mediterránea + Central Térmica Roca, grupo Albanesi): el glob queda en
+  // null porque NO tiene nota internacional, no porque falte cargarla. Se buscó el 2026-08-18 y las
+  // dos agencias que lo cubren emiten en escala nacional: FIX SCR con sufijo "(arg)" y Moody's Local
+  // Argentina con ".ar". No hay S&P/Moody's/Fitch global. Por eso sus ONs de ley NY —MR45D y
+  // MR46D— muestran "—" en la columna Rating y está bien que así sea: la nota nacional mide riesgo
+  // relativo dentro de Argentina y sustituirla sería mezclar escalas.
   "GEMSA-CTR": { nac: {r:"D(arg)", a:"FIX SCR", p:"—", f:"2026-04-14"}, glob: null },
   "Genneia": { nac: {r:"AA+.ar", a:"Moody's Local AR", p:"Estable", f:"2026-04-21"}, glob: {r:"B", a:"S&P", p:"Estable", f:"2026-06-11"} },
   "Grupo ST": { nac: {r:"A+(arg)", a:"FIX SCR", p:"Estable", f:"2026-04-13"}, glob: null },
