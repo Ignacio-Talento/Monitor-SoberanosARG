@@ -1,0 +1,55 @@
+# Relleno de historia para instrumentos recién dados de alta. Manual: se corre después de sumar
+# activos al monitor, para que las columnas DAY/WTD/MTD/YTD tengan contra qué comparar en vez de
+# mostrar "—" durante semanas. Gasta créditos de 1816, así que conviene mirar primero el dry-run.
+name: Rellenar Historia de Nuevos
+
+on:
+  workflow_dispatch:
+    inputs:
+      tickers:
+        description: 'Tickers del monitor separados por espacio (vacío = detectar los que tengan poca historia)'
+        required: false
+        default: ''
+      dry_run:
+        description: 'Sólo listar a quiénes rellenaría'
+        type: boolean
+        default: true
+
+permissions:
+  contents: write
+
+jobs:
+  rellenar:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repositorio
+        uses: actions/checkout@v4
+
+      - name: Configurar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Instalar dependencias
+        run: pip install requests openpyxl
+
+      - name: Rellenar historia
+        env:
+          API_1816_KEY: ${{ secrets.API_1816_KEY }}
+          # Por variable y no interpolado en el `run`: el input es texto libre y llegaría al shell
+          # tal cual.
+          TICKERS: ${{ inputs.tickers }}
+          DRY: ${{ inputs.dry_run }}
+        run: |
+          [ "$DRY" = "true" ] && FLAG=--dry-run || FLAG=
+          python rellenar_historia.py $FLAG $TICKERS
+
+      - name: Commit y push si hay cambios
+        if: ${{ !inputs.dry_run }}
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git add historicos.xlsx
+          git diff --staged --quiet || git commit -m "Rellenar historia de instrumentos nuevos $(date +'%Y-%m-%d')"
+          git push
