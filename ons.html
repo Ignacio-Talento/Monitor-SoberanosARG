@@ -2184,6 +2184,20 @@ function mercadoAbierto() {
   return min >= MERCADO_DESDE && min <= MERCADO_HASTA;
 }
 
+// Una única consulta con la rueda ya cerrada, para capturar el precio de cierre. Se marca en
+// sessionStorage con la fecha ARG para no repetirla: sin eso, una pestaña abierta toda la noche
+// volvería a pedir en cada tick y en cada visibilitychange, que es justo lo que la guarda de
+// mercadoAbierto() venía a evitar.
+function pasadaFinal() {
+  const hoy = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Argentina/Buenos_Aires' })
+    .format(new Date());
+  try {
+    if (sessionStorage.getItem('ons_cierre_pedido') === hoy) return;
+    sessionStorage.setItem('ons_cierre_pedido', hoy);
+  } catch (e) { return; }   // sin sessionStorage no hay forma de acordarse: mejor no pedir
+  fetchPreciosYahoo(false);
+}
+
 function limpiarPrecios() {
   precios = {};
   guardarPrecios();
@@ -2750,9 +2764,21 @@ async function cargarExcelGitHub() {
         if (!instrumentos.length || document.visibilityState === 'hidden') return;
         // Fuera de rueda el precio no se mueve: seguir pidiéndolo sólo quema créditos. Una
         // pestaña olvidada abierta hacía ~30 consultas por hora toda la noche y el fin de semana.
-        if (!mercadoAbierto()) return;
+        // Pero se deja pasar UNA después del cierre: las operaciones de los últimos minutos —y el
+        // precio de cierre, que es el que más se mira— entraban recién al día siguiente si nadie
+        // refrescaba a mano.
+        if (!mercadoAbierto()) { pasadaFinal(); return; }
         fetchPreciosYahoo(false);
       }, 60 * 1000);
+      // Al volver a la pestaña, si los precios quedaron de antes del último cierre se piden de
+      // nuevo aunque el mercado esté cerrado. Es una consulta puntual, no un timer: el caso típico
+      // es haber dejado la solapa en segundo plano durante el final de la rueda, que es justo
+      // cuando el timer de arriba se saltea por `visibilityState === 'hidden'`.
+      document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState !== 'visible' || !instrumentos.length) return;
+        if (mercadoAbierto()) { fetchPreciosYahoo(false); return; }
+        pasadaFinal();
+      });
     }
     cargarEmisores();      // en background: emisor de cada ON (para la columna Industria)
     autoAgregarLiquidos(); // en background: suma ONs líquidas nuevas de 1816 (no bloquea)

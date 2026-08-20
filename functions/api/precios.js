@@ -178,14 +178,14 @@ function fechaART(offsetDias) {
 // y es justo la llamada que más chance tiene de comerse el 429 porque va primera y sin espacio
 // previo. La rueda cambia como mucho una vez por día, así que 5 minutos de memo es de sobra.
 let _fechaMemo = null, _fechaMemoExp = 0;
-async function resolverFecha(apiKey, tickerRef, moneda, fallos) {
+async function resolverFecha(apiKey, tickersRef, moneda, fallos) {
   if (_fechaMemo !== null && Date.now() < _fechaMemoExp) return _fechaMemo.v;
   for (let i = 0; i <= 7; i++) {
     const d = fechaART(i);
     const dow = d.getUTCDay();
     if (dow === 0 || dow === 6) continue;             // fin de semana: ni consultamos
     const fecha = i === 0 ? null : d.toISOString().slice(0, 10);
-    const { datos, fallos: fallosFecha } = await fetch1816(apiKey, [tickerRef], moneda, fecha);
+    const { datos, fallos: fallosFecha } = await fetch1816(apiKey, tickersRef, moneda, fecha);
     // Una consulta que FALLA (429, 5xx, red) devuelve `datos` vacío, exactamente igual que un día
     // en que el bono no operó. Tomarlas por lo mismo hacía que la búsqueda siguiera retrocediendo
     // y terminara fijando una rueda vieja —y el memo la dejaba pegada 5 minutos—, así que el
@@ -199,7 +199,16 @@ async function resolverFecha(apiKey, tickerRef, moneda, fallos) {
     }
     // Ojo: 1816 devuelve el instrumento aunque no haya operado (con el campo en null),
     // así que hay que mirar el precio, no la presencia de la clave.
-    if (datos[tickerRef] && typeof datos[tickerRef][CAMPO] === "number") {
+    //
+    // Y alcanza con que UNO de los de referencia haya operado. Antes se miraba un solo ticker —el
+    // primero del lote, elegido por el orden en que venía el pedido— y eso volvía la rueda de toda
+    // la tabla rehén de un papel cualquiera: si ese no operaba hoy, la búsqueda retrocedía y se
+    // fijaba fechaOperacion de AYER para los 97 instrumentos, incluidos los que sí habían operado
+    // hoy. Pasó el 2026-08-20 con YFCMD: había operado a las 16:54 a 102,95 y el monitor mostraba
+    // 102,50, el cierre del día anterior. Y como el memo dura 5 minutos, refrescar a mano tampoco
+    // servía: volvía a resolver lo mismo. Mirar varios cuesta lo mismo (una request) y hace falta
+    // un día entero sin que opere ninguno para que retroceda.
+    if (tickersRef.some((t) => datos[t] && typeof datos[t][CAMPO] === "number")) {
       _fechaMemo = { v: fecha }; _fechaMemoExp = Date.now() + 300000;
       return fecha;
     }
@@ -258,8 +267,15 @@ async function computePrecios(env, items) {
   if (!apiKey) fallos.push("falta el Secret API_1816_KEY en Cloudflare Pages: no se consultó 1816");
   if (apiKey && monedas.length) {
     // Una sola resolución de fecha para todas las monedas (fin de semana/feriado -> última rueda).
-    const ref = porMoneda[monedas[0]][0];
-    const fecha = await resolverFecha(apiKey, ref.t, ref.moneda, fallos);
+    // Se toman hasta 10 tickers como referencia, espaciados a lo largo del lote en vez de los 10
+    // primeros: si vinieran ordenados por vencimiento o por emisor, los diez primeros podrían ser
+    // todos del mismo tipo —y todos ilíquidos— y no aportarían más que uno.
+    const grupoRef = porMoneda[monedas[0]];
+    const paso = Math.max(1, Math.floor(grupoRef.length / 10));
+    const tickersRef = [...new Set(
+      grupoRef.filter((_, i) => i % paso === 0).slice(0, 10).map((p) => p.t)
+    )];
+    const fecha = await resolverFecha(apiKey, tickersRef, grupoRef[0].moneda, fallos);
     // resolverFecha devuelve null cuando la rueda es la de hoy Y TAMBIÉN cuando no la pudo
     // resolver. Los dos casos terminan igual: se consulta sin fecha, que es como 1816 devuelve
     // la última que tenga. La diferencia es que el segundo deja un aviso en `fallos`, así que el
