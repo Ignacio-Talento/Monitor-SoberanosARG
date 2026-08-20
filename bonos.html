@@ -1963,6 +1963,10 @@ function renderTabla() {
                itm: !!filasPorClave[inst.ticker + '|' + (inst.pata?.tipo || '')] };
     }).filter(d => d.md !== null && d.tea !== null);
     localStorage.setItem('bonos_data', JSON.stringify(enriched));
+    // Sello de antigüedad, en una clave aparte para no romper a las siete páginas que ya leen
+    // `bonos_data` esperando un array. localStorage NO vence: sin esto, una solapa abierta el
+    // lunes muestra los precios del viernes con un ✓ verde al lado y nada que lo delate.
+    localStorage.setItem('bonos_data_meta', JSON.stringify({ ts: Date.now(), fechaRueda }));
   } catch(e) { console.warn('localStorage error:', e); }
 }
 

@@ -1339,5 +1339,40 @@ init();
 </script>
 
 
+<script>
+/* ── ANTIGÜEDAD DE LOS PRECIOS DEL MONITOR ─────────────────────────────────────
+   Esta página no consulta 1816: usa los precios que el Monitor dejó en localStorage. Y
+   localStorage no vence, así que sin este aviso una solapa abierta días después muestra
+   precios viejos sin nada que lo delate —incluso con un "✓ N precios del Monitor" en verde,
+   que dice cuántos hay, no de cuándo son—.
+   Va como bloque suelto y no toca el código de cada página: sólo lee la clave que escribe
+   bonos.html y, si el dato no es de la rueda de hoy, pone una cinta arriba de todo. */
+(function () {
+  var meta = null;
+  try { meta = JSON.parse(localStorage.getItem('bonos_data_meta') || 'null'); } catch (e) {}
+  var hayDatos = false;
+  try { hayDatos = (JSON.parse(localStorage.getItem('bonos_data') || '[]') || []).length > 0; } catch (e) {}
+  if (!hayDatos) return;   // "no hay precios" ya lo avisa cada página a su manera
+
+  var hoy = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Argentina/Buenos_Aires' }).format(new Date());
+  var texto = null;
+  if (!meta || !meta.ts) {
+    texto = 'Los precios vienen del Monitor y no se sabe de cuándo son. Pasá por el Monitor para refrescarlos.';
+  } else {
+    var dia = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Argentina/Buenos_Aires' }).format(new Date(meta.ts));
+    if (dia !== hoy) {
+      var f = (meta.fechaRueda || dia).split('-');
+      texto = 'Precios de la rueda del ' + f[2] + '/' + f[1] + '. Para actualizarlos, pasá por el Monitor.';
+    }
+  }
+  if (!texto) return;
+
+  var d = document.createElement('div');
+  d.textContent = '⚠ ' + texto;
+  d.style.cssText = 'background:#fff4e5;color:#7a4b00;border-bottom:1px solid #f0c890;' +
+    'font:600 12px/1.5 ui-sans-serif,system-ui,sans-serif;padding:8px 16px;text-align:center';
+  document.body.insertBefore(d, document.body.firstChild);
+})();
+</script>
 </body>
 </html>
