@@ -26,6 +26,10 @@ on:
         description: 'Moneda del sondeo: ars, mep o ccl (default mep)'
         required: false
         default: ''
+      modo:
+        description: 'Sondeo: "serie" (histórico, default) o "precios" (foto en vivo, permite campos como ultimaOperacion)'
+        required: false
+        default: ''
       comparar_ons:
         description: 'Diagnóstico: compara la TIR de cada ON contra 1816 (usá "fechas" para pasar tickers puntuales)'
         type: boolean
