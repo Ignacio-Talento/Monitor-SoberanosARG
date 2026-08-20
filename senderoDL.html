@@ -323,6 +323,7 @@ async function cargarPrecios(...pares) {
   }
   if (!items.length) return;
   try {
+    if (typeof MonitorCore === 'undefined') throw new Error('monitor-core.js no cargó');
     const r = await MonitorCore.pedirPrecios(items);
     if (!Object.keys(r.precios).length) throw new Error('el proxy no devolvió precios');
     preciosProxy = r.precios; precioOrigen = '1816';
@@ -333,7 +334,20 @@ async function cargarPrecios(...pares) {
 }
 // Los tickers son únicos, así que el respaldo no necesita filtrar por grupo: cada página busca
 // sólo los suyos.
-function mapaPrecios() { return preciosProxy || MonitorCore.preciosDelMonitor(); }
+// Respaldo: los precios que dejó el Monitor. Se lee acá y no vía MonitorCore A PROPÓSITO. Si el
+// módulo no cargó —deploy a medias, o el gate de Access devolviendo HTML en vez del .js— el catch
+// que lo usaba tiraba un SEGUNDO ReferenceError que ya no agarraba nadie: la promesa quedaba
+// rechazada, la tabla no se volvía a dibujar y el botón parecía no hacer nada, sin ningún error a
+// la vista. El camino de recuperación no puede depender de lo mismo que puede fallar.
+function preciosGuardados(){
+  try{
+    const o={};
+    (JSON.parse(localStorage.getItem('bonos_data')||'[]')||[])
+      .forEach(d=>{ if(d && d.ticker && d.precio!=null) o[d.ticker]=d.precio; });
+    return o;
+  }catch(e){ return {}; }
+}
+function mapaPrecios() { return preciosProxy || preciosGuardados(); }
 
 function parseLocalDate(s) {
   if (!s) return null;
