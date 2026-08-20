@@ -103,6 +103,7 @@
   .gd-tip i { font-style: normal; color: #fff; font-family: var(--mono); }
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="monitor-core.js"></script>
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
   :root {
@@ -303,6 +304,37 @@ let dlBonos = [];            // instrumentos DL del Excel
 let lecaps  = [];            // instrumentos LECAP del Excel
 
 // ── HELPERS ──────────────────────────────────────────────────
+// ── PRECIOS ───────────────────────────────────────────────────
+// Esta página calcula sus tasas a partir del precio, así que le alcanza con pedírselo al proxy:
+// no necesita el motor de calcMetricas. Antes los heredaba de `bonos_data`, que escribe el
+// Monitor y que localStorage NO vence, así que una solapa abierta días después mostraba precios
+// viejos sin nada que lo delatara.
+// Si el proxy falla se cae a ese mismo respaldo: queda como antes, nunca peor, pero avisando.
+let preciosProxy = null;          // null = todavía no llegaron
+let precioOrigen = 'monitor';
+
+async function cargarPrecios(...pares) {
+  // Cada par es [lista, grupo]. Van todos en UNA sola consulta: el proxy cobra por ticker, así
+  // que partirla en dos llamadas costaría lo mismo pero sumaría otra ida y vuelta a 1816 —y otra
+  // chance de comerse el 429—.
+  const items = [];
+  for (const [lista, grupo] of pares) {
+    (lista || []).filter(b => b && b.ticker).forEach(b => items.push({ ticker: b.ticker, grupo }));
+  }
+  if (!items.length) return;
+  try {
+    const r = await MonitorCore.pedirPrecios(items);
+    if (!Object.keys(r.precios).length) throw new Error('el proxy no devolvió precios');
+    preciosProxy = r.precios; precioOrigen = '1816';
+  } catch (e) {
+    console.warn('proxy no disponible, se usa lo que dejó el Monitor:', e);
+    preciosProxy = null; precioOrigen = 'monitor';
+  }
+}
+// Los tickers son únicos, así que el respaldo no necesita filtrar por grupo: cada página busca
+// sólo los suyos.
+function mapaPrecios() { return preciosProxy || MonitorCore.preciosDelMonitor(); }
+
 function parseLocalDate(s) {
   if (!s) return null;
   const p = String(s).split('-').map(Number);
@@ -646,9 +678,7 @@ function renderTabla() {
     return;
   }
 
-  const bonosData = JSON.parse(localStorage.getItem('bonos_data') || '[]');
-  const precioMap = {};
-  bonosData.filter(d => d.grupo === 'usdlinked').forEach(d => { precioMap[d.ticker] = d.precio; });
+  const precioMap = mapaPrecios();
 
   // Ordenar por días al vencimiento, de menor a mayor
   const dlOrdenados = [...dlBonos].sort((a, b) => {
@@ -684,8 +714,8 @@ function renderTabla() {
         const diffDias = Math.abs((parseLocalDate(lecapComp.venc) - vencBono) / 86400000);
         if (diffDias > 20) { lecapComp = null; }
         else {
-          const lp = bonosData.find(d => d.ticker === lecapComp.ticker);
-          lecapTEA = (lp && lp.precio) ? calcTEALecap(lecapComp, lp.precio) : null;
+          const lp = mapaPrecios()[lecapComp.ticker];
+          lecapTEA = lp ? calcTEALecap(lecapComp, lp) : null;
         }
       }
     }
@@ -742,11 +772,7 @@ function renderGraficoSintetico() {
   const cont  = document.getElementById('graf-sintetico');
   const empty = document.getElementById('sintetico-empty');
   if (!cont) return;
-  const bonosData = JSON.parse(localStorage.getItem('bonos_data') || '[]');
-
-  // Mapa de precios DL
-  const precioDL = {};
-  bonosData.filter(d => d.grupo === 'usdlinked').forEach(d => { precioDL[d.ticker] = d.precio; });
+  const precioDL = mapaPrecios();
 
   const hoy = new Date(); hoy.setHours(0,0,0,0);
 
@@ -776,8 +802,7 @@ function renderGraficoSintetico() {
   lecaps.forEach(l => {
     const dias = diasAlVenc(l.venc);
     if (dias === null || dias <= 0) return;
-    const lp = bonosData.find(d => d.ticker === l.ticker);
-    const precio = lp ? lp.precio : null;
+    const precio = mapaPrecios()[l.ticker] ?? null;
     const tea = precio ? calcTEALecap(l, precio) : null;
     if (tea === null) return;
     puntosLecap.push({ x: parseFloat((dias/365).toFixed(3)), y: parseFloat(tea.toFixed(2)), ticker: l.ticker });
@@ -883,6 +908,7 @@ function renderGraficoSintetico() {
 async function init() {
   await Promise.all([cargarTCHoy(), cargarREM_TC(), cargarExcel()]);
   renderTCInputs();
+  await cargarPrecios([dlBonos, 'usdlinked'], [lecaps, 'lecap']);
   renderTabla();
   await fetchFuturos();
   renderGraficoSintetico();

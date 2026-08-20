@@ -77,6 +77,7 @@
   .table-wrap { border-radius: var(--r-card); box-shadow: var(--sh-card); }
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="monitor-core.js"></script>
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
   :root {
@@ -387,6 +388,37 @@ let sortCol = 'dias';
 let sortAsc = true;
 
 // ── HELPERS FECHA ────────────────────────────────────────────
+// ── PRECIOS ───────────────────────────────────────────────────
+// Esta página calcula sus tasas a partir del precio, así que le alcanza con pedírselo al proxy:
+// no necesita el motor de calcMetricas. Antes los heredaba de `bonos_data`, que escribe el
+// Monitor y que localStorage NO vence, así que una solapa abierta días después mostraba precios
+// viejos sin nada que lo delatara.
+// Si el proxy falla se cae a ese mismo respaldo: queda como antes, nunca peor, pero avisando.
+let preciosProxy = null;          // null = todavía no llegaron
+let precioOrigen = 'monitor';
+
+async function cargarPrecios(...pares) {
+  // Cada par es [lista, grupo]. Van todos en UNA sola consulta: el proxy cobra por ticker, así
+  // que partirla en dos llamadas costaría lo mismo pero sumaría otra ida y vuelta a 1816 —y otra
+  // chance de comerse el 429—.
+  const items = [];
+  for (const [lista, grupo] of pares) {
+    (lista || []).filter(b => b && b.ticker).forEach(b => items.push({ ticker: b.ticker, grupo }));
+  }
+  if (!items.length) return;
+  try {
+    const r = await MonitorCore.pedirPrecios(items);
+    if (!Object.keys(r.precios).length) throw new Error('el proxy no devolvió precios');
+    preciosProxy = r.precios; precioOrigen = '1816';
+  } catch (e) {
+    console.warn('proxy no disponible, se usa lo que dejó el Monitor:', e);
+    preciosProxy = null; precioOrigen = 'monitor';
+  }
+}
+// Los tickers son únicos, así que el respaldo no necesita filtrar por grupo: cada página busca
+// sólo los suyos.
+function mapaPrecios() { return preciosProxy || MonitorCore.preciosDelMonitor(); }
+
 function parseLocalDate(s) {
   if (!s) return null;
   const parts = String(s).split('-').map(Number);
@@ -540,17 +572,26 @@ async function cargarCaucionBCRA() {
 }
 
 // ── PRECIOS DESDE EL MONITOR (bonos_data) ────────────────────
-function cargarPreciosMonitor() {
-  const bd = JSON.parse(localStorage.getItem('bonos_data') || '[]');
+async function cargarPreciosMonitor() {
+  await cargarPrecios([lecaps, 'lecap']);
+  const mapa = mapaPrecios();
   precios = {};
-  bd.filter(d => d.grupo === 'lecap' && d.precio != null).forEach(d => { precios[d.ticker] = d.precio; });
+  // Sólo las LECAPs de esta página: el respaldo del Monitor trae todos los tickers.
+  lecaps.forEach(l => { if (mapa[l.ticker] != null) precios[l.ticker] = mapa[l.ticker]; });
   const n = Object.keys(precios).length;
   const st = document.getElementById('precio-st');
-  if (st) { st.textContent = n ? `✓ ${n} precios del Monitor` : 'Sin precios — pasá por el Monitor'; st.className = 'upload-st ' + (n ? 'ok' : 'err'); }
+  if (st) {
+    // Se distingue el origen: antes decía "del Monitor" en verde aunque el dato fuera de días
+    // atrás, porque informaba cuántos precios había y no de cuándo eran.
+    st.textContent = !n ? 'Sin precios'
+      : precioOrigen === '1816' ? `✓ ${n} precios de 1816`
+      : `⚠ ${n} precios del Monitor (sin conexión al proxy)`;
+    st.className = 'upload-st ' + (n && precioOrigen === '1816' ? 'ok' : 'err');
+  }
 }
 
-function recargarPrecios() {
-  cargarPreciosMonitor();
+async function recargarPrecios() {
+  await cargarPreciosMonitor();
   lecaps.forEach(l => {
     const inp = document.getElementById('inp-' + l.ticker);
     if (inp) {
@@ -814,7 +855,7 @@ async function init() {
   await cargarFeriados();    // necesario para el T+1 hábil del plazo de fondeo
   await cargarExcel();
   await cargarUniverso1816(); // agrega LECAPs vivas de 1816 que no están en el Excel (fila en blanco)
-  cargarPreciosMonitor();
+  await cargarPreciosMonitor();
   actualizarSelectSim();
   await cargarCaucionBCRA(); // pre-carga caución + recalcCaucion() → renderTabla()
 }

@@ -77,6 +77,7 @@
   .table-wrap { border-radius: var(--r-card); box-shadow: var(--sh-card); }
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="monitor-core.js"></script>
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
   :root {
@@ -279,6 +280,37 @@ let lecaps = [];               // instrumentos LECAP del Excel
 let tamarSeries = {};          // { ticker: [valores diarios reales, viejo→nuevo] }
 
 // ── HELPERS ──────────────────────────────────────────────────
+// ── PRECIOS ───────────────────────────────────────────────────
+// Esta página calcula sus tasas a partir del precio, así que le alcanza con pedírselo al proxy:
+// no necesita el motor de calcMetricas. Antes los heredaba de `bonos_data`, que escribe el
+// Monitor y que localStorage NO vence, así que una solapa abierta días después mostraba precios
+// viejos sin nada que lo delatara.
+// Si el proxy falla se cae a ese mismo respaldo: queda como antes, nunca peor, pero avisando.
+let preciosProxy = null;          // null = todavía no llegaron
+let precioOrigen = 'monitor';
+
+async function cargarPrecios(...pares) {
+  // Cada par es [lista, grupo]. Van todos en UNA sola consulta: el proxy cobra por ticker, así
+  // que partirla en dos llamadas costaría lo mismo pero sumaría otra ida y vuelta a 1816 —y otra
+  // chance de comerse el 429—.
+  const items = [];
+  for (const [lista, grupo] of pares) {
+    (lista || []).filter(b => b && b.ticker).forEach(b => items.push({ ticker: b.ticker, grupo }));
+  }
+  if (!items.length) return;
+  try {
+    const r = await MonitorCore.pedirPrecios(items);
+    if (!Object.keys(r.precios).length) throw new Error('el proxy no devolvió precios');
+    preciosProxy = r.precios; precioOrigen = '1816';
+  } catch (e) {
+    console.warn('proxy no disponible, se usa lo que dejó el Monitor:', e);
+    preciosProxy = null; precioOrigen = 'monitor';
+  }
+}
+// Los tickers son únicos, así que el respaldo no necesita filtrar por grupo: cada página busca
+// sólo los suyos.
+function mapaPrecios() { return preciosProxy || MonitorCore.preciosDelMonitor(); }
+
 function parseLocalDate(s) { if (!s) return null; const p = String(s).split('-').map(Number); return new Date(p[0], p[1]-1, p[2]); }
 function dateToStr(d) { return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; }
 function diasAlVenc(f) { if (!f) return null; const hoy = new Date(); hoy.setHours(0,0,0,0); return Math.round((parseLocalDate(f) - hoy) / 86400000); }
@@ -527,9 +559,7 @@ function renderTabla() {
     return;
   }
 
-  const bonosData = JSON.parse(localStorage.getItem('bonos_data') || '[]');
-  const precioMap = {};
-  bonosData.filter(d => d.grupo === 'tamar').forEach(d => { precioMap[d.ticker] = d.precio; });
+  const precioMap = mapaPrecios();
 
   const ordenados = [...tamarBonos].sort((a, b) => {
     const da = diasAlVenc(a.venc), db = diasAlVenc(b.venc);
@@ -568,7 +598,7 @@ function renderTabla() {
       if (lecapComp) {
         const diffDias = Math.abs((parseLocalDate(lecapComp.venc) - vencBono) / 86400000);
         if (diffDias > 20) { lecapComp = null; }
-        else { const lp = bonosData.find(d => d.ticker === lecapComp.ticker); lecapTEA = (lp && lp.precio) ? calcTEALecap(lecapComp, lp.precio) : null; }
+        else { const lp = mapaPrecios()[lecapComp.ticker]; lecapTEA = lp ? calcTEALecap(lecapComp, lp) : null; }
       }
     }
 
@@ -595,7 +625,7 @@ function renderTabla() {
   // la curva entera, que es justo lo que deja ver dónde se cruzan.
   const puntosLecap = lecaps.map(l => {
     const dias = diasAlVenc(l.venc);
-    const p = bonosData.find(d => d.ticker === l.ticker);
+    const p = mapaPrecios()[l.ticker] != null ? { precio: mapaPrecios()[l.ticker] } : null;
     if (dias === null || dias <= 0 || !p || !p.precio) return null;
     const tea = calcTEALecap(l, p.precio);
     return tea == null ? null : { x: dias / 365, y: tea, ticker: l.ticker, venc: l.venc };
@@ -713,7 +743,7 @@ function renderGraficoTAMAR(puntosTamar, puntosLecap) {
 async function init() {
   await Promise.all([cargarREM_TAMAR(), cargarExcel()]);
   renderTamarInputs();
-  await fetchSeriesTamar();
+  await Promise.all([fetchSeriesTamar(), cargarPrecios([tamarBonos, 'tamar'], [lecaps, 'lecap'])]);
   renderTabla();
 }
 
