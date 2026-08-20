@@ -107,6 +107,7 @@
   .graf-vacio { padding: 40px; text-align: center; color: var(--text-3); font-size: 12px; font-style: italic; }
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="monitor-core.js"></script>
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
   :root {
@@ -467,14 +468,44 @@ function tirBono(bono, precio){
   return xirr(cfs);
 }
 
-function cargarPreciosMonitor(){
-  const bd=JSON.parse(localStorage.getItem('bonos_data')||'[]');
-  preciosMonitor={};
-  bd.forEach(d=>{ if(d.precio!=null) preciosMonitor[d.ticker]=d.precio; });
+// Grupo de cada bono, para armar el pedido al proxy. Los BPO* son bopreales y los AO*, bonares:
+// el proxy lo necesita para traducir el ticker al nombre que usa 1816.
+const GRUPO_DE = { BPOA7:'usdbopreal', BPOB7:'usdbopreal', BPOC7:'usdbopreal', BPOD7:'usdbopreal',
+                   BPOA8:'usdbopreal', BPOB8:'usdbopreal', AO27:'usdbonares', AO28:'usdbonares' };
+
+// Esta solapa calcula sus propias TIR a partir del precio, así que le alcanza con el precio: no
+// necesita el motor de calcMetricas. Por eso es la primera que se desengancha del Monitor.
+function itemsPedido(){
+  const bonos=[...new Set(CASOS.flatMap(c=>[c.origen,c.destino]))];
+  return bonos.map(b=>({ ticker: TICKER_MONITOR[b], grupo: GRUPO_DE[b] })).filter(x=>x.grupo);
+}
+
+function pintarEstado(origen){
   const st=document.getElementById('precio-st');
+  if(!st) return;
   const bonos=[...new Set(CASOS.flatMap(c=>[c.origen,c.destino]))];
   const hay=bonos.filter(b=>preciosMonitor[TICKER_MONITOR[b]]!=null).length;
-  if(st){ st.textContent = hay ? `✓ ${hay}/${bonos.length} precios del Monitor` : 'Sin precios — pasá por el Monitor'; st.className='precio-st '+(hay?'ok':'err'); }
+  if(!hay){ st.textContent='Sin precios'; st.className='precio-st err'; return; }
+  // Se distingue de dónde salió el precio. Antes decía siempre "del Monitor" en verde, aunque el
+  // dato fuera de días atrás: informaba cuántos había, no de cuándo eran.
+  st.textContent = origen==='1816' ? `✓ ${hay}/${bonos.length} precios de 1816`
+                                   : `⚠ ${hay}/${bonos.length} precios del Monitor (sin conexión al proxy)`;
+  st.className='precio-st '+(origen==='1816'?'ok':'err');
+}
+
+// Pide los precios directo al proxy. Si falla, cae a lo que dejó el Monitor —queda como antes,
+// nunca peor— pero avisando que ese dato no vino de 1816.
+async function cargarPreciosMonitor(){
+  try{
+    const r=await MonitorCore.pedirPrecios(itemsPedido());
+    preciosMonitor=r.precios;
+    if(Object.keys(preciosMonitor).length){ pintarEstado('1816'); return; }
+    throw new Error('el proxy no devolvió precios');
+  }catch(e){
+    console.warn('proxy no disponible, se usa lo que dejó el Monitor:', e);
+    preciosMonitor=MonitorCore.preciosDelMonitor();
+    pintarEstado('monitor');
+  }
 }
 
 // Los precios llegan del Monitor con ruido de punto flotante (102,14999999999999 por 102,15).
@@ -489,7 +520,7 @@ function initEstado(){
 // Cambiar la comisión no toca la estructura de la tabla, así que alcanza con recalcular: los
 // precios que el usuario haya tipeado a mano quedan donde están.
 function onComision(val){ const v=parseFloat(val); comision=isNaN(v)?0:Math.max(0,v); recompute(); }
-function recargarPrecios(){ cargarPreciosMonitor(); estado.forEach((e,i)=>{ e.precioV=precioDe(CASOS[i].origen); e.precioC=precioDe(CASOS[i].destino); }); buildTable(); recompute(); }
+async function recargarPrecios(){ await cargarPreciosMonitor(); estado.forEach((e,i)=>{ e.precioV=precioDe(CASOS[i].origen); e.precioC=precioDe(CASOS[i].destino); }); buildTable(); recompute(); }
 function onInput(i,campo,val){ const v=parseFloat(val); estado[i][campo]=isNaN(v)?null:v; recompute(); }
 
 const num=(x,d=2)=>x==null||isNaN(x)?'—':x.toLocaleString('es-AR',{minimumFractionDigits:d,maximumFractionDigits:d});
@@ -585,7 +616,7 @@ async function init(){
   const hoy=new Date(); hoy.setHours(0,0,0,0);
   t0=sumarDiasHabiles(hoy,1);
   document.getElementById('liq-badge').textContent='Liquidación T+1 hábil: '+fmtDMY(t0);
-  cargarPreciosMonitor();
+  await cargarPreciosMonitor();
   initEstado();
   buildTable();
   recompute();
