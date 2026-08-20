@@ -1697,7 +1697,7 @@ function parsearExcel(buffer) {
     // hasta que se le cargue el cash flow, momento en que pasa sola a cálculo local.
     if (wb.SheetNames.includes('ONs')) {
       const rows = XLSX.utils.sheet_to_json(wb.Sheets['ONs'], { defval: '', raw: false });
-      rows.filter(r => String(r['Ticker']||'').trim()).forEach(r => {
+      rows.filter(r => { const t = String(r['Ticker']||'').trim(); return t && t !== 'Ticker'; }).forEach(r => {
         const ley = String(r['Ley']||'').trim().toLowerCase();
         result.push({
           grupo:  ley === 'local' ? 'onlocal' : 'onny',
@@ -1741,7 +1741,7 @@ function parsearExcel(buffer) {
     // LECAP
     if (wb.SheetNames.includes('LECAPS')) {
       const rows = XLSX.utils.sheet_to_json(wb.Sheets['LECAPS'], { defval: '', raw: false });
-      rows.filter(r => String(r['Ticker']||'').trim()).forEach(r => {
+      rows.filter(r => { const t = String(r['Ticker']||'').trim(); return t && t !== 'Ticker'; }).forEach(r => {
         const emision = excelSerialToDate(r['Fecha Emision']);
         const venc    = excelSerialToDate(r['Fecha Vencimiento']);
         const tem     = parseFloat(r['TEM (%)']) || null;
@@ -1789,7 +1789,7 @@ function parsearExcel(buffer) {
     // CER
     if (wb.SheetNames.includes('CER')) {
       const rows = XLSX.utils.sheet_to_json(wb.Sheets['CER'], { defval: '', raw: false });
-      rows.filter(r => String(r['Ticker']||'').trim()).forEach(r => {
+      rows.filter(r => { const t = String(r['Ticker']||'').trim(); return t && t !== 'Ticker'; }).forEach(r => {
         result.push({
           grupo: 'cer',
           ticker: String(r['Ticker']).trim(),
@@ -1805,7 +1805,7 @@ function parsearExcel(buffer) {
     // TAMAR
     if (wb.SheetNames.includes('TAMAR')) {
       const rows = XLSX.utils.sheet_to_json(wb.Sheets['TAMAR'], { defval: '', raw: false });
-      rows.filter(r => String(r['Ticker']||'').trim()).forEach(r => {
+      rows.filter(r => { const t = String(r['Ticker']||'').trim(); return t && t !== 'Ticker'; }).forEach(r => {
         const margen = normalizarMargen(r['Margen']);
         result.push({
           grupo: 'tamar',
@@ -1932,7 +1932,7 @@ function parsearExcel(buffer) {
     // (ver la rama 'subsoberano' en calcMetricas). Sólo hacen falta ticker, nombre y venc.
     if (wb.SheetNames.includes('Subsoberanos')) {
       const rows = XLSX.utils.sheet_to_json(wb.Sheets['Subsoberanos'], { defval: '', raw: false });
-      rows.filter(r => String(r['Ticker']||'').trim()).forEach(r => {
+      rows.filter(r => { const t = String(r['Ticker']||'').trim(); return t && t !== 'Ticker'; }).forEach(r => {
         result.push({
           grupo: 'subsoberano',
           ticker: String(r['Ticker']).trim(),

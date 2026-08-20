@@ -654,7 +654,12 @@ async function cargarExcel() {
         const venc    = excelSerialToDate(r['Fecha Vencimiento'] || r['Fecha Vencimineto']);
         const tem     = parseFloat(r['TEM (%)']) || null;
         return { ticker: String(r['Ticker']).trim(), tipo: String(r['Tipo']||'LECAP').trim(), emision, venc, tem, vpv: calcularVPV(emision, venc, tem) };
-      });
+      })
+      // Sin TEM no hay LECAP: no se puede calcular el VPV y por lo tanto tampoco la tasa. Sirve
+      // además para descartar la fila de cabecera repetida que trae la hoja —pasa el filtro de
+      // arriba porque su columna Ticker dice literalmente "Ticker"—, que se colaba como un
+      // instrumento más: eran 12 en vez de 11 y se le pedía precio al proxy en cada consulta.
+      .filter(l => l.tem);
     const hora = new Date().toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'});
     setStatus('ok', `${lecaps.length} instrumentos · ${hora}`);
   } catch(e) {
