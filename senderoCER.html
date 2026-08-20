@@ -722,7 +722,10 @@ async function cargarExcel() {
     if (wb.SheetNames.includes('CER')) {
       const rows = XLSX.utils.sheet_to_json(wb.Sheets['CER'], { defval: '', raw: false });
       bonosCER = rows
-        .filter(r => r['Ticker'] && String(r['Ticker']).trim())
+        // La hoja CER hoy no repite la cabecera, pero otras del mismo Excel sí —Duales la
+        // trae catorce veces— y la fila se colaba como un instrumento. Se descarta acá
+        // también para no depender de qué hoja la repite.
+        .filter(r => { const t = String(r['Ticker']||'').trim(); return t && t !== 'Ticker'; })
         .map(r => ({
           ticker:  String(r['Ticker']).trim(),
           emision: excelSerialToDate(r['Fecha Emision'] || r['Fecha Emisión']),
