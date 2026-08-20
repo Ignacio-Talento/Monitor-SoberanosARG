@@ -68,10 +68,19 @@ jobs:
           # El input `fechas` se reusa acá como "desde hasta". Con un solo ticker líquido esto
           # devuelve el calendario de ruedas reales: las fechas que faltan son feriados.
           RANGO: ${{ inputs.fechas }}
+          MODO: ${{ inputs.modo }}
         run: |
-          set -- ${RANGO:-2026-07-06 2026-07-15}
-          python precios_1816.py --serie --tickers "$PROBE" --campos "${CAMPOS:-precioDirty}" \
-            --moneda "${MONEDA:-mep}" --desde "$1" --hasta "${2:-$1}"
+          # Modo "precios": foto en vivo de /mercado/indicadores, el mismo endpoint que consume el
+          # frontend. Sirve para contestar "¿qué está viendo el monitor AHORA?" y admite campos que
+          # la serie no tiene, como ultimaOperacion.
+          if [ "$MODO" = "precios" ]; then
+            python precios_1816.py --tickers "$PROBE" --campos "${CAMPOS:-precioDirty}" \
+              --moneda "${MONEDA:-mep}"
+          else
+            set -- ${RANGO:-2026-07-06 2026-07-15}
+            python precios_1816.py --serie --tickers "$PROBE" --campos "${CAMPOS:-precioDirty}" \
+              --moneda "${MONEDA:-mep}" --desde "$1" --hasta "${2:-$1}"
+          fi
 
       # Diagnóstico de tasas: compara la TIR que calcula el monitor con la que publica 1816, ON
       # por ON. Reintenta ante 429 por lote, así un rate limit no tumba la corrida entera como
