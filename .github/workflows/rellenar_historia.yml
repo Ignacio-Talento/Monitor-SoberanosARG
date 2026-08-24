@@ -14,6 +14,10 @@ on:
         description: 'Sólo listar a quiénes rellenaría'
         type: boolean
         default: true
+      reexpresar_ccl:
+        description: 'Reexpresar en CCL la historia de los que pasaron a esa moneda (PISA valores; mirá primero el dry-run)'
+        type: boolean
+        default: false
 
 permissions:
   contents: write
@@ -41,15 +45,26 @@ jobs:
           # tal cual.
           TICKERS: ${{ inputs.tickers }}
           DRY: ${{ inputs.dry_run }}
+          CCL: ${{ inputs.reexpresar_ccl }}
         run: |
-          [ "$DRY" = "true" ] && FLAG=--dry-run || FLAG=
-          python rellenar_historia.py $FLAG $TICKERS
+          if [ "$CCL" = "true" ]; then
+            # reexpresar_ccl.py es al revés que el otro: sobrescribe, así que su default es el
+            # dry-run y hay que pedirle explícitamente que escriba.
+            [ "$DRY" = "true" ] && FLAG= || FLAG=--escribir
+            python reexpresar_ccl.py $FLAG $TICKERS
+          else
+            [ "$DRY" = "true" ] && FLAG=--dry-run || FLAG=
+            python rellenar_historia.py $FLAG $TICKERS
+          fi
 
       - name: Commit y push si hay cambios
         if: ${{ !inputs.dry_run }}
+        env:
+          CCL: ${{ inputs.reexpresar_ccl }}
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           git add historicos.xlsx
-          git diff --staged --quiet || git commit -m "Rellenar historia de instrumentos nuevos $(date +'%Y-%m-%d')"
+          MSG=$([ "$CCL" = "true" ] && echo "Reexpresar historia en CCL" || echo "Rellenar historia de instrumentos nuevos")
+          git diff --staged --quiet || git commit -m "$MSG $(date +'%Y-%m-%d')"
           git push

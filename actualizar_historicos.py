@@ -36,13 +36,17 @@ CAMPO_1816 = "precioDirty"
 MONEDA_1816 = {
     'LECAPS': 'ars', 'TASA FIJA': 'ars', 'CER': 'ars', 'TAMAR': 'ars',
     'USD Linked': 'ars', 'Duales': 'ars',
-    'USD Bonares': 'mep', 'USD Globales': 'mep',
+    'USD Bonares': 'mep',
+    # Globales al CCL: es como los valúa la solapa "dólares" del monitor, y el histórico tiene que
+    # estar en la MISMA moneda o las variaciones (DAY/WTD/MTD/YTD) comparan puntas distintas.
+    'USD Globales': 'ccl',
     'USD Bopreales': 'mep', 'ON USD': 'mep',
     # Solapa ONs (ley local + NY): tickers en forma D, se piden a 1816 en mep con swap D->O.
     'ONs': 'mep',
-    # Subsoberanos (provinciales USD): ticker idéntico en 1816, se piden en mep. Sin esto caían
-    # a Eco y guardaban basura (precios en pesos/volumen) que rompía los retornos.
-    'Subsoberanos': 'mep',
+    # Subsoberanos (provinciales USD): ticker idéntico en 1816. Al CCL, igual que los globales y
+    # por el mismo motivo. Ojo: NUNCA a Eco —devuelve pesos o volumen y rompe los retornos—, para
+    # eso están en HOJAS_SIN_ECO.
+    'Subsoberanos': 'ccl',
 }
 # Hojas que NO son listas de instrumentos. 'Flujos' es la tabla de cronogramas y también tiene
 # columna 'Ticker', así que se colaba entera: 17 tickers que no están en ninguna hoja de
@@ -86,6 +90,41 @@ def medianas_recientes(ws, header, ruedas=20):
     return medianas
 
 
+# Moneda de cada ON, leída de la hoja ONs: {ticker: 'ccl'|'mep'}. Se arma una vez y se consulta
+# desde resolver_1816. Hace falta porque la moneda de una ON NO depende de la hoja sino de dónde
+# paga: las de ley NY van al CCL y las locales según su columna Divisa (hoy 6 en CCL y 54 en MEP).
+#
+# Y hace falta consultarlo para las ONs de CUALQUIER hoja, no sólo de "ONs". El orden de hojas del
+# Excel pone "ON USD" antes, y como leer_tickers deduplica por ticker, esas 4 se quedaban con la
+# moneda de esa hoja: TLCPD y GN49D son ley NY y habrían seguido pidiéndose en MEP.
+_MONEDA_ON = None
+def moneda_on(ticker):
+    """-> 'ccl' o 'mep' para una ON, o None si no está en la hoja ONs."""
+    global _MONEDA_ON
+    if _MONEDA_ON is None:
+        _MONEDA_ON = {}
+        try:
+            wb = load_workbook(INSTRUMENTOS_FILE, data_only=True)
+            if 'ONs' in wb.sheetnames:
+                filas = [r for r in wb['ONs'].iter_rows(values_only=True) if r and r[0]]
+                cab = next((i for i, r in enumerate(filas)
+                            if str(r[0]).strip() == 'Ticker'), None)
+                if cab is not None:
+                    hdr = [str(c).strip() if c else '' for c in filas[cab]]
+                    iL = hdr.index('Ley') if 'Ley' in hdr else None
+                    iD = hdr.index('Divisa') if 'Divisa' in hdr else None
+                    for r in filas[cab + 1:]:
+                        t = str(r[0]).strip()
+                        if not t or t == 'Ticker':
+                            continue
+                        ley = str(r[iL]).strip().lower() if iL is not None and iL < len(r) else ''
+                        div = str(r[iD]).strip().upper() if iD is not None and iD < len(r) else ''
+                        _MONEDA_ON[t] = 'ccl' if (ley == 'ny' or div == 'CCL') else 'mep'
+        except Exception as e:
+            print(f"AVISO: no se pudo leer la moneda de las ONs ({e}); se usa la de la hoja")
+    return _MONEDA_ON.get(ticker)
+
+
 def resolver_1816(sheet_name, eco_ticker, master_ticker):
     """Devuelve (ticker_1816, moneda) para consultar 1816, o (None, None) si no aplica.
     - Bonares/Globales: 1816 usa el ticker del master (sin la 'D' que agrega Eco).
@@ -103,7 +142,7 @@ def resolver_1816(sheet_name, eco_ticker, master_ticker):
         return MAPA_BOPREAL_1816.get(eco_ticker), moneda
     if sheet_name in ('ON USD', 'ONs'):
         t = (eco_ticker[:-1] + 'O') if eco_ticker.endswith('D') else None
-        return t, moneda
+        return t, (moneda_on(eco_ticker) or moneda)
     return eco_ticker, moneda  # pesos: idéntico
 
 # ── LEER TICKERS DESDE INSTRUMENTOS.XLSX ─────────────────────
