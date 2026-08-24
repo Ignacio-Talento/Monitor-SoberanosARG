@@ -53,9 +53,16 @@ const MAPA_BOPREAL = {
   BPA8D: "BPOA8", BPB8D: "BPOB8",
 };
 
+const MONEDAS_OK = new Set(["ars", "mep", "ccl"]);
+
 // Devuelve { t: <ticker 1816>, moneda } o null si no mapea (=> fallback a Eco)
-function map1816(grupo, ticker) {
-  const moneda = MONEDA[grupo];
+//
+// `monedaPedida` permite que quien consulta elija en qué moneda quiere el precio, en vez de usar
+// la del mapa. Hace falta porque la solapa "dólares" del Monitor valúa los globales al CCL
+// mientras el resto los sigue queriendo al MEP —Glob vs Bon compara contra los bonares y necesita
+// las dos puntas en la misma moneda—. Si viniera cualquier cosa se ignora y manda el mapa.
+function map1816(grupo, ticker, monedaPedida) {
+  const moneda = MONEDAS_OK.has(monedaPedida) ? monedaPedida : MONEDA[grupo];
   if (!moneda) return null;
   let t;
   if (grupo === "usdbonares" || grupo === "usdglobales") t = ticker;               // llega sin la D
@@ -245,7 +252,7 @@ async function computePrecios(env, items) {
     const eco = String(it.ticker || "").trim().toUpperCase();
     const grupo = String(it.grupo || "").trim();
     if (!eco || !grupo) continue;
-    const m = map1816(grupo, eco);
+    const m = map1816(grupo, eco, String(it.moneda || '').trim().toLowerCase());
     if (!m) continue;
     const ind = it.ind === true;
     const par = !ind && it.par === true;
@@ -347,8 +354,11 @@ function json(obj, status = 200, extra = {}) {
 // quién hubiera pegado antes. Con el frontend actual los flags son determinísticos por
 // instrumento y no se cruzan, pero es una colisión silenciosa y sale una línea evitarla.
 function hashItems(items) {
+  // La moneda entra en la clave. Sin esto, un pedido de globales en CCL se serviría con la
+  // respuesta cacheada en MEP —mismo ticker, mismo grupo, mismos flags— y el panel mostraría
+  // precios de la otra punta sin que nada lo delate.
   const s = items.map((i) =>
-    `${i.ticker}:${i.grupo}:${i.ind === true ? 1 : 0}:${i.par === true ? 1 : 0}`
+    `${i.ticker}:${i.grupo}:${i.ind === true ? 1 : 0}:${i.par === true ? 1 : 0}:${String(i.moneda || "").toLowerCase()}`
   ).sort().join(",");
   let h = 0;
   for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0;

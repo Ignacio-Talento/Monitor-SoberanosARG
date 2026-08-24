@@ -398,7 +398,14 @@ async function cargarDatosMotor() {
 // devolver vacío y dejar la tabla en blanco.
 function datosBonos() {
   if (datosMotor) return datosMotor;
-  try { return JSON.parse(localStorage.getItem('bonos_data') || '[]') || []; } catch (e) { return []; }
+  // Respaldo. Se descarta lo que no esté en MEP: esta página compara globales contra bonares, y
+  // el Monitor pasó a valuar los globales al CCL para su propia solapa "dólares". Mezclar las dos
+  // puntas daría un canje mal, plausible y silencioso —el número sale, sólo que no significa lo
+  // que dice—. Preferimos quedarnos sin el par antes que mostrarlo cruzado.
+  try {
+    const bd = JSON.parse(localStorage.getItem('bonos_data') || '[]') || [];
+    return bd.filter(d => !d.moneda || d.moneda === 'mep' || !['usdbonares','usdglobales'].includes(d.grupo));
+  } catch (e) { return []; }
 }
 
 function parseLocalDate(s) { if (!s) return null; const p = String(s).split('-').map(Number); return new Date(p[0], p[1]-1, p[2]); }
