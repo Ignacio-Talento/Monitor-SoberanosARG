@@ -382,7 +382,10 @@ const EXCEL_URL = 'Instrumentos.xlsx';
 const BCRA_URL  = 'https://indicadoresbcra.granda-fra.workers.dev';
 const FERIADOS_WORKER = 'https://feriados-proxy.granda-fra.workers.dev';
 let lecaps = [];
-let precios = {};
+// `precios` lo declara monitor-core.js, que carga antes. Redeclararlo con let acá sería un
+// SyntaxError —dos let del mismo nombre en el scope global— y mataría la página entera,
+// así que se asigna sobre el global compartido.
+precios = {};
 let caucionTna = 20;
 let sortCol = 'dias';
 let sortAsc = true;
@@ -452,7 +455,10 @@ function excelSerialToDate(v) {
 }
 
 // ── DÍAS HÁBILES / FERIADOS (portado de bonos.html) ──────────
-let feriados = new Set();
+// `feriados` lo declara monitor-core.js, que carga antes. Redeclararlo con let acá sería un
+// SyntaxError —dos let del mismo nombre en el scope global— y mataría la página entera,
+// así que se asigna sobre el global compartido.
+feriados = new Set();
 function esHabil(d) {
   const dow = d.getDay();
   if (dow === 0 || dow === 6) return false;

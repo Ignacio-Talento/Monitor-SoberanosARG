@@ -401,7 +401,10 @@ const FERIADOS_WORKER = 'https://feriados-proxy.granda-fra.workers.dev';
 function parseLocalDate(s){ if(!s) return null; const p=String(s).split('-').map(Number); return new Date(p[0],p[1]-1,p[2]); }
 function dateToStr(d){ return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; }
 function fmtDMY(d){ return `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`; }
-let feriados = new Set();
+// `feriados` lo declara monitor-core.js, que carga antes. Redeclararlo con let acá sería un
+// SyntaxError —dos let del mismo nombre en el scope global— y mataría la página entera,
+// así que se asigna sobre el global compartido.
+feriados = new Set();
 function esHabil(d){ const w=d.getDay(); if(w===0||w===6) return false; return !feriados.has(dateToStr(d)); }
 function sumarDiasHabiles(fecha,n){ const d=(fecha instanceof Date)?new Date(fecha):(parseLocalDate(fecha)||new Date()); let r=n; while(r>0){ d.setDate(d.getDate()+1); if(esHabil(d)) r--; } return d; }
 async function cargarFeriados(){
