@@ -371,8 +371,36 @@
 
 <!-- SheetJS: sólo para leer y escribir el respaldo series_globvsbon.xlsx. -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="monitor-core.js"></script>
 <script>
 // ── HELPERS FECHA ────────────────────────────────────────────
+// ── DATOS DEL MOTOR ───────────────────────────────────────────
+// Esta página consume métricas ya calculadas (tea, md, frecCupon, itm), no precios sueltos, así
+// que necesita el motor entero. Desde que vive en monitor-core.js puede calcularlas por su cuenta
+// en vez de heredar `bonos_data`, que escribe el Monitor y que localStorage no vence: una solapa
+// abierta días después mostraba números viejos sin nada que lo delatara.
+// Si algo falla se cae a ese mismo respaldo, así que queda como antes y nunca peor.
+let datosMotor = null;
+let datosOrigen = 'monitor';
+
+async function cargarDatosMotor() {
+  try {
+    datosMotor = await MonitorCore.datosCalculados();
+    datosOrigen = '1816';
+  } catch (e) {
+    console.warn('no se pudo calcular con el motor, se usa lo que dejó el Monitor:', e);
+    try { datosMotor = JSON.parse(localStorage.getItem('bonos_data') || '[]') || []; }
+    catch (_) { datosMotor = []; }
+    datosOrigen = 'monitor';
+  }
+}
+// Reemplaza a la lectura de localStorage. Si todavía no se cargó, cae al respaldo para no
+// devolver vacío y dejar la tabla en blanco.
+function datosBonos() {
+  if (datosMotor) return datosMotor;
+  try { return JSON.parse(localStorage.getItem('bonos_data') || '[]') || []; } catch (e) { return []; }
+}
+
 function parseLocalDate(s) { if (!s) return null; const p = String(s).split('-').map(Number); return new Date(p[0], p[1]-1, p[2]); }
 function fmtDate(s) { if (!s) return '—'; try { const d = parseLocalDate(s); return `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getFullYear()).slice(2)}`; } catch { return s; } }
 // Date -> 'YYYY-MM-DD' en hora LOCAL. toISOString() no sirve: convierte a UTC y en Argentina
@@ -1110,9 +1138,13 @@ function renderGraficoTIR() {
 }
 
 // ── INIT ─────────────────────────────────────────────────────
-const datos = JSON.parse(localStorage.getItem('bonos_data') || '[]');
-renderGrafico(datos);
-renderSpread(datos);
+// Se calcula con el motor antes de dibujar la tabla y el spread. Los gráficos históricos no
+// dependen de esto: salen de las series de 1816 y del respaldo en Excel, así que se lanzan igual.
+cargarDatosMotor().then(() => {
+  const datos = datosBonos();
+  renderGrafico(datos);
+  renderSpread(datos);
+});
 for (const k of ['canje', 'tir', 'fx']) { setPeriodo(k, '1Y'); renderLeyenda(k); }
 cargarSeriesCanje();
 </script>

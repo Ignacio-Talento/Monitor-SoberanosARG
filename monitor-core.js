@@ -99,8 +99,78 @@
     return out;
   }
 
+
+  /* Deja todo listo para calcular: feriados, el universo de Instrumentos.xlsx y las series del
+   * BCRA (CER, TAMAR, dólar). Después de esto se puede llamar a calcMetricas().
+   *
+   * El orden importa: los feriados van primero porque los días hábiles dependen de ellos, y
+   * fetchBCRA necesita `instrumentos` cargado para saber qué series pedir.
+   *
+   * Es la parte que cada solapa venía evitando heredando `bonos_data` del Monitor. Ahora puede
+   * hacerla por su cuenta y calcular con precios frescos.
+   */
+  async function cargarUniverso() {
+    await cargarFeriados();
+    const r = await fetch('Instrumentos.xlsx?t=' + Date.now());
+    if (!r.ok) throw new Error('Instrumentos.xlsx HTTP ' + r.status);
+    parsearExcel(await r.arrayBuffer());
+    await fetchBCRA();
+    return instrumentos;
+  }
+
+
+  /* El universo con sus métricas calculadas: exactamente la misma forma que el Monitor venía
+   * dejando en `bonos_data`. Así las solapas que lo consumían pueden pasar a calcular por su
+   * cuenta sin tocar una línea de su código de abajo.
+   *
+   * Incluye `itm`, que era lo único que no se podía recalcular afuera. La pata in the money de un
+   * dual se identifica porque 1816 publica indicadores SÓLO para la que manda: se compara la TEA
+   * propia contra la de 1816 y gana la que coincide. La tolerancia de 1 pp es la red de seguridad
+   * por si el indicador viene de otra rueda; verificado en los 7 duales, la elegida difiere en
+   * menos de 0,08 pp y la otra en decenas de puntos, así que no es ambiguo.
+   */
+  async function datosCalculados() {
+    await cargarUniverso();
+    const vivos = instrumentos.filter(i => { const d = diasAlVenc(i.venc); return d === null || d > 0; });
+    const r = await pedirPrecios(vivos.map(i => ({
+      ticker: i.ticker, grupo: i.grupo,
+      ind: usaIndicadores1816(i) || i.grupo === 'dual',
+      par: usaParidad1816(i),
+    })));
+    Object.assign(precios, r.precios);
+    indicadores1816 = r.indicadores || {};
+
+    const ITM_TOL_PP = 1.0;
+    const itmPorTicker = {};
+    for (const i of vivos) {
+      if (i.grupo !== 'dual') continue;
+      const m = calcMetricas(i);
+      if (m.tea == null) continue;
+      const tea1816 = (indicadores1816[String(i.ticker).toUpperCase()] || {}).tea;
+      if (typeof tea1816 !== 'number' || !isFinite(tea1816)) continue;
+      const d = Math.abs(m.tea - tea1816 * 100);
+      if (d > ITM_TOL_PP) continue;
+      const prev = itmPorTicker[i.ticker];
+      if (!prev || d < prev.d) itmPorTicker[i.ticker] = { d, pata: i.pata && i.pata.tipo };
+    }
+
+    return instrumentos.map(i => {
+      const m = calcMetricas(i);
+      return {
+        ticker: i.ticker, grupo: i.grupo, nombre: i.nombre, venc: i.venc,
+        md: m.md, tea: m.tea, precio: m.precio,
+        pataTipo: (i.pata && i.pata.tipo) || null,
+        frecCupon: frecuenciaCupon(i) || 1, plazo: m.plazo != null ? m.plazo : null,
+        itm: i.grupo === 'dual'
+          && (itmPorTicker[i.ticker] || {}).pata === (i.pata && i.pata.tipo),
+      };
+    }).filter(d => d.md !== null && d.tea !== null);
+  }
+
   global.MonitorCore = {
     pedirPrecios: pedirPrecios,
+    cargarUniverso: cargarUniverso,
+    datosCalculados: datosCalculados,
     preciosDelMonitor: preciosDelMonitor,
     sello: sello,
     selloEsDeHoy: selloEsDeHoy,
@@ -1050,4 +1120,221 @@ function excelSerialToDate(serial) {
     return `${d.getUTCFullYear()}-${String(d.getUTCMonth()+1).padStart(2,'0')}-${String(d.getUTCDate()).padStart(2,'0')}`;
   }
   return s;
+}
+
+/* ── MOTOR DE CÁLCULO ─────────────────────────────────────────────────────────────────
+ * Mudado desde bonos.html, no copiado: hay una sola definición de cada cosa y el Monitor
+ * también las consume desde acá. Todo vive en el scope global —estas páginas no tienen
+ * módulos ni build—, así que cargar este archivo antes deja los mismos nombres visibles
+ * para quien ya los usaba.
+ *
+ * El estado va primero porque const/let tienen zona muerta temporal; las funciones se
+ * hoistean y su orden entre sí da igual.
+ */
+
+
+
+async function cargarFeriados() {
+  const anioActual = new Date().getFullYear();
+  const anios = [];
+  for (let y = 2020; y <= anioActual; y++) anios.push(y);
+  const set = new Set();
+  try {
+    const resultados = await Promise.all(anios.map(y =>
+      fetch(`${FERIADOS_WORKER}/?anio=${y}`).then(r => r.ok ? r.json() : []).catch(() => [])
+    ));
+    resultados.flat().forEach(f => { if (f && f.fecha) set.add(String(f.fecha).slice(0, 10)); });
+    if (set.size) {
+      feriados = set;
+      try { localStorage.setItem('bonos_feriados', JSON.stringify([...set])); } catch(e) {}
+      console.log(`Feriados cargados: ${set.size} (${anios[0]}–${anioActual})`);
+    } else {
+      throw new Error('respuesta vacía');
+    }
+  } catch(e) {
+    // Respaldo: última lista guardada
+    try {
+      const backup = JSON.parse(localStorage.getItem('bonos_feriados') || '[]');
+      if (backup.length) { feriados = new Set(backup); console.warn('Feriados desde respaldo localStorage:', backup.length); }
+    } catch(_) {}
+    console.warn('No se pudieron cargar feriados de la API:', e);
+  }
+}
+
+async function fetchBCRA() {
+  const hoy = dateToStr(new Date());
+
+  // CER: para cada bono CER fetchear fecha_emision-lag y hoy-lag
+  // Incluir patas CER de Duales (igual que se hace con TAMAR)
+  const bonosCer = [
+    ...instrumentos.filter(i => i.grupo === 'cer'),
+    ...instrumentos.filter(i => i.grupo === 'dual' && i.pata?.tipo === 'CER').map(i => ({
+      emision: i.pata.emision,
+      cer_aplicable: i.pata.cer_aplicable,
+    }))
+  ];
+  for (const b of bonosCer) {
+    const fechaHoy   = restarDiasHabiles(hoy, b.cer_aplicable);
+    const fechaEmis  = restarDiasHabiles(b.emision, b.cer_aplicable);
+    await fetchCerFecha(fechaHoy);
+    await fetchCerFecha(fechaEmis);
+  }
+
+  // TAMAR: serie desde emision-lag hasta HOY (no hasta hoy-lag).
+  // El cupón devenga con rezago: la tasa que se aplica el día D es la TAMAR publicada D-lag
+  // hábiles antes. Por eso los próximos `lag` días hábiles de devengamiento YA tienen su tasa
+  // publicada, y traer la serie sólo hasta hoy-lag obligaba a proyectarlos. Con la TAMAR en
+  // suba eso subestimaba el promedio: medido contra las TEA de 1816 del 2026-08-07, la
+  // diferencia en valor pasa de 0,18% promedio a 0,10% al usar los datos reales.
+  // Incluir patas TAMAR de Duales (ahora cada pata es un instrumento separado)
+  const bonosTamar = [
+    ...instrumentos.filter(i => i.grupo === 'tamar'),
+    ...instrumentos.filter(i => i.grupo === 'dual' && i.pata?.tipo === 'TAMAR').map(i => ({
+      ticker: i.ticker + '_TAMAR',
+      emision: i.pata.emision,
+      tamar_aplicable: i.pata.tamar_aplicable,
+    }))
+  ];
+  for (const b of bonosTamar) {
+    const fechaDesde = restarDiasHabiles(b.emision, b.tamar_aplicable);
+    const fechaHasta = hoy;   // en fetchBCRA `hoy` ya es string 'YYYY-MM-DD'
+    try {
+      const resp = await fetch(`${BCRA_WORKER}/?serie=tamar&desde=${fechaDesde}&hasta=${fechaHasta}`);
+      const json = await resp.json();
+      const detalle = json.results?.[0]?.detalle || [];
+      // Ordenar por fecha ascendente (viejo→nuevo): la API puede devolverlos al
+      // revés, y el cálculo necesita que serie[length-1] sea el dato MÁS RECIENTE.
+      detalle.sort((a,b) => (a.fecha||'').localeCompare(b.fecha||''));
+      // Guardar serie por ticker
+      // Rellenar los días hábiles SIN publicación arrastrando la última tasa. El cupón devenga
+      // todos los días hábiles: el que no tiene dato nuevo devenga a la última publicada. Saltearlos
+      // no era neutro, porque el promedio se hace sobre serie.length y los saca del peso. En la
+      // ventana de M31G6 faltaban 3 —06-11-2025 (Día del Bancario), 24-12 y 31-12—, los tres con la
+      // TAMAR bastante más alta que la de hoy (36%, 29%, 29% contra 23%), así que el promedio
+      // quedaba tirado para abajo y con él el valor final.
+      const porFecha = new Map(detalle.map(r => [String(r.fecha).slice(0, 10), parseFloat(r.valor)]));
+      const ultimaFecha = detalle.length ? String(detalle[detalle.length - 1].fecha).slice(0, 10) : null;
+      const serieRell = [];
+      if (ultimaFecha) {
+        let arrastre = null;
+        for (const d = parseLocalDate(fechaDesde); dateToStr(d) <= ultimaFecha; d.setDate(d.getDate() + 1)) {
+          if (!esHabil(d)) continue;
+          const v = porFecha.get(dateToStr(d));
+          if (v != null) arrastre = v;
+          if (arrastre != null) serieRell.push(arrastre);
+        }
+      }
+      bcraData.tamar[b.ticker] = serieRell;
+      // Fecha del último dato: marca hasta dónde llega lo CONOCIDO (ver calcMetricas).
+      if (detalle.length) bcraData.tamarUltPub[b.ticker] = String(detalle[detalle.length - 1].fecha).slice(0, 10);
+      console.log(`TAMAR ${b.ticker}: ${detalle.length} datos`);
+      console.log(`TAMAR ${b.ticker}: ${detalle.length} datos, promedio: ${(bcraData.tamar[b.ticker].reduce((a,v)=>a+v,0)/bcraData.tamar[b.ticker].length).toFixed(4)}%`);
+    } catch(e) {
+      console.warn(`BCRA TAMAR ${b.ticker} error:`, e);
+    }
+  }
+
+  // USD: TC mayorista — buscar últimos 10 días hábiles para cubrir feriados
+  try {
+    const hoyStr = dateToStr(new Date());
+    const hace = restarDiasHabiles(hoyStr, 10);
+    const resp = await fetch(`${BCRA_WORKER}/?serie=usd&desde=${hace}&hasta=${hoyStr}`);
+    const json = await resp.json();
+    const detalle = json.results?.[0]?.detalle || [];
+    if (detalle.length) {
+      // Guardar toda la serie por fecha (para el TC aplicable de Dollar Linked)
+      detalle.forEach(r => { if (r.fecha && r.valor) bcraData.usd[r.fecha] = parseFloat(r.valor); });
+      detalle.sort((a,b) => b.fecha.localeCompare(a.fecha));
+      bcraData.usdHoy = parseFloat(detalle[0].valor);
+      console.log(`TC Mayorista: ${bcraData.usdHoy} (${detalle[0].fecha})`);
+    }
+  } catch(e) {
+    console.warn('BCRA USD error:', e);
+  }
+
+  // PF 30d
+  try {
+    const hoyStr = dateToStr(new Date());
+    const hace7 = restarDiasHabiles(hoyStr, 7);
+    const respP = await fetch(`${BCRA_WORKER}/?serie=plazo30d&desde=${hace7}&hasta=${hoyStr}`);
+    const jsonP = await respP.json();
+    const detP = jsonP.results?.[0]?.detalle || [];
+    if (detP.length) {
+      detP.sort((a,b) => b.fecha.localeCompare(a.fecha));
+      bcraData.plazo30d = parseFloat(detP[0].valor);
+    }
+  } catch(e) { console.warn('BCRA PF30d error:', e); }
+
+  // Caución 1d
+  try {
+    const hoyStr = dateToStr(new Date());
+    const hace7 = restarDiasHabiles(hoyStr, 7);
+    const respC = await fetch(`${BCRA_WORKER}/?serie=caucion1d&desde=${hace7}&hasta=${hoyStr}`);
+    const jsonC = await respC.json();
+    const detC = jsonC.results?.[0]?.detalle || [];
+    if (detC.length) {
+      detC.sort((a,b) => b.fecha.localeCompare(a.fecha));
+      bcraData.caucion1d = parseFloat(detC[0].valor);
+    }
+  } catch(e) { console.warn('BCRA caucion1d error:', e); }
+
+  // UVA
+  try {
+    const hoyStr = dateToStr(new Date());
+    const hace7 = restarDiasHabiles(hoyStr, 7);
+    const respU = await fetch(`${BCRA_WORKER}/?serie=uva&desde=${hace7}&hasta=${hoyStr}`);
+    const jsonU = await respU.json();
+    const detU = jsonU.results?.[0]?.detalle || [];
+    if (detU.length) {
+      detU.sort((a,b) => b.fecha.localeCompare(a.fecha));
+      bcraData.uva = parseFloat(detU[0].valor);
+    }
+  } catch(e) { console.warn('BCRA UVA error:', e); }
+
+  // CER de hoy (solo para el banner) — último dato <= hoy de la serie.
+  // Independiente del lag de 10 hábiles que usan los cálculos de los bonos.
+  try {
+    const hoyStr = dateToStr(new Date());
+    const hace7 = restarDiasHabiles(hoyStr, 7);
+    const respCer = await fetch(`${BCRA_WORKER}/?serie=cer&desde=${hace7}&hasta=${hoyStr}`);
+    const jsonCer = await respCer.json();
+    const detCer = jsonCer.results?.[0]?.detalle || [];
+    if (detCer.length) {
+      detCer.sort((a,b) => b.fecha.localeCompare(a.fecha));
+      bcraData.cerHoy = parseFloat(detCer[0].valor);
+      console.log(`CER hoy (banner): ${bcraData.cerHoy} (${detCer[0].fecha})`);
+    }
+  } catch(e) { console.warn('BCRA CER hoy error:', e); }
+
+  // TAMAR reciente (para panel)
+  try {
+    const hoyStr = dateToStr(new Date());
+    const hace7 = restarDiasHabiles(hoyStr, 7);
+    const respT = await fetch(`${BCRA_WORKER}/?serie=tamar&desde=${hace7}&hasta=${hoyStr}`);
+    const jsonT = await respT.json();
+    const detT = jsonT.results?.[0]?.detalle || [];
+    if (detT.length) {
+      detT.sort((a,b) => b.fecha.localeCompare(a.fecha));
+      bcraData.tamarReciente = parseFloat(detT[0].valor);
+    }
+  } catch(e) { console.warn('BCRA TAMAR reciente error:', e); }
+
+  // MEP y CCL desde Eco Valores
+  try {
+    const [rAL30, rAL30D, rAL30C] = await Promise.all([
+      fetch(`${ECO_URL}/?ticker=AL30`).then(r=>r.json()),
+      fetch(`${ECO_URL}/?ticker=AL30D`).then(r=>r.json()),
+      fetch(`${ECO_URL}/?ticker=AL30C`).then(r=>r.json()),
+    ]);
+    if (rAL30.price && rAL30D.price) bcraData.mep = rAL30.price / rAL30D.price;
+    if (rAL30.price && rAL30C.price) bcraData.ccl = rAL30.price / rAL30C.price;
+  } catch(e) { console.warn('MEP/CCL error:', e); }
+
+  // Riesgo País
+  try {
+    const respRP = await fetch(`${ARG_WORKER}/?serie=riesgopais`);
+    const jsonRP = await respRP.json();
+    if (jsonRP.valor) bcraData.riesgopais = jsonRP.valor;
+  } catch(e) { console.warn('Riesgo País error:', e); }
+
 }
