@@ -178,6 +178,14 @@
   };
 })(window);
 
+// URLs de los proxies que consume el motor. Viven acá y no en cada página: fetchBCRA y
+// cargarFeriados se mudaron y las necesitan. Al estar en el scope global, las páginas que
+// ya las usaban las siguen viendo igual.
+const ECO_URL      = 'https://ecovalores-proxy.granda-fra.workers.dev';
+const BCRA_WORKER  = 'https://indicadoresbcra.granda-fra.workers.dev';
+const ARG_WORKER   = 'https://argentinadatos-proxy.granda-fra.workers.dev';
+const FERIADOS_WORKER = 'https://feriados-proxy.granda-fra.workers.dev';
+
 /* ── MOTOR DE CÁLCULO ─────────────────────────────────────────────────────────────────
  * Mudado desde bonos.html, no copiado: hay una sola definición de cada cosa y el Monitor
  * también las consume desde acá. Todo vive en el scope global —estas páginas no tienen
@@ -995,9 +1003,11 @@ function parsearExcel(buffer) {
     instrumentos = result;
 
   } catch(e) {
-    setStatus('err', 'Error parseando Excel');
-    showAlert('Error al leer el Excel: ' + e.message);
+    // Se relanza en vez de avisar acá: setStatus y showAlert son de la página, y el motor no
+    // puede depender de ellas —cuando lo hacía, cualquier error de parseo se transformaba en un
+    // "setStatus is not defined" que tapaba la causa real—. Cada página lo reporta a su manera.
     console.error(e);
+    throw e;
   }
 }
 
