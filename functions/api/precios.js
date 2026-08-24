@@ -401,10 +401,20 @@ export async function onRequest(context) {
     return json({ error: String(e && e.message || e) }, 502);
   }
 
-  // Sólo se cachea una respuesta sana. Si hubo fallos, guardarla dejaría clavada una tanda con
-  // medio panel vacío durante todo el TTL y para todos los que entren, convirtiendo un 429 de un
+  // Se cachea una respuesta suficientemente completa. Si viniera medio vacía, guardarla dejaría
+  // clavada esa tanda durante todo el TTL y para todos los que entren, convirtiendo un 429 de un
   // segundo en dos minutos de precios faltantes.
-  const sana = datos.diag && !datos.diag.fallos.length && datos.diag.de1816 > 0;
+  //
+  // El criterio era "cero fallos", y con lotes chicos alcanzaba. Con 84 tickers en dos grupos de
+  // moneda no: basta que UN lote se coma un 429 para que la respuesta entera quede sin cachear,
+  // y entonces el pedido siguiente vuelve a golpear a 1816 —y a comerse otro 429—. El caché se
+  // apagaba justo cuando más falta hacía, y el 429 se realimentaba.
+  //
+  // Ahora se cachea si entró el 80% de lo pedido. Una tanda a la que le falta algún papel suelto
+  // sirve igual —los que faltan se ven vacíos, como cuando no operaron— y corta la realimentación.
+  const pedidos = new Set(items.map((it) => String(it.ticker || "").trim().toUpperCase())).size;
+  const resueltos = (datos.diag && datos.diag.de1816) || 0;
+  const sana = pedidos > 0 && resueltos >= pedidos * 0.8;
   const resp = json(datos, 200, {
     "cache-control": sana ? `public, max-age=${CACHE_TTL}` : "no-store",
   });
