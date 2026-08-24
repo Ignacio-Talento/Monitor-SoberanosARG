@@ -2585,6 +2585,12 @@ const RATINGS = {
 // Override por ticker: RUCED lo emite MSU S.A., no MSU Energy S.A. (notas distintas).
 const RATING_TICKER = {
   "RUCED": { nac: {r:"A+(arg)", a:"FIX SCR", p:"Estable", f:"2026-05-05"}, glob: null },
+  // LQC1D lo co-emiten PCR y Luz de Tres Picos, así que 1816 devuelve el emisor como "PCR - Luz
+  // de Tres Picos" y no matchea ninguna clave de RATINGS. Los dos están cargados por separado con
+  // su nota nacional, pero ninguno tiene internacional, y esta ON es ley NY: va por la escala
+  // global. Por eso el override por ticker, igual que RUCED.
+  // Perspectiva y fecha quedan sin cargar: no venían con el dato.
+  "LQC1D": { nac: null, glob: {r:"B", a:"Fitch", p:"—", f:""} },
 };
 function escalaDe(inst){ return inst.grupo === 'onny' ? 'glob' : 'nac'; }
 function ratingDe(inst){
