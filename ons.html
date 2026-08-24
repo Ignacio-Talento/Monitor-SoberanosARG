@@ -540,6 +540,20 @@ const GRUPOS_OCULTOS = [];
 // En esta página el toggle no separa monedas sino LEYES: cada grupo es una ley y se
 // muestra el que esté activo. Se reusa la maquinaria de 'monedaActiva' del Monitor.
 function monedaDeGrupo(grupo) { return grupo === 'onlocal' ? 'local' : 'ny'; }
+
+// Moneda en la que se le pide el precio a 1816, por instrumento.
+//
+// Las de ley NY van todas al CCL. Las locales, en la moneda en la que PAGAN: es lo que dice la
+// columna Divisa de la hoja, que sale de scrapear el domicilio de pago. Hoy son 49 en MEP y 6 en
+// CCL; valuarlas todas al MEP como se venía haciendo mostraba esas 6 en una punta que no es la
+// suya.
+//
+// Las que agrega el auto-add vienen sin divisa —se resuelve al scrapear— así que caen en el
+// default de su ley: CCL si es NY, MEP si es local, que es lo que vale para la enorme mayoría.
+function monedaDeON(inst) {
+  if (inst.grupo === 'onny') return 'ccl';
+  return String(inst.divisa || '').trim().toUpperCase() === 'CCL' ? 'ccl' : 'mep';
+}
 let monedaActiva = 'local'; // 'local' (default) | 'ny'
 
 // ── HELPERS FECHA ─────────────────────────────────────────────
@@ -1662,7 +1676,7 @@ function renderTabla() {
   // local— y es fácil leer eso como el segmento de valuación. Es el domicilio de pago que
   // scrapeamos de 1816, sirve para informar y filtrar, y no toca el precio.
   if (html) {
-    html += `<div class="nota-pie">Todas las ONs, de las dos leyes, se valúan al <b>dólar MEP</b>. La columna “Divisa de pago” indica dónde paga cada emisión, no cómo se valúa.</div>`;
+    html += `<div class="nota-pie">Cada ON se valúa en la moneda en la que paga: ver la columna “Divisa de pago”. Las de ley NY, todas al <b>CCL</b>. La serie histórica sigue en MEP para todas.</div>`;
   }
 
   cont.innerHTML = html || `<div class="empty-state" style="padding:40px;">No hay ONs de ${monedaActiva === 'local' ? 'ley local' : 'ley extranjera'} con datos</div>`;
@@ -2070,6 +2084,7 @@ async function fetchPreciosImpl(force = false) {
       // que sale la mitad: son los que tienen cronograma pero sin los cupones ya pagados, donde
       // no se pueden computar los intereses corridos acá (ver paridadDe).
       body: JSON.stringify(vivos.map(i => ({ ticker: i.ticker, grupo: i.grupo,
+                                             moneda: monedaDeON(i),
                                              ind: usaIndicadores1816(i),
                                              par: usaParidad1816(i) }))),
     });
