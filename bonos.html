@@ -492,9 +492,13 @@ const GRUPOS_DOLAR = ['usdlinked', 'usdbonares', 'usdglobales', 'usdbopreal', 'o
 // Moneda en la que se pide cada grupo. Espeja el mapa MONEDA de functions/api/precios.js, con una
 // diferencia: los globales van en CCL, que es como los valúa la solapa "dólares".
 // OJO: `usdlinked` está en GRUPOS_DOLAR porque se MUESTRA con los dólares, pero cotiza en pesos.
+// Grupos que esta solapa valúa al CCL en vez del MEP. Se define una sola vez: antes de tenerlo
+// junto, el grupo aparecía suelto en el armado del pedido y en el sello de bonos_data, y agregar
+// uno pedía acordarse de los dos lugares.
+const GRUPOS_CCL = ['usdglobales', 'subsoberano'];
 const MONEDA_DE_GRUPO = {
   lecap:'ars', tasafija:'ars', cer:'ars', tamar:'ars', usdlinked:'ars', dual:'ars',
-  usdbonares:'mep', usdglobales:'ccl', usdbopreal:'mep', onusd:'mep', subsoberano:'mep',
+  usdbonares:'mep', usdglobales:'ccl', usdbopreal:'mep', onusd:'mep', subsoberano:'ccl',
 };
 function monedaDeGrupo(grupo) { return GRUPOS_DOLAR.includes(grupo) ? 'dolares' : 'pesos'; }
 let monedaActiva = 'pesos'; // 'pesos' (default) | 'dolares'
@@ -1397,7 +1401,7 @@ function renderTabla() {
   // (functions/api/precios.js) y MONEDA_1816 (actualizar_historicos.py), los dos en 'mep'. Si
   // alguna vez se cambia el segmento, hay que actualizar esta línea junto con esos mapeos.
   if (html && monedaActiva === 'dolares') {
-    html += `<div class="nota-pie">Bonares y Bopreales al <b>dólar MEP</b>; Globales al <b>CCL</b>. La serie histórica sigue en MEP para todos.</div>`;
+    html += `<div class="nota-pie">Bonares y Bopreales al <b>dólar MEP</b>; Globales y Provinciales al <b>CCL</b>. La serie histórica sigue en MEP para todos.</div>`;
   }
 
   cont.innerHTML = html || `<div class="empty-state" style="padding:40px;">No hay instrumentos en ${monedaActiva === 'pesos' ? 'pesos' : 'dólares'}</div>`;
@@ -1492,7 +1496,7 @@ async function fetchPreciosImpl(force = false) {
                                              // vs Bon compara globales contra bonares y necesita
                                              // las dos puntas en la MISMA moneda, así que tiene
                                              // que seguir recibiéndolos en MEP.
-                                             moneda: i.grupo === 'usdglobales' ? 'ccl' : undefined,
+                                             moneda: GRUPOS_CCL.includes(i.grupo) ? 'ccl' : undefined,
                                              ind: usaIndicadores1816(i) || i.grupo === 'dual',
                                              par: usaParidad1816(i) }))),
     });
