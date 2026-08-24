@@ -186,6 +186,49 @@ const BCRA_WORKER  = 'https://indicadoresbcra.granda-fra.workers.dev';
 const ARG_WORKER   = 'https://argentinadatos-proxy.granda-fra.workers.dev';
 const FERIADOS_WORKER = 'https://feriados-proxy.granda-fra.workers.dev';
 
+// Constantes y helpers que el motor usa y que habían quedado en la página. Se detectaron
+// buscando qué identificadores referencia este archivo sin declararlos: ir de a uno por
+// cada error en consola habría llevado varias vueltas de deploy.
+// ── GRUPOS (orden de aparición en tabla) ──────────────────────
+const GRUPOS = [
+  { key: 'lecap',      label: 'LECAPS'       },
+  { key: 'tasafija',   label: 'TASA FIJA'    },
+  { key: 'cer',        label: 'CER'          },
+  { key: 'tamar',      label: 'TAMAR'        },
+  { key: 'usdlinked',  label: 'USD LINKED'   },
+  { key: 'usdbonares', label: 'USD BONARES'  },
+  { key: 'usdglobales', label: 'USD GLOBALES'  },
+  { key: 'usdbopreal',  label: 'USD BOPREALES' },
+  { key: 'onusd',       label: 'ON USD'         },
+  { key: 'subsoberano', label: 'SUBSOBERANOS'   },
+  { key: 'dual',        label: 'DUALES'        },
+];
+// Grupos que están cargados en Instrumentos.xlsx pero NO se muestran en el Monitor.
+// Se filtran acá en vez de borrarlos del Excel: reconstruir el cronograma de flujos de un
+// bono con cupón es difícil (1816 no expone flujos), así que conviene conservar el dato.
+// Para volver a mostrarlos, sacarlos de esta lista.
+const GRUPOS_OCULTOS = ['onusd'];
+async function fetchCerFecha(fechaStr) {
+  if (!fechaStr) return null;
+  if (bcraData.cer[fechaStr] !== undefined) return bcraData.cer[fechaStr];
+  // Pedir rango de ±5 días para cubrir fines de semana/feriados
+  const d = parseLocalDate(fechaStr);
+  const desde = dateToStr(new Date(d.getFullYear(), d.getMonth(), d.getDate() - 5));
+  const hasta  = dateToStr(new Date(d.getFullYear(), d.getMonth(), d.getDate() + 5));
+  try {
+    const resp = await fetch(`${BCRA_WORKER}/?serie=cer&desde=${desde}&hasta=${hasta}`);
+    const json = await resp.json();
+    const detalle = json.results?.[0]?.detalle || [];
+    detalle.forEach(r => {
+      if (r.fecha && r.valor) bcraData.cer[r.fecha] = parseFloat(r.valor);
+    });
+    return buscarCerCache(fechaStr);
+  } catch(e) {
+    console.warn('BCRA CER fetch error:', e);
+    return null;
+  }
+}
+
 /* ── MOTOR DE CÁLCULO ─────────────────────────────────────────────────────────────────
  * Mudado desde bonos.html, no copiado: hay una sola definición de cada cosa y el Monitor
  * también las consume desde acá. Todo vive en el scope global —estas páginas no tienen
