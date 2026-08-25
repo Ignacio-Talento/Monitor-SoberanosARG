@@ -383,29 +383,58 @@
 let datosMotor = null;
 let datosOrigen = 'monitor';
 
+// Respaldo del Monitor, ya filtrado. Se descarta lo que no esté en MEP: esta página compara
+// globales contra bonares, y el Monitor pasó a valuar los globales al CCL para su propia solapa
+// "dólares". Mezclar las dos puntas daría un canje mal, plausible y silencioso —el número sale,
+// sólo que no significa lo que dice: el canje de AL29/GD29 pasaría de +4,02% a +0,17%—.
+// Preferimos quedarnos sin el par antes que mostrarlo cruzado.
+//
+// El filtro tiene que estar acá y no sólo en datosBonos(): hay DOS caminos hacia este array —el
+// catch de abajo, que lo asigna a datosMotor, y la lectura tardía— y el primero se salteaba el
+// filtro justamente porque datosBonos() devuelve datosMotor sin mirarlo cuando ya está cargado.
+//
+// `!d.moneda` deja pasar el respaldo escrito por una versión anterior del Monitor, que no
+// estampaba el campo: en esa época todo estaba en MEP, así que servía tal cual.
+let descartadosPorMoneda = 0;   // cuántas filas quedaron afuera por estar en otra punta
+
+function respaldoDelMonitor() {
+  try {
+    const bd = JSON.parse(localStorage.getItem('bonos_data') || '[]') || [];
+    const ok = bd.filter(d => !d.moneda || d.moneda === 'mep'
+                              || !['usdbonares', 'usdglobales'].includes(d.grupo));
+    descartadosPorMoneda = bd.length - ok.length;
+    return ok;
+  } catch (e) { return []; }
+}
+
+// Cinta de aviso, igual a la de antigüedad del pie de página. Sin esto, descartar los globales
+// deja los pares vacíos y parece que 1816 no los trajo, que es un problema distinto.
+function avisarRespaldoIncompleto() {
+  if (!descartadosPorMoneda) return;
+  const d = document.createElement('div');
+  d.textContent = `⚠ No se pudo calcular con 1816 y el respaldo del Monitor tiene ${descartadosPorMoneda} `
+    + 'papel(es) valuados al CCL. Se los dejó afuera para no comparar contra bonares en MEP: '
+    + 'esos pares aparecen vacíos. Recargá para reintentar.';
+  d.style.cssText = 'background:#fff4e5;color:#7a4b00;border-bottom:1px solid #f0c890;'
+    + 'font:600 12px/1.5 ui-sans-serif,system-ui,sans-serif;padding:8px 16px;text-align:center';
+  document.body.insertBefore(d, document.body.firstChild);
+}
+
 async function cargarDatosMotor() {
   try {
     datosMotor = await MonitorCore.datosCalculados();
     datosOrigen = '1816';
   } catch (e) {
     console.warn('no se pudo calcular con el motor, se usa lo que dejó el Monitor:', e);
-    try { datosMotor = JSON.parse(localStorage.getItem('bonos_data') || '[]') || []; }
-    catch (_) { datosMotor = []; }
+    datosMotor = respaldoDelMonitor();
     datosOrigen = 'monitor';
+    avisarRespaldoIncompleto();
   }
 }
 // Reemplaza a la lectura de localStorage. Si todavía no se cargó, cae al respaldo para no
 // devolver vacío y dejar la tabla en blanco.
 function datosBonos() {
-  if (datosMotor) return datosMotor;
-  // Respaldo. Se descarta lo que no esté en MEP: esta página compara globales contra bonares, y
-  // el Monitor pasó a valuar los globales al CCL para su propia solapa "dólares". Mezclar las dos
-  // puntas daría un canje mal, plausible y silencioso —el número sale, sólo que no significa lo
-  // que dice—. Preferimos quedarnos sin el par antes que mostrarlo cruzado.
-  try {
-    const bd = JSON.parse(localStorage.getItem('bonos_data') || '[]') || [];
-    return bd.filter(d => !d.moneda || d.moneda === 'mep' || !['usdbonares','usdglobales'].includes(d.grupo));
-  } catch (e) { return []; }
+  return datosMotor || respaldoDelMonitor();
 }
 
 function parseLocalDate(s) { if (!s) return null; const p = String(s).split('-').map(Number); return new Date(p[0], p[1]-1, p[2]); }
