@@ -276,10 +276,81 @@ def fetch_precios_1816(items, fecha=None):
             if isinstance(v, (int, float)):
                 resultado[eco] = v
 
+    # Los que se piden en CCL y no operaron en esa punta: se traen en MEP y se convierten.
+    faltanCCL = [(it['eco'], it['t1816']) for it in items
+                 if it['moneda'] == 'ccl' and it['t1816'] and it['eco'] not in resultado]
+    if faltanCCL and 'ccl' not in fallaron:
+        factor = canje_ccl_mep(fecha or hoy_art().strftime('%Y-%m-%d'))
+        if factor:
+            try:
+                filas = cli.precios([t for _, t in faltanCCL], [CAMPO_1816],
+                                    moneda='mep', fecha_operacion=fecha)
+                v_por_t = {f['ticker']: f.get(CAMPO_1816) for f in filas}
+                n = 0
+                for eco, t in faltanCCL:
+                    v = v_por_t.get(t)
+                    if isinstance(v, (int, float)) and v > 0:
+                        resultado[eco] = round(v * factor, 4)
+                        n += 1
+                if n:
+                    print(f"  {n} sin cotización en CCL: convertidos desde MEP "
+                          f"(canje {factor:.4f})")
+            except Exception as e:
+                print(f"AVISO: no se pudieron traer los faltantes en MEP ({e})")
+
     total = sum(len(v) for v in por_moneda.values())
     extra = f" (falló: {', '.join(fallaron)})" if fallaron else ""
     print(f"1816: {len(resultado)} precios obtenidos de {total} consultables{extra}.")
     return resultado
+
+
+# ── CANJE CCL/MEP ─────────────────────────────────────────────
+# El CCL es una punta mucho más fina que el MEP: hay papeles —provinciales y ONs chicas— con precio
+# MEP todos los días y CCL uno de cada tres, o ninguno. Como el monitor los valúa en CCL, pedirlos
+# sólo en esa punta dejaba huecos: la rueda del 24-08 quedó con 17 sin precio contra los 3
+# habituales, y 15 eran de este grupo.
+#
+# La salida es convertir: se les pide el precio en MEP y se multiplica por el canje del día. No es
+# inventar un precio, es reexpresar el mismo valor en la otra moneda.
+#
+# El canje sale del índice dólar de BYMA, que publica MEP y CCL de la misma canasta. Se eligió esa
+# fuente y no derivarlo de los bonos porque es gratis —no gasta créditos de 1816— y una sola
+# llamada resuelve el día. Contrastado el 25-08-2026 contra el factor implícito en los ~44 bonos
+# que cotizan en las dos puntas: coinciden dentro del 0,1%.
+BYMA_AJAX = ("https://data-widgets.byma.com.ar/wp-admin/admin-ajax.php?action=get_indice_dolar")
+BYMA_HEADERS = {
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0",
+    "X-Requested-With": "XMLHttpRequest", "Sec-Fetch-Dest": "empty",
+    "Sec-Fetch-Mode": "cors", "Sec-Fetch-Site": "same-origin",
+    # Sin los Sec-Fetch-* y el Referer, el host contesta 401 aunque la URL sea correcta.
+    "Referer": "https://data-widgets.byma.com.ar/indice-dolar-historico-widget/",
+}
+
+
+def canje_ccl_mep(fecha):
+    """Factor para pasar un precio de MEP a CCL en esa rueda, o None si no se pudo."""
+    try:
+        r = requests.get(BYMA_AJAX, headers=BYMA_HEADERS, timeout=30)
+        if not r.ok:
+            print(f"AVISO: índice BYMA HTTP {r.status_code}; no se completa por canje")
+            return None
+        filas = {str(x.get("date", ""))[:10]: x for x in (r.json().get("result") or [])}
+        x = filas.get(fecha)
+        if not x:
+            # Si la rueda todavía no está publicada se usa la última anterior: el canje se mueve
+            # décimas por día, así que el error es de otro orden que dejar el precio afuera.
+            previas = sorted(f for f in filas if f <= fecha)
+            x = filas.get(previas[-1]) if previas else None
+            if x:
+                print(f"AVISO: BYMA todavía no publicó {fecha}; se usa el canje del {previas[-1]}")
+        mep, ccl = (x or {}).get("bymaClosingPrice"), (x or {}).get("cclClosingPrice")
+        if not isinstance(mep, (int, float)) or not isinstance(ccl, (int, float)) or not ccl:
+            return None
+        return mep / ccl
+    except Exception as e:
+        print(f"AVISO: no se pudo leer el índice BYMA ({e}); no se completa por canje")
+        return None
+
 
 # ── FECHA DE LA RUEDA A REGISTRAR ─────────────────────────────
 # Referencias para detectar si una rueda tuvo mercado. Deben ser instrumentos MUY líquidos y

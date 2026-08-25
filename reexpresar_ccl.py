@@ -15,9 +15,22 @@ CONTROL DE CORDURA. Antes de escribir compara cada valor nuevo contra el que hab
 razón CCL/MEP. Tiene que dar una brecha chica y consistente (del orden de 1,00 a 1,10). Si apareciera
 un factor de 1.500 sería que algo vino en pesos, y ahí conviene frenar en vez de escribir.
 
+COMPLETAR CON EL CANJE. El CCL es una punta mucho más fina que el MEP: hay papeles —sobre todo
+provinciales y ONs chicas— que tienen precio MEP todos los días y CCL uno de cada tres, o ninguno.
+Para esos, pedir la serie en CCL deja huecos, y peor: pisar sólo donde hay dato deja la columna con
+las dos monedas mezcladas, que es justo lo que se quería evitar.
+
+El modo --canje los completa convirtiendo el precio MEP por el factor CCL/MEP de esa rueda. El
+factor se saca de los instrumentos que SÍ tienen las dos puntas ese día —unos 44, con 0,6% de
+dispersión— y coincide con el índice dólar de BYMA dentro del 0,1%, que es una validación
+independiente. Convertir no inventa un precio: reexpresa el mismo valor en la otra moneda, que es
+exactamente lo que hace 1816 cuando publica las dos.
+
 USO
     python reexpresar_ccl.py                 # dry-run: qué cambiaría y con qué brecha
     python reexpresar_ccl.py --escribir      # aplica
+    python reexpresar_ccl.py --canje         # dry-run del completado por canje
+    python reexpresar_ccl.py --canje --escribir
     python reexpresar_ccl.py --escribir TLCPD GD30D   # sólo esos
 """
 
@@ -79,7 +92,87 @@ def pedir(cli, tickers, desde, hasta):
     return out
 
 
+RESPALDO = "historicos_pre_ccl.xlsx"   # la serie tal como estaba, toda en MEP
+
+
+def completar_con_canje(argv):
+    """Rellena en CCL las celdas que quedaron en MEP, usando el canje de cada rueda.
+
+    Se apoya en el respaldo previo a la reexpresión: una celda que hoy vale IGUAL que allá es una
+    que 1816 no pudo dar en CCL —el factor es 0,96, así que coincidir a nueve decimales por azar no
+    pasa—. Esas son las que se convierten.
+    """
+    escribir = "--escribir" in argv
+    pedidos = {a.upper() for a in argv if not a.startswith("--")}
+
+    enCCL = {it["eco"] for it in leer_tickers() if it["moneda"] == "ccl"
+             and (not pedidos or it["eco"] in pedidos)}
+    wb = load_workbook(HISTORICOS_FILE)
+    ws = wb["Historicos"]
+    cab, fila_de = leer(ws)
+    col = {t: i + 1 for i, t in enumerate(cab) if t}
+
+    prev = load_workbook(RESPALDO, read_only=True, data_only=True)["Historicos"]
+    itp = prev.iter_rows(values_only=True)
+    cabp = [str(c) for c in next(itp)]
+    mep = {}
+    for r in itp:
+        if not r or not r[0]:
+            continue
+        mep[str(r[0])[:10]] = {cabp[i]: r[i] for i in range(1, len(cabp))
+                               if isinstance(r[i], (int, float))}
+
+    # Factor por rueda: mediana de (CCL / MEP) sobre los que tienen las dos puntas.
+    factor, faltan = {}, []
+    for f, fila in mep.items():
+        if f not in fila_de:
+            continue
+        rs = []
+        for t, v in fila.items():
+            if t not in enCCL or not v or t not in col:
+                continue
+            act = ws.cell(row=fila_de[f], column=col[t]).value
+            if isinstance(act, (int, float)) and abs(act - v) > 1e-9:
+                rs.append(act / v)
+        if len(rs) >= 3:
+            factor[f] = median(rs)
+        else:
+            faltan.append(f)
+
+    cambios = []
+    for f, fila in mep.items():
+        if f not in factor:
+            continue
+        for t, v in fila.items():
+            if t not in enCCL or not v or t not in col:
+                continue
+            celda = ws.cell(row=fila_de[f], column=col[t])
+            if isinstance(celda.value, (int, float)) and abs(celda.value - v) <= 1e-9:
+                cambios.append((celda, round(v * factor[f], 4), t))
+
+    print(f"{len(factor)} ruedas con canje calculable"
+          + (f" · {len(faltan)} sin (menos de 3 pares)" if faltan else ""))
+    if factor:
+        fs = sorted(factor.values())
+        print(f"  canje CCL/MEP: mediana {median(fs):.4f} · mín {fs[0]:.4f} · máx {fs[-1]:.4f}")
+    from collections import Counter
+    porTicker = Counter(t for _, _, t in cambios)
+    print(f"\n{len(cambios)} celdas a completar por canje, en {len(porTicker)} instrumentos")
+    for t, n in porTicker.most_common(6):
+        print(f"    {t:7s} {n}")
+    if not escribir:
+        print("\n(dry-run: no se escribió nada. Agregá --escribir para aplicar)")
+        return 0
+    for celda, v, _ in cambios:
+        celda.value = v
+    wb.save(HISTORICOS_FILE)
+    print(f"\n{HISTORICOS_FILE} actualizado: {len(cambios)} celdas completadas por canje")
+    return 0
+
+
 def main(argv):
+    if "--canje" in argv:
+        return completar_con_canje(argv)
     escribir = "--escribir" in argv
     pedidos = {a.upper() for a in argv if not a.startswith("--")}
 
