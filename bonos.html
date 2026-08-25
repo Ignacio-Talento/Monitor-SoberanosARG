@@ -226,6 +226,14 @@
   /* Nota al pie debajo de las tablas de la solapa dólares. Sticky a la izquierda porque las
      tablas son más anchas que la ventana: sin eso se estiraba al ancho de la tabla y había que
      scrollear para terminar de leerla. En una sola línea, así que nowrap y ancho al contenido. */
+
+  /* Chip de moneda en el título de cada grupo. La nota al pie sola no alcanzaba: hay que saber en
+     qué punta está la fila que se está mirando, no bajar hasta el final de la tabla y traducir. */
+  .chip-moneda { font-size: 9.5px; font-weight: 700; letter-spacing: .05em; padding: 2px 7px;
+    border-radius: 999px; margin-left: 9px; vertical-align: middle; }
+  .chip-moneda.mep { background: #e8edf5; color: #002060; border: 1px solid #a0b4d8; }
+  .chip-moneda.ccl { background: #e6f6fd; color: #005f80; border: 1px solid #7fd0ef; }
+  .chip-moneda.mixto { background: #fff4e5; color: #7a4b00; border: 1px solid #f0c890; }
   .nota-pie { position: sticky; left: 2px; display: inline-block; white-space: nowrap;
               margin: 10px 2px 22px; padding: 8px 12px; font-size: 11.5px; line-height: 1.4;
               color: var(--text-3); background: #F2F4F8; border-left: 3px solid #00B0F0;
@@ -1373,6 +1381,15 @@ function renderTabla() {
     grupos[gidx[f.inst.grupo]].filas.push(f);
   }
 
+  // Chip con la punta en la que se valúa el grupo. Sale de MONEDA_DE_GRUPO, el mismo mapa que
+  // arma el pedido a 1816, así que no puede quedar desincronizado del dato que muestra.
+  // Sólo en los hard-dollar: en los de pesos la moneda no es una elección y el chip sería ruido.
+  const chipMoneda = (key) => {
+    const m = MONEDA_DE_GRUPO[key];
+    return (m === 'mep' || m === 'ccl')
+      ? `<span class="chip-moneda ${m}">${m.toUpperCase()}</span>` : '';
+  };
+
   // 3) Render: una <table> por grupo, con su header propio (título + columnas ordenables)
   let html = '';
   for (const g of grupos) {
@@ -1389,7 +1406,7 @@ function renderTabla() {
     const rows = g.filas.map(f => `<tr class="data-row">${cg.map(({ c }) => c.cell(f)).join('')}</tr>`).join('');
     html += `<table class="tabla-grupo" style="min-width:${Math.max(760, nCols*96)}px"><colgroup>${colgroupHTML(g.key)}</colgroup>
       <thead>
-        <tr><th class="grupo-titulo" colspan="${nCols}">${label}</th></tr>
+        <tr><th class="grupo-titulo" colspan="${nCols}">${label}${chipMoneda(g.key)}</th></tr>
         <tr class="col-header-row">${ths}</tr>
       </thead>
       <tbody>${rows}</tbody>
@@ -1401,7 +1418,7 @@ function renderTabla() {
   // (functions/api/precios.js) y MONEDA_1816 (actualizar_historicos.py), los dos en 'mep'. Si
   // alguna vez se cambia el segmento, hay que actualizar esta línea junto con esos mapeos.
   if (html && monedaActiva === 'dolares') {
-    html += `<div class="nota-pie">Bonares y Bopreales al <b>dólar MEP</b>; Globales y Provinciales al <b>CCL</b>. La serie histórica sigue en MEP para todos.</div>`;
+    html += `<div class="nota-pie">La punta de cada grupo está en el chip del título. La serie histórica está en la <b>misma</b> moneda, así que las variaciones comparan puntas iguales.</div>`;
   }
 
   cont.innerHTML = html || `<div class="empty-state" style="padding:40px;">No hay instrumentos en ${monedaActiva === 'pesos' ? 'pesos' : 'dólares'}</div>`;

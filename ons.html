@@ -313,6 +313,18 @@
   /* Nota al pie debajo de las tablas, igual que en el Monitor. Sticky a la izquierda porque las
      tablas son más anchas que la ventana: sin eso se estira al ancho de la tabla y hay que
      scrollear para terminar de leerla. En una sola línea, así que nowrap. */
+
+  /* Chip de moneda. En el título dice la punta del grupo; junto al ticker marca las locales que
+     se valúan en CCL, que son minoría y la excepción a la regla del grupo. Hace falta por fila
+     porque la vista "Rendimiento" —donde se leen las tasas— no muestra la columna Divisa, y ahí
+     la punta cambia cómo se lee el número. */
+  .chip-moneda { font-size: 9.5px; font-weight: 700; letter-spacing: .05em; padding: 2px 7px;
+    border-radius: 999px; margin-left: 9px; vertical-align: middle; }
+  .chip-moneda.mep { background: #e8edf5; color: #002060; border: 1px solid #a0b4d8; }
+  .chip-moneda.ccl { background: #e6f6fd; color: #005f80; border: 1px solid #7fd0ef; }
+  .chip-moneda.mixto { background: #fff4e5; color: #7a4b00; border: 1px solid #f0c890; }
+  .marca-ccl { font-size: 8.5px; font-weight: 700; color: #005f80; margin-left: 5px;
+    letter-spacing: .04em; vertical-align: super; }
   .nota-pie { position: sticky; left: 2px; display: inline-block; white-space: nowrap;
               margin: 10px 2px 22px; padding: 8px 12px; font-size: 11.5px; line-height: 1.4;
               color: var(--text-3); background: #F2F4F8; border-left: 3px solid #00B0F0;
@@ -1481,6 +1493,18 @@ function subTeaNeta(f){
 // ── VISTAS: qué columnas se muestran ──────────────────────────
 // Más de 20 columnas juntas no se leen. Cada vista deja sólo lo que hace falta para una
 // pregunta concreta. "Completa" mantiene el comportamiento anterior.
+// Chip con la punta del grupo. Las de ley NY son todas CCL; las locales están mezcladas, así que
+// ahí dice "MEP · CCL" con el desglose en el tooltip y las excepciones van marcadas por fila.
+function chipMonedaON(key, filas) {
+  if (key !== 'onlocal' && key !== 'onny') return '';
+  const ccl = filas.filter(f => monedaDeON(f.inst) === 'ccl').length;
+  if (!filas.length) return '';
+  if (ccl === filas.length) return '<span class="chip-moneda ccl">CCL</span>';
+  if (ccl === 0) return '<span class="chip-moneda mep">MEP</span>';
+  return `<span class="chip-moneda mixto" title="${filas.length - ccl} en MEP y ${ccl} en CCL, ` +
+         `según dónde paga cada una">MEP · CCL</span>`;
+}
+
 const VISTAS = {
   operar:      { label:'Operar',      cols:['ticker','nombre','divisa','precio','ultop','voldia','tea','md','paridad','dias'] },
   rendimiento: { label:'Rendimiento', cols:['ticker','nombre','precio','tna','tea','paridad','md','day','wtd','mtd','ytd'] },
@@ -1505,7 +1529,10 @@ function colEnVista(k){
 }
 
 const COLS = [
-  { k:'ticker',  label:'Ticker',      w:7.0,  left:true, get:f=>f.inst.ticker,     cell:f=>`<td class="td-ticker">${f.inst.ticker}</td>` },
+  { k:'ticker',  label:'Ticker',      w:7.0,  left:true, get:f=>f.inst.ticker,
+    // Las de ley NY ya van todas en CCL y lo dice el chip del grupo: marcarlas una por una sería
+    // repetir lo mismo 36 veces. La marca es para las locales en CCL, que son 6 y rompen la regla.
+    cell:f=>`<td class="td-ticker">${f.inst.ticker}${f.inst.grupo === 'onlocal' && monedaDeON(f.inst) === 'ccl' ? '<span class="marca-ccl" title="Paga en CCL: se valúa en esa punta, a diferencia del resto de las locales">CCL</span>' : ''}</td>` },
   { k:'nombre',  label:'Nombre',      w:11.0, left:true, get:f=>f.inst.nombre||'', cell:f=>`<td class="td-nombre">${f.inst.nombre||''}</td>` },
   { k:'industria', label:'Industria', w:10.5, left:true, get:f=>industriaDe(f.inst), cell:f=>`<td class="td-nombre">${industriaDe(f.inst)}</td>` },
   { k:'rating',  label:'Rating',      w:16.0, get:f=>ratingRank(f.inst), cell:f=>ratingCell(f.inst) },
@@ -1663,7 +1690,7 @@ function renderTabla() {
     const rows = g.filas.map(f => { _filasPorTk[f.inst.ticker] = f; return `<tr class="data-row" data-tk="${f.inst.ticker}">${cv.map(({ c }) => c.cell(f)).join('')}</tr>`; }).join('');
     html += `<table class="tabla-grupo" style="min-width:${Math.max(760, nCols*96)}px"><colgroup>${colgroupHTML()}</colgroup>
       <thead>
-        <tr><th class="grupo-titulo" colspan="${nCols}">${label}</th></tr>
+        <tr><th class="grupo-titulo" colspan="${nCols}">${label}${chipMonedaON(g.key, g.filas)}</th></tr>
         <tr class="col-header-row">${ths}</tr>
         <tr class="filtro-row">${filtros}</tr>
       </thead>
@@ -1676,7 +1703,7 @@ function renderTabla() {
   // local— y es fácil leer eso como el segmento de valuación. Es el domicilio de pago que
   // scrapeamos de 1816, sirve para informar y filtrar, y no toca el precio.
   if (html) {
-    html += `<div class="nota-pie">Cada ON se valúa en la moneda en la que paga: ver la columna “Divisa de pago”. Las de ley NY, todas al <b>CCL</b>. La serie histórica sigue en MEP para todas.</div>`;
+    html += `<div class="nota-pie">Cada ON se valúa en la moneda en la que <b>paga</b>: las de ley NY al CCL, y las locales según su columna “Divisa de pago” (las que pagan en CCL van marcadas junto al ticker). La serie histórica está en la <b>misma</b> moneda, así que las variaciones comparan puntas iguales.</div>`;
   }
 
   cont.innerHTML = html || `<div class="empty-state" style="padding:40px;">No hay ONs de ${monedaActiva === 'local' ? 'ley local' : 'ley extranjera'} con datos</div>`;
