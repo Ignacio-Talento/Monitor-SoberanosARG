@@ -173,6 +173,53 @@ async function fetch1816(apiKey, tickers, moneda, fecha, campos = [CAMPO]) {
   return { datos: out, fallos };
 }
 
+
+// --- Canje CCL/MEP -----------------------------------------------------------
+// El CCL es una punta mucho más fina que el MEP: los 11 subsoberanos y varias ONs chicas tienen
+// precio MEP todos los días y CCL uno de cada tres, o ninguno. Como el monitor los valúa en CCL,
+// pedirlos sólo ahí dejaba el grupo entero vacío en pantalla.
+//
+// La salida es convertir: mismo valor reexpresado en la otra punta. Se puede hacer sin romper nada
+// porque esos instrumentos tienen cronograma cargado y el frontend les calcula la TIR y la duration
+// a partir del precio —verificado contra 1816 el 25-08-2026: cero diferencia en los cinco
+// subsoberanos con dato ese día—. Si dependieran del indicador de 1816 esto no serviría: la TIR no
+// se convierte con el canje, sale del precio contra los flujos.
+//
+// El factor viene del índice dólar de BYMA, que publica MEP y CCL de la misma canasta. Es gratis
+// —no gasta créditos— y una llamada resuelve el día. Contrastado contra el factor implícito en los
+// ~44 bonos que cotizan en las dos puntas: coinciden dentro del 0,1%.
+const BYMA_AJAX = "https://data-widgets.byma.com.ar/wp-admin/admin-ajax.php?action=get_indice_dolar";
+const BYMA_HEADERS = {
+  "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0",
+  "Accept": "*/*", "X-Requested-With": "XMLHttpRequest",
+  // Sin los Sec-Fetch-* y el Referer el host contesta 401 aunque la URL sea correcta.
+  "Sec-Fetch-Dest": "empty", "Sec-Fetch-Mode": "cors", "Sec-Fetch-Site": "same-origin",
+  "Referer": "https://data-widgets.byma.com.ar/indice-dolar-historico-widget/",
+};
+let _canje = null, _canjeExp = 0;
+async function canjeCclMep(fecha) {
+  if (_canje && Date.now() < _canjeExp) return _canje.v;
+  let v = null;
+  try {
+    const r = await fetch(BYMA_AJAX, { headers: BYMA_HEADERS });
+    if (r.ok) {
+      const filas = {};
+      for (const x of (await r.json()).result || []) filas[String(x.date || "").slice(0, 10)] = x;
+      // Si la rueda de hoy todavía no está publicada se usa la última anterior: el canje se mueve
+      // décimas por día, así que el error es de otro orden que dejar el precio afuera.
+      let x = filas[fecha];
+      if (!x) {
+        const previas = Object.keys(filas).filter((f) => f <= fecha).sort();
+        x = previas.length ? filas[previas[previas.length - 1]] : null;
+      }
+      const mep = x && x.bymaClosingPrice, ccl = x && x.cclClosingPrice;
+      if (typeof mep === "number" && typeof ccl === "number" && ccl) v = mep / ccl;
+    }
+  } catch (e) { /* sin canje no se convierte y listo: queda como antes, no peor */ }
+  _canje = { v }; _canjeExp = Date.now() + 3600000;   // cambia una vez por día
+  return v;
+}
+
 // --- Última rueda con datos -------------------------------------------------
 // 1816 NO tiene datos los fines de semana ni feriados: pedir "hoy" devuelve todo null.
 // Buscamos hacia atrás la última fecha con datos usando UN ticker de referencia (barato).
@@ -267,6 +314,8 @@ async function computePrecios(env, items) {
   // operó (o es feriado), acá vuelve el cierre de la rueda anterior, y comparar eso contra el
   // último cierre guardado daría 0% de variación en todo el panel.
   let fechaRueda = null;
+  // Fuera del if: el paso del canje, más abajo, necesita pedir en MEP la MISMA rueda.
+  let fecha = null;
   const fallos = [];   // qué se rompió, para poder verlo en el frontend en vez de adivinar
   // Sin key el bloque de abajo no corre y TODO sale por Eco. Antes eso era mudo y se veía igual
   // que un día sin datos; hay que gritarlo, porque es un problema de configuración (falta el
@@ -282,7 +331,7 @@ async function computePrecios(env, items) {
     const tickersRef = [...new Set(
       grupoRef.filter((_, i) => i % paso === 0).slice(0, 10).map((p) => p.t)
     )];
-    const fecha = await resolverFecha(apiKey, tickersRef, grupoRef[0].moneda, fallos);
+    fecha = await resolverFecha(apiKey, tickersRef, grupoRef[0].moneda, fallos);
     // resolverFecha devuelve null cuando la rueda es la de hoy Y TAMBIÉN cuando no la pudo
     // resolver. Los dos casos terminan igual: se consulta sin fecha, que es como 1816 devuelve
     // la última que tenga. La diferencia es que el segundo deja un aviso en `fallos`, así que el
@@ -314,6 +363,34 @@ async function computePrecios(env, items) {
     }
   }
 
+  // Los pedidos en CCL que no operaron en esa punta: se traen en MEP y se convierten.
+  // Se excluyen los que piden indicadores a 1816 (`ind`): a esos les convertiríamos el precio pero
+  // la TIR seguiría siendo la del MEP, y quedaría una fila con una punta en cada campo sin que se
+  // note. Mejor dejarlos vacíos, que al menos se ve.
+  let canjeDiag = null;
+  const faltanCCL = [];
+  for (const clave of monedas) {
+    for (const p of porMoneda[clave]) {
+      if (p.moneda === "ccl" && !p.ind && result[p.eco] === undefined) faltanCCL.push(p);
+    }
+  }
+  if (apiKey && faltanCCL.length) {
+    const factor = await canjeCclMep(fechaRueda);
+    if (factor) {
+      const tks = [...new Set(faltanCCL.map((p) => p.t))];
+      const res = await fetch1816(apiKey, tks, "mep", fecha, [CAMPO]);
+      let n = 0;
+      for (const p of faltanCCL) {
+        const v = res.datos[p.t] && res.datos[p.t][CAMPO];
+        if (typeof v === "number" && v > 0) { result[p.eco] = v * factor; n++; }
+      }
+      if (n) canjeDiag = { convertidos: n, factor: Number(factor.toFixed(4)) };
+      fallos.push(...res.fallos);
+    } else {
+      fallos.push(`${faltanCCL.length} sin cotización en CCL y sin canje de BYMA para convertirlos`);
+    }
+  }
+
   // Fallback a Eco SOLO para lo que 1816 no resolvió. Acotado: cada uno es un subrequest
   // y Cloudflare corta en ~50 por request (si no, un día sin datos deja la respuesta a medias).
   const grupoDe = {};
@@ -337,6 +414,7 @@ async function computePrecios(env, items) {
     // defaults de MONEDA —los hard-dollar en mep, el resto en ars— pero tenerlo explícito es lo
     // que permite verificar de afuera que la valuación es la que dice la nota al pie del monitor.
     diag: { de1816, deEco: Object.keys(result).length - de1816, fallos,
+            ...(canjeDiag ? { canje: canjeDiag } : {}),
             segmentos: [...new Set(Object.values(porMoneda).map((ps) => ps[0].moneda))].sort() },
   };
 }
