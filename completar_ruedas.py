@@ -33,7 +33,7 @@ except ImportError:
     sys.exit(1)
 
 from actualizar_historicos import (
-    CAMPO_1816, FACTOR_ESCALA, HISTORICOS_FILE, leer_tickers,
+    CAMPO_1816, FACTOR_ESCALA, HISTORICOS_FILE, canje_ccl_mep, leer_tickers,
 )
 
 try:
@@ -212,6 +212,29 @@ def main(argv):
         return 0
     escritos = raros = 0
 
+    def escribir(eco, precio, f):
+        """Escribe un precio si la celda está vacía y pasa la guarda de escala.
+        Devuelve 'ok', 'raro' o None (celda ocupada / sin columna)."""
+        if not isinstance(precio, (int, float)) or precio <= 0:
+            return None
+        r, c = fila_de.get(f), col.get(eco)
+        if not r or not c or ws.cell(row=r, column=c).value not in (None, ""):
+            return None      # no se pisa nada que ya esté
+
+        # Misma guarda de escala que el job diario: un precio que se aparta de la mediana
+        # del propio ticker por más de 5x es otra moneda, no un movimiento de mercado.
+        previos = [v for fx in sorted(datos) for v in [datos[fx].get(eco)]
+                   if isinstance(v, (int, float)) and v > 0][-20:]
+        if len(previos) >= 3:
+            m = median(previos)
+            if precio > m * FACTOR_ESCALA or precio < m / FACTOR_ESCALA:
+                print(f"      {eco}: {precio} vs mediana {m:.2f}, descartado")
+                return 'raro'
+
+        ws.cell(row=r, column=c).value = precio
+        datos[f][eco] = precio
+        return 'ok'
+
     for f in objetivo:
         print(f"\n{f}:")
         porm = {}
@@ -227,27 +250,42 @@ def main(argv):
 
             for t1816, precio in res.items():
                 eco = inv.get(t1816)
-                if not eco or not isinstance(precio, (int, float)) or precio <= 0:
+                if not eco:
                     continue
-                r = fila_de.get(f)
-                c = col.get(eco)
-                if not r or not c or ws.cell(row=r, column=c).value not in (None, ""):
-                    continue     # no se pisa nada que ya esté
+                r = escribir(eco, precio, f)
+                escritos += (r == 'ok')
+                raros += (r == 'raro')
 
-                # Misma guarda de escala que el job diario: un precio que se aparta de la mediana
-                # del propio ticker por más de 5x es otra moneda, no un movimiento de mercado.
-                previos = [v for fx in sorted(datos) for v in [datos[fx].get(eco)]
-                           if isinstance(v, (int, float)) and v > 0][-20:]
-                if len(previos) >= 3:
-                    m = median(previos)
-                    if precio > m * FACTOR_ESCALA or precio < m / FACTOR_ESCALA:
-                        print(f"      {eco}: {precio} vs mediana {m:.2f}, descartado")
-                        raros += 1
+        # Los que se piden en CCL y no operaron en esa punta. Sin este paso quedaba un hueco
+        # permanente: el CCL es una punta fina y hay provinciales y ONs que cotizan en MEP todos
+        # los días y en CCL uno de cada tres. Mismo criterio que el job diario —convertir no
+        # inventa un precio, reexpresa el mismo valor en la otra moneda—.
+        #
+        # Se barre TODO el universo en CCL, no sólo plan[f]. faltantes() exige que el ticker haya
+        # cotizado en la rueda sana anterior, y justamente los que nunca operan en CCL no pasan
+        # ese filtro: el hueco es estructural, no una rueda rota, así que por ahí no entraban
+        # nunca. El filtro sigue siendo correcto para su propósito —no perseguir precios que no
+        # existen—, pero acá el precio que se busca es el MEP, y ese sí existe.
+        faltan = [t for t, m in moneda_de.items()
+                  if m == 'ccl' and fila_de.get(f) and col.get(t)
+                  and ws.cell(row=fila_de[f], column=col[t]).value in (None, "")]
+        if faltan:
+            factor = canje_ccl_mep(f)
+            if factor:
+                inv = {t1816_de[t]: t for t in faltan}
+                res = pedir(cli, sorted(inv), 'mep', f) or {}
+                n = 0
+                for t1816, precio in res.items():
+                    eco = inv.get(t1816)
+                    if not eco or not isinstance(precio, (int, float)) or precio <= 0:
                         continue
-
-                ws.cell(row=r, column=c).value = precio
-                datos[f][eco] = precio
-                escritos += 1
+                    r = escribir(eco, round(precio * factor, 4), f)
+                    escritos += (r == 'ok')
+                    raros += (r == 'raro')
+                    n += (r == 'ok')
+                if n:
+                    print(f"   {n} sin cotización en CCL: convertidos desde MEP "
+                          f"(canje {factor:.4f})")
 
     if escritos:
         wb.save(HISTORICOS_FILE)
