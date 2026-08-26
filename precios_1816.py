@@ -395,6 +395,27 @@ class Cliente1816:
             params["curvaId"] = curva_id
         return self._get("/v1/mercado/instrumentos", params)
 
+    # Campos del cashflow. Van todos por defecto porque el costo es por cupón, no por campo.
+    CAMPOS_CASHFLOW = ["fechaPagoEfectiva", "fechaPagoTeorica",
+                       "flujoAmortizacion", "flujoInteres", "flujoTotal"]
+
+    def cashflow(self, ticker, campos=None):
+        """Cronograma de un instrumento: -> [{cuponNumero, fechaPagoEfectiva, flujoInteres, ...}].
+
+        Trae TODOS los cupones, incluidos los ya pagados. Cuesta 1 crédito por cupón.
+
+        Es lo que hay que cargar en la hoja Flujos de Instrumentos.xlsx al dar de alta un bono:
+        sin cronograma el monitor toma TIR y duration de los indicadores de 1816, y entonces no
+        puede convertirle el precio de MEP a CCL —convertir sólo el precio dejaría la tasa de la
+        otra punta—, así que un instrumento que cotice en cable queda sin precio los días que no
+        opere en esa punta.
+
+        El endpoint no figura en la guía en Word; está en el OpenAPI, que es la fuente de verdad:
+        https://api.1816.com.ar/v1/doc/openapi.json
+        """
+        params = {"campos": list(campos or self.CAMPOS_CASHFLOW)}
+        return (self._get(f"/v1/mercado/cashflow/{ticker}", params) or {}).get("cashflow", [])
+
 
 # ---------------------------------------------------------------------------
 # Utilidades de entrada / salida
