@@ -10,6 +10,16 @@ on:
     # subsoberanos ni ONs, y la rueda quedaba con ~70 tickers en vez de ~165 (pasó el 12 y el 14
     # de agosto de 2026). Quince minutos alcanzan de sobra: ese job tarda uno o dos.
     - cron: '20 20 * * 1-5'
+    # Respaldo, 18:20 ART = 21:20 UTC. GitHub no garantiza los schedules: los demora entre 20 y 50
+    # minutos de rutina y a veces directamente los saltea. El 26/08/2026 no ejecutó ninguno, y la
+    # rueda de ese día se habría perdido sin que nada avisara —el workflow no falla, simplemente no
+    # existe la corrida—.
+    #
+    # Es barato porque el script es idempotente: si la fila del día ya está escrita sale por "ya
+    # existe fila" ANTES de pedirle precios a 1816, así que no gasta créditos. El segundo paso, el
+    # de las series de Glob vs Bon, sí vuelve a correr, pero es incremental: pide sólo los días que
+    # le falten, que en la segunda pasada del mismo día son un puñado.
+    - cron: '20 21 * * 1-5'
   workflow_dispatch: # Permite ejecución manual desde GitHub
 
 permissions:
