@@ -1081,7 +1081,15 @@ function sumarDiasHabiles(fecha, n) {
 }
 
 function usaIndicadores1816(inst) {
-  if (!inst || GRUPOS_PARAMETRICOS.includes(inst.grupo)) return false;
+  if (!inst) return false;
+  // Los grupos paramétricos se valúan con su propia fórmula y no con flujos... salvo que tengan
+  // cronograma cargado. Un Boncer con renta y amortización (DICP, PARP, CUAP, TX28, TX31) NO es
+  // un zero coupon, y la rama `cer` —que hace TEA = (valorTeo/precio)^(1/t)-1 sobre un único pago
+  // al vencimiento— le daría cualquier cosa. Tener flujos es la marca de que ese instrumento no
+  // entra en la fórmula paramétrica; para esos se toman los indicadores de 1816.
+  //
+  // Al revés que en el resto: ahí los flujos habilitan el cálculo propio, acá lo descartan.
+  if (GRUPOS_PARAMETRICOS.includes(inst.grupo)) return !!(inst.flujos && inst.flujos.length);
   return !(inst.flujos && inst.flujos.length);
 }
 
