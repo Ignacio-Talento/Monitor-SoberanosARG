@@ -11,6 +11,7 @@ from datetime import date, datetime, timedelta
 import os
 import re
 import time
+from statistics import median
 
 # Cliente de la API de 1816 (fuente primaria de precios). Import defensivo: si
 # falta el archivo o la librería, el script sigue funcionando 100% con Eco Valores.
@@ -327,8 +328,81 @@ BYMA_HEADERS = {
 }
 
 
+# Testigos para derivar el canje de 1816: bonos que cotizan TODOS los días en las dos puntas.
+# Soberanos hard-dollar líquidos y de vencimiento repartido, para que la baja de uno no deje al
+# cálculo sin base. Con que respondan 3 alcanza.
+TESTIGOS_CANJE = ['AL30', 'GD30', 'AL29', 'GD29', 'AL35', 'GD35', 'AE38', 'GD38', 'AL41', 'GD41']
+# Fuera de esta banda el cociente no es un canje sino otra cosa (un precio en pesos, un dato
+# viejo). Se descarta el par en vez de arrastrarlo a la mediana.
+CANJE_MIN, CANJE_MAX = 0.85, 1.30
+
+
+def canje_desde_1816(fecha):
+    """Canje CCL/MEP derivado de los testigos, o None.
+
+    POR QUÉ ES LA FUENTE PRIMARIA Y NO BYMA. El endpoint de BYMA da SSL
+    CERTIFICATE_VERIFY_FAILED desde Python —manda la cadena incompleta y no incluye el
+    intermedio—. Los navegadores y los Workers de Cloudflare lo resuelven solos buscando el
+    certificado que falta (AIA fetching); requests no hace eso, así que falla igual en Windows
+    que en el runner de Ubuntu. El 25/08/2026 eso dejó 18 instrumentos en CCL sin precio en el
+    histórico, en silencio, porque el aviso era sólo un print.
+
+    Derivarlo de 1816 saca una dependencia externa del camino crítico: es la misma API que ya
+    trae todo lo demás, con la misma key y el mismo rate limit. Y el número es el mismo — el
+    factor de los ~44 instrumentos que cotizan en ambas puntas coincide con el índice BYMA
+    dentro del 0,1%.
+
+    Cuesta 20 créditos: 10 testigos x 1 campo x 2 monedas.
+    """
+    cli = cliente_1816()
+    if cli is None:
+        return None
+    # Con reintentos, igual que fetch_precios_1816: el limitador de 1816 es global por API key, y
+    # acá un 429 no degrada el resultado sino que lo borra —sin factor no se completa NINGÚN CCL—.
+    def punta(moneda):
+        ultimo = None
+        for espera in (0, 15, 45):
+            if espera:
+                print(f"  canje/{moneda}: reintentando en {espera}s...")
+                time.sleep(espera)
+            try:
+                filas = cli.precios(TESTIGOS_CANJE, [CAMPO_1816], moneda=moneda,
+                                    fecha_operacion=fecha)
+                return {f['ticker']: f.get(CAMPO_1816) for f in filas}
+            except Exception as e:
+                ultimo = e
+        print(f"AVISO: no se pudo derivar el canje de 1816 en {moneda} ({ultimo})")
+        return None
+
+    ccl, mep = punta('ccl'), punta('mep')
+    if ccl is None or mep is None:
+        return None
+
+    razones = []
+    for t in TESTIGOS_CANJE:
+        a, b = ccl.get(t), mep.get(t)
+        if isinstance(a, (int, float)) and isinstance(b, (int, float)) and b > 0:
+            r = a / b
+            if CANJE_MIN <= r <= CANJE_MAX:
+                razones.append(r)
+    if len(razones) < 3:
+        print(f"AVISO: sólo {len(razones)} testigo(s) con las dos puntas; se prueba con BYMA")
+        return None
+    razones.sort()
+    f = median(razones)
+    print(f"  canje CCL/MEP {f:.4f} (1816, {len(razones)} testigos, "
+          f"{razones[0]:.4f}-{razones[-1]:.4f})")
+    return f
+
+
 def canje_ccl_mep(fecha):
-    """Factor para pasar un precio de MEP a CCL en esa rueda, o None si no se pudo."""
+    """Factor para pasar un precio de MEP a CCL en esa rueda, o None si no se pudo.
+
+    Primero 1816, que es la fuente que ya usa todo el script; BYMA queda de respaldo por si
+    algún día los testigos no operan en CCL (ver canje_desde_1816 para el porqué del orden)."""
+    f = canje_desde_1816(fecha)
+    if f:
+        return f
     try:
         r = requests.get(BYMA_AJAX, headers=BYMA_HEADERS, timeout=30)
         if not r.ok:
