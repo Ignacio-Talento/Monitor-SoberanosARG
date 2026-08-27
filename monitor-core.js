@@ -167,7 +167,67 @@
     }).filter(d => d.md !== null && d.tea !== null);
   }
 
+  /* Contratos de futuro de dólar de Matba Rofex, vía el proxy de Eco.
+   *
+   * CON REINTENTOS, y no es un lujo: la fuente devuelve `price: null` de forma intermitente para
+   * contratos que sí cotizan. Medido el 27/08/2026, DLR/DIC26 falló en 2 de cada 5 llamadas y
+   * DLR/MAR27 dos veces seguidas, y los tres que faltaban aparecieron al insistir. Con un solo
+   * intento por contrato —como se hacía— la curva queda con huecos distintos cada vez, y quien
+   * la mira no tiene forma de distinguir "este mes no cotiza" de "esta vez no contestó".
+   *
+   * Los contratos vencen SIEMPRE el último día del mes, así que el vencimiento se deriva del
+   * propio ticker en vez de hardcodearse.
+   *
+   * -> { 'DLR/SEP26': { precio, venc: Date, dias }, ... }  sólo los vivos y con precio.
+   */
+  var MESES_FUT = { ENE:0, FEB:1, MAR:2, ABR:3, MAY:4, JUN:5,
+                    JUL:6, AGO:7, SEP:8, OCT:9, NOV:10, DIC:11 };
+
+  function vencContrato(ticker) {
+    var m = MESES_FUT[ticker.slice(4, 7)];
+    var a = 2000 + parseInt(ticker.slice(7, 9), 10);
+    if (m === undefined || isNaN(a)) return null;
+    return new Date(a, m + 1, 0);          // día 0 del mes siguiente = último del mes
+  }
+
+  function futurosDolar(tickers, intentos) {
+    var max = intentos || 4;
+    var hoy = new Date(); hoy.setHours(0, 0, 0, 0);
+    var out = {}, fallidos = [];
+
+    function unContrato(tk, queda) {
+      var venc = vencContrato(tk);
+      if (!venc || venc <= hoy) return Promise.resolve();     // vencido o ticker ilegible
+      return fetch(ECO_URL + '/?ticker=' + encodeURIComponent(tk))
+        .then(function (r) { return r.json(); })
+        .catch(function () { return {}; })
+        .then(function (d) {
+          if (d && d.price > 0) {
+            out[tk] = { precio: d.price, venc: venc,
+                        dias: Math.round((venc - hoy) / 86400000) };
+            return;
+          }
+          if (queda > 1) {
+            return new Promise(function (res) { setTimeout(res, 600); })
+              .then(function () { return unContrato(tk, queda - 1); });
+          }
+          fallidos.push(tk);
+        });
+    }
+
+    // En serie y no en paralelo: es el mismo worker para todos y dispararlos juntos agrava
+    // justamente la intermitencia que se está tratando de cubrir.
+    return tickers.reduce(function (p, tk) {
+      return p.then(function () { return unContrato(tk, max); })
+              .then(function () { return new Promise(function (r) { setTimeout(r, 150); }); });
+    }, Promise.resolve()).then(function () {
+      return { futuros: out, fallidos: fallidos };
+    });
+  }
+
   global.MonitorCore = {
+    futurosDolar: futurosDolar,
+    vencContrato: vencContrato,
     pedirPrecios: pedirPrecios,
     cargarUniverso: cargarUniverso,
     datosCalculados: datosCalculados,

@@ -279,19 +279,12 @@ const BCRA_URL  = 'https://indicadoresbcra.granda-fra.workers.dev';
 // vacía, sin más pista que un error en la consola.
 const EXCEL_URL = 'Instrumentos.xlsx';
 
-// Contratos de futuros de dólar (plazo calculado dinámicamente, no hardcodeado)
+// Contratos de futuros de dólar. El vencimiento sale del propio ticker (siempre el último día del
+// mes), así que la lista es de strings: ver MonitorCore.vencContrato. Los ya vencidos se descartan
+// solos, de modo que la lista puede quedar con meses viejos sin romper nada.
 const FUTUROS_TICKERS = [
-  { ticker: 'DLR/JUN26', anio: 2026, mesIdx: 5 },
-  { ticker: 'DLR/JUL26', anio: 2026, mesIdx: 6 },
-  { ticker: 'DLR/AGO26', anio: 2026, mesIdx: 7 },
-  { ticker: 'DLR/SEP26', anio: 2026, mesIdx: 8 },
-  { ticker: 'DLR/OCT26', anio: 2026, mesIdx: 9 },
-  { ticker: 'DLR/NOV26', anio: 2026, mesIdx: 10 },
-  { ticker: 'DLR/DIC26', anio: 2026, mesIdx: 11 },
-  { ticker: 'DLR/ENE27', anio: 2027, mesIdx: 0 },
-  { ticker: 'DLR/FEB27', anio: 2027, mesIdx: 1 },
-  { ticker: 'DLR/MAR27', anio: 2027, mesIdx: 2 },
-  { ticker: 'DLR/ABR27', anio: 2027, mesIdx: 3 },
+  'DLR/JUN26', 'DLR/JUL26', 'DLR/AGO26', 'DLR/SEP26', 'DLR/OCT26', 'DLR/NOV26',
+  'DLR/DIC26', 'DLR/ENE27', 'DLR/FEB27', 'DLR/MAR27', 'DLR/ABR27',
 ];
 let futurosPrecios = {}; // { ticker: { precio, venc(Date) } }
 
@@ -755,19 +748,18 @@ function renderTabla() {
 }
 
 // ── FUTUROS ───────────────────────────────────────────────────
-function vencFuturo(f) { return new Date(f.anio, f.mesIdx + 1, 0); } // último día del mes
+// La carga vive en monitor-core.js (MonitorCore.futurosDolar) y no acá: la comparte con la solapa
+// Sintéticos, y sobre todo REINTENTA. La versión anterior hacía un solo intento por contrato, y la
+// fuente devuelve null de forma intermitente —DLR/DIC26 falló 2 de cada 5 veces el 27/08/2026—,
+// así que la curva perdía un mes distinto en cada carga sin que nada lo delatara.
 async function fetchFuturos() {
   futurosPrecios = {};
-  const hoy = new Date(); hoy.setHours(0,0,0,0);
-  for (const f of FUTUROS_TICKERS) {
-    const venc = vencFuturo(f);
-    if (venc <= hoy) continue; // contrato vencido
-    try {
-      const resp = await fetch(`${ECO_URL}/?ticker=${f.ticker}`);
-      const d = await resp.json();
-      if (d.price && d.price > 0) futurosPrecios[f.ticker] = { precio: d.price, venc };
-    } catch(e) {}
-    await new Promise(r => setTimeout(r, 200));
+  try {
+    const r = await MonitorCore.futurosDolar(FUTUROS_TICKERS);
+    futurosPrecios = r.futuros;
+    if (r.fallidos.length) console.warn('futuros sin precio:', r.fallidos.join(', '));
+  } catch (e) {
+    console.warn('no se pudieron traer los futuros:', e);
   }
 }
 
@@ -807,8 +799,12 @@ function renderGraficoSintetico() {
     // El DL viene por 100 de VN (~147.000) y el futuro por unidad (~1.477):
     // llevo el futuro a la misma escala (× 100) para que la resta sea válida.
     const precioFut = 100 * fut.precio;
-    // Anualización simple: ((PrecioFuturo - PrecioDL)/PrecioDL) / díasFuturo × 365
-    const tasaSint = ((precioFut - precio) / precio) / diasFut * 365 * 100;
+    // TEA, no tasa simple: la otra curva del gráfico son LECAPs y calcTEALecap devuelve
+    // (VPV/precio)^(365/días)-1, o sea compuesta. Anualizar esta linealmente y ponerlas en el
+    // mismo eje comparaba cosas distintas, y el sesgo no es chico ni parejo: a 30 días un 3%
+    // es 36,5% simple contra 42,6% TEA. Como el sintético sólo se grafica para DL de menos de
+    // un año, la subestimación era sistemática y siempre en contra del sintético.
+    const tasaSint = (Math.pow(precioFut / precio, 365 / diasFut) - 1) * 100;
     puntosSint.push({ x: parseFloat((diasFut/365).toFixed(3)), y: parseFloat(tasaSint.toFixed(2)), ticker: bono.ticker + ' / ' + fut.ticker });
   });
   puntosSint.sort((a,b) => a.x - b.x);
