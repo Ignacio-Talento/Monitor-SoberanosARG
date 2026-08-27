@@ -190,8 +190,45 @@
     return new Date(a, m + 1, 0);          // día 0 del mes siguiente = último del mes
   }
 
+  /* Caché en sessionStorage. No es una optimización: es lo que evita que el propio monitor tire
+   * abajo la fuente. Sin esto, cada carga de página dispara hasta tickers x intentos llamadas al
+   * mismo worker, y con dos solapas que lo consultan la tasa de fallo sube tanto que los
+   * reintentos dejan de servir. Medido el 27/08/2026: después de un rato de recargas, los 11
+   * contratos volvieron vacíos aunque el worker respondía bien a una consulta suelta.
+   * 10 minutos: un futuro se mueve mucho menos que eso dentro de la rueda. */
+  var FUT_CACHE = 'futuros_dolar';
+  var FUT_TTL = 10 * 60 * 1000;
+
+  function futurosCacheados() {
+    try {
+      var c = JSON.parse(sessionStorage.getItem(FUT_CACHE) || 'null');
+      if (!c || Date.now() - c.ts > FUT_TTL) return null;
+      var out = {};
+      for (var k in c.futuros) {
+        out[k] = { precio: c.futuros[k].precio, venc: new Date(c.futuros[k].venc),
+                   dias: c.futuros[k].dias };
+      }
+      return { futuros: out, fallidos: c.fallidos || [], deCache: true };
+    } catch (e) { return null; }
+  }
+
+  function guardarFuturos(r) {
+    try {
+      var plano = {};
+      for (var k in r.futuros) {
+        plano[k] = { precio: r.futuros[k].precio, venc: r.futuros[k].venc.getTime(),
+                     dias: r.futuros[k].dias };
+      }
+      sessionStorage.setItem(FUT_CACHE, JSON.stringify(
+        { ts: Date.now(), futuros: plano, fallidos: r.fallidos }));
+    } catch (e) { /* sessionStorage lleno o bloqueado: no es motivo para romper la carga */ }
+  }
+
   function futurosDolar(tickers, intentos) {
-    var max = intentos || 4;
+    var cache = futurosCacheados();
+    if (cache && Object.keys(cache.futuros).length) return Promise.resolve(cache);
+
+    var max = intentos || 3;
     var hoy = new Date(); hoy.setHours(0, 0, 0, 0);
     var out = {}, fallidos = [];
 
@@ -208,7 +245,9 @@
             return;
           }
           if (queda > 1) {
-            return new Promise(function (res) { setTimeout(res, 600); })
+            // Backoff creciente: si la fuente está saturada, insistir al mismo ritmo la satura más.
+            var espera = 800 * (max - queda + 1);
+            return new Promise(function (res) { setTimeout(res, espera); })
               .then(function () { return unContrato(tk, queda - 1); });
           }
           fallidos.push(tk);
@@ -219,9 +258,13 @@
     // justamente la intermitencia que se está tratando de cubrir.
     return tickers.reduce(function (p, tk) {
       return p.then(function () { return unContrato(tk, max); })
-              .then(function () { return new Promise(function (r) { setTimeout(r, 150); }); });
+              .then(function () { return new Promise(function (r) { setTimeout(r, 250); }); });
     }, Promise.resolve()).then(function () {
-      return { futuros: out, fallidos: fallidos };
+      var r = { futuros: out, fallidos: fallidos, deCache: false };
+      // Se cachea aunque falte alguno: sirve igual y evita repetir la tanda entera por uno solo.
+      // Si no salió ninguno no se guarda, para que el próximo intento vuelva a probar de verdad.
+      if (Object.keys(out).length) guardarFuturos(r);
+      return r;
     });
   }
 

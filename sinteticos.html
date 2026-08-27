@@ -339,9 +339,12 @@ let futurosFallidos = [];
 let comision = 0.5;      // % por punta
 let tcSpot = null;
 
+// Hasta ABR27: Rofex lista los contratos con unos ocho meses de anticipación y MAY27/JUN27
+// todavía no cotizan (devuelven precio nulo de forma consistente, no intermitente). Pedirlos
+// gastaba una tanda de reintentos por carga contra un contrato que no existe.
 const FUTUROS_TICKERS = [
   'DLR/AGO26', 'DLR/SEP26', 'DLR/OCT26', 'DLR/NOV26', 'DLR/DIC26',
-  'DLR/ENE27', 'DLR/FEB27', 'DLR/MAR27', 'DLR/ABR27', 'DLR/MAY27', 'DLR/JUN27',
+  'DLR/ENE27', 'DLR/FEB27', 'DLR/MAR27', 'DLR/ABR27',
 ];
 
 const fmt = (x, d = 2) => (x === null || x === undefined || isNaN(x))
