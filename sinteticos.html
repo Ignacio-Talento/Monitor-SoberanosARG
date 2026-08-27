@@ -295,27 +295,51 @@
   </div>
 
   <div class="panel">
-    <div class="panel-title">Sintético contra directo, por vencimiento</div>
+    <div class="panel-title">Sintético en pesos contra LECAP</div>
+    <div class="nota" style="margin-top:0;margin-bottom:12px;">
+      Comprar un <strong>dólar linked</strong> y <strong>vender</strong> el futuro de su vencimiento
+      deja una tasa en pesos cierta: <code>(1 + TIR del DL) × (1 + devaluación implícita) − 1</code>.
+      Se compara contra la LECAP del mismo plazo.
+    </div>
     <div class="tbl-scroll">
-      <table id="tabla-sint">
+      <table id="tabla-pesos">
         <thead><tr>
           <th class="lft">Contrato</th><th>Días</th>
-          <th>LECAP TEA</th><th>DL TIR</th>
-          <th>Sintético $ TEA</th><th>Spread bruto</th><th>Spread neto</th>
-          <th class="lft">Qué paga más</th>
+          <th>LECAP TEA</th><th>Sintético $ TEA</th>
+          <th>Spread bruto</th><th>Spread neto</th><th class="lft">Qué paga más</th>
         </tr></thead>
-        <tbody id="tbody-sint"></tbody>
+        <tbody id="tbody-pesos"></tbody>
       </table>
-    </div>
-    <div class="nota">
-      Las tasas de LECAP y DL están <strong>interpoladas a la fecha de cada contrato</strong>, no tomadas del bono más
-      cercano: los vencimientos casi nunca coinciden y comparar contra un bono que vence dos semanas después mete
-      ruido que no es del mercado. Entre paréntesis, los dos instrumentos entre los que se interpola.<br>
-      <strong>Spread positivo</strong> = la LECAP paga más que el sintético en pesos, y por lo tanto el sintético DL
-      paga más que el bono DL. <strong>Negativo</strong>, al revés.
     </div>
   </div>
 
+  <div class="panel">
+    <div class="panel-title">Sintético dólar linked contra bono DL</div>
+    <div class="nota" style="margin-top:0;margin-bottom:12px;">
+      Comprar una <strong>LECAP</strong> y <strong>comprar</strong> el futuro deja exposición al
+      oficial armada con tasa fija: <code>(1 + TEA de la LECAP) ÷ (1 + devaluación implícita) − 1</code>.
+      Se compara contra el bono dólar linked del mismo plazo. Es la misma paridad que la tabla de
+      arriba, mirada desde la otra moneda: uno multiplica por la devaluación y el otro divide, y por
+      eso los spreads <strong>brutos</strong> tienen siempre el mismo signo
+      (<code>spread DL = spread pesos ÷ (1 + devaluación)</code>). Los netos ya no, porque cada
+      camino paga comisiones distintas.
+    </div>
+    <div class="tbl-scroll">
+      <table id="tabla-dolar">
+        <thead><tr>
+          <th class="lft">Contrato</th><th>Días</th>
+          <th>Bono DL TIR</th><th>Sintético DL TIR</th>
+          <th>Spread bruto</th><th>Spread neto</th><th class="lft">Qué paga más</th>
+        </tr></thead>
+        <tbody id="tbody-dolar"></tbody>
+      </table>
+    </div>
+    <div class="nota">
+      Las tasas de LECAP y DL están <strong>interpoladas a la fecha de cada contrato</strong>, no
+      tomadas del bono más cercano: los vencimientos casi nunca coinciden y comparar contra un bono
+      que vence dos semanas después mete ruido que no es del mercado. Entre paréntesis, los dos
+      instrumentos entre los que se interpola.
+    </div>
   <div class="panel">
     <div class="panel-title">Devaluación implícita contra inflación esperada</div>
     <div id="graf-rem"></div>
@@ -425,16 +449,19 @@ function devaluacionTEA(f, dias) {
   return (Math.pow(f.precio / tcSpot, 365 / dias) - 1) * 100;
 }
 
-// Una comisión aplicada a una tasa ya anualizada. No hace falta el precio: comprar a P(1+c) en
-// lugar de P deja (1 + TEA_neta) = (1 + TEA_bruta) / (1+c)^(365/d), así que alcanza con dividir.
-// `sobreNocional` es para el futuro, donde el costo no encarece una compra sino que achica lo que
-// se cobra al vender: ahí el factor es (1-c)^(365/d) y multiplica en vez de dividir.
-function netaDeComision(tasaPct, comPct, dias, sobreNocional) {
-  if (dias <= 0 || !comPct) return tasaPct;
-  const c = comPct / 100;
-  const f = Math.pow(sobreNocional ? (1 - c) : 1 / (1 + c), 365 / dias);
-  return ((1 + tasaPct / 100) * f - 1) * 100;
+// Aplica a una tasa YA ANUALIZADA un costo que actúa sobre el capital.
+//
+// No hace falta el precio: si en vez de P se paga P·k, la tasa neta cumple
+// (1 + neta) = (1 + bruta) · k^(365/d). Sólo cambia el factor k según qué se hace:
+//   comprar un bono  -> se paga más:      k = 1/(1+c)
+//   vender un futuro -> se cobra menos:   k = (1-c)
+//   comprar un futuro-> se paga más:      k = 1/(1+c)   [encarece el tipo de cambio de salida]
+function conFactor(tasaPct, k, dias) {
+  if (dias <= 0 || k === 1) return tasaPct;
+  return ((1 + tasaPct / 100) * Math.pow(k, 365 / dias) - 1) * 100;
 }
+const kCompra = c => 1 / (1 + c / 100);   // se paga de más
+const kVenta = c => 1 - c / 100;          // se cobra de menos
 
 function filasSinteticos() {
   const liq = liquidacion();
@@ -450,22 +477,32 @@ function filasSinteticos() {
     const dev = devaluacionTEA(f, dias);
     const iL = interpolar(cLecap, dias);
     const iD = interpolar(cDL, dias);
-    let sint = null, spread = null, neto = null;
-    if (dev !== null && iD) {
-      // (1 + TIR_dl) x (1 + deval) - 1
-      sint = ((1 + iD.tasa / 100) * (1 + dev / 100) - 1) * 100;
-      if (iL) {
-        spread = iL.tasa - sint;
-        // Neto: cada pata con su propia comisión. La LECAP se encarece por la suya; el sintético,
-        // por la del bono DL (que compra) y la del futuro (que vende).
-        const lecapNeta = netaDeComision(iL.tasa, comisiones.lecap, dias, false);
-        const dlNeta = netaDeComision(iD.tasa, comisiones.dl, dias, false);
-        const devNeta = netaDeComision(dev, comisiones.fut, dias, true);
-        const sintNeto = ((1 + dlNeta / 100) * (1 + devNeta / 100) - 1) * 100;
-        neto = lecapNeta - sintNeto;
+    const fila = { tk, dias, dev, lecap: iL, dl: iD, venc: f.venc, precio: f.precio,
+                   pesos: null, dolar: null };
+
+    if (dev !== null) {
+      // ── sintético EN PESOS: comprar DL + vender futuro, contra la LECAP ──
+      if (iD && iL) {
+        const bruto = ((1 + iD.tasa / 100) * (1 + dev / 100) - 1) * 100;
+        const lecapN = conFactor(iL.tasa, kCompra(comisiones.lecap), dias);
+        const dlN = conFactor(iD.tasa, kCompra(comisiones.dl), dias);
+        const devVenta = conFactor(dev, kVenta(comisiones.fut), dias);
+        const netoSint = ((1 + dlN / 100) * (1 + devVenta / 100) - 1) * 100;
+        fila.pesos = { sint: bruto, ref: iL.tasa, spread: iL.tasa - bruto,
+                       neto: lecapN - netoSint, sintNeto: netoSint, refNeto: lecapN };
+      }
+      // ── sintético DÓLAR LINKED: comprar LECAP + comprar futuro, contra el bono DL ──
+      if (iL && iD) {
+        const bruto = ((1 + iL.tasa / 100) / (1 + dev / 100) - 1) * 100;
+        const lecapN = conFactor(iL.tasa, kCompra(comisiones.lecap), dias);
+        const devCompra = conFactor(dev, kCompra(comisiones.fut), dias);
+        const netoSint = ((1 + lecapN / 100) / (1 + devCompra / 100) - 1) * 100;
+        const dlN = conFactor(iD.tasa, kCompra(comisiones.dl), dias);
+        fila.dolar = { sint: bruto, ref: iD.tasa, spread: bruto - iD.tasa,
+                       neto: netoSint - dlN, sintNeto: netoSint, refNeto: dlN };
       }
     }
-    out.push({ tk, dias, dev, lecap: iL, dl: iD, sint, spread, neto, venc: f.venc, precio: f.precio });
+    out.push(fila);
   }
   return out.sort((a, b) => a.dias - b.dias);
 }
@@ -515,31 +552,41 @@ function renderFuturos() {
         : '');
 }
 
-function renderSinteticos() {
-  const tb = document.getElementById('tbody-sint');
-  const filas = filasSinteticos();
-  tb.innerHTML = filas.map(r => {
-    const cls = v => v === null ? '' : (v >= 0 ? 'val-green' : 'val-red');
-    let veredicto = '<span class="no-p">sin curva</span>';
-    if (r.neto !== null) {
-      veredicto = r.neto >= 0
-        ? 'LECAP directa · y sintético DL sobre el bono DL'
-        : 'Sintético en pesos · y bono DL sobre el sintético';
-    }
-    const ref = i => i ? `<span class="no-p" style="font-size:9px;"> (${i.entre[0]}–${i.entre[1]})</span>` : '';
-    const f = futuros[r.tk] || {};
-    const inerte = !f.volumenVN;
+// Una fila de comparación. `lado` es 'pesos' o 'dolar'; cambian las etiquetas y qué es la
+// referencia, pero la mecánica —bruto, neto y veredicto— es la misma.
+function filaComparativa(r, lado, gana, pierde) {
+  const d = r[lado];
+  const cls = v => v === null ? '' : (v >= 0 ? 'val-green' : 'val-red');
+  const f = futuros[r.tk] || {};
+  const inerte = !f.volumenVN;
+  const ref = i => i ? `<span class="no-p" style="font-size:9px;"> (${i.entre[0]}–${i.entre[1]})</span>` : '';
+  if (!d) {
     return `<tr${inerte ? ' style="opacity:.62"' : ''}>
-      <td class="lft">${r.tk}${inerte ? ' <span class="no-p" style="font-size:9px;">sin operar</span>' : ''}</td>
-      <td>${r.dias}</td>
-      <td>${r.lecap ? pct(r.lecap.tasa) : '—'}${ref(r.lecap)}</td>
-      <td>${r.dl ? pct(r.dl.tasa) : '—'}${ref(r.dl)}</td>
-      <td>${pct(r.sint)}</td>
-      <td class="${cls(r.spread)}">${signo(r.spread)}</td>
-      <td class="${cls(r.neto)}"><strong>${signo(r.neto)}</strong></td>
-      <td class="lft">${veredicto}</td>
-    </tr>`;
-  }).join('');
+      <td class="lft">${r.tk}</td><td>${r.dias}</td>
+      <td colspan="5" class="no-p">sin curva en ese plazo</td></tr>`;
+  }
+  const refI = lado === 'pesos' ? r.lecap : r.dl;
+  return `<tr${inerte ? ' style="opacity:.62"' : ''}>
+    <td class="lft">${r.tk}${inerte ? ' <span class="no-p" style="font-size:9px;">sin operar</span>' : ''}</td>
+    <td>${r.dias}</td>
+    <td>${pct(d.ref)}${ref(refI)}</td>
+    <td>${pct(d.sint)}</td>
+    <td class="${cls(d.spread)}">${signo(d.spread)}</td>
+    <td class="${cls(d.neto)}"><strong>${signo(d.neto)}</strong></td>
+    <td class="lft">${d.neto >= 0 ? gana : pierde}</td>
+  </tr>`;
+}
+
+function renderSinteticos() {
+  const filas = filasSinteticos();
+  const a = document.getElementById('tbody-pesos');
+  const b = document.getElementById('tbody-dolar');
+  // En pesos el spread es LECAP − sintético: positivo, gana la LECAP.
+  if (a) a.innerHTML = filas.map(r => filaComparativa(r, 'pesos',
+    'LECAP directa', 'Sintético en pesos')).join('');
+  // En dólares es sintético − bono: positivo, gana el sintético.
+  if (b) b.innerHTML = filas.map(r => filaComparativa(r, 'dolar',
+    'Sintético DL', 'Bono DL directo')).join('');
 }
 
 // ── REM DE INFLACIÓN ─────────────────────────────────────────────────────────────────────────
@@ -685,7 +732,7 @@ function inflacionTEA(desde, hasta) {
 function renderGrafico() {
   const cont = document.getElementById('graf-sint');
   const vacio = document.getElementById('graf-empty');
-  const filas = filasSinteticos().filter(r => r.sint !== null);
+  const filas = filasSinteticos().filter(r => r.pesos);
   const cLecap = curvaDe('lecap');
   if (!filas.length || !cLecap.length) {
     cont.innerHTML = ''; vacio.style.display = 'block'; return;
@@ -693,7 +740,7 @@ function renderGrafico() {
   vacio.style.display = 'none';
 
   const W = 900, H = 340, mL = 56, mR = 20, mT = 18, mB = 40;
-  const serieSint = filas.map(r => ({ x: r.dias, y: r.sint, t: r.tk }));
+  const serieSint = filas.map(r => ({ x: r.dias, y: r.pesos.sint, t: r.tk }));
   const serieLec = cLecap.map(p => ({ x: p.dias, y: p.tasa, t: p.ticker }));
   const todos = serieSint.concat(serieLec);
   const xs = todos.map(p => p.x), ys = todos.map(p => p.y);
@@ -739,20 +786,21 @@ function renderGrafico() {
   // Mismo tooltip que el gráfico de arriba. El eje son los contratos de futuro, así que se apoya en
   // las filas de la tabla —que ya tienen la LECAP interpolada al plazo de cada contrato— y no en los
   // puntos sueltos de las dos curvas, que están en plazos distintos.
-  const conSint = filas.filter(r => r.sint !== null);
+  const conSint = filas;
   montarTooltip(cont, conSint.map(r => ({ ...r, x: r.dias })), px, W, H, mT, mB,
     r => {
-      const f = [{ etiqueta: 'Sintético en pesos', valor: pct(r.sint), color: '#00a3e4' }];
+      const f = [{ etiqueta: 'Sintético en pesos', valor: pct(r.pesos.sint), color: '#00a3e4' }];
+      if (r.dolar) f.push({ etiqueta: 'Sintético DL', valor: pct(r.dolar.sint), color: '#0d9488' });
       if (r.lecap) f.push({ etiqueta: 'LECAP interpolada', valor: pct(r.lecap.tasa)
                             + ' (' + r.lecap.entre[0] + '–' + r.lecap.entre[1] + ')', color: '#0d2055' });
       if (r.dl) f.push({ etiqueta: 'DL interpolado', valor: pct(r.dl.tasa)
                          + ' (' + r.dl.entre[0] + '–' + r.dl.entre[1] + ')', color: '#6b7280' });
-      if (r.spread !== null) f.push({ etiqueta: 'Spread bruto', valor: signo(r.spread) + ' pp', color: '#6b7280' });
-      if (r.neto !== null) f.push({ etiqueta: 'Spread neto', valor: signo(r.neto) + ' pp', color: '#6b7280' });
+      f.push({ etiqueta: 'Spread $ (bruto/neto)', valor: signo(r.pesos.spread) + ' / ' + signo(r.pesos.neto) + ' pp', color: '#6b7280' });
+      if (r.dolar) f.push({ etiqueta: 'Spread DL (bruto/neto)', valor: signo(r.dolar.spread) + ' / ' + signo(r.dolar.neto) + ' pp', color: '#6b7280' });
       return f;
     },
     r => `${r.tk} · ${r.dias} días`,
-    r => py(r.sint));
+    r => py(r.pesos.sint));
 }
 
 // Devaluación implícita de los futuros contra inflación esperada del REM.
