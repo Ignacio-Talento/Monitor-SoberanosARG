@@ -540,12 +540,11 @@ function renderFuturos() {
     </tr>`;
   }).join('');
   const n = document.getElementById('nota-futuros');
-  const sellos = filas.map(x => x.f.horaDato).filter(Boolean);
   n.innerHTML = `TC oficial (A3500) de referencia: <strong>${fmt(tcSpot, 4)}</strong>.`
-    + (sellos.length ? ` Dato sellado a las <strong>${sellos.sort().pop()}</strong>.` : '')
-    + ` <span style="color:#7a4b00;">Eco publica información de BYMA <strong>diferida 20 minutos</strong>,
-       así que estos precios no son en vivo.</span> <strong>Últ. op.</strong> es la hora de la última
-       operación del contrato: si es de hace rato, el precio no se movió aunque el mercado sí.`
+    + ` Precios de <strong>A3 Mercados</strong> (ex Matba Rofex), operación por operación:
+       el precio es el de la última que se cruzó y el volumen es el de toda la rueda.
+       <strong>Últ. op.</strong> es la hora de esa operación: si es de hace rato, el precio no se
+       movió aunque el mercado sí.`
     + (() => {
         const quietos = filas.filter(x => !x.f.volumenVN).map(x => x.tk);
         const finos = filas.filter(x => x.f.volumenVN && x.f.volumenVN < 1000).map(x => x.tk);

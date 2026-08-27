@@ -1,42 +1,45 @@
 /**
- * Cloudflare Pages Function — futuros de dólar de Matba Rofex, vía Eco Valores.
+ * Cloudflare Pages Function — futuros de dólar de A3 Mercados (ex Matba Rofex).
  *
  *   GET /api/futuros?tickers=DLR/SEP26,DLR/OCT26
- *   -> { futuros: { "DLR/SEP26": { precio, horaDato, ultimaOperacion, volumenVN, ... } },
- *        fallos: [...], diag: {...} }
+ *   -> { futuros: { "DLR/SEP26": { precio, ultimaOperacion, volumen, operaciones,
+ *                                  ajusteAnterior, openInterest, ... } },
+ *        fallos: [...], diag: { rueda, fuente, ... } }
  *
- * POR QUÉ EXISTE, si ya había un worker que devolvía el precio.
+ * FUENTE: el Centro de Estadísticas de Mercado de A3, API pública y sin credenciales
+ * (apicem.matbarofex.com.ar/api/v2). Es el mercado mismo, no un intermediario.
  *
- *  - El worker devolvía SÓLO el último precio. La página de Eco trae además la hora del dato, la
- *    hora de la última operación, el volumen y las dos puntas. Sin la hora no hay forma de
- *    distinguir un precio de hace un minuto de uno de hace tres horas, que es justo el problema
- *    que ya nos mordió con las ONs en CCL; y sin el volumen no se sabe si el contrato opera.
- *  - Una sola llamada trae todos los contratos. El worker obligaba a una por ticker desde el
- *    navegador, y esa ráfaga contra el mismo host —el mismo que sirve BCRA y feriados— hacía que
- *    fallaran en bloque después de que cargarUniverso() lo saturara.
- *  - Con caché en el edge, muchos usuarios y muchas solapas se sirven de una sola consulta a Eco.
+ * ANTES SE USABA ECO VALORES, por scraping, y era peor en todo:
+ *  - publicaba información de BYMA DIFERIDA 20 MINUTOS y lo decía en su propia página;
+ *  - devolvía la página sin datos de forma intermitente (~40% de las consultas en DLR/DIC26);
+ *  - obligaba a una consulta por contrato;
+ *  - y sobre todo DABA DATOS EQUIVOCADOS: el 27/08/2026 mostraba DLR/ABR27 a 1745 sin volumen,
+ *    o sea "no operó", cuando A3 registra una operación de 2.000 nominales a 1738 a las 14:00.
+ *    Ese precio rancio sostenía el spread más ancho de toda la tabla.
  *
- * OJO CON EL DATO: Eco publica información de BYMA **diferida 20 minutos**, y lo dice en su propia
- * página. Verificado el 27/08/2026: a las 15:45 el dato venía sellado 15:25:05. `horaDato` viaja en
- * la respuesta justamente para que el frontend pueda mostrarlo en vez de aparentar tiempo real.
- * Para precios en vivo habría que ir a la API de Primary (Matba Rofex), que pide credenciales.
+ * CÓMO SE ARMA LA FOTO DEL DÍA. `tick-prices` da operación por operación con su timestamp, así que
+ * el último precio, el volumen, la cantidad de operaciones y la hora de la última salen de agregar
+ * los ticks de la rueda. `closing-prices` aporta el ajuste y el interés abierto de la rueda
+ * anterior — el ajuste del día sale recién después del clearing, por eso no se lo espera.
+ *
+ * LA RUEDA NO SE ASUME "HOY": se busca la última con ticks. Así un lunes feriado o un sábado
+ * devuelve la rueda del viernes en vez de venir vacío, que es lo que hace el resto del monitor.
  */
 
-const ECO = "https://bonos.ecovalores.com.ar/eco/ticker.php";
-// 60 s. Los contratos vienen con 20 minutos de atraso, así que cachear un minuto no agrega
-// desactualización perceptible y corta de raíz la ráfaga contra Eco.
+const CEM = "https://apicem.matbarofex.com.ar/api/v2";
 const CACHE_TTL = 60;
-const MAX_TICKERS = 20;
-// Eco responde en HTML y a veces devuelve la página sin la tabla cargada. Un reintento alcanza:
-// medido, la tasa de fallo por consulta ronda el 40% y dos intentos la dejan por debajo del 20%.
-const INTENTOS = 3;
+const MAX_TICKERS = 30;
+// Cuántos días para atrás buscar la última rueda con operaciones. Cubre un fin de semana largo.
+const DIAS_ATRAS = 6;
 
-const cabeceras = {
-  "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120 Safari/537.36",
-  "Accept": "text/html,application/xhtml+xml",
-  "Accept-Language": "es-AR,es;q=0.9",
-  "Referer": "https://bonos.ecovalores.com.ar",
+const CABECERAS = {
+  "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120 Safari/537.36",
+  "Accept": "application/json",
+  "Referer": "https://cem.matbarofex.com.ar/",
 };
+
+const MES_TXT = ["ENE", "FEB", "MAR", "ABR", "MAY", "JUN",
+                 "JUL", "AGO", "SEP", "OCT", "NOV", "DIC"];
 
 const json = (obj, status = 200, extra = {}) =>
   new Response(JSON.stringify(obj), {
@@ -44,105 +47,139 @@ const json = (obj, status = 200, extra = {}) =>
     headers: { "content-type": "application/json; charset=utf-8", ...extra },
   });
 
-/** "1.538,00" -> 1538 ; "" o "&nbsp;" -> null */
-function num(txt) {
-  if (!txt) return null;
-  const limpio = String(txt).replace(/&nbsp;/g, "").replace(/\./g, "").replace(",", ".").trim();
-  if (!limpio || limpio === "-") return null;
-  const v = parseFloat(limpio);
-  return isNaN(v) ? null : v;
-}
-
 /**
- * Saca los datos de la página de un ticker.
+ * DLR092026 -> DLR/SEP26. null para lo que no sea un futuro de dólar simple.
  *
- * Se parsea por RÓTULO y no por posición: la tabla de Eco alterna rótulo y valor
- * ("Volumen V/N" seguido de "130.791"), y si algún día agregan una fila, las posiciones fijas se
- * corren en silencio y devuelven el número equivocado — que es peor que no devolver nada.
+ * Las opciones vienen en el mismo listado como "DLR082026 Call 1500": se descartan por el espacio.
+ * Si entraran, el frontend las tomaría por contratos y armaría curvas con strikes adentro.
  */
-function parsear(html) {
-  const celdas = [...html.matchAll(/<td[^>]*>([\s\S]*?)<\/td>/g)]
-    .map((m) => m[1].replace(/<[^>]*>/g, "").replace(/&nbsp;/g, "").trim());
-
-  const trasRotulo = (rotulo) => {
-    const i = celdas.findIndex((c) => c === rotulo);
-    return i >= 0 && i + 1 < celdas.length ? celdas[i + 1] : null;
-  };
-
-  // El precio y la hora del dato sí van por clase: son los únicos sin rótulo al lado.
-  const precio = num((html.match(/class="precioticker"[^>]*>([^<]*)</) || [])[1]);
-  const horaDato = ((html.match(/class="hora"[^>]*>([^<]*)</) || [])[1] || "").trim() || null;
-  const variacion = num(((html.match(/class="varticker[^"]*"[^>]*>([^<]*)</) || [])[1] || "")
-    .replace("%", ""));
-
-  return {
-    precio,
-    variacion,
-    horaDato,                                   // sello del dato (diferido 20')
-    ultimaOperacion: trasRotulo("Últ. Hora"),   // cuándo operó de verdad
-    compra: num(trasRotulo("Compra")),
-    cantCompra: num(trasRotulo("Cant. compra")),
-    venta: num(trasRotulo("Venta")),
-    cantVenta: num(trasRotulo("Cant. venta")),
-    apertura: num(trasRotulo("Apertura")),
-    cierreAnterior: num(trasRotulo("Últ. Cierre")),
-    minimo: num(trasRotulo("Mínimo")),
-    maximo: num(trasRotulo("Máximo")),
-    volumenVN: num(trasRotulo("Volumen V/N")),
-    operaciones: num(trasRotulo("Operaciones")),
-  };
+function aTicker(symbol) {
+  if (!symbol || symbol.includes(" ") || !symbol.startsWith("DLR")) return null;
+  const resto = symbol.slice(3);
+  if (resto.length !== 6 || !/^\d+$/.test(resto)) return null;
+  const mes = parseInt(resto.slice(0, 2), 10);
+  const anio = parseInt(resto.slice(2), 10);
+  if (mes < 1 || mes > 12) return null;
+  return `DLR/${MES_TXT[mes - 1]}${String(anio % 100).padStart(2, "0")}`;
 }
 
-async function unTicker(ticker) {
-  let ultimo = null;
-  for (let i = 0; i < INTENTOS; i++) {
-    try {
-      const r = await fetch(`${ECO}?t=${encodeURIComponent(ticker)}`, { headers: cabeceras });
-      if (!r.ok) { ultimo = `HTTP ${r.status}`; continue; }
-      const d = parsear(await r.text());
-      if (d.precio > 0) return d;
-      ultimo = "sin precio en la página";
-    } catch (e) {
-      ultimo = String((e && e.message) || e);
-    }
-  }
-  return { error: ultimo };
+async function pedir(ruta, params) {
+  const url = new URL(CEM + ruta);
+  for (const [k, v] of Object.entries(params)) url.searchParams.set(k, v);
+  const r = await fetch(url, { headers: CABECERAS });
+  if (!r.ok) throw new Error(`${ruta} HTTP ${r.status}`);
+  return r.json();
 }
+
+const iso = (d) => d.toISOString();
 
 export async function onRequest({ request }) {
   const url = new URL(request.url);
   const pedidos = (url.searchParams.get("tickers") || "")
     .split(",").map((t) => t.trim()).filter(Boolean);
-
   if (!pedidos.length) return json({ error: "falta el parámetro tickers" }, 400);
   if (pedidos.length > MAX_TICKERS) {
     return json({ error: `máximo ${MAX_TICKERS} tickers por pedido` }, 400);
   }
 
-  const clave = new Request(
-    `https://futuros.cache/${pedidos.slice().sort().join(",")}`, { method: "GET" });
+  const clave = new Request(`https://futuros.cache/${pedidos.slice().sort().join(",")}`,
+                            { method: "GET" });
   const cache = caches.default;
   const guardado = await cache.match(clave);
   if (guardado) return guardado;
 
-  // En paralelo: son pocos y contra un sitio normal, no contra el worker compartido que se
-  // saturaba. Cada uno reintenta por su cuenta.
-  const res = await Promise.all(pedidos.map((t) => unTicker(t).then((d) => [t, d])));
+  const ahora = new Date();
+  const desde = new Date(ahora.getTime() - DIAS_ATRAS * 86400000);
+
+  let ticks, cierres;
+  try {
+    // 1) El tick más reciente dice cuál fue la última rueda con operaciones.
+    const ultimo = await pedir("/tick-prices", {
+      product: "DLR", from: iso(desde), to: iso(ahora),
+      pageSize: 1, sort: "dateTime", sortDir: "DESC",
+    });
+    const refe = (ultimo.data || [])[0];
+    if (!refe) return json({ error: "A3 no devolvió operaciones recientes" }, 502);
+
+    // La rueda se acota en hora ARG (UTC−3): el día natural del mercado, no el UTC.
+    const t = new Date(refe.dateTime);
+    const arg = new Date(t.getTime() - 3 * 3600000);
+    const y = arg.getUTCFullYear(), m = arg.getUTCMonth(), d = arg.getUTCDate();
+    const ini = new Date(Date.UTC(y, m, d, 3, 0, 0));          // 00:00 ARG
+    const fin = new Date(Date.UTC(y, m, d + 1, 2, 59, 59));    // 23:59 ARG
+    var rueda = `${y}-${String(m + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+
+    // 2) Todos los ticks de esa rueda. Rondan los 2.200 y entran en una sola página.
+    ticks = await pedir("/tick-prices", {
+      product: "DLR", from: iso(ini), to: iso(fin), pageSize: 5000,
+    });
+    // 3) Cierres previos, para el ajuste y el interés abierto. El ajuste del día sale después
+    //    del clearing, así que estos son de la rueda anterior o antes.
+    cierres = await pedir("/closing-prices", {
+      product: "DLR", from: iso(desde), to: iso(ahora),
+      pageSize: 1000, sort: "dateTime", sortDir: "DESC",
+    });
+  } catch (e) {
+    return json({ error: String((e && e.message) || e) }, 502);
+  }
+
+  // ── agregación de los ticks por contrato ──
+  const agg = {};
+  for (const x of ticks.data || []) {
+    const tk = aTicker(x.symbol);
+    if (!tk) continue;
+    const a = (agg[tk] ||= { volumen: 0, operaciones: 0, ultimo: null, precio: null,
+                             minimo: null, maximo: null, primero: null, apertura: null });
+    a.volumen += Number(x.volume) || 0;
+    a.operaciones += 1;
+    const p = Number(x.price);
+    if (a.minimo === null || p < a.minimo) a.minimo = p;
+    if (a.maximo === null || p > a.maximo) a.maximo = p;
+    if (!a.ultimo || x.dateTime > a.ultimo) { a.ultimo = x.dateTime; a.precio = p; }
+    if (!a.primero || x.dateTime < a.primero) { a.primero = x.dateTime; a.apertura = p; }
+  }
+
+  // ── último cierre conocido por contrato (el más reciente de la lista, que viene DESC) ──
+  const previo = {};
+  for (const x of cierres.data || []) {
+    const tk = aTicker(x.symbol);
+    if (!tk || previo[tk]) continue;
+    previo[tk] = { ajuste: Number(x.settlement) || null,
+                   openInterest: Number(x.openInterest) || null,
+                   fecha: String(x.dateTime).slice(0, 10) };
+  }
+
+  const horaArg = (s) => s
+    ? new Date(new Date(s).getTime() - 3 * 3600000).toISOString().slice(11, 19)
+    : null;
 
   const futuros = {}, fallos = [];
-  for (const [t, d] of res) {
-    if (d.error) fallos.push(`${t}: ${d.error}`);
-    else futuros[t] = d;
+  for (const tk of pedidos) {
+    const a = agg[tk], p = previo[tk];
+    // Sin ticks pero con ajuste previo: el contrato existe y no operó en la rueda. Se devuelve el
+    // ajuste con volumen 0 para que el frontend lo marque, en vez de omitirlo como si no existiera.
+    if (!a && !p) { fallos.push(tk); continue; }
+    futuros[tk] = {
+      precio: a ? a.precio : p.ajuste,
+      volumen: a ? a.volumen : 0,
+      operaciones: a ? a.operaciones : 0,
+      ultimaOperacion: a ? horaArg(a.ultimo) : null,
+      apertura: a ? a.apertura : null,
+      minimo: a ? a.minimo : null,
+      maximo: a ? a.maximo : null,
+      ajusteAnterior: p ? p.ajuste : null,
+      openInterest: p ? p.openInterest : null,
+      fechaAjuste: p ? p.fecha : null,
+    };
   }
 
   const salida = json(
     { futuros, fallos,
-      diag: { pedidos: pedidos.length, resueltos: Object.keys(futuros).length,
-              fuente: "Eco Valores (BYMA diferido 20 minutos)" } },
-    200,
-    { "cache-control": `public, max-age=${CACHE_TTL}` });
+      diag: { rueda, pedidos: pedidos.length, resueltos: Object.keys(futuros).length,
+              ticks: (ticks.data || []).length,
+              fuente: "A3 Mercados · CEM (tick-prices + closing-prices)" } },
+    200, { "cache-control": `public, max-age=${CACHE_TTL}` });
 
-  // Sólo se cachea si salió algo: si fallaron todos, no vale la pena fijar el error un minuto.
   if (Object.keys(futuros).length) await cache.put(clave, salida.clone());
   return salida;
 }

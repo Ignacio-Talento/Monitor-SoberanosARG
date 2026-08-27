@@ -202,7 +202,7 @@
   // dato, volumen y puntas; lo cacheado con el formato anterior sólo tenía precio, y se seguía
   // sirviendo durante diez minutos con las columnas nuevas vacías y sin ningún error a la vista.
   // Subir este número invalida lo viejo de una.
-  var FUT_VER = 2;
+  var FUT_VER = 3;   // v3: la fuente pasa a ser A3 y cambian los campos
 
   function futurosCacheados() {
     try {
@@ -263,13 +263,11 @@
           out[tk] = {
             precio: f.precio, venc: venc,
             dias: Math.round((venc - hoy) / 86400000),
-            horaDato: f.horaDato || null,
             ultimaOperacion: f.ultimaOperacion || null,
-            volumenVN: f.volumenVN != null ? f.volumenVN : null,
+            volumenVN: f.volumen != null ? f.volumen : null,
             operaciones: f.operaciones != null ? f.operaciones : null,
-            compra: f.compra, venta: f.venta,
-            minimo: f.minimo, maximo: f.maximo,
-            apertura: f.apertura, cierreAnterior: f.cierreAnterior,
+            minimo: f.minimo, maximo: f.maximo, apertura: f.apertura,
+            ajusteAnterior: f.ajusteAnterior, openInterest: f.openInterest,
           };
         }
         var r2 = { futuros: out, fallidos: (d.fallos || []), deCache: false };
