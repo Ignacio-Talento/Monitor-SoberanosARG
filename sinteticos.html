@@ -350,6 +350,14 @@ const pct = (x, d = 2) => (x === null || x === undefined || isNaN(x)) ? '—' : 
 const signo = (x, d = 2) => (x === null || x === undefined || isNaN(x))
   ? '—' : (x >= 0 ? '+' : '') + fmt(x, d);
 
+// Formateo de fecha propio de esta solapa. Se llama fmtFechaDMY y no fmtDMY a propósito: ese
+// nombre ya existe en senderoDL.html y en otras páginas, y si algún día se muda a monitor-core.js
+// una const homónima acá sería un SyntaxError que mata la solapa entera —que es exactamente lo que
+// pasó el 26/08/2026 con FERIADOS_WORKER en tres solapas a la vez—.
+function fmtFechaDMY(d) {
+  return `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`;
+}
+
 // Liquidación T+1 hábil: es la fecha desde la que se descuenta, igual que en el resto del monitor.
 function liquidacion() {
   const hoy = new Date(); hoy.setHours(0, 0, 0, 0);
@@ -444,7 +452,7 @@ function renderFuturos() {
     const directa = tcSpot ? (f.precio / tcSpot - 1) * 100 : null;
     return `<tr>
       <td class="lft">${tk}</td>
-      <td>${fmtDMY(f.venc)}</td>
+      <td>${fmtFechaDMY(f.venc)}</td>
       <td>${dias}</td>
       <td>${fmt(f.precio, 1)}</td>
       <td>${pct(directa)}</td>
