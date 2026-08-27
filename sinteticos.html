@@ -342,6 +342,39 @@
     </div>
   <div class="panel">
     <div style="display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;">
+      <div class="panel-title" style="margin-bottom:0;">Financiar el sintético con caución</div>
+      <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;">
+        <label class="nota" style="margin:0;display:flex;align-items:center;gap:7px;">Caución tomadora TNA
+          <input id="cau-tna" class="rot-inp" type="number" step="0.5" min="0" value="20"
+                 oninput="onCaucion('tna', this.value)" style="width:82px;"> %</label>
+        <label class="nota" style="margin:0;display:flex;align-items:center;gap:7px;">Plazo
+          <input id="cau-dias" class="rot-inp" type="number" step="1" min="1" value="1"
+                 oninput="onCaucion('dias', this.value)" style="width:66px;"> días</label>
+        <span class="nota" id="cau-ref" style="margin:0;"></span>
+      </div>
+    </div>
+    <div class="nota" style="margin-top:10px;">
+      Se toma prestado en pesos y con eso se arma el <strong>sintético en pesos</strong>, que deja una
+      tasa cierta al vencimiento del contrato. Si el sintético paga más que la caución, la diferencia queda.
+      La TNA se ingresa a mano —el monitor no tiene curva de caución por plazo— y conviene usar la
+      <strong>neta de costos</strong>: arancel, derecho de mercado y de bolsa, que se calculan en la solapa
+      <a href="caucionNeta.html" style="color:var(--cyan);">Caución Neta</a>.
+    </div>
+    <div class="tbl-scroll" style="margin-top:14px;">
+      <table id="tabla-caucion">
+        <thead><tr>
+          <th class="lft">Contrato</th><th>Días</th>
+          <th>Sintético $ TEA</th><th>Caución TEA</th>
+          <th>Margen</th><th>Caución de indiferencia</th><th>Colchón</th>
+        </tr></thead>
+        <tbody id="tbody-caucion"></tbody>
+      </table>
+    </div>
+    <div class="nota" id="nota-caucion"></div>
+  </div>
+
+  <div class="panel">
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;">
       <div class="panel-title" style="margin-bottom:0;">Histórico del spread</div>
       <select id="sel-hist" class="rot-inp" onchange="renderHistorico()" style="text-align:left;"></select>
     </div>
@@ -595,6 +628,82 @@ function renderSinteticos() {
   // En dólares es sintético − bono: positivo, gana el sintético.
   if (b) b.innerHTML = filas.map(r => filaComparativa(r, 'dolar',
     'Sintético DL', 'Bono DL directo')).join('');
+}
+
+// ── CAUCIÓN ──────────────────────────────────────────────────────────────────────────────────
+let caucion = { tna: 20, dias: 1 };
+
+function onCaucion(cual, v) {
+  const x = parseFloat(v);
+  caucion[cual] = isNaN(x) ? 0 : Math.max(cual === 'dias' ? 1 : 0, x);
+  renderCaucion();
+}
+
+// TEA de renovar una caución de `dias` a esa TNA hasta cubrir el año.
+// Tomar a 1 día y renovar capitaliza todos los días: (1 + TNA/365)^365 - 1. A 7 días capitaliza
+// 52 veces. Es la tasa con la que hay que comparar un sintético anualizado.
+function caucionTEA(tna, dias) {
+  if (!tna || dias <= 0) return null;
+  const porPeriodo = (tna / 100) * dias / 365;
+  return (Math.pow(1 + porPeriodo, 365 / dias) - 1) * 100;
+}
+
+// La TNA de caución que iguala exactamente al sintético: el punto donde el negocio deja de dar.
+function tnaIndiferencia(teaObjetivo, dias) {
+  if (teaObjetivo === null || dias <= 0) return null;
+  const porPeriodo = Math.pow(1 + teaObjetivo / 100, dias / 365) - 1;
+  return porPeriodo * 365 / dias * 100;
+}
+
+function renderCaucion() {
+  const tb = document.getElementById('tbody-caucion');
+  const nota = document.getElementById('nota-caucion');
+  const ref = document.getElementById('cau-ref');
+  if (!tb) return;
+
+  if (ref) {
+    const c1 = (typeof bcraData !== 'undefined') ? bcraData.caucion1d : null;
+    ref.innerHTML = c1
+      ? `Caución a 1 día del BCRA: <strong>${fmt(c1)}%</strong> TNA`
+      : '';
+  }
+
+  const teaCau = caucionTEA(caucion.tna, caucion.dias);
+  const filas = filasSinteticos().filter(r => r.pesos);
+  tb.innerHTML = filas.map(r => {
+    const f = futuros[r.tk] || {};
+    const inerte = !f.volumenVN;
+    const sint = r.pesos.sint;
+    const margen = teaCau === null ? null : sint - teaCau;
+    const tnaInd = tnaIndiferencia(sint, caucion.dias);
+    const colchon = tnaInd === null ? null : tnaInd - caucion.tna;
+    const cls = v => v === null ? '' : (v >= 0 ? 'val-green' : 'val-red');
+    return `<tr${inerte ? ' style="opacity:.62"' : ''}>
+      <td class="lft">${r.tk}${inerte ? ' <span class="no-p" style="font-size:9px;">sin operar</span>' : ''}</td>
+      <td>${r.dias}</td>
+      <td>${pct(sint)}</td>
+      <td>${pct(teaCau)}</td>
+      <td class="${cls(margen)}"><strong>${signo(margen)}</strong></td>
+      <td>${pct(tnaInd)} <span class="no-p" style="font-size:9px;">TNA</span></td>
+      <td class="${cls(colchon)}">${signo(colchon)}</td>
+    </tr>`;
+  }).join('');
+
+  const conMargen = filas.filter(r => teaCau !== null && r.pesos.sint > teaCau);
+  nota.innerHTML =
+    `<strong>Margen</strong> es cuánto paga de más el sintético sobre el costo de fondearse, ya anualizados
+     los dos. <strong>Caución de indiferencia</strong> es la TNA a la que el negocio se vuelve neutro, y el
+     <strong>colchón</strong> cuánto puede subir la caución antes de llegar ahí.<br><br>
+     <strong>El colchón es la columna que importa</strong>, y no el margen: la caución se toma a
+     ${caucion.dias} día${caucion.dias > 1 ? 's' : ''} y el sintético dura meses, así que no se toma
+     prestado una vez sino que se <strong>renueva</strong> decenas de veces. Si la tasa sube durante la vida
+     del contrato, el costo sube con ella —y suele subir justo cuando desarmar es más caro—.
+     ${conMargen.length
+        ? `Hoy ${conMargen.length} de ${filas.length} contratos pagan más que la caución.`
+        : 'Hoy ningún contrato paga más que la caución.'}<br><br>
+     <span class="no-p">No entra acá la <strong>garantía</strong>: la caución tomadora exige títulos
+     aforados, y si se usa el propio dólar linked como garantía queda inmovilizado. Tampoco el
+     riesgo de que no haya oferta de caución el día que toque renovar.</span>`;
 }
 
 // ── HISTÓRICO DEL SPREAD ─────────────────────────────────────────────────────────────────────
@@ -1168,7 +1277,7 @@ function renderGraficoREM() {
         : '');
 }
 
-function redibujar() { renderFuturos(); renderSinteticos(); renderHistorico(); renderGraficoREM(); renderGrafico(); }
+function redibujar() { renderFuturos(); renderSinteticos(); renderCaucion(); renderHistorico(); renderGraficoREM(); renderGrafico(); }
 function onComision(cual, v) { const x = parseFloat(v); comisiones[cual] = isNaN(x) ? 0 : Math.max(0, x); redibujar(); }
 
 // ── CARGA ────────────────────────────────────────────────────────────────────────────────────
