@@ -27,7 +27,7 @@
  */
 
 const CEM = "https://apicem.matbarofex.com.ar/api/v2";
-const CACHE_TTL = 60;
+const CACHE_TTL = 120;
 const MAX_TICKERS = 30;
 // Cuántos días para atrás buscar la última rueda con operaciones. Cubre un fin de semana largo.
 const DIAS_ATRAS = 6;
@@ -95,41 +95,40 @@ export async function onRequest({ request }) {
   const ahora = new Date();
   const desde = new Date(ahora.getTime() - DIAS_ATRAS * 86400000);
 
-  let ticks, cierres;
+  let ticks, cierres, rueda;
   try {
-    // 1) El tick más reciente dice cuál fue la última rueda con operaciones.
-    const ultimo = await pedir("/tick-prices", {
-      product: "DLR", from: iso(desde), to: iso(ahora),
-      pageSize: 1, sort: "dateTime", sortDir: "DESC",
-    });
-    const refe = (ultimo.data || [])[0];
-    if (!refe) return json({ error: "A3 no devolvió operaciones recientes" }, 502);
-
-    // La rueda se acota en hora ARG (UTC−3): el día natural del mercado, no el UTC.
-    const t = new Date(refe.dateTime);
-    const arg = new Date(t.getTime() - 3 * 3600000);
-    const y = arg.getUTCFullYear(), m = arg.getUTCMonth(), d = arg.getUTCDate();
-    const ini = new Date(Date.UTC(y, m, d, 3, 0, 0));          // 00:00 ARG
-    const fin = new Date(Date.UTC(y, m, d + 1, 2, 59, 59));    // 23:59 ARG
-    var rueda = `${y}-${String(m + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
-
-    // 2) Todos los ticks de esa rueda. Rondan los 2.200 y entran en una sola página.
-    ticks = await pedir("/tick-prices", {
-      product: "DLR", from: iso(ini), to: iso(fin), pageSize: 5000,
-    });
-    // 3) Cierres previos, para el ajuste y el interés abierto. El ajuste del día sale después
-    //    del clearing, así que estos son de la rueda anterior o antes.
-    cierres = await pedir("/closing-prices", {
-      product: "DLR", from: iso(desde), to: iso(ahora),
-      pageSize: 1000, sort: "dateTime", sortDir: "DESC",
-    });
+    // UN solo pedido de ticks, ordenado del más reciente hacia atrás. Antes se hacían dos —uno
+    // para averiguar la última rueda y otro para traerla— y con eso más el de cierres el Function
+    // pasaba de 45 segundos y el navegador cortaba. Los ticks de una rueda rondan los 2.200, así
+    // que en 5.000 entra la última completa aunque el rango abarque tres días.
+    [ticks, cierres] = await Promise.all([
+      pedir("/tick-prices", {
+        product: "DLR", from: iso(new Date(ahora.getTime() - 3 * 86400000)), to: iso(ahora),
+        pageSize: 5000, sort: "dateTime", sortDir: "DESC",
+      }),
+      // Cierres: alcanzan unos pocos, sólo se usa el más reciente de cada contrato.
+      pedir("/closing-prices", {
+        product: "DLR", type: "FUT",
+        from: iso(new Date(ahora.getTime() - DIAS_ATRAS * 86400000)), to: iso(ahora),
+        pageSize: 300, sort: "dateTime", sortDir: "DESC",
+      }),
+    ]);
   } catch (e) {
     return json({ error: String((e && e.message) || e) }, 502);
   }
 
+  const filas = ticks.data || [];
+  if (!filas.length) return json({ error: "A3 no devolvió operaciones recientes" }, 502);
+
+  // La rueda es la del tick más reciente, en día ARG (UTC−3) y no UTC: así un sábado o un feriado
+  // devuelve la última rueda con mercado en vez de venir vacío.
+  const diaArg = (s) => new Date(new Date(s).getTime() - 3 * 3600000).toISOString().slice(0, 10);
+  rueda = diaArg(filas[0].dateTime);
+
   // ── agregación de los ticks por contrato ──
   const agg = {};
-  for (const x of ticks.data || []) {
+  for (const x of filas) {
+    if (diaArg(x.dateTime) !== rueda) continue;   // el pedido abarca 3 días; sólo interesa la última
     const tk = aTicker(x.symbol);
     if (!tk) continue;
     const a = (agg[tk] ||= { volumen: 0, operaciones: 0, ultimo: null, precio: null,
@@ -180,7 +179,7 @@ export async function onRequest({ request }) {
   const salida = json(
     { futuros, fallos,
       diag: { rueda, pedidos: pedidos.length, resueltos: Object.keys(futuros).length,
-              ticks: (ticks.data || []).length,
+              ticks: filas.filter((x) => diaArg(x.dateTime) === rueda).length,
               fuente: "A3 Mercados · CEM (tick-prices + closing-prices)" } },
     200, { "cache-control": `public, max-age=${CACHE_TTL}` });
 
