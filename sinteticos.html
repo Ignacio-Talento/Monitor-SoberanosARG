@@ -1,0 +1,581 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sintéticos</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@300;400;600;700&display=swap" rel="stylesheet"><style>body{font-variant-numeric:tabular-nums;}
+  /* ═══ HEADER DE MARCA ═══════════════════════════════════════════
+     Barra navy a todo el ancho con el logo oficial y la navegación adentro, como balanz.com.
+     Antes eran dos bloques sueltos (barra navy + tab-strip blanco). */
+  .navbar {
+    background: var(--navy); padding: 0 32px; height: 64px;
+    display: flex; align-items: center; justify-content: space-between;
+    margin: 0;
+  }
+  .navbar-brand { display: flex; align-items: center; gap: 18px; }
+  .navbar-logo { height: 26px; width: auto; display: block; }
+  .navbar-sep { width: 1px; height: 22px; background: rgba(255,255,255,.22); }
+  .navbar-title { font-size: 11px; color: rgba(255,255,255,.72); font-family: var(--sans);
+                  letter-spacing: .12em; text-transform: uppercase; font-weight: 600; }
+  .navbar-status { display: flex; align-items: center; gap: 8px; font-size: 11px;
+                   color: rgba(255,255,255,.72); font-family: var(--sans); }
+
+  /* Solapas dentro del header: activo con subrayado cyan, como la nav de la web */
+  .nav-tabs {
+    display: flex; gap: 2px; flex-wrap: wrap; background: var(--navy);
+    border-bottom: none; padding: 0 32px 0;
+    margin: 0 0 24px;
+    box-shadow: var(--sh-card);
+  }
+  .nav-tab {
+    font-size: 12px; font-family: var(--sans); font-weight: 600; letter-spacing: .04em;
+    padding: 12px 16px 11px; border-radius: 0; cursor: pointer; border: 0;
+    border-bottom: 3px solid transparent; color: rgba(255,255,255,.7); background: transparent;
+    transition: color .15s, border-color .15s; text-transform: uppercase;
+    text-decoration: none; display: block; margin: 0;
+  }
+  .nav-tab:hover { color: #fff; background: transparent; border-bottom-color: rgba(255,255,255,.3); }
+  .nav-tab.active { color: #fff; background: transparent; border-bottom-color: var(--cyan); font-weight: 700; }
+
+  /* ═══ BOTONES ═══ La marca usa píldoras; el CTA es cyan, no verde. */
+  .btn { font-size: 12px; font-family: var(--sans); font-weight: 600; border-radius: var(--r-pill);
+         padding: 8px 18px; cursor: pointer; border: 1px solid; transition: background .15s, color .15s;
+         white-space: nowrap; }
+  .btn-green { color: #fff; background: var(--cyan); border-color: var(--cyan); }
+  .btn-green:hover { background: var(--cyan-dark); border-color: var(--cyan-dark); }
+  .btn-green:disabled { opacity: .45; cursor: not-allowed; }
+  .btn-ghost { color: var(--text-2); background: var(--surface); border-color: var(--border); }
+  .btn-ghost:hover { background: var(--row-hover); color: var(--navy); border-color: var(--border-l); }
+
+  /* Controles segmentados (comisión, vistas, moneda): píldora con el activo en navy */
+  .com-lado, .vista-btn { border-radius: var(--r-pill); font-weight: 600; }
+  .com-lado.on, .vista-btn.on { background: var(--navy); border-color: var(--navy); }
+  .com-input, .filtro-input { border-radius: var(--r-input); }
+
+  /* ═══ TÍTULO DE GRUPO ═══ eyebrow cyan en mayúsculas, como los títulos de sección de la web */
+  .grupo-titulo {
+    color: var(--navy) !important; letter-spacing: .1em; font-weight: 700;
+    border-bottom: 2px solid var(--cyan) !important;
+  }
+
+
+
+  /* Alinea el contenido del header con el de .wrap. Se usa 100% (ancho del <body>, que ya
+     excluye la barra de scroll) y NO 100vw, que la incluye y hacía sobresalir la barra. El ancho
+     de referencia es fijo (1850, el de Monitor/ONs) para que el header se vea igual en todas las
+     solapas: las páginas angostas usan .wrap de 1400 y el logo se corría hacia adentro. */
+  .navbar, .nav-tabs {
+    padding-left: max(24px, calc((100% - 1850px) / 2 + 24px)) !important; padding-right: max(24px, calc((100% - 1850px) / 2 + 24px)) !important;
+  }
+
+  /* El skill pide los nombres de sección (eyebrow) en CYAN y MAYÚSCULAS. */
+  .grupo-titulo { color: var(--cyan) !important; }
+  /* Aire entre el header y el contenido, y entre bloques. */
+  .toolbar { margin-bottom: 22px; }
+  .indicadores { border-radius: var(--r-card); box-shadow: var(--sh-card); }
+  .table-wrap { border-radius: var(--r-card); box-shadow: var(--sh-card); }
+
+  /* ── Gráfico LECAPs vs sintético DL ── mismo lenguaje que el resto de las solapas ── */
+  .gd-titulo { color: var(--cyan) !important; font-family: var(--sans) !important; margin-bottom: 6px !important; }
+  .gd-ley { display: flex; gap: 18px; align-items: center; flex-wrap: wrap; font-size: 11px;
+            color: var(--text-3); margin: 2px 0 12px 2px; }
+  .gd-ley span { display: flex; align-items: center; gap: 6px; }
+  .gd-ley i { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+  .gd-wrap { position: relative; }
+  .gd-svg  { width: 100%; height: auto; display: block; font-family: var(--sans); }
+  .gd-grid { stroke: var(--border); stroke-width: 1; opacity: .45; }
+  .gd-eje  { stroke: var(--border-l); stroke-width: 1; }
+  .gd-tick { font-size: 11px; fill: var(--text-3); font-family: var(--mono); }
+  .gd-axis { font-size: 10px; fill: var(--text-3); letter-spacing: .1em; font-weight: 600; }
+  .gd-lbl  { font-size: 10px; fill: var(--navy); font-weight: 700; }
+  .gd-lecap { fill: var(--navy); }
+  .gd-sint  { fill: var(--cyan); }
+  .gd-linea { fill: none; stroke-width: 2.5; opacity: .85; }
+  .gd-linea.gd-lecap { stroke: var(--navy); }
+  .gd-linea.gd-sint  { stroke: var(--cyan); }
+  .gd-pt:hover circle:not([fill="transparent"]) { stroke: var(--navy); stroke-width: 3; }
+  .gd-tip  { position: absolute; pointer-events: none; background: var(--navy); color: #fff;
+             border-radius: 6px; padding: 8px 11px; font-size: 11px; line-height: 1.5;
+             box-shadow: var(--sh-raised); white-space: nowrap; z-index: 5; }
+  .gd-tip b { display: block; font-size: 12px; letter-spacing: .04em; margin-bottom: 2px; }
+  .gd-tip span { display: block; color: rgba(255,255,255,.72); }
+  .gd-tip i { font-style: normal; color: #fff; font-family: var(--mono); }
+</style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="monitor-core.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    /* Paleta Balanz. Navy y cyan tomados de balanz.com; el resto sigue balanz-design. */
+    --navy: #0d2055;          /* color dominante: header, texto principal */
+    --navy-deep: #01092d;     /* base de degradados */
+    --navy-soft: #06214e;
+    --navy-light: #17336f;    /* hover sobre navy */
+    --cyan: #00a3e4;          /* acento: eyebrows, CTAs, activo */
+    --cyan-dark: #0089c1;     /* hover del CTA */
+    --cyan-bg: #e6f6fd;       /* recuadros informativos */
+
+    --bg: #f2f4f8;            /* fondo de página */
+    --surface: #ffffff;       /* tarjetas */
+    --card: #f8fafc;          /* encabezados de tabla */
+    --row-hover: #eef4fa;
+    --border: #c8d3e0;
+    --border-l: #a7b2c8;
+
+    --text: #0d2055;
+    --text-2: #3a4a5c;
+    --text-3: #6b7280;        /* label_gray del skill */
+
+    --green: #1b9e5a;         /* semánticos de perfil de riesgo */
+    --green-bg: #dcfce7;
+    --green-border: #86efac;
+    --amber: #e08e16;
+    --red: #c0392b;
+    --blue: #145e81;
+    --purple: #7c3aed;
+    --teal: #0d9488;
+
+    --r-pill: 999px;          /* la marca usa píldoras para los CTA */
+    --r-card: 12px;
+    --r-input: 8px;
+    --sh-card: 0 1px 3px rgba(13,32,85,.08), 0 1px 2px rgba(13,32,85,.04);
+    --sh-raised: 0 4px 16px rgba(13,32,85,.10);
+
+    --mono: 'Open Sans',Arial,system-ui,sans-serif;
+    --sans: 'Open Sans',Arial,system-ui,sans-serif;
+  }
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap');
+  /* Barra de scroll vertical siempre visible: sin esto las páginas cortas (Duales, Caución)
+     son 15px más anchas que las largas y el header se corre al cambiar de solapa. */
+  html { overflow-y: scroll; }
+
+  /* min-width: fit-content -> si una tabla se sale a lo ancho (vista Completa), el body crece
+     con ella y el header, que mide 100% del body, la sigue cubriendo al scrollear. */
+  body { background: var(--bg); color: var(--text); font-family: var(--sans); min-height: 100vh;
+         margin: 0; padding: 0; min-width: fit-content; }
+  .wrap { max-width: 1400px; margin: 0 auto; padding: 0 24px 24px; }
+
+
+
+  /* PANEL TC */
+  .panel { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 20px 24px; margin-bottom: 16px; box-shadow: 0 1px 4px rgba(0,0,0,0.06); }
+  .panel-title { font-size: 11px; font-weight: 700; letter-spacing: .10em; text-transform: uppercase; color: var(--navy); font-family: var(--mono); margin-bottom: 16px; }
+  .tc-hoy-box { font-size: 11px; font-family: var(--mono); color: var(--text-2); margin-bottom: 14px; }
+  .tc-hoy-box strong { color: var(--navy); font-weight: 600; }
+  .infl-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 12px; }
+  .infl-item { display: flex; flex-direction: column; gap: 4px; }
+  .infl-lbl { font-size: 10px; color: var(--text-3); font-family: var(--mono); letter-spacing: .06em; text-transform: uppercase; }
+  .infl-sublbl { font-size: 9px; color: var(--blue); font-family: var(--mono); margin-top: 2px; }
+  .infl-input { background: var(--bg); border: 1px solid var(--border-l); border-radius: 5px; color: var(--amber); font-family: var(--mono); font-size: 14px; font-weight: 500; padding: 7px 12px; width: 100%; transition: border-color .15s; }
+  .infl-input:focus { outline: none; border-color: var(--amber); }
+  input[type=number]::-webkit-inner-spin-button, input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+  input[type=number] { -moz-appearance: textfield; appearance: textfield; }
+
+  /* TABLA BONOS DL */
+  .table-wrap { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; box-shadow: 0 1px 4px rgba(0,0,0,0.06); overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; min-width: 800px; }
+  thead tr { border-bottom: 2px solid var(--navy); }
+  th { padding: 10px 14px; font-size: 10px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--text-3); text-align: right; background: var(--card); white-space: nowrap; font-family: var(--mono); }
+  th:first-child, th:nth-child(2) { text-align: left; }
+  tbody tr { border-bottom: 1px solid var(--border); transition: background .1s; }
+  tbody tr:last-child { border-bottom: none; }
+  tbody tr:hover { background: var(--row-hover, #eef2f7); }
+  td { padding: 9px 14px; font-size: 12px; text-align: right; color: var(--text-2); white-space: nowrap; font-family: var(--mono); }
+  td:first-child { text-align: left; font-weight: 600; color: var(--text); }
+  td:nth-child(2) { text-align: left; }
+  .badge-rec { background: #dbeafe; color: var(--navy); border: 1px solid var(--navy); padding: 2px 8px; border-radius: 4px; font-size: 10px; font-weight: 600; }
+  .no-comp { color: var(--text-3); font-style: italic; font-size: 11px; }
+  .val-green { color: var(--green); font-weight: 600; }
+  .val-blue { color: var(--blue); font-weight: 500; }
+  .val-amber { color: var(--amber); font-weight: 500; }
+  .alert { padding: 10px 14px; border-radius: 6px; font-size: 11px; font-family: var(--mono); margin-bottom: 14px; display: none; }
+  .alert.show { display: block; }
+  .alert.info { background:#f0fdf4; border:1px solid #86efac; color:var(--green); }
+  .alert.err { background:#fef2f2; border:1px solid #fecaca; color:var(--red); }
+</style>
+<style>
+  /* Sólo lo que no está en la hoja compartida. */
+  .tbl-scroll { overflow-x: auto; }
+  .tbl-scroll table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  .tbl-scroll th { background: var(--card); font-family: var(--mono); font-size: 10px;
+                   letter-spacing: .06em; text-transform: uppercase; color: var(--text-3);
+                   padding: 9px 10px; text-align: right; border-bottom: 1px solid var(--border); }
+  .tbl-scroll td { padding: 8px 10px; text-align: right; border-bottom: 1px solid var(--border-l);
+                   font-variant-numeric: tabular-nums; }
+  .tbl-scroll th.lft, .tbl-scroll td.lft { text-align: left; }
+  .tbl-scroll tbody tr:hover { background: var(--cyan-bg); }
+  .val-green { color: #1b9e5a; } .val-red { color: #c0392b; } .no-p { color: var(--text-3); }
+  .rot-inp { font-family: var(--mono); font-size: 12px; padding: 6px 8px;
+             border: 1px solid var(--border); border-radius: 5px; text-align: right; }
+  .precio-st { font-size: 11px; font-family: var(--mono); font-weight: 600; }
+  .precio-st.ok { color: #1b9e5a; } .precio-st.err { color: #c0392b; }
+  .nota { font-size: 11px; color: var(--text-2); line-height: 1.65; margin-top: 10px; }
+</style>
+</head>
+<body>
+
+<nav class="navbar">
+<div class="navbar-brand">
+  <img class="navbar-logo" alt="Balanz" src="data:image/png;base64,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">
+  <div class="navbar-sep"></div>
+  <div class="navbar-title">Monitor · Renta Fija AR</div>
+</div>
+</nav>
+
+<div class="nav-tabs">
+  <a class="nav-tab" href="bonos.html">Monitor</a>
+  <a class="nav-tab" href="ons.html">ONs</a>
+  <a class="nav-tab" href="senderoCER.html">Sendero CER</a>
+  <a class="nav-tab" href="senderoDL.html">Sendero DL</a>
+  <a class="nav-tab" href="senderoTAMAR.html">Sendero TAMAR</a>
+  <a class="nav-tab" href="duales.html">Duales</a>
+  <a class="nav-tab" href="globVsBon.html">Glob vs Bon</a>
+  <a class="nav-tab" href="caucionVsLecap.html">Caución vs Lecap</a>
+  <a class="nav-tab active" href="sinteticos.html">Sintéticos</a>
+  <a class="nav-tab" href="caucionNeta.html">Caución Neta</a>
+  <a class="nav-tab" href="rotacionBopreal.html">Rotación BOPREAL</a>
+</div>
+
+<div class="wrap">
+
+  <div class="panel">
+    <div class="panel-title">Qué compara esta solapa</div>
+    <div class="nota">
+      Un <strong>sintético</strong> combina un bono con un futuro de dólar para replicar el flujo del otro bono.
+      Hay dos, y son <strong>la misma comparación vista desde cada moneda</strong>:<br><br>
+      · <strong>Sintético en pesos</strong> = comprar un <strong>dólar linked</strong> y <strong>vender</strong> el futuro de su vencimiento.
+      El bono paga el oficial y el futuro vendido lo fija, así que queda una tasa en pesos cierta. Compite contra la <strong>LECAP</strong>.<br>
+      · <strong>Sintético dólar linked</strong> = comprar una <strong>LECAP</strong> y <strong>comprar</strong> el futuro.
+      Queda exposición al oficial armada con tasa fija. Compite contra el <strong>bono DL</strong>.<br><br>
+      Si el sintético en pesos rinde más que la LECAP, entonces el sintético DL rinde menos que el bono DL, siempre:
+      es una sola desigualdad dada vuelta. Por eso alcanza <strong>un spread por vencimiento</strong>, con dos lecturas.
+    </div>
+  </div>
+
+  <div class="panel">
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;">
+      <div class="panel-title" style="margin-bottom:0;">Comisión por punta</div>
+      <div style="display:flex;align-items:center;gap:10px;">
+        <input id="inp-comision" class="rot-inp" type="number" step="0.05" min="0" value="0.5"
+               oninput="onComision(this.value)" style="width:90px;">
+        <span class="nota" style="margin:0;">%&nbsp;sobre cada operación</span>
+      </div>
+      <div class="precio-st" id="estado-datos">Cargando…</div>
+    </div>
+    <div class="nota" style="margin-top:12px;">
+      El sintético son <strong>dos</strong> operaciones (bono + futuro) contra <strong>una</strong> del bono directo, así que
+      paga una punta más de comisión. El spread neto descuenta esa diferencia, anualizada al plazo de cada contrato.
+      No incluye el costo de la garantía inmovilizada en Rofex, que depende del aforo de cada cliente.
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-title">Curva de futuros de dólar</div>
+    <div class="tbl-scroll">
+      <table id="tabla-futuros">
+        <thead><tr>
+          <th class="lft">Contrato</th><th>Vence</th><th>Días</th><th>Precio</th>
+          <th>Deval. directa</th><th>Deval. TEA</th>
+        </tr></thead>
+        <tbody id="tbody-futuros"></tbody>
+      </table>
+    </div>
+    <div class="nota" id="nota-futuros"></div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-title">Sintético contra directo, por vencimiento</div>
+    <div class="tbl-scroll">
+      <table id="tabla-sint">
+        <thead><tr>
+          <th class="lft">Contrato</th><th>Días</th>
+          <th>LECAP TEA</th><th>DL TIR</th>
+          <th>Sintético $ TEA</th><th>Spread bruto</th><th>Spread neto</th>
+          <th class="lft">Qué paga más</th>
+        </tr></thead>
+        <tbody id="tbody-sint"></tbody>
+      </table>
+    </div>
+    <div class="nota">
+      Las tasas de LECAP y DL están <strong>interpoladas a la fecha de cada contrato</strong>, no tomadas del bono más
+      cercano: los vencimientos casi nunca coinciden y comparar contra un bono que vence dos semanas después mete
+      ruido que no es del mercado. Entre paréntesis, los dos instrumentos entre los que se interpola.<br>
+      <strong>Spread positivo</strong> = la LECAP paga más que el sintético en pesos, y por lo tanto el sintético DL
+      paga más que el bono DL. <strong>Negativo</strong>, al revés.
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-title">LECAPs contra sintético en pesos</div>
+    <div id="graf-sint"></div>
+    <div class="nota" id="graf-empty" style="display:none;">
+      No hay datos suficientes. Hacen falta precios de LECAPs y dólar linked, y al menos un futuro cotizando.
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ── SOLAPA SINTÉTICOS ────────────────────────────────────────────────────────────────────────
+// Compara la tasa de una LECAP contra la del sintético en pesos (dólar linked + venta de futuro),
+// que es la misma comparación que enfrenta al bono DL contra el sintético dólar linked.
+//
+// LA RELACIÓN QUE SE MIDE. Sin arbitraje debería valer
+//     (1 + TEA_lecap) = (1 + TIR_dl) x (1 + devaluación implícita del futuro)
+// El lado derecho ES el sintético en pesos: comprar el DL rinde TIR_dl en dólares, y vender el
+// futuro convierte esos dólares a pesos a la tasa que el futuro tiene incorporada. El spread entre
+// los dos lados es lo que paga (o cobra) armar el sintético en lugar de ir al bono directo.
+//
+// POR QUÉ SE INTERPOLA. Los vencimientos de LECAPs, dólar linked y futuros casi nunca coinciden:
+// T15E7 y D15E7 son par exacto pero el futuro más cercano vence 16 días después, y para abril hay
+// futuro y LECAP al mismo día pero no existe un DL. Emparejar por proximidad descartaba esos casos
+// —justo los interesantes— y en los que sí emparejaba metía el ruido del desfase en la tasa
+// anualizada. Se interpola linealmente sobre la curva de tasas contra días, que es lo que se hace
+// al mirar una curva: comparar contra el plazo, no contra el bono que quedó cerca.
+
+let futuros = {};        // { 'DLR/SEP26': { precio, venc, dias } }
+let futurosFallidos = [];
+let comision = 0.5;      // % por punta
+let tcSpot = null;
+
+const FUTUROS_TICKERS = [
+  'DLR/AGO26', 'DLR/SEP26', 'DLR/OCT26', 'DLR/NOV26', 'DLR/DIC26',
+  'DLR/ENE27', 'DLR/FEB27', 'DLR/MAR27', 'DLR/ABR27', 'DLR/MAY27', 'DLR/JUN27',
+];
+
+const fmt = (x, d = 2) => (x === null || x === undefined || isNaN(x))
+  ? '—' : x.toLocaleString('es-AR', { minimumFractionDigits: d, maximumFractionDigits: d });
+const pct = (x, d = 2) => (x === null || x === undefined || isNaN(x)) ? '—' : fmt(x, d) + '%';
+const signo = (x, d = 2) => (x === null || x === undefined || isNaN(x))
+  ? '—' : (x >= 0 ? '+' : '') + fmt(x, d);
+
+// Liquidación T+1 hábil: es la fecha desde la que se descuenta, igual que en el resto del monitor.
+function liquidacion() {
+  const hoy = new Date(); hoy.setHours(0, 0, 0, 0);
+  return sumarDiasHabiles(hoy, 1);
+}
+
+// Curva { dias, tasa, ticker } de un grupo, usando el motor para la tasa.
+function curvaDe(grupo) {
+  const liq = liquidacion();
+  const pts = [];
+  for (const inst of instrumentos) {
+    if (inst.grupo !== grupo) continue;
+    const p = precios[inst.ticker];
+    if (!p) continue;
+    const venc = parseLocalDate(inst.venc);
+    if (!venc) continue;
+    const dias = Math.round((venc - liq) / 86400000);
+    if (dias <= 0) continue;
+    const m = calcMetricas(inst);
+    if (!m || m.tea === null || isNaN(m.tea)) continue;
+    pts.push({ dias, tasa: m.tea, ticker: inst.ticker });
+  }
+  return pts.sort((a, b) => a.dias - b.dias);
+}
+
+// Interpolación lineal en días. Devuelve { tasa, entre:[tickerA, tickerB], extrapolado }.
+// NO extrapola más allá de los extremos: devuelve null. Estirar una curva de tasas fuera del
+// rango donde hay bonos es inventar un dato, y acá el número se usa para decidir.
+function interpolar(curva, dias) {
+  if (!curva.length) return null;
+  if (dias < curva[0].dias || dias > curva[curva.length - 1].dias) return null;
+  for (let i = 1; i < curva.length; i++) {
+    const a = curva[i - 1], b = curva[i];
+    if (dias >= a.dias && dias <= b.dias) {
+      if (b.dias === a.dias) return { tasa: a.tasa, entre: [a.ticker, b.ticker] };
+      const w = (dias - a.dias) / (b.dias - a.dias);
+      return { tasa: a.tasa + w * (b.tasa - a.tasa), entre: [a.ticker, b.ticker] };
+    }
+  }
+  return null;
+}
+
+// Devaluación implícita del contrato, como TEA.
+function devaluacionTEA(f, dias) {
+  if (!tcSpot || dias <= 0) return null;
+  return (Math.pow(f.precio / tcSpot, 365 / dias) - 1) * 100;
+}
+
+// Costo de la punta extra del sintético, anualizado. El sintético paga comisión en el bono y en el
+// futuro; el directo, sólo en el bono. La diferencia es una punta, que se lleva a TEA para poder
+// restarla de un spread que también está en TEA.
+function costoExtraTEA(dias) {
+  if (dias <= 0) return 0;
+  const c = comision / 100;
+  return (Math.pow(1 / (1 - c), 365 / dias) - 1) * 100;
+}
+
+function filasSinteticos() {
+  const liq = liquidacion();
+  const cLecap = curvaDe('lecap');
+  const cDL = curvaDe('usdlinked');
+  const out = [];
+  for (const [tk, f] of Object.entries(futuros)) {
+    const dias = Math.round((f.venc - liq) / 86400000);
+    if (dias <= 0) continue;
+    const dev = devaluacionTEA(f, dias);
+    const iL = interpolar(cLecap, dias);
+    const iD = interpolar(cDL, dias);
+    let sint = null, spread = null, neto = null;
+    if (dev !== null && iD) {
+      // (1 + TIR_dl) x (1 + deval) - 1
+      sint = ((1 + iD.tasa / 100) * (1 + dev / 100) - 1) * 100;
+      if (iL) {
+        spread = iL.tasa - sint;
+        // El costo extra siempre juega EN CONTRA del sintético, sea cual sea el signo del spread:
+        // suma al spread cuando ya favorece a la LECAP y lo achica cuando favorece al sintético.
+        neto = spread + costoExtraTEA(dias);
+      }
+    }
+    out.push({ tk, dias, dev, lecap: iL, dl: iD, sint, spread, neto, venc: f.venc, precio: f.precio });
+  }
+  return out.sort((a, b) => a.dias - b.dias);
+}
+
+function renderFuturos() {
+  const tb = document.getElementById('tbody-futuros');
+  const liq = liquidacion();
+  const filas = Object.entries(futuros)
+    .map(([tk, f]) => ({ tk, f, dias: Math.round((f.venc - liq) / 86400000) }))
+    .filter(x => x.dias > 0).sort((a, b) => a.dias - b.dias);
+  tb.innerHTML = filas.map(({ tk, f, dias }) => {
+    const directa = tcSpot ? (f.precio / tcSpot - 1) * 100 : null;
+    return `<tr>
+      <td class="lft">${tk}</td>
+      <td>${fmtDMY(f.venc)}</td>
+      <td>${dias}</td>
+      <td>${fmt(f.precio, 1)}</td>
+      <td>${pct(directa)}</td>
+      <td>${pct(devaluacionTEA(f, dias))}</td>
+    </tr>`;
+  }).join('');
+  const n = document.getElementById('nota-futuros');
+  n.innerHTML = `TC oficial (A3500) de referencia: <strong>${fmt(tcSpot, 4)}</strong>. `
+    + (futurosFallidos.length
+        ? `<span style="color:#7a4b00;">No contestaron tras varios intentos: ${futurosFallidos.join(', ')}.</span>`
+        : 'Todos los contratos vivos contestaron.');
+}
+
+function renderSinteticos() {
+  const tb = document.getElementById('tbody-sint');
+  const filas = filasSinteticos();
+  tb.innerHTML = filas.map(r => {
+    const cls = v => v === null ? '' : (v >= 0 ? 'val-green' : 'val-red');
+    let veredicto = '<span class="no-p">sin curva</span>';
+    if (r.neto !== null) {
+      veredicto = r.neto >= 0
+        ? 'LECAP directa · y sintético DL sobre el bono DL'
+        : 'Sintético en pesos · y bono DL sobre el sintético';
+    }
+    const ref = i => i ? `<span class="no-p" style="font-size:9px;"> (${i.entre[0]}–${i.entre[1]})</span>` : '';
+    return `<tr>
+      <td class="lft">${r.tk}</td>
+      <td>${r.dias}</td>
+      <td>${r.lecap ? pct(r.lecap.tasa) : '—'}${ref(r.lecap)}</td>
+      <td>${r.dl ? pct(r.dl.tasa) : '—'}${ref(r.dl)}</td>
+      <td>${pct(r.sint)}</td>
+      <td class="${cls(r.spread)}">${signo(r.spread)}</td>
+      <td class="${cls(r.neto)}"><strong>${signo(r.neto)}</strong></td>
+      <td class="lft">${veredicto}</td>
+    </tr>`;
+  }).join('');
+}
+
+// ── GRÁFICO ──────────────────────────────────────────────────────────────────────────────────
+function renderGrafico() {
+  const cont = document.getElementById('graf-sint');
+  const vacio = document.getElementById('graf-empty');
+  const filas = filasSinteticos().filter(r => r.sint !== null);
+  const cLecap = curvaDe('lecap');
+  if (!filas.length || !cLecap.length) {
+    cont.innerHTML = ''; vacio.style.display = 'block'; return;
+  }
+  vacio.style.display = 'none';
+
+  const W = 900, H = 340, mL = 56, mR = 20, mT = 18, mB = 40;
+  const serieSint = filas.map(r => ({ x: r.dias, y: r.sint, t: r.tk }));
+  const serieLec = cLecap.map(p => ({ x: p.dias, y: p.tasa, t: p.ticker }));
+  const todos = serieSint.concat(serieLec);
+  const xs = todos.map(p => p.x), ys = todos.map(p => p.y);
+  const x0 = 0, x1 = Math.max(...xs) * 1.05;
+  const pad = (Math.max(...ys) - Math.min(...ys)) * 0.15 || 1;
+  const y0 = Math.min(...ys) - pad, y1 = Math.max(...ys) + pad;
+  const px = v => mL + (v - x0) / (x1 - x0) * (W - mL - mR);
+  const py = v => H - mB - (v - y0) / (y1 - y0) * (H - mT - mB);
+
+  const linea = (s, color) => s.length < 2 ? '' :
+    `<polyline fill="none" stroke="${color}" stroke-width="2" stroke-linejoin="round"
+       points="${s.map(p => px(p.x).toFixed(1) + ',' + py(p.y).toFixed(1)).join(' ')}"/>`;
+  const puntos = (s, color) => s.map(p =>
+    `<circle cx="${px(p.x).toFixed(1)}" cy="${py(p.y).toFixed(1)}" r="3.5" fill="${color}">
+       <title>${p.t}: ${fmt(p.y)}% a ${p.x} días</title></circle>`).join('');
+
+  let ejes = '';
+  for (let i = 0; i <= 4; i++) {
+    const v = y0 + (y1 - y0) * i / 4, y = py(v);
+    ejes += `<line x1="${mL}" y1="${y.toFixed(1)}" x2="${W - mR}" y2="${y.toFixed(1)}"
+             stroke="#e3e8ef" stroke-width="1"/>
+             <text x="${mL - 8}" y="${(y + 4).toFixed(1)}" text-anchor="end"
+             font-size="10" fill="#6b7280">${fmt(v, 0)}%</text>`;
+  }
+  for (let d = 0; d <= x1; d += 60) {
+    const x = px(d);
+    ejes += `<text x="${x.toFixed(1)}" y="${H - mB + 16}" text-anchor="middle"
+             font-size="10" fill="#6b7280">${d}d</text>`;
+  }
+
+  cont.innerHTML = `<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;">
+    ${ejes}
+    ${linea(serieLec, '#0d2055')}${puntos(serieLec, '#0d2055')}
+    ${linea(serieSint, '#00a3e4')}${puntos(serieSint, '#00a3e4')}
+    <g font-size="11" font-weight="600">
+      <rect x="${W - 210}" y="${mT}" width="10" height="10" fill="#0d2055"/>
+      <text x="${W - 195}" y="${mT + 9}" fill="#0d2055">LECAPs (TEA)</text>
+      <rect x="${W - 210}" y="${mT + 18}" width="10" height="10" fill="#00a3e4"/>
+      <text x="${W - 195}" y="${mT + 27}" fill="#0d2055">Sintético en pesos</text>
+    </g>
+  </svg>`;
+}
+
+function redibujar() { renderFuturos(); renderSinteticos(); renderGrafico(); }
+function onComision(v) { const x = parseFloat(v); comision = isNaN(x) ? 0 : Math.max(0, x); redibujar(); }
+
+// ── CARGA ────────────────────────────────────────────────────────────────────────────────────
+function itemsPedido() {
+  return instrumentos
+    .filter(i => i.grupo === 'lecap' || i.grupo === 'usdlinked')
+    .map(i => ({ ticker: i.ticker, grupo: i.grupo, ind: usaIndicadores1816(i) }));
+}
+
+function estado(txt, ok) {
+  const el = document.getElementById('estado-datos');
+  if (el) { el.textContent = txt; el.className = 'precio-st ' + (ok ? 'ok' : 'err'); }
+}
+
+async function init() {
+  try {
+    await MonitorCore.cargarUniverso();
+    tcSpot = bcraData.usdHoy;
+  } catch (e) {
+    estado('No se pudo cargar el universo: ' + e.message, false);
+    return;
+  }
+  // Precios y futuros en paralelo: son fuentes distintas y ninguna depende de la otra.
+  const [pr, fu] = await Promise.all([
+    MonitorCore.pedirPrecios(itemsPedido()).catch(e => { console.warn('precios:', e); return null; }),
+    MonitorCore.futurosDolar(FUTUROS_TICKERS).catch(e => { console.warn('futuros:', e); return null; }),
+  ]);
+  if (pr) { precios = pr.precios; indicadores1816 = pr.indicadores || {}; }
+  if (fu) { futuros = fu.futuros; futurosFallidos = fu.fallidos; }
+
+  const nP = Object.keys(precios).length, nF = Object.keys(futuros).length;
+  estado(nP && nF ? `✓ ${nP} precios de 1816 · ${nF} contratos` : 'Faltan datos', nP && nF);
+  redibujar();
+}
+init();
+</script>
+
+</body>
+</html>
