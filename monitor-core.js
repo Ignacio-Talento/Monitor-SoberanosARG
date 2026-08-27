@@ -198,11 +198,16 @@
    * 10 minutos: un futuro se mueve mucho menos que eso dentro de la rueda. */
   var FUT_CACHE = 'futuros_dolar';
   var FUT_TTL = 10 * 60 * 1000;
+  // Versión del FORMATO guardado. Al pasar a /api/futuros cada contrato empezó a traer hora del
+  // dato, volumen y puntas; lo cacheado con el formato anterior sólo tenía precio, y se seguía
+  // sirviendo durante diez minutos con las columnas nuevas vacías y sin ningún error a la vista.
+  // Subir este número invalida lo viejo de una.
+  var FUT_VER = 2;
 
   function futurosCacheados() {
     try {
       var c = JSON.parse(sessionStorage.getItem(FUT_CACHE) || 'null');
-      if (!c || Date.now() - c.ts > FUT_TTL) return null;
+      if (!c || c.v !== FUT_VER || Date.now() - c.ts > FUT_TTL) return null;
       var out = {};
       for (var k in c.futuros) {
         out[k] = Object.assign({}, c.futuros[k], { venc: new Date(c.futuros[k].venc) });
@@ -218,7 +223,7 @@
         plano[k] = Object.assign({}, r.futuros[k], { venc: r.futuros[k].venc.getTime() });
       }
       sessionStorage.setItem(FUT_CACHE, JSON.stringify(
-        { ts: Date.now(), futuros: plano, fallidos: r.fallidos }));
+        { v: FUT_VER, ts: Date.now(), futuros: plano, fallidos: r.fallidos }));
     } catch (e) { /* sessionStorage lleno o bloqueado: no es motivo para romper la carga */ }
   }
 
