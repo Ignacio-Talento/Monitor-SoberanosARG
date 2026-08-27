@@ -205,8 +205,7 @@
       if (!c || Date.now() - c.ts > FUT_TTL) return null;
       var out = {};
       for (var k in c.futuros) {
-        out[k] = { precio: c.futuros[k].precio, venc: new Date(c.futuros[k].venc),
-                   dias: c.futuros[k].dias };
+        out[k] = Object.assign({}, c.futuros[k], { venc: new Date(c.futuros[k].venc) });
       }
       return { futuros: out, fallidos: c.fallidos || [], deCache: true };
     } catch (e) { return null; }
@@ -216,56 +215,66 @@
     try {
       var plano = {};
       for (var k in r.futuros) {
-        plano[k] = { precio: r.futuros[k].precio, venc: r.futuros[k].venc.getTime(),
-                     dias: r.futuros[k].dias };
+        plano[k] = Object.assign({}, r.futuros[k], { venc: r.futuros[k].venc.getTime() });
       }
       sessionStorage.setItem(FUT_CACHE, JSON.stringify(
         { ts: Date.now(), futuros: plano, fallidos: r.fallidos }));
     } catch (e) { /* sessionStorage lleno o bloqueado: no es motivo para romper la carga */ }
   }
 
-  function futurosDolar(tickers, intentos) {
+  /* Todos los contratos en UNA llamada a /api/futuros.
+   *
+   * Antes se pedía uno por uno al proxy de Eco desde el navegador, y esa ráfaga contra el mismo
+   * host que sirve BCRA y feriados hacía que fallaran en bloque justo después de que
+   * cargarUniverso() lo saturara. Ahora el scraping y los reintentos viven en el Function, que
+   * además cachea en el edge: muchas solapas y muchos usuarios se sirven de una sola consulta.
+   *
+   * Trae bastante más que el precio —hora del dato, hora de la última operación, volumen, puntas—,
+   * que es lo que permite mostrar que el dato de Eco viene diferido 20 minutos en vez de aparentar
+   * tiempo real.
+   */
+  function futurosDolar(tickers) {
     var cache = futurosCacheados();
     if (cache && Object.keys(cache.futuros).length) return Promise.resolve(cache);
 
-    var max = intentos || 3;
     var hoy = new Date(); hoy.setHours(0, 0, 0, 0);
-    var out = {}, fallidos = [];
-
-    function unContrato(tk, queda) {
-      var venc = vencContrato(tk);
-      if (!venc || venc <= hoy) return Promise.resolve();     // vencido o ticker ilegible
-      return fetch(ECO_URL + '/?ticker=' + encodeURIComponent(tk))
-        .then(function (r) { return r.json(); })
-        .catch(function () { return {}; })
-        .then(function (d) {
-          if (d && d.price > 0) {
-            out[tk] = { precio: d.price, venc: venc,
-                        dias: Math.round((venc - hoy) / 86400000) };
-            return;
-          }
-          if (queda > 1) {
-            // Backoff creciente: si la fuente está saturada, insistir al mismo ritmo la satura más.
-            var espera = 800 * (max - queda + 1);
-            return new Promise(function (res) { setTimeout(res, espera); })
-              .then(function () { return unContrato(tk, queda - 1); });
-          }
-          fallidos.push(tk);
-        });
-    }
-
-    // En serie y no en paralelo: es el mismo worker para todos y dispararlos juntos agrava
-    // justamente la intermitencia que se está tratando de cubrir.
-    return tickers.reduce(function (p, tk) {
-      return p.then(function () { return unContrato(tk, max); })
-              .then(function () { return new Promise(function (r) { setTimeout(r, 250); }); });
-    }, Promise.resolve()).then(function () {
-      var r = { futuros: out, fallidos: fallidos, deCache: false };
-      // Se cachea aunque falte alguno: sirve igual y evita repetir la tanda entera por uno solo.
-      // Si no salió ninguno no se guarda, para que el próximo intento vuelva a probar de verdad.
-      if (Object.keys(out).length) guardarFuturos(r);
-      return r;
+    // Los vencidos ni se piden: el vencimiento sale del propio ticker.
+    var vivos = tickers.filter(function (tk) {
+      var v = vencContrato(tk);
+      return v && v > hoy;
     });
+    if (!vivos.length) return Promise.resolve({ futuros: {}, fallidos: [], deCache: false });
+
+    return fetch('/api/futuros?tickers=' + encodeURIComponent(vivos.join(',')))
+      .then(function (r) {
+        if (!r.ok) throw new Error('/api/futuros HTTP ' + r.status);
+        return r.json();
+      })
+      .then(function (d) {
+        var out = {};
+        for (var tk in (d.futuros || {})) {
+          var f = d.futuros[tk], venc = vencContrato(tk);
+          if (!venc || !(f.precio > 0)) continue;
+          out[tk] = {
+            precio: f.precio, venc: venc,
+            dias: Math.round((venc - hoy) / 86400000),
+            horaDato: f.horaDato || null,
+            ultimaOperacion: f.ultimaOperacion || null,
+            volumenVN: f.volumenVN != null ? f.volumenVN : null,
+            operaciones: f.operaciones != null ? f.operaciones : null,
+            compra: f.compra, venta: f.venta,
+            minimo: f.minimo, maximo: f.maximo,
+            apertura: f.apertura, cierreAnterior: f.cierreAnterior,
+          };
+        }
+        var r2 = { futuros: out, fallidos: (d.fallos || []), deCache: false };
+        if (Object.keys(out).length) guardarFuturos(r2);
+        return r2;
+      })
+      .catch(function (e) {
+        console.warn('futuros:', e);
+        return { futuros: {}, fallidos: tickers.slice(), deCache: false, error: String(e.message || e) };
+      });
   }
 
   global.MonitorCore = {

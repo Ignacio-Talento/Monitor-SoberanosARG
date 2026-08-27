@@ -285,6 +285,7 @@
       <table id="tabla-futuros">
         <thead><tr>
           <th class="lft">Contrato</th><th>Vence</th><th>Días</th><th>Precio</th>
+          <th>Últ. op.</th><th>Volumen V/N</th><th>Ops.</th>
           <th>Deval. directa</th><th>Deval. TEA</th>
         </tr></thead>
         <tbody id="tbody-futuros"></tbody>
@@ -482,15 +483,23 @@ function renderFuturos() {
       <td>${fmtFechaDMY(f.venc)}</td>
       <td>${dias}</td>
       <td>${fmt(f.precio, 1)}</td>
+      <td>${f.ultimaOperacion || '<span class="no-p">—</span>'}</td>
+      <td>${f.volumenVN != null ? fmt(f.volumenVN, 0) : '<span class="no-p">—</span>'}</td>
+      <td>${f.operaciones != null ? fmt(f.operaciones, 0) : '<span class="no-p">—</span>'}</td>
       <td>${pct(directa)}</td>
       <td>${pct(devaluacionTEA(f, dias))}</td>
     </tr>`;
   }).join('');
   const n = document.getElementById('nota-futuros');
-  n.innerHTML = `TC oficial (A3500) de referencia: <strong>${fmt(tcSpot, 4)}</strong>. `
+  const sellos = filas.map(x => x.f.horaDato).filter(Boolean);
+  n.innerHTML = `TC oficial (A3500) de referencia: <strong>${fmt(tcSpot, 4)}</strong>.`
+    + (sellos.length ? ` Dato sellado a las <strong>${sellos.sort().pop()}</strong>.` : '')
+    + ` <span style="color:#7a4b00;">Eco publica información de BYMA <strong>diferida 20 minutos</strong>,
+       así que estos precios no son en vivo.</span> <strong>Últ. op.</strong> es la hora de la última
+       operación del contrato: si es de hace rato, el precio no se movió aunque el mercado sí.`
     + (futurosFallidos.length
-        ? `<span style="color:#7a4b00;">No contestaron tras varios intentos: ${futurosFallidos.join(', ')}.</span>`
-        : 'Todos los contratos vivos contestaron.');
+        ? ` <span style="color:#7a4b00;">Sin dato: ${futurosFallidos.join(', ')}.</span>`
+        : '');
 }
 
 function renderSinteticos() {
@@ -814,6 +823,7 @@ function renderGraficoREM() {
     const rtc = devaluacionREM(liq, f.venc);
     if (dev === null) continue;
     pts.push({ tk, x: dias, venc: f.venc, precio: f.precio, dev,
+               ultimaOperacion: f.ultimaOperacion, volumenVN: f.volumenVN,
                inf: inf ? inf.tea : null, infProy: inf ? inf.proyectado : false,
                rtc: rtc ? rtc.tea : null, rtcNivel: rtc ? rtc.nivel : null,
                rtcProy: rtc ? rtc.proyectado : false });
@@ -872,6 +882,8 @@ function renderGraficoREM() {
     p => {
       const f = [];
       f.push({ etiqueta: 'Futuro', valor: fmt(p.precio, 1) + ' · ' + pct(p.dev), color: COL.dev });
+      if (p.ultimaOperacion) f.push({ etiqueta: 'Últ. operación', valor: p.ultimaOperacion, color: '#6b7280' });
+      if (p.volumenVN != null) f.push({ etiqueta: 'Volumen V/N', valor: fmt(p.volumenVN, 0), color: '#6b7280' });
       if (p.rtc !== null) f.push({ etiqueta: 'REM TC' + (p.rtcProy ? ' (proy)' : ''),
                                    valor: fmt(p.rtcNivel, 0) + ' · ' + pct(p.rtc), color: COL.rtc });
       if (p.inf !== null) f.push({ etiqueta: 'Inflación' + (p.infProy ? ' (proy)' : ''),
