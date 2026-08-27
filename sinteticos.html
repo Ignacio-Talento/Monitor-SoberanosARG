@@ -727,7 +727,8 @@ function renderGrafico() {
       if (r.neto !== null) f.push({ etiqueta: 'Spread neto', valor: signo(r.neto) + ' pp', color: '#6b7280' });
       return f;
     },
-    r => `${r.tk} · ${r.dias} días`);
+    r => `${r.tk} · ${r.dias} días`,
+    r => py(r.sint));
 }
 
 // Devaluación implícita de los futuros contra inflación esperada del REM.
@@ -738,7 +739,7 @@ function renderGrafico() {
 // 3px, y así sigue funcionando cuando dos curvas se cruzan o quedan una encima de la otra.
 //
 // `filas(p)` devuelve las líneas a mostrar para ese punto: [{ etiqueta, valor, color }].
-function montarTooltip(cont, puntos, px, W, H, mT, mB, filas, titulo) {
+function montarTooltip(cont, puntos, px, W, H, mT, mB, filas, titulo, yRef) {
   cont.style.position = 'relative';
   const svg = cont.querySelector('svg');
   if (!svg || !puntos.length) return;
@@ -778,9 +779,17 @@ function montarTooltip(cont, puntos, px, W, H, mT, mB, filas, titulo) {
       tip.style.display = 'block';
       // Posición en píxeles reales: el SVG escala con viewBox, así que se traduce por el ancho real.
       const k = cont.clientWidth / W;
-      const izqPx = x * k;
-      tip.style.left = Math.min(Math.max(8, izqPx + 12), cont.clientWidth - tip.offsetWidth - 8) + 'px';
-      tip.style.top = (mT * k + 8) + 'px';
+      const xPx = x * k;
+      // Del lado opuesto al punto: para los contratos de la derecha el cartel iba a parar encima de
+      // la leyenda, que vive en esa esquina.
+      const izquierda = x > W / 2;
+      tip.style.left = Math.min(
+        Math.max(8, izquierda ? xPx - tip.offsetWidth - 12 : xPx + 12),
+        Math.max(8, cont.clientWidth - tip.offsetWidth - 8)) + 'px';
+      // A la altura de la curva de referencia, no pegado arriba, así sigue al dato que se mira.
+      const y = (yRef ? yRef(pt) : mT) * k;
+      tip.style.top = Math.min(Math.max(8, y - tip.offsetHeight / 2),
+                               Math.max(8, cont.clientHeight - tip.offsetHeight - 8)) + 'px';
     });
     banda.addEventListener('mouseleave', () => {
       guia.setAttribute('opacity', '0');
@@ -871,7 +880,8 @@ function renderGraficoREM() {
       if (p.inf !== null) f.push({ etiqueta: 'TC real esperado', valor: signo(p.dev - p.inf) + ' pp', color: '#6b7280' });
       return f;
     },
-    p => `${p.tk} · ${p.x} días`);
+    p => `${p.tk} · ${p.x} días`,
+    p => py(p.dev));
 
   const ult = pts[pts.length - 1];
   const hayProy = pts.some(p => p.infProy || p.rtcProy);
