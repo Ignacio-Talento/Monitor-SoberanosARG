@@ -316,6 +316,12 @@
   </div>
 
   <div class="panel">
+    <div class="panel-title">Devaluación implícita contra inflación esperada</div>
+    <div id="graf-rem"></div>
+    <div class="nota" id="nota-rem"></div>
+  </div>
+
+  <div class="panel">
     <div class="panel-title">LECAPs contra sintético en pesos</div>
     <div id="graf-sint"></div>
     <div class="nota" id="graf-empty" style="display:none;">
@@ -512,6 +518,90 @@ function renderSinteticos() {
   }).join('');
 }
 
+// ── REM DE INFLACIÓN ─────────────────────────────────────────────────────────────────────────
+// Mismo origen que Sendero CER: Indicadores.xlsx, fila "REM inflación". Se guarda como
+// { 'AAAA-MM': variación mensual esperada en % }.
+let remInfl = {};        // consenso publicado, mes a mes
+let remMensualLarga = null;   // mensual del tramo que el REM no publica (ver cargarREMInflacion)
+let rem12m = null;            // acumulado a 12 meses que publica el REM
+const MESES_REM = ['Enero','Febrero','Marzo','Abril','Mayo','Junio',
+                   'Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+
+async function cargarREMInflacion() {
+  const r = await fetch('Indicadores.xlsx?t=' + Date.now());
+  if (!r.ok) throw new Error('Indicadores.xlsx HTTP ' + r.status);
+  const wb = XLSX.read(await r.arrayBuffer(), { type: 'array' });
+  const filas = XLSX.utils.sheet_to_json(wb.Sheets['Indicadores'], { defval: '', raw: false, header: 1 });
+  let i = filas.findIndex(f => f[0] === 'REM inflación');
+  if (i === -1) i = filas.findIndex(f => f[0] === 'REM');
+  if (i === -1) throw new Error('no está la fila REM inflación');
+  const cab = filas[i + 1], val = filas[i + 2];
+
+  // El REM arranca en su primer mes publicado, que puede ser uno ya empezado. Se ancla a ese y se
+  // avanza mes a mes, sumando un año cada vez que el mes vuelve para atrás (diciembre -> enero).
+  const ahora = new Date();
+  let anio = ahora.getFullYear(), mesAnterior = -1, primero = true;
+  cab.forEach((etiqueta, j) => {
+    if (!etiqueta || etiqueta === '12 Meses') {
+      if (etiqueta === '12 Meses') {
+        const v = parseFloat(String(val[j] || '').replace(',', '.'));
+        if (!isNaN(v)) rem12m = v;
+      }
+      return;
+    }
+    const mes = MESES_REM.findIndex(m => etiqueta.startsWith(m));
+    if (mes === -1) return;
+    const v = parseFloat(String(val[j] || '').replace(',', '.'));
+    if (isNaN(v)) return;
+    if (!primero && mes < mesAnterior) anio++;
+    mesAnterior = mes; primero = false;
+    remInfl[`${anio}-${String(mes + 1).padStart(2, '0')}`] = v;
+  });
+
+  // Mensual del tramo que el REM no publica, calibrada CONTRA EL RESIDUO y no como promedio de los
+  // doce meses. El REM da seis meses y un acumulado a doce: los seis que faltan son exactamente lo
+  // que le falta al acumulado para llegar ahí. Promediar los doce daba 1,657% mensual y hacía que
+  // el total diera 22,19% contra el 21,8% publicado — sobreestimaba el tramo largo, que es justo
+  // el que cubre a los contratos más lejanos.
+  const meses = Object.keys(remInfl).length;
+  if (rem12m !== null && meses > 0 && meses < 12) {
+    const acumPublicado = Object.values(remInfl).reduce((a, m) => a * (1 + m / 100), 1);
+    const resto = (1 + rem12m / 100) / acumPublicado;
+    remMensualLarga = resto > 0 ? (Math.pow(resto, 1 / (12 - meses)) - 1) * 100 : null;
+  } else if (rem12m !== null) {
+    remMensualLarga = (Math.pow(1 + rem12m / 100, 1 / 12) - 1) * 100;
+  }
+}
+
+// Inflación esperada acumulada entre dos fechas, como TEA.
+// -> { tea, proyectado } · proyectado indica que se usó el tramo extendido con el dato de 12 meses.
+function inflacionTEA(desde, hasta) {
+  if (!Object.keys(remInfl).length) return null;
+  const dias = Math.round((hasta - desde) / 86400000);
+  if (dias <= 0) return null;
+  const ultimoREM = Object.keys(remInfl).sort().pop();
+  let acum = 1, proyectado = false;
+  const cur = new Date(desde.getFullYear(), desde.getMonth(), 1);
+  while (cur <= hasta) {
+    const clave = `${cur.getFullYear()}-${String(cur.getMonth() + 1).padStart(2, '0')}`;
+    let mensual = remInfl[clave];
+    if (mensual === undefined) {
+      if (remMensualLarga === null) return null;
+      mensual = remMensualLarga;      // más allá del último mes publicado
+      if (clave > ultimoREM) proyectado = true;
+    }
+    // Días de ESTE mes que caen dentro del tramo: el primero y el último van prorrateados.
+    const finMes = new Date(cur.getFullYear(), cur.getMonth() + 1, 0);
+    const ini = cur > desde ? cur : desde;
+    const fin = finMes < hasta ? finMes : hasta;
+    const diasMes = finMes.getDate();
+    const diasTramo = Math.round((fin - ini) / 86400000) + (cur > desde ? 1 : 0);
+    if (diasTramo > 0) acum *= Math.pow(1 + mensual / 100, Math.min(diasTramo, diasMes) / diasMes);
+    cur.setMonth(cur.getMonth() + 1);
+  }
+  return { tea: (Math.pow(acum, 365 / dias) - 1) * 100, proyectado };
+}
+
 // ── GRÁFICO ──────────────────────────────────────────────────────────────────────────────────
 function renderGrafico() {
   const cont = document.getElementById('graf-sint');
@@ -568,7 +658,84 @@ function renderGrafico() {
   </svg>`;
 }
 
-function redibujar() { renderFuturos(); renderSinteticos(); renderGrafico(); }
+// Devaluación implícita de los futuros contra inflación esperada del REM.
+function renderGraficoREM() {
+  const cont = document.getElementById('graf-rem');
+  const nota = document.getElementById('nota-rem');
+  if (!cont) return;
+  const liq = liquidacion();
+  const pts = [];
+  for (const [tk, f] of Object.entries(futuros)) {
+    const dias = Math.round((f.venc - liq) / 86400000);
+    if (dias < 10) continue;                    // igual que la tabla: anualizar 3 días no dice nada
+    const dev = devaluacionTEA(f, dias);
+    const inf = inflacionTEA(liq, f.venc);
+    if (dev === null || !inf) continue;
+    pts.push({ tk, dias, dev, inf: inf.tea, proyectado: inf.proyectado });
+  }
+  pts.sort((a, b) => a.dias - b.dias);
+  if (!pts.length) {
+    cont.innerHTML = '';
+    nota.textContent = 'Faltan datos: hacen falta futuros cotizando y el REM de Indicadores.xlsx.';
+    return;
+  }
+
+  const W = 900, H = 320, mL = 56, mR = 20, mT = 18, mB = 40;
+  const ys = pts.flatMap(p => [p.dev, p.inf]);
+  const pad = (Math.max(...ys) - Math.min(...ys)) * 0.2 || 1;
+  const y0 = Math.min(...ys) - pad, y1 = Math.max(...ys) + pad;
+  const x1 = Math.max(...pts.map(p => p.dias)) * 1.05;
+  const px = v => mL + v / x1 * (W - mL - mR);
+  const py = v => H - mB - (v - y0) / (y1 - y0) * (H - mT - mB);
+
+  const poli = (campo, color, dash) =>
+    `<polyline fill="none" stroke="${color}" stroke-width="2" ${dash ? 'stroke-dasharray="5 4"' : ''}
+       points="${pts.map(p => px(p.dias).toFixed(1) + ',' + py(p[campo]).toFixed(1)).join(' ')}"/>`;
+  const marcas = (campo, color) => pts.map(p =>
+    `<circle cx="${px(p.dias).toFixed(1)}" cy="${py(p[campo]).toFixed(1)}" r="3.5"
+       fill="${color}" ${p.proyectado && campo === 'inf' ? 'fill-opacity="0.45"' : ''}>
+       <title>${p.tk}: ${fmt(p[campo])}% a ${p.dias} días${p.proyectado && campo === 'inf' ? ' (proyectado)' : ''}</title>
+     </circle>`).join('');
+
+  let ejes = '';
+  for (let i = 0; i <= 4; i++) {
+    const v = y0 + (y1 - y0) * i / 4, y = py(v);
+    ejes += `<line x1="${mL}" y1="${y.toFixed(1)}" x2="${W - mR}" y2="${y.toFixed(1)}" stroke="#e3e8ef"/>
+             <text x="${mL - 8}" y="${(y + 4).toFixed(1)}" text-anchor="end" font-size="10" fill="#6b7280">${fmt(v, 0)}%</text>`;
+  }
+  for (let d = 0; d <= x1; d += 60) {
+    ejes += `<text x="${px(d).toFixed(1)}" y="${H - mB + 16}" text-anchor="middle" font-size="10" fill="#6b7280">${d}d</text>`;
+  }
+
+  cont.innerHTML = `<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;">
+    ${ejes}
+    ${poli('dev', '#00a3e4', false)}${marcas('dev', '#00a3e4')}
+    ${poli('inf', '#c0392b', true)}${marcas('inf', '#c0392b')}
+    <g font-size="11" font-weight="600">
+      <rect x="${W - 250}" y="${mT}" width="10" height="10" fill="#00a3e4"/>
+      <text x="${W - 235}" y="${mT + 9}" fill="#0d2055">Devaluación implícita (Rofex)</text>
+      <rect x="${W - 250}" y="${mT + 18}" width="10" height="10" fill="#c0392b"/>
+      <text x="${W - 235}" y="${mT + 27}" fill="#0d2055">Inflación esperada (REM)</text>
+    </g>
+  </svg>`;
+
+  const ult = pts[pts.length - 1];
+  const brecha = ult.dev - ult.inf;
+  const hayProy = pts.some(p => p.proyectado);
+  nota.innerHTML =
+    `Las dos en TEA y sobre el mismo plazo. La diferencia es la variación esperada del tipo de cambio
+     <strong>real</strong>: por encima, el peso se deprecia en términos reales; por debajo, se aprecia.
+     A ${ult.dias} días la brecha es de <strong>${signo(brecha)} pp</strong>
+     (${fmt(ult.dev)}% contra ${fmt(ult.inf)}%).`
+    + (hayProy
+        ? ` <span style="color:#7a4b00;">Los puntos claros de la línea punteada están más allá del último mes
+            que publica el REM: ahí la inflación se extiende con la mensual implícita del dato de 12 meses
+            (${fmt(remMensualLarga)}% por mes, la que hace calzar el acumulado de 12 meses del propio REM),
+            que es proyección y no consenso publicado.</span>`
+        : '');
+}
+
+function redibujar() { renderFuturos(); renderSinteticos(); renderGraficoREM(); renderGrafico(); }
 function onComision(cual, v) { const x = parseFloat(v); comisiones[cual] = isNaN(x) ? 0 : Math.max(0, x); redibujar(); }
 
 // ── CARGA ────────────────────────────────────────────────────────────────────────────────────
@@ -603,6 +770,9 @@ async function init() {
   try {
     await MonitorCore.cargarUniverso();
     tcSpot = bcraData.usdHoy;
+    // El REM va acá y no antes: sale de un archivo del propio sitio, no del host de los workers
+    // que cargarUniverso() satura, así que no compite con los futuros.
+    await cargarREMInflacion().catch(e => console.warn('REM:', e));
   } catch (e) {
     estado('No se pudo cargar el universo: ' + e.message, false);
     return;
