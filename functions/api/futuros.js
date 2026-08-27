@@ -32,8 +32,7 @@ const MAX_TICKERS = 30;
 // Cuántos días para atrás buscar la última rueda con operaciones. Cubre un fin de semana largo.
 const DIAS_ATRAS = 6;
 
-// Headers mínimos. Con User-Agent y Referer de otro dominio, desde el Worker A3 devolvía 424;
-// con Accept solo responde igual que a curl.
+// Headers mínimos: no hacen falta más.
 const CABECERAS = { "Accept": "application/json" };
 
 const MES_TXT = ["ENE", "FEB", "MAR", "ABR", "MAY", "JUN",
@@ -99,40 +98,50 @@ export async function onRequest({ request }) {
   const ahora = new Date();
   const desde = new Date(ahora.getTime() - DIAS_ATRAS * 86400000);
 
-  let ticks, cierres, rueda;
+  // Los ticks se piden RUEDA POR RUEDA, empezando por hoy y retrocediendo.
+  //
+  // Pedir un rango de varios días hace que A3 se caiga por timeout de su propia base:
+  //     424 · "Execution Timeout Expired. The timeout period elapsed prior to completion..."
+  // Ese 424 es del origen, no del Worker. Un día solo —unos 2.200 ticks— responde sin problema.
+  //
+  // Primero se sondea con pageSize=1 si esa fecha tuvo operaciones, y sólo entonces se trae
+  // completa: así un sábado cuesta dos consultas mínimas en vez de una pesada que vuelve vacía.
+  let filas = null, rueda = null, cierres = null;
   try {
-    // UN solo pedido de ticks, ordenado del más reciente hacia atrás. Antes se hacían dos —uno
-    // para averiguar la última rueda y otro para traerla— y con eso más el de cierres el Function
-    // pasaba de 45 segundos y el navegador cortaba. Los ticks de una rueda rondan los 2.200, así
-    // que en 5.000 entra la última completa aunque el rango abarque tres días.
-    [ticks, cierres] = await Promise.all([
-      pedir("/tick-prices", {
-        product: "DLR", from: iso(new Date(ahora.getTime() - 3 * 86400000)), to: iso(ahora),
-        pageSize: 5000, sort: "dateTime", sortDir: "DESC",
-      }),
-      // Cierres: alcanzan unos pocos, sólo se usa el más reciente de cada contrato.
-      pedir("/closing-prices", {
-        product: "DLR", type: "FUT",
-        from: dia(new Date(ahora.getTime() - DIAS_ATRAS * 86400000)), to: dia(ahora),
-        pageSize: 300, sort: "dateTime", sortDir: "DESC",
-      }),
-    ]);
+    for (let atras = 0; atras <= DIAS_ATRAS && !filas; atras++) {
+      const ref = new Date(ahora.getTime() - atras * 86400000);
+      const argRef = new Date(ref.getTime() - 3 * 3600000);
+      const y = argRef.getUTCFullYear(), m = argRef.getUTCMonth(), d = argRef.getUTCDate();
+      const ini = new Date(Date.UTC(y, m, d, 3, 0, 0));         // 00:00 ARG
+      const fin = new Date(Date.UTC(y, m, d + 1, 2, 59, 59));   // 23:59 ARG
+      const sondeo = await pedir("/tick-prices", {
+        product: "DLR", from: iso(ini), to: iso(fin), pageSize: 1,
+      });
+      if (!(sondeo.data || []).length) continue;                // esa fecha no tuvo mercado
+      const completo = await pedir("/tick-prices", {
+        product: "DLR", from: iso(ini), to: iso(fin), pageSize: 5000,
+      });
+      filas = completo.data || [];
+      rueda = `${y}-${String(m + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+    }
+    // Cierres previos: aportan el ajuste y el interés abierto. Sólo se usa el más reciente de cada
+    // contrato, así que alcanza con una página chica.
+    cierres = await pedir("/closing-prices", {
+      product: "DLR", type: "FUT",
+      from: dia(new Date(ahora.getTime() - DIAS_ATRAS * 86400000)), to: dia(ahora),
+      pageSize: 300, sort: "dateTime", sortDir: "DESC",
+    });
   } catch (e) {
     return json({ error: String((e && e.message) || e) }, 502);
   }
 
-  const filas = ticks.data || [];
-  if (!filas.length) return json({ error: "A3 no devolvió operaciones recientes" }, 502);
-
-  // La rueda es la del tick más reciente, en día ARG (UTC−3) y no UTC: así un sábado o un feriado
-  // devuelve la última rueda con mercado en vez de venir vacío.
-  const diaArg = (s) => new Date(new Date(s).getTime() - 3 * 3600000).toISOString().slice(0, 10);
-  rueda = diaArg(filas[0].dateTime);
+  if (!filas || !filas.length) {
+    return json({ error: `A3 no devolvió operaciones en los últimos ${DIAS_ATRAS} días` }, 502);
+  }
 
   // ── agregación de los ticks por contrato ──
   const agg = {};
   for (const x of filas) {
-    if (diaArg(x.dateTime) !== rueda) continue;   // el pedido abarca 3 días; sólo interesa la última
     const tk = aTicker(x.symbol);
     if (!tk) continue;
     const a = (agg[tk] ||= { volumen: 0, operaciones: 0, ultimo: null, precio: null,
@@ -183,7 +192,7 @@ export async function onRequest({ request }) {
   const salida = json(
     { futuros, fallos,
       diag: { rueda, pedidos: pedidos.length, resueltos: Object.keys(futuros).length,
-              ticks: filas.filter((x) => diaArg(x.dateTime) === rueda).length,
+              ticks: filas.length,
               fuente: "A3 Mercados · CEM (tick-prices + closing-prices)" } },
     200, { "cache-control": `public, max-age=${CACHE_TTL}` });
 
