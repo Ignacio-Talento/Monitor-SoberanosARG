@@ -584,6 +584,22 @@ function estado(txt, ok) {
 }
 
 async function init() {
+  // LOS FUTUROS VAN PRIMERO, y no es un detalle de orden: van al mismo host que los proxies del
+  // BCRA y de feriados (granda-fra.workers.dev), y cargarUniverso() dispara decenas de llamadas
+  // ahí —la serie TAMAR de cada ticker, el CER, el calendario—. Pedidos después, el host viene
+  // saturado por el propio monitor y los rechaza EN BLOQUE: el 27/08/2026 volvían los 9 vacíos
+  // aunque la misma función, llamada sola un minuto más tarde, traía 9 de 9.
+  //
+  // Tampoco van en paralelo con pedirPrecios por lo mismo. La secuencia cuesta unos segundos más
+  // de carga y a cambio los datos llegan.
+  try {
+    const fu = await MonitorCore.futurosDolar(FUTUROS_TICKERS);
+    futuros = fu.futuros;
+    futurosFallidos = fu.fallidos;
+  } catch (e) {
+    console.warn('futuros:', e);
+  }
+
   try {
     await MonitorCore.cargarUniverso();
     tcSpot = bcraData.usdHoy;
@@ -591,13 +607,15 @@ async function init() {
     estado('No se pudo cargar el universo: ' + e.message, false);
     return;
   }
-  // Precios y futuros en paralelo: son fuentes distintas y ninguna depende de la otra.
-  const [pr, fu] = await Promise.all([
-    MonitorCore.pedirPrecios(itemsPedido()).catch(e => { console.warn('precios:', e); return null; }),
-    MonitorCore.futurosDolar(FUTUROS_TICKERS).catch(e => { console.warn('futuros:', e); return null; }),
-  ]);
-  if (pr) { precios = pr.precios; indicadores1816 = pr.indicadores || {}; }
-  if (fu) { futuros = fu.futuros; futurosFallidos = fu.fallidos; }
+  renderFuturos();   // ya se puede pintar: no depende de los precios
+
+  try {
+    const pr = await MonitorCore.pedirPrecios(itemsPedido());
+    precios = pr.precios;
+    indicadores1816 = pr.indicadores || {};
+  } catch (e) {
+    console.warn('precios:', e);
+  }
 
   const nP = Object.keys(precios).length, nF = Object.keys(futuros).length;
   estado(nP && nF ? `✓ ${nP} precios de 1816 · ${nF} contratos` : 'Faltan datos', nP && nF);
