@@ -666,11 +666,14 @@ function renderHistorico() {
     // Arranca en el contrato con más ruedas: es el que tiene el gráfico más informativo.
     let mejor = null, n = -1, vMejor = null;
     for (const c of contratos) {
-      const k = fechas.filter(f => (historico[f].fut || {})[c]).length;
+      // Se cuentan las ruedas con spread CALCULABLE, no las apariciones del contrato: un futuro
+      // puede estar guardado y aun así no dar spread —porque vence en menos de 10 días o porque
+      // ese día faltaba la curva—. Contando apariciones, el primer día salía elegido DLR/AGO26,
+      // que vence en tres y queda afuera del cálculo, y el panel aparecía vacío.
+      const k = fechas.filter(f => spreadHistorico(f, c)).length;
+      if (!k) continue;
       const v = MonitorCore.vencContrato(c);
-      // Con la misma cantidad de ruedas gana el de vencimiento más cercano: son los que
-      // realmente operan. Sin este desempate, el primer día —cuando todos empatan en 1— salía
-      // DLR/ABR27, que es justamente el que no opera.
+      // A igualdad de ruedas gana el de vencimiento más cercano: son los que realmente operan.
       if (k > n || (k === n && v && vMejor && v < vMejor)) { n = k; mejor = c; vMejor = v; }
     }
     if (mejor) sel.value = mejor;
