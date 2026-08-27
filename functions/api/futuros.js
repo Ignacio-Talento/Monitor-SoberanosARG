@@ -32,8 +32,8 @@ const MAX_TICKERS = 30;
 // Cuántos días para atrás buscar la última rueda con operaciones. Cubre un fin de semana largo.
 const DIAS_ATRAS = 6;
 
-// Headers mínimos a propósito. Desde un Worker, mandarle a A3 un Referer de otro dominio hacía
-// que devolviera 424; con Accept solo, responde igual que a curl.
+// Headers mínimos. Con User-Agent y Referer de otro dominio, desde el Worker A3 devolvía 424;
+// con Accept solo responde igual que a curl.
 const CABECERAS = { "Accept": "application/json" };
 
 const MES_TXT = ["ENE", "FEB", "MAR", "ABR", "MAY", "JUN",
@@ -75,7 +75,11 @@ async function pedir(ruta, params) {
   return r.json();
 }
 
+// Los dos endpoints piden formatos DISTINTOS de fecha, aunque son del mismo API:
+// tick-prices sólo acepta ISO completo y closing-prices sólo AAAA-MM-DD. Pasarle a uno el
+// formato del otro devuelve 400 con "El atributo [from] no es válido".
 const iso = (d) => d.toISOString();
+const dia = (d) => d.toISOString().slice(0, 10);
 
 export async function onRequest({ request }) {
   const url = new URL(request.url);
@@ -109,7 +113,7 @@ export async function onRequest({ request }) {
       // Cierres: alcanzan unos pocos, sólo se usa el más reciente de cada contrato.
       pedir("/closing-prices", {
         product: "DLR", type: "FUT",
-        from: iso(new Date(ahora.getTime() - DIAS_ATRAS * 86400000)), to: iso(ahora),
+        from: dia(new Date(ahora.getTime() - DIAS_ATRAS * 86400000)), to: dia(ahora),
         pageSize: 300, sort: "dateTime", sortDir: "DESC",
       }),
     ]);
