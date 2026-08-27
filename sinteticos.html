@@ -341,6 +341,15 @@
       instrumentos entre los que se interpola.
     </div>
   <div class="panel">
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;">
+      <div class="panel-title" style="margin-bottom:0;">Histórico del spread</div>
+      <select id="sel-hist" class="rot-inp" onchange="renderHistorico()" style="text-align:left;"></select>
+    </div>
+    <div id="graf-hist" style="margin-top:14px;"></div>
+    <div class="nota" id="nota-hist"></div>
+  </div>
+
+  <div class="panel">
     <div class="panel-title">Devaluación implícita contra inflación esperada</div>
     <div id="graf-rem"></div>
     <div class="nota" id="nota-rem"></div>
@@ -587,6 +596,163 @@ function renderSinteticos() {
   // En dólares es sintético − bono: positivo, gana el sintético.
   if (b) b.innerHTML = filas.map(r => filaComparativa(r, 'dolar',
     'Sintético DL', 'Bono DL directo')).join('');
+}
+
+// ── HISTÓRICO DEL SPREAD ─────────────────────────────────────────────────────────────────────
+// spreads_sinteticos.json guarda, por rueda, los INSUMOS: precio de cada futuro, tasa de cada bono
+// y el tipo de cambio. No el spread ya calculado — ver actualizar_spreads.py para el porqué.
+let historico = {};      // { 'AAAA-MM-DD': { tc, fut:{}, lecap:{}, dl:{} } }
+
+async function cargarHistorico() {
+  const r = await fetch('spreads_sinteticos.json?t=' + Date.now());
+  if (!r.ok) throw new Error('spreads_sinteticos.json HTTP ' + r.status);
+  historico = await r.json();
+}
+
+// Vencimiento de un ticker del monitor, desde el universo ya cargado.
+function vencDe(ticker) {
+  const i = instrumentos.find(x => x.ticker === ticker);
+  return i ? parseLocalDate(i.venc) : null;
+}
+
+// Curva { dias, tasa, ticker } armada desde un mapa { ticker: tasa } y una fecha de referencia.
+// Es el equivalente histórico de curvaDe(), que necesita precios y el motor.
+function curvaDesdeTasas(tasas, ref) {
+  const pts = [];
+  for (const tk in tasas) {
+    const v = vencDe(tk);
+    if (!v) continue;
+    const dias = Math.round((v - ref) / 86400000);
+    if (dias > 0 && isFinite(tasas[tk])) pts.push({ dias, tasa: tasas[tk], ticker: tk });
+  }
+  return pts.sort((a, b) => a.dias - b.dias);
+}
+
+// Spread de un contrato en una rueda pasada. Devuelve { pesos, dolar } en pp, o null.
+// La fecha de la rueda hace de liquidación: es la referencia contra la que se midieron esas tasas.
+function spreadHistorico(fecha, contrato) {
+  const d = historico[fecha];
+  if (!d || !d.tc) return null;
+  const precioFut = d.fut && d.fut[contrato];
+  if (!precioFut) return null;
+  const venc = MonitorCore.vencContrato(contrato);
+  const ref = parseLocalDate(fecha);
+  if (!venc || !ref) return null;
+  const dias = Math.round((venc - ref) / 86400000);
+  if (dias < 10) return null;
+
+  const dev = (Math.pow(precioFut / d.tc, 365 / dias) - 1) * 100;
+  const iL = interpolar(curvaDesdeTasas(d.lecap || {}, ref), dias);
+  const iD = interpolar(curvaDesdeTasas(d.dl || {}, ref), dias);
+  if (!iL || !iD) return null;
+
+  const sintPesos = ((1 + iD.tasa / 100) * (1 + dev / 100) - 1) * 100;
+  const sintDolar = ((1 + iL.tasa / 100) / (1 + dev / 100) - 1) * 100;
+  return { pesos: iL.tasa - sintPesos, dolar: sintDolar - iD.tasa, dev, dias };
+}
+
+function renderHistorico() {
+  const cont = document.getElementById('graf-hist');
+  const nota = document.getElementById('nota-hist');
+  const sel = document.getElementById('sel-hist');
+  if (!cont || !sel) return;
+
+  const fechas = Object.keys(historico).sort();
+  // El selector se arma con los contratos que aparecen en alguna rueda, no con los de hoy: los que
+  // ya vencieron también tienen historia que sirve mirar.
+  if (!sel.options.length) {
+    const contratos = [...new Set(fechas.flatMap(f => Object.keys(historico[f].fut || {})))].sort();
+    sel.innerHTML = contratos.map(c => `<option value="${c}">${c}</option>`).join('');
+    // Arranca en el contrato con más ruedas: es el que tiene el gráfico más informativo.
+    let mejor = null, n = -1;
+    for (const c of contratos) {
+      const k = fechas.filter(f => (historico[f].fut || {})[c]).length;
+      if (k > n) { n = k; mejor = c; }
+    }
+    if (mejor) sel.value = mejor;
+  }
+  const contrato = sel.value;
+
+  const pts = [];
+  for (const f of fechas) {
+    const sp = spreadHistorico(f, contrato);
+    if (sp) pts.push({ f, ...sp });
+  }
+
+  if (pts.length < 2) {
+    cont.innerHTML = '';
+    nota.innerHTML = pts.length
+      ? `Sólo hay <strong>${pts.length} rueda</strong> guardada de ${contrato}
+         (spread en pesos ${signo(pts[0].pesos)} pp). El histórico se acumula desde el 27/08/2026:
+         no existe una fuente pública de series de futuros, así que se construye día a día con el
+         job diario. Con dos semanas ya se puede ver un rango.`
+      : `Todavía no hay ruedas guardadas de ${contrato}.`;
+    return;
+  }
+
+  const W = 900, H = 300, mL = 56, mR = 20, mT = 18, mB = 42;
+  const ys = pts.flatMap(p => [p.pesos, p.dolar]);
+  const pad = (Math.max(...ys) - Math.min(...ys)) * 0.2 || 0.5;
+  const y0 = Math.min(...ys, 0) - pad, y1 = Math.max(...ys, 0) + pad;
+  const px = i => mL + (pts.length === 1 ? 0.5 : i / (pts.length - 1)) * (W - mL - mR);
+  const py = v => H - mB - (v - y0) / (y1 - y0) * (H - mT - mB);
+
+  const linea = (campo, color) =>
+    `<polyline fill="none" stroke="${color}" stroke-width="2"
+      points="${pts.map((p, i) => px(i).toFixed(1) + ',' + py(p[campo]).toFixed(1)).join(' ')}"/>`
+    + pts.map((p, i) => `<circle cx="${px(i).toFixed(1)}" cy="${py(p[campo]).toFixed(1)}" r="3"
+        fill="${color}"/>`).join('');
+
+  let ejes = '';
+  for (let i = 0; i <= 4; i++) {
+    const v = y0 + (y1 - y0) * i / 4, y = py(v);
+    ejes += `<line x1="${mL}" y1="${y.toFixed(1)}" x2="${W - mR}" y2="${y.toFixed(1)}" stroke="#e3e8ef"/>
+             <text x="${mL - 8}" y="${(y + 4).toFixed(1)}" text-anchor="end" font-size="10" fill="#6b7280">${fmt(v, 1)}</text>`;
+  }
+  // Línea del cero: es la que separa "conviene el sintético" de "conviene el directo".
+  if (y0 < 0 && y1 > 0) {
+    ejes += `<line x1="${mL}" y1="${py(0).toFixed(1)}" x2="${W - mR}" y2="${py(0).toFixed(1)}"
+             stroke="#0d2055" stroke-width="1.5" stroke-dasharray="4 3" opacity=".5"/>`;
+  }
+  const cada = Math.max(1, Math.ceil(pts.length / 8));
+  pts.forEach((p, i) => {
+    if (i % cada && i !== pts.length - 1) return;
+    ejes += `<text x="${px(i).toFixed(1)}" y="${H - mB + 16}" text-anchor="middle"
+             font-size="10" fill="#6b7280">${p.f.slice(8)}/${p.f.slice(5, 7)}</text>`;
+  });
+
+  cont.innerHTML = `<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;">
+    ${ejes}
+    ${linea('pesos', '#00a3e4')}
+    ${linea('dolar', '#0d9488')}
+    <g font-size="11" font-weight="600">
+      <rect x="${W - 230}" y="${mT}" width="10" height="10" fill="#00a3e4"/>
+      <text x="${W - 215}" y="${mT + 9}" fill="#0d2055">Spread en pesos (pp)</text>
+      <rect x="${W - 230}" y="${mT + 18}" width="10" height="10" fill="#0d9488"/>
+      <text x="${W - 215}" y="${mT + 27}" fill="#0d2055">Spread en dólares (pp)</text>
+    </g>
+  </svg>`;
+
+  montarTooltip(cont, pts.map((p, i) => ({ ...p, x: i })), px, W, H, mT, mB,
+    p => [
+      { etiqueta: 'Spread en pesos', valor: signo(p.pesos) + ' pp', color: '#00a3e4' },
+      { etiqueta: 'Spread en dólares', valor: signo(p.dolar) + ' pp', color: '#0d9488' },
+      { etiqueta: 'Deval. implícita', valor: pct(p.dev), color: '#6b7280' },
+      { etiqueta: 'Plazo', valor: p.dias + ' días', color: '#6b7280' },
+    ],
+    p => `${contrato} · ${p.f}`,
+    p => py(p.pesos));
+
+  const ult = pts[pts.length - 1];
+  const eps = pts.map(p => p.pesos);
+  nota.innerHTML =
+    `Spread bruto de <strong>${contrato}</strong>, recalculado en cada rueda con los insumos de ese
+     día. <strong>Por encima de cero</strong> paga más el instrumento directo (LECAP o bono DL);
+     por debajo, el sintético. Hoy está en <strong>${signo(ult.pesos)} pp</strong> en pesos, contra
+     un rango de ${signo(Math.min(...eps))} a ${signo(Math.max(...eps))} en las
+     ${pts.length} ruedas guardadas.
+     <span class="no-p">El histórico arranca el 27/08/2026: no hay fuente pública de series de
+     futuros, así que se acumula día a día con el job diario.</span>`;
 }
 
 // ── REM DE INFLACIÓN ─────────────────────────────────────────────────────────────────────────
@@ -976,7 +1142,7 @@ function renderGraficoREM() {
         : '');
 }
 
-function redibujar() { renderFuturos(); renderSinteticos(); renderGraficoREM(); renderGrafico(); }
+function redibujar() { renderFuturos(); renderSinteticos(); renderHistorico(); renderGraficoREM(); renderGrafico(); }
 function onComision(cual, v) { const x = parseFloat(v); comisiones[cual] = isNaN(x) ? 0 : Math.max(0, x); redibujar(); }
 
 // ── CARGA ────────────────────────────────────────────────────────────────────────────────────
@@ -1014,6 +1180,7 @@ async function init() {
     // El REM va acá y no antes: sale de un archivo del propio sitio, no del host de los workers
     // que cargarUniverso() satura, así que no compite con los futuros.
     await cargarREMInflacion().catch(e => console.warn('REM:', e));
+    await cargarHistorico().catch(e => console.warn('histórico:', e));
   } catch (e) {
     estado('No se pudo cargar el universo: ' + e.message, false);
     return;
