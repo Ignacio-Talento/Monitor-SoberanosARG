@@ -255,17 +255,18 @@
 
   <div class="panel">
     <div style="display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;">
-      <div class="panel-title" style="margin-bottom:0;">Comisión por punta</div>
+      <div class="panel-title" style="margin-bottom:0;">Comisión del futuro</div>
       <div style="display:flex;align-items:center;gap:10px;">
-        <input id="inp-comision" class="rot-inp" type="number" step="0.05" min="0" value="0.5"
+        <input id="inp-comision" class="rot-inp" type="number" step="0.05" min="0" value="0.1"
                oninput="onComision(this.value)" style="width:90px;">
-        <span class="nota" style="margin:0;">%&nbsp;sobre cada operación</span>
+        <span class="nota" style="margin:0;">%&nbsp;sobre el nocional</span>
       </div>
       <div class="precio-st" id="estado-datos">Cargando…</div>
     </div>
     <div class="nota" style="margin-top:12px;">
-      El sintético son <strong>dos</strong> operaciones (bono + futuro) contra <strong>una</strong> del bono directo, así que
-      paga una punta más de comisión. El spread neto descuenta esa diferencia, anualizada al plazo de cada contrato.
+      Las dos alternativas compran un bono, así que la comisión de bono se cancela y no mueve el spread:
+      lo único que el sintético paga de más es <strong>la comisión del futuro</strong>. El spread neto la descuenta,
+      anualizada al plazo de cada contrato — por eso pesa mucho más en los vencimientos cortos que en los largos.
       No incluye el costo de la garantía inmovilizada en Rofex, que depende del aforo de cada cliente.
     </div>
   </div>
@@ -336,7 +337,7 @@
 
 let futuros = {};        // { 'DLR/SEP26': { precio, venc, dias } }
 let futurosFallidos = [];
-let comision = 0.5;      // % por punta
+let comisionFut = 0.1;   // % por punta, SÓLO la del futuro (ver costoExtraTEA)
 let tcSpot = null;
 
 // Hasta ABR27: Rofex lista los contratos con unos ocho meses de anticipación y MAY27/JUN27
@@ -409,12 +410,17 @@ function devaluacionTEA(f, dias) {
   return (Math.pow(f.precio / tcSpot, 365 / dias) - 1) * 100;
 }
 
-// Costo de la punta extra del sintético, anualizado. El sintético paga comisión en el bono y en el
-// futuro; el directo, sólo en el bono. La diferencia es una punta, que se lleva a TEA para poder
-// restarla de un spread que también está en TEA.
+// Costo que diferencia al sintético, anualizado.
+//
+// OJO CON QUÉ SE COBRA. Las dos alternativas compran UN bono: la LECAP directa paga comisión de
+// bono, y el sintético también (la paga sobre el dólar linked). Esa punta se cancela y no mueve el
+// spread. Lo único que el sintético paga de más es la comisión DEL FUTURO, que además suele ser
+// bastante menor que la de un bono. Cobrarle una punta de bono entera —como se hacía acá al
+// principio— sobreestimaba el costo y daba vuelta el veredicto en casi todas las filas.
 function costoExtraTEA(dias) {
   if (dias <= 0) return 0;
-  const c = comision / 100;
+  const c = comisionFut / 100;
+  if (c <= 0) return 0;
   return (Math.pow(1 / (1 - c), 365 / dias) - 1) * 100;
 }
 
@@ -425,7 +431,10 @@ function filasSinteticos() {
   const out = [];
   for (const [tk, f] of Object.entries(futuros)) {
     const dias = Math.round((f.venc - liq) / 86400000);
-    if (dias <= 0) continue;
+    // Menos de 10 días no entra: anualizar sobre un plazo tan corto convierte cualquier diferencia
+    // menor en un número enorme y sin sentido. El contrato de agosto, a 3 días de vencer, daba un
+    // costo anualizado de +81 pp. Sigue estando en la tabla de futuros, que es informativa.
+    if (dias < 10) continue;
     const dev = devaluacionTEA(f, dias);
     const iL = interpolar(cLecap, dias);
     const iD = interpolar(cDL, dias);
@@ -551,7 +560,7 @@ function renderGrafico() {
 }
 
 function redibujar() { renderFuturos(); renderSinteticos(); renderGrafico(); }
-function onComision(v) { const x = parseFloat(v); comision = isNaN(x) ? 0 : Math.max(0, x); redibujar(); }
+function onComision(v) { const x = parseFloat(v); comisionFut = isNaN(x) ? 0 : Math.max(0, x); redibujar(); }
 
 // ── CARGA ────────────────────────────────────────────────────────────────────────────────────
 function itemsPedido() {
