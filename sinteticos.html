@@ -608,10 +608,19 @@ async function cargarHistorico() {
   historico = await r.json();
 }
 
-// Vencimiento de un ticker del monitor, desde el universo ya cargado.
+// Fechas de rueda del archivo. Las claves que empiezan con guión bajo son metadatos, no ruedas.
+function ruedasHistoricas() {
+  return Object.keys(historico).filter(k => !k.startsWith('_')).sort();
+}
+
+// Vencimiento de un instrumento. Primero el universo vivo del Excel; si no está —porque ya
+// venció— el mapa que guarda el propio archivo histórico. Sin esto, una rueda de 2024 sólo podría
+// interpolarse con las LECAPs que siguen vivas hoy, que son justamente las que en 2024 no existían.
 function vencDe(ticker) {
   const i = instrumentos.find(x => x.ticker === ticker);
-  return i ? parseLocalDate(i.venc) : null;
+  if (i) return parseLocalDate(i.venc);
+  const v = (historico._venc || {})[ticker];
+  return v ? parseLocalDate(v) : null;
 }
 
 // Curva { dias, tasa, ticker } armada desde un mapa { ticker: tasa } y una fecha de referencia.
@@ -656,7 +665,7 @@ function renderHistorico() {
   const sel = document.getElementById('sel-hist');
   if (!cont || !sel) return;
 
-  const fechas = Object.keys(historico).sort();
+  const fechas = ruedasHistoricas();
   // El selector se arma con los contratos que aparecen en alguna rueda, no con los de hoy: los que
   // ya vencieron también tienen historia que sirve mirar.
   if (!sel.options.length) {

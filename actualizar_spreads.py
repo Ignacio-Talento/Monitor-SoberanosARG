@@ -21,8 +21,20 @@ sería una segunda implementación de la misma fórmula, y en algún momento div
 entere. Con los insumos crudos el frontend rearma el histórico con las mismas funciones que usa
 para hoy, y una corrección de fórmula se propaga sola hacia atrás.
 
+EL UNIVERSO SALE DE 1816, NO DEL EXCEL. Instrumentos.xlsx tiene sólo los instrumentos VIVOS, y
+para el histórico hacen falta los que ya vencieron: una rueda de marzo se interpola con las LECAPs
+que estaban vivas en marzo, no con las de hoy. 1816 los lista todos —70 LECAPs desde 2021 y 26
+dólar linked desde 2022— con su emisión y vencimiento.
+
+A cada instrumento se le pide sólo el tramo en que estuvo vivo. Pedirle a todos el rango entero
+multiplicaría los créditos por diez para traer huecos: 1816 cobra tickers x campos x días.
+
+Los vencimientos van al JSON en la clave "_venc", porque el frontend los necesita para armar las
+curvas y los de los instrumentos vencidos ya no están en el Excel.
+
 SALIDA: spreads_sinteticos.json
-    { "2026-08-26": { "tc": 1514.16,
+    { "_venc": { "S30S6": "2026-09-30", ... },        # vencimiento de cada instrumento usado
+      "2026-08-26": { "tc": 1514.16,
                       "fut":   { "DLR/SEP26": 1538.0, ... },     # precio de ajuste
                       "vol":   { "DLR/SEP26": 130791, ... },     # volumen de esa rueda
                       "lecap": { "S30S6": 28.26, ... },          # TEA en %
@@ -88,10 +100,12 @@ def futuros_cem(desde, hasta):
     """-> { 'AAAA-MM-DD': { 'DLR/SEP26': {'p': ajuste, 'v': volumen} } }"""
     out = {}
     pagina, porPagina = 1, 1000
-    while True:
+    # type=FUT deja afuera las opciones, que vienen mezcladas en el mismo listado
+    # ("DLR082026 Call 1500") y son casi la mitad de los registros por rueda.
+    while pagina <= 60:                     # tope de seguridad, no criterio de corte
         try:
             r = requests.get(CEM, headers=CABECERAS, timeout=60, params={
-                "product": "DLR", "from": desde, "to": hasta,
+                "product": "DLR", "type": "FUT", "from": desde, "to": hasta,
                 "page": pagina, "pageSize": porPagina, "sort": "dateTime", "sortDir": "ASC"})
             r.raise_for_status()
             d = r.json()
@@ -107,8 +121,10 @@ def futuros_cem(desde, hasta):
             f = str(x.get("dateTime", ""))[:10]
             out.setdefault(f, {})[tk] = {"p": round(float(precio), 4),
                                          "v": int(x.get("volume") or 0)}
-        total = d.get("totalEntries")
-        if len(filas) < porPagina or (total and pagina * porPagina >= total):
+        # Se corta SÓLO por página incompleta. Antes también se miraba totalEntries contra
+        # página x tamaño, y con las opciones adentro ese total no correspondía a lo que se
+        # estaba trayendo: el backfill se cortaba en diciembre de 2024 sin avisar.
+        if len(filas) < porPagina:
             break
         pagina += 1
         time.sleep(0.3)
@@ -124,6 +140,98 @@ def tc_bcra(desde, hasta):
     except Exception as e:
         print(f"AVISO: no se pudo traer el TC mayorista ({e})", file=sys.stderr)
         return {}
+
+
+# Curvas de 1816: 9 = LECAPs, 12 y 17 = dólar linked. Las mismas que usa revisar_universo.py.
+CURVAS_LECAP = [9]
+CURVAS_DL = [12, 17]
+
+
+def universo(cli, curvas, desde, hasta):
+    """Instrumentos de esas curvas que estuvieron VIVOS en el rango.
+
+    -> [ { 'ticker', 'emision': date, 'venc': date } ]
+    Incluye los ya vencidos, que es justamente el punto: la curva de una rueda de marzo se arma
+    con lo que cotizaba en marzo.
+    """
+    d0, d1 = date.fromisoformat(desde), date.fromisoformat(hasta)
+    out, vistos = [], set()
+    for cur in curvas:
+        items = None
+        for espera in (0, 15, 45):
+            if espera:
+                print(f"    reintentando curva {cur} en {espera}s...", file=sys.stderr)
+                time.sleep(espera)
+            try:
+                items = cli.instrumentos(curva_id=cur)
+                break
+            except Error1816 as e:
+                ultimo = e
+        if items is None:
+            print(f"AVISO: no se pudo leer la curva {cur} ({ultimo})", file=sys.stderr)
+            continue
+        for x in items or []:
+            tk = (x.get("ticker") or "").strip()
+            v, e = str(x.get("fechaVencimiento") or "")[:10], str(x.get("fechaEmision") or "")[:10]
+            if not tk or tk in vistos or len(v) != 10:
+                continue
+            try:
+                venc = date.fromisoformat(v)
+                emi = date.fromisoformat(e) if len(e) == 10 else d0
+            except ValueError:
+                continue
+            # vivo en algún momento del rango pedido
+            if venc < d0 or emi > d1:
+                continue
+            vistos.add(tk)
+            out.append({"ticker": tk, "emision": max(emi, d0), "venc": venc})
+        time.sleep(1.2)
+    return out
+
+
+def series_tea_universo(cli, insts, desde, hasta):
+    """Series de TEA pidiéndole a cada instrumento SÓLO el tramo en que estuvo vivo.
+
+    Se agrupan los que comparten ventana para no gastar una llamada por instrumento: 1816 admite
+    10 tickers por request de series, y los bonos de una misma licitación suelen vivir el mismo
+    tramo.
+    """
+    d1 = date.fromisoformat(hasta)
+    porVentana = {}
+    for it in insts:
+        ini = it["emision"].isoformat()
+        fin = min(it["venc"], d1).isoformat()
+        if ini >= fin:
+            continue
+        porVentana.setdefault((ini, fin), []).append(it["ticker"])
+
+    out, pedidos = {}, 0
+    for (ini, fin), tickers in sorted(porVentana.items()):
+        for i in range(0, len(tickers), MAX_TICKERS_SERIES):
+            lote = tickers[i:i + MAX_TICKERS_SERIES]
+            filas = None
+            for espera in (0, 15, 45):
+                if espera:
+                    print(f"    reintentando en {espera}s...", file=sys.stderr)
+                    time.sleep(espera)
+                try:
+                    filas = cli.series(lote, ["tea"], moneda="ars",
+                                       fecha_inicial=ini, fecha_final=fin)
+                    break
+                except Error1816 as e:
+                    ultimo = e
+            pedidos += 1
+            if filas is None:
+                print(f"AVISO: 1816 falló en {lote[:3]}... ({ultimo})", file=sys.stderr)
+                continue
+            for f in filas:
+                v = f.get("tea")
+                tk = f.get("ticker")
+                fecha = str(f.get("fecha", ""))[:10]
+                if tk and fecha and isinstance(v, (int, float)):
+                    out.setdefault(fecha, {})[tk] = round(v * 100, 6)
+    print(f"    {pedidos} pedidos a /series")
+    return out
 
 
 def series_tea(cli, items, desde, hasta):
@@ -169,8 +277,9 @@ def main(argv):
         with open(SALIDA, encoding="utf-8") as fh:
             datos = json.load(fh)
 
+    ruedasYa = len([k for k in datos if not k.startswith("_")])
     print(f"Insumos del spread · {desde} a {hasta}"
-          + (f" · {len(datos)} ruedas ya guardadas" if datos else ""))
+          + (f" · {ruedasYa} ruedas ya guardadas" if ruedasYa else ""))
 
     print("Futuros (CEM de A3)...")
     fut = futuros_cem(desde, hasta)
@@ -186,15 +295,22 @@ def main(argv):
         return 0
     print(f"  {len(faltan)} ruedas nuevas: {faltan[0]} a {faltan[-1]}")
 
-    items = leer_tickers()
-    lecaps = [it for it in items if it["hoja"] == "LECAPS"]
-    dls = [it for it in items if it["hoja"] == "USD Linked"]
     cli = Cliente1816()
+    print("Universo histórico de 1816 (incluye vencidos)...")
+    iLecap = universo(cli, CURVAS_LECAP, faltan[0], faltan[-1])
+    iDL = universo(cli, CURVAS_DL, faltan[0], faltan[-1])
+    print(f"  {len(iLecap)} lecaps + {len(iDL)} dólar linked vivos en el rango")
 
-    print(f"Tasas de 1816 ({len(lecaps)} lecaps + {len(dls)} dólar linked)...")
-    tLecap = series_tea(cli, lecaps, faltan[0], faltan[-1])
-    tDL = series_tea(cli, dls, faltan[0], faltan[-1])
+    print("Tasas de 1816...")
+    tLecap = series_tea_universo(cli, iLecap, faltan[0], faltan[-1])
+    tDL = series_tea_universo(cli, iDL, faltan[0], faltan[-1])
     print(f"  lecaps: {len(tLecap)} ruedas · dólar linked: {len(tDL)} ruedas")
+
+    # Vencimientos de todo lo usado: el frontend los necesita para armar las curvas y los de los
+    # instrumentos vencidos ya no están en Instrumentos.xlsx.
+    vencs = dict(datos.get("_venc") or {})
+    for it in iLecap + iDL:
+        vencs[it["ticker"]] = it["venc"].isoformat()
 
     tcs = tc_bcra(faltan[0], faltan[-1])
     print(f"  TC mayorista: {len(tcs)} ruedas")
@@ -222,9 +338,10 @@ def main(argv):
         print("No se agregó ninguna rueda.")
         return 0
 
+    datos["_venc"] = vencs
     with open(SALIDA, "w", encoding="utf-8") as fh:
         json.dump(datos, fh, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
-    fechas = sorted(datos)
+    fechas = sorted(f for f in datos if not f.startswith("_"))
     print(f"\n{SALIDA}: +{nuevas} ruedas · {len(datos)} en total "
           f"({fechas[0]} a {fechas[-1]}) · {os.path.getsize(SALIDA) // 1024} kB")
     return 0
