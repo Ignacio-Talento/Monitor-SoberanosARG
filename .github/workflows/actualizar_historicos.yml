@@ -56,22 +56,10 @@ jobs:
           API_1816_KEY: ${{ secrets.API_1816_KEY }}
         run: python actualizar_series_globvsbon.py
 
-      # Insumos del spread de sintéticos. Completa las ruedas que falten desde el CEM de A3
-      # Mercados (precio de ajuste) más las tasas de 1816, así que se pone al día solo si alguna
-      # corrida se saltea. Va con continue-on-error como el paso de Glob vs Bon: un hueco en un
-      # gráfico no es razón para marcar en rojo una corrida que sí guardó los precios del día.
-      #
-      # El ajuste se publica después del clearing, de modo que este paso agrega la rueda de AYER.
-      - name: Acumular insumos del spread de sintéticos
-        continue-on-error: true
-        env:
-          API_1816_KEY: ${{ secrets.API_1816_KEY }}
-        run: python actualizar_spreads.py
-
       - name: Commit y push si hay cambios
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          git add historicos.xlsx series_globvsbon.xlsx spreads_sinteticos.json
+          git add historicos.xlsx series_globvsbon.xlsx
           git diff --staged --quiet || git commit -m "Actualizar historicos $(date +'%Y-%m-%d')"
           git push

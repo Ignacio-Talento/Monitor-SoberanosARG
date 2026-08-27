@@ -1,0 +1,57 @@
+# Insumos del spread de sintéticos, a la mañana siguiente de cada rueda.
+#
+# POR QUÉ NO VA CON EL JOB DE PRECIOS. Este paso vivía dentro de "Actualizar Históricos de
+# Precios", que corre a las 17:20 ART, y ahí siempre llegaba tarde: el histórico usa el PRECIO DE
+# AJUSTE y A3 lo publica después del proceso de clearing. Verificado el 27/08/2026 a las 18:41, con
+# el mercado cerrado desde las 15:00, el último ajuste disponible seguía siendo el del 26. Corriendo
+# a la tarde, el histórico iba permanentemente un día atrás.
+#
+# Corriendo a las 6 de la mañana del día siguiente, la rueda de ayer ya tiene su ajuste publicado.
+#
+# El job de precios NO se movió: ese sí tiene que correr después del cierre, porque escribe la rueda
+# del día con los precios operados.
+name: Insumos del Spread de Sintéticos
+
+on:
+  schedule:
+    # 06:00 hora Argentina (UTC-3) = 09:00 UTC.
+    #
+    # Martes a SÁBADO, no lunes a viernes: cada corrida levanta la rueda del día ANTERIOR, así que
+    # la del viernes necesita que alguien corra el sábado. Con lunes a viernes, el viernes quedaría
+    # esperando hasta el lunes.
+    - cron: '0 9 * * 2-6'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  spreads:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repositorio
+        uses: actions/checkout@v4
+
+      - name: Configurar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Instalar dependencias
+        run: pip install requests openpyxl
+
+      # El script COMPLETA todas las ruedas que falten, no sólo la de ayer: si una corrida se
+      # saltea —o si GitHub demora el cron, que pasa seguido— la siguiente se pone al día sola.
+      - name: Acumular insumos del spread
+        env:
+          API_1816_KEY: ${{ secrets.API_1816_KEY }}
+        run: python actualizar_spreads.py
+
+      - name: Commit y push si hay cambios
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git add spreads_sinteticos.json
+          git diff --staged --quiet || git commit -m "Insumos del spread $(date +'%Y-%m-%d')"
+          git push
