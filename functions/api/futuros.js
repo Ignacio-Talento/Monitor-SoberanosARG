@@ -32,11 +32,9 @@ const MAX_TICKERS = 30;
 // Cuántos días para atrás buscar la última rueda con operaciones. Cubre un fin de semana largo.
 const DIAS_ATRAS = 6;
 
-const CABECERAS = {
-  "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120 Safari/537.36",
-  "Accept": "application/json",
-  "Referer": "https://cem.matbarofex.com.ar/",
-};
+// Headers mínimos a propósito. Desde un Worker, mandarle a A3 un Referer de otro dominio hacía
+// que devolviera 424; con Accept solo, responde igual que a curl.
+const CABECERAS = { "Accept": "application/json" };
 
 const MES_TXT = ["ENE", "FEB", "MAR", "ABR", "MAY", "JUN",
                  "JUL", "AGO", "SEP", "OCT", "NOV", "DIC"];
@@ -67,7 +65,13 @@ async function pedir(ruta, params) {
   const url = new URL(CEM + ruta);
   for (const [k, v] of Object.entries(params)) url.searchParams.set(k, v);
   const r = await fetch(url, { headers: CABECERAS });
-  if (!r.ok) throw new Error(`${ruta} HTTP ${r.status}`);
+  if (!r.ok) {
+    // El cuerpo del error viaja en el mensaje: A3 explica qué parámetro no le gustó, y sin eso
+    // un 400 o un 424 son indistinguibles de "la API se cayó".
+    let detalle = "";
+    try { detalle = (await r.text()).slice(0, 200); } catch (e) { /* da igual */ }
+    throw new Error(`${ruta} HTTP ${r.status}${detalle ? " · " + detalle : ""}`);
+  }
   return r.json();
 }
 
