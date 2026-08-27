@@ -521,42 +521,53 @@ function renderSinteticos() {
 // ── REM DE INFLACIÓN ─────────────────────────────────────────────────────────────────────────
 // Mismo origen que Sendero CER: Indicadores.xlsx, fila "REM inflación". Se guarda como
 // { 'AAAA-MM': variación mensual esperada en % }.
-let remInfl = {};        // consenso publicado, mes a mes
+let remInfl = {};        // inflación esperada, mes a mes, en %
+let remTC = {};          // tipo de cambio esperado, mes a mes, en NIVEL (no variación)
 let remMensualLarga = null;   // mensual del tramo que el REM no publica (ver cargarREMInflacion)
 let rem12m = null;            // acumulado a 12 meses que publica el REM
+let remTC12m = null;          // TC esperado a 12 meses
 const MESES_REM = ['Enero','Febrero','Marzo','Abril','Mayo','Junio',
                    'Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+
+// Lee un bloque del REM (una fila de rótulo, una de meses y una de valores).
+// -> { serie: { 'AAAA-MM': valor }, doceMeses }
+function leerBloqueREM(filas, nombres) {
+  let i = -1;
+  for (const n of nombres) { i = filas.findIndex(f => f[0] === n); if (i !== -1) break; }
+  if (i === -1) return null;
+  const cab = filas[i + 1], val = filas[i + 2];
+  // El REM arranca en su primer mes publicado, que puede ser uno ya empezado. Se ancla a ese y se
+  // avanza mes a mes, sumando un año cada vez que el mes vuelve para atrás (diciembre -> enero).
+  const serie = {};
+  let anio = new Date().getFullYear(), mesAnterior = -1, primero = true, doceMeses = null;
+  cab.forEach((etiqueta, j) => {
+    const v = parseFloat(String(val[j] || '').replace(',', '.'));
+    if (!etiqueta || etiqueta === '12 Meses') {
+      if (etiqueta === '12 Meses' && !isNaN(v)) doceMeses = v;
+      return;
+    }
+    const mes = MESES_REM.findIndex(m => etiqueta.startsWith(m));
+    if (mes === -1 || isNaN(v)) return;
+    if (!primero && mes < mesAnterior) anio++;
+    mesAnterior = mes; primero = false;
+    serie[`${anio}-${String(mes + 1).padStart(2, '0')}`] = v;
+  });
+  return { serie, doceMeses };
+}
 
 async function cargarREMInflacion() {
   const r = await fetch('Indicadores.xlsx?t=' + Date.now());
   if (!r.ok) throw new Error('Indicadores.xlsx HTTP ' + r.status);
   const wb = XLSX.read(await r.arrayBuffer(), { type: 'array' });
   const filas = XLSX.utils.sheet_to_json(wb.Sheets['Indicadores'], { defval: '', raw: false, header: 1 });
-  let i = filas.findIndex(f => f[0] === 'REM inflación');
-  if (i === -1) i = filas.findIndex(f => f[0] === 'REM');
-  if (i === -1) throw new Error('no está la fila REM inflación');
-  const cab = filas[i + 1], val = filas[i + 2];
 
-  // El REM arranca en su primer mes publicado, que puede ser uno ya empezado. Se ancla a ese y se
-  // avanza mes a mes, sumando un año cada vez que el mes vuelve para atrás (diciembre -> enero).
-  const ahora = new Date();
-  let anio = ahora.getFullYear(), mesAnterior = -1, primero = true;
-  cab.forEach((etiqueta, j) => {
-    if (!etiqueta || etiqueta === '12 Meses') {
-      if (etiqueta === '12 Meses') {
-        const v = parseFloat(String(val[j] || '').replace(',', '.'));
-        if (!isNaN(v)) rem12m = v;
-      }
-      return;
-    }
-    const mes = MESES_REM.findIndex(m => etiqueta.startsWith(m));
-    if (mes === -1) return;
-    const v = parseFloat(String(val[j] || '').replace(',', '.'));
-    if (isNaN(v)) return;
-    if (!primero && mes < mesAnterior) anio++;
-    mesAnterior = mes; primero = false;
-    remInfl[`${anio}-${String(mes + 1).padStart(2, '0')}`] = v;
-  });
+  const inf = leerBloqueREM(filas, ['REM inflación', 'REM']);
+  if (!inf) throw new Error('no está la fila REM inflación');
+  remInfl = inf.serie;
+  rem12m = inf.doceMeses;
+
+  const tc = leerBloqueREM(filas, ['REM tipo de cambio', 'REM tc', 'REM TC']);
+  if (tc) { remTC = tc.serie; remTC12m = tc.doceMeses; }
 
   // Mensual del tramo que el REM no publica, calibrada CONTRA EL RESIDUO y no como promedio de los
   // doce meses. El REM da seis meses y un acumulado a doce: los seis que faltan son exactamente lo
@@ -571,6 +582,50 @@ async function cargarREMInflacion() {
   } else if (rem12m !== null) {
     remMensualLarga = (Math.pow(1 + rem12m / 100, 1 / 12) - 1) * 100;
   }
+}
+
+// Devaluación esperada por el consenso, como TEA.
+//
+// El REM publica NIVELES de TC a fin de cada mes. Para una fecha cualquiera se interpola linealmente
+// entre los dos meses que la rodean; más allá del último mes publicado se usa el dato de 12 meses
+// como ancla y se interpola contra él, marcando el punto como proyectado.
+// -> { tea, nivel, proyectado } o null
+function devaluacionREM(desde, hasta) {
+  const claves = Object.keys(remTC).sort();
+  if (!claves.length || !tcSpot) return null;
+  const dias = Math.round((hasta - desde) / 86400000);
+  if (dias <= 0) return null;
+
+  // fecha de referencia de cada nivel: último día de ese mes
+  const finDe = k => { const [a, m] = k.split('-').map(Number); return new Date(a, m, 0); };
+  const puntos = claves.map(k => ({ t: finDe(k), v: remTC[k] }));
+  // El dato de 12 meses se ancla a 12 meses después del primer mes publicado.
+  if (remTC12m) {
+    const p0 = finDe(claves[0]);
+    puntos.push({ t: new Date(p0.getFullYear() + 1, p0.getMonth(), p0.getDate()), v: remTC12m, largo: true });
+  }
+  puntos.sort((a, b) => a.t - b.t);
+
+  let nivel = null, proyectado = false;
+  const ultimoMensual = finDe(claves[claves.length - 1]);
+  if (hasta <= puntos[0].t) {
+    nivel = puntos[0].v;                       // antes del primer mes: se usa ese nivel
+  } else if (hasta >= puntos[puntos.length - 1].t) {
+    nivel = puntos[puntos.length - 1].v;       // más allá del último ancla: se sostiene
+    proyectado = true;
+  } else {
+    for (let i = 1; i < puntos.length; i++) {
+      const a = puntos[i - 1], b = puntos[i];
+      if (hasta >= a.t && hasta <= b.t) {
+        const w = (hasta - a.t) / (b.t - a.t);
+        nivel = a.v + w * (b.v - a.v);
+        if (b.largo || hasta > ultimoMensual) proyectado = true;
+        break;
+      }
+    }
+  }
+  if (!nivel) return null;
+  return { tea: (Math.pow(nivel / tcSpot, 365 / dias) - 1) * 100, nivel, proyectado };
 }
 
 // Inflación esperada acumulada entre dos fechas, como TEA.
@@ -656,9 +711,86 @@ function renderGrafico() {
       <text x="${W - 195}" y="${mT + 27}" fill="#0d2055">Sintético en pesos</text>
     </g>
   </svg>`;
+
+  // Mismo tooltip que el gráfico de arriba. El eje son los contratos de futuro, así que se apoya en
+  // las filas de la tabla —que ya tienen la LECAP interpolada al plazo de cada contrato— y no en los
+  // puntos sueltos de las dos curvas, que están en plazos distintos.
+  const conSint = filas.filter(r => r.sint !== null);
+  montarTooltip(cont, conSint.map(r => ({ ...r, x: r.dias })), px, W, H, mT, mB,
+    r => {
+      const f = [{ etiqueta: 'Sintético en pesos', valor: pct(r.sint), color: '#00a3e4' }];
+      if (r.lecap) f.push({ etiqueta: 'LECAP interpolada', valor: pct(r.lecap.tasa)
+                            + ' (' + r.lecap.entre[0] + '–' + r.lecap.entre[1] + ')', color: '#0d2055' });
+      if (r.dl) f.push({ etiqueta: 'DL interpolado', valor: pct(r.dl.tasa)
+                         + ' (' + r.dl.entre[0] + '–' + r.dl.entre[1] + ')', color: '#6b7280' });
+      if (r.spread !== null) f.push({ etiqueta: 'Spread bruto', valor: signo(r.spread) + ' pp', color: '#6b7280' });
+      if (r.neto !== null) f.push({ etiqueta: 'Spread neto', valor: signo(r.neto) + ' pp', color: '#6b7280' });
+      return f;
+    },
+    r => `${r.tk} · ${r.dias} días`);
 }
 
 // Devaluación implícita de los futuros contra inflación esperada del REM.
+// Tooltip compartido por los gráficos de la solapa.
+//
+// Se apoya en bandas verticales transparentes, una por punto del eje X, en vez de escuchar el
+// mousemove y buscar el punto más cercano: lo que el usuario apunta es una fecha, no un círculo de
+// 3px, y así sigue funcionando cuando dos curvas se cruzan o quedan una encima de la otra.
+//
+// `filas(p)` devuelve las líneas a mostrar para ese punto: [{ etiqueta, valor, color }].
+function montarTooltip(cont, puntos, px, W, H, mT, mB, filas, titulo) {
+  cont.style.position = 'relative';
+  const svg = cont.querySelector('svg');
+  if (!svg || !puntos.length) return;
+
+  const tip = document.createElement('div');
+  tip.className = 'gd-tip';
+  tip.style.display = 'none';
+  cont.appendChild(tip);
+
+  const ns = 'http://www.w3.org/2000/svg';
+  const capa = document.createElementNS(ns, 'g');
+  svg.appendChild(capa);
+
+  // Ancho de cada banda: hasta la mitad de la distancia a los vecinos.
+  puntos.forEach((pt, i) => {
+    const x = px(pt.x);
+    const izq = i === 0 ? mT * 0 + 0 : (x + px(puntos[i - 1].x)) / 2;
+    const der = i === puntos.length - 1 ? W : (x + px(puntos[i + 1].x)) / 2;
+    const guia = document.createElementNS(ns, 'line');
+    guia.setAttribute('x1', x); guia.setAttribute('x2', x);
+    guia.setAttribute('y1', mT); guia.setAttribute('y2', H - mB);
+    guia.setAttribute('stroke', '#0d2055'); guia.setAttribute('stroke-width', '1');
+    guia.setAttribute('stroke-dasharray', '3 3'); guia.setAttribute('opacity', '0');
+    capa.appendChild(guia);
+
+    const banda = document.createElementNS(ns, 'rect');
+    banda.setAttribute('x', izq); banda.setAttribute('width', Math.max(1, der - izq));
+    banda.setAttribute('y', mT); banda.setAttribute('height', H - mT - mB);
+    banda.setAttribute('fill', 'transparent');
+    banda.style.cursor = 'crosshair';
+    capa.appendChild(banda);
+
+    banda.addEventListener('mouseenter', () => {
+      guia.setAttribute('opacity', '.45');
+      tip.innerHTML = `<b>${titulo(pt)}</b>` + filas(pt).map(f =>
+        `<span><i style="color:${f.color}">■</i> ${f.etiqueta}: <i>${f.valor}</i></span>`).join('');
+      tip.style.display = 'block';
+      // Posición en píxeles reales: el SVG escala con viewBox, así que se traduce por el ancho real.
+      const k = cont.clientWidth / W;
+      const izqPx = x * k;
+      tip.style.left = Math.min(Math.max(8, izqPx + 12), cont.clientWidth - tip.offsetWidth - 8) + 'px';
+      tip.style.top = (mT * k + 8) + 'px';
+    });
+    banda.addEventListener('mouseleave', () => {
+      guia.setAttribute('opacity', '0');
+      tip.style.display = 'none';
+    });
+  });
+}
+
+// Devaluación implícita de los futuros, devaluación esperada por el consenso (REM TC) e inflación
+// esperada (REM inflación). Las tres en TEA y sobre el mismo plazo.
 function renderGraficoREM() {
   const cont = document.getElementById('graf-rem');
   const nota = document.getElementById('nota-rem');
@@ -670,32 +802,37 @@ function renderGraficoREM() {
     if (dias < 10) continue;                    // igual que la tabla: anualizar 3 días no dice nada
     const dev = devaluacionTEA(f, dias);
     const inf = inflacionTEA(liq, f.venc);
-    if (dev === null || !inf) continue;
-    pts.push({ tk, dias, dev, inf: inf.tea, proyectado: inf.proyectado });
+    const rtc = devaluacionREM(liq, f.venc);
+    if (dev === null) continue;
+    pts.push({ tk, x: dias, venc: f.venc, precio: f.precio, dev,
+               inf: inf ? inf.tea : null, infProy: inf ? inf.proyectado : false,
+               rtc: rtc ? rtc.tea : null, rtcNivel: rtc ? rtc.nivel : null,
+               rtcProy: rtc ? rtc.proyectado : false });
   }
-  pts.sort((a, b) => a.dias - b.dias);
+  pts.sort((a, b) => a.x - b.x);
   if (!pts.length) {
     cont.innerHTML = '';
     nota.textContent = 'Faltan datos: hacen falta futuros cotizando y el REM de Indicadores.xlsx.';
     return;
   }
 
-  const W = 900, H = 320, mL = 56, mR = 20, mT = 18, mB = 40;
-  const ys = pts.flatMap(p => [p.dev, p.inf]);
+  const W = 900, H = 340, mL = 56, mR = 20, mT = 18, mB = 40;
+  const ys = pts.flatMap(p => [p.dev, p.inf, p.rtc]).filter(v => v !== null);
   const pad = (Math.max(...ys) - Math.min(...ys)) * 0.2 || 1;
   const y0 = Math.min(...ys) - pad, y1 = Math.max(...ys) + pad;
-  const x1 = Math.max(...pts.map(p => p.dias)) * 1.05;
+  const x1 = Math.max(...pts.map(p => p.x)) * 1.05;
   const px = v => mL + v / x1 * (W - mL - mR);
   const py = v => H - mB - (v - y0) / (y1 - y0) * (H - mT - mB);
 
-  const poli = (campo, color, dash) =>
-    `<polyline fill="none" stroke="${color}" stroke-width="2" ${dash ? 'stroke-dasharray="5 4"' : ''}
-       points="${pts.map(p => px(p.dias).toFixed(1) + ',' + py(p[campo]).toFixed(1)).join(' ')}"/>`;
-  const marcas = (campo, color) => pts.map(p =>
-    `<circle cx="${px(p.dias).toFixed(1)}" cy="${py(p[campo]).toFixed(1)}" r="3.5"
-       fill="${color}" ${p.proyectado && campo === 'inf' ? 'fill-opacity="0.45"' : ''}>
-       <title>${p.tk}: ${fmt(p[campo])}% a ${p.dias} días${p.proyectado && campo === 'inf' ? ' (proyectado)' : ''}</title>
-     </circle>`).join('');
+  const COL = { dev: '#00a3e4', rtc: '#0d2055', inf: '#c0392b' };
+  const serie = (campo, dash) => {
+    const con = pts.filter(p => p[campo] !== null);
+    if (con.length < 2) return '';
+    return `<polyline fill="none" stroke="${COL[campo]}" stroke-width="2" ${dash ? 'stroke-dasharray="5 4"' : ''}
+      points="${con.map(p => px(p.x).toFixed(1) + ',' + py(p[campo]).toFixed(1)).join(' ')}"/>`
+      + con.map(p => `<circle cx="${px(p.x).toFixed(1)}" cy="${py(p[campo]).toFixed(1)}" r="3.5"
+          fill="${COL[campo]}" ${(campo === 'inf' && p.infProy) || (campo === 'rtc' && p.rtcProy) ? 'fill-opacity=".4"' : ''}/>`).join('');
+  };
 
   let ejes = '';
   for (let i = 0; i <= 4; i++) {
@@ -709,29 +846,48 @@ function renderGraficoREM() {
 
   cont.innerHTML = `<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;">
     ${ejes}
-    ${poli('dev', '#00a3e4', false)}${marcas('dev', '#00a3e4')}
-    ${poli('inf', '#c0392b', true)}${marcas('inf', '#c0392b')}
+    ${serie('rtc', true)}
+    ${serie('inf', true)}
+    ${serie('dev', false)}
     <g font-size="11" font-weight="600">
-      <rect x="${W - 250}" y="${mT}" width="10" height="10" fill="#00a3e4"/>
-      <text x="${W - 235}" y="${mT + 9}" fill="#0d2055">Devaluación implícita (Rofex)</text>
-      <rect x="${W - 250}" y="${mT + 18}" width="10" height="10" fill="#c0392b"/>
-      <text x="${W - 235}" y="${mT + 27}" fill="#0d2055">Inflación esperada (REM)</text>
+      <rect x="${W - 260}" y="${mT}" width="10" height="10" fill="${COL.dev}"/>
+      <text x="${W - 245}" y="${mT + 9}" fill="#0d2055">Devaluación implícita (Rofex)</text>
+      <rect x="${W - 260}" y="${mT + 18}" width="10" height="10" fill="${COL.rtc}"/>
+      <text x="${W - 245}" y="${mT + 27}" fill="#0d2055">Devaluación esperada (REM TC)</text>
+      <rect x="${W - 260}" y="${mT + 36}" width="10" height="10" fill="${COL.inf}"/>
+      <text x="${W - 245}" y="${mT + 45}" fill="#0d2055">Inflación esperada (REM)</text>
     </g>
   </svg>`;
 
+  montarTooltip(cont, pts, px, W, H, mT, mB,
+    p => {
+      const f = [];
+      f.push({ etiqueta: 'Futuro', valor: fmt(p.precio, 1) + ' · ' + pct(p.dev), color: COL.dev });
+      if (p.rtc !== null) f.push({ etiqueta: 'REM TC' + (p.rtcProy ? ' (proy)' : ''),
+                                   valor: fmt(p.rtcNivel, 0) + ' · ' + pct(p.rtc), color: COL.rtc });
+      if (p.inf !== null) f.push({ etiqueta: 'Inflación' + (p.infProy ? ' (proy)' : ''),
+                                   valor: pct(p.inf), color: COL.inf });
+      if (p.rtc !== null) f.push({ etiqueta: 'Futuro − REM TC', valor: signo(p.dev - p.rtc) + ' pp', color: '#6b7280' });
+      if (p.inf !== null) f.push({ etiqueta: 'TC real esperado', valor: signo(p.dev - p.inf) + ' pp', color: '#6b7280' });
+      return f;
+    },
+    p => `${p.tk} · ${p.x} días`);
+
   const ult = pts[pts.length - 1];
-  const brecha = ult.dev - ult.inf;
-  const hayProy = pts.some(p => p.proyectado);
+  const hayProy = pts.some(p => p.infProy || p.rtcProy);
+  const conRTC = pts.filter(p => p.rtc !== null);
   nota.innerHTML =
-    `Las dos en TEA y sobre el mismo plazo. La diferencia es la variación esperada del tipo de cambio
-     <strong>real</strong>: por encima, el peso se deprecia en términos reales; por debajo, se aprecia.
-     A ${ult.dias} días la brecha es de <strong>${signo(brecha)} pp</strong>
-     (${fmt(ult.dev)}% contra ${fmt(ult.inf)}%).`
+    `Las tres en TEA y sobre el mismo plazo. <strong>Rofex contra REM TC</strong> es cuánto se paga de más
+     (o de menos) que lo que espera el consenso; <strong>Rofex contra inflación</strong> es la variación
+     esperada del tipo de cambio <strong>real</strong>: por encima, el peso se deprecia en términos reales.
+     Pasá el mouse por el gráfico para ver el detalle de cada contrato.`
+    + (conRTC.length ? ` A ${ult.x} días, Rofex paga ${signo(ult.dev - ult.rtc)} pp contra el REM
+        y ${signo(ult.dev - ult.inf)} pp contra la inflación.` : '')
     + (hayProy
-        ? ` <span style="color:#7a4b00;">Los puntos claros de la línea punteada están más allá del último mes
-            que publica el REM: ahí la inflación se extiende con la mensual implícita del dato de 12 meses
-            (${fmt(remMensualLarga)}% por mes, la que hace calzar el acumulado de 12 meses del propio REM),
-            que es proyección y no consenso publicado.</span>`
+        ? ` <span style="color:#7a4b00;">Los puntos con relleno claro están más allá del último mes que
+            publica el REM: la inflación se extiende con la mensual que hace calzar su acumulado de 12
+            meses (${fmt(remMensualLarga)}%) y el TC se interpola contra el nivel de 12 meses. Es
+            proyección, no consenso publicado.</span>`
         : '');
 }
 
