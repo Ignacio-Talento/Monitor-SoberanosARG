@@ -1,40 +1,50 @@
 #!/usr/bin/env python3
-"""Acumula, día a día, los insumos del spread de sintéticos de la solapa Sintéticos.
+"""Arma el histórico de insumos del spread de sintéticos, hacia atrás y hacia adelante.
 
-POR QUÉ ACUMULAR Y NO BAJAR UNA SERIE. No hay fuente pública de históricos de futuros de dólar:
-Eco publica la foto del día y 1816 no lista futuros. A3 Mercados los tiene, pero hay que pedirlos.
-Así que el histórico se construye desde el día que se enciende esto, igual que historicos.xlsx.
+DE DÓNDE SALEN LOS FUTUROS. Del Centro de Estadísticas de Mercado de A3 Mercados (ex Matba Rofex),
+que expone una API pública sin credenciales: apicem.matbarofex.com.ar/api/v2/closing-prices. Da
+precio de AJUSTE, volumen, interés abierto y tasa implícita por contrato y por rueda, con datos
+desde el 2020-01-02. Es mejor fuente que el scraping de Eco que usa la solapa en vivo:
 
-POR QUÉ GUARDA INSUMOS Y NO EL SPREAD YA CALCULADO. El spread sale de interpolar curvas, elegir
-convenciones de anualización y aplicar comisiones — todo eso vive en sinteticos.html. Si el script
-lo recalculara en Python habría DOS implementaciones de la misma fórmula, y en algún momento
-divergen sin que nadie se entere. Guardando los insumos crudos (precio de cada futuro, tasa de cada
-bono, tipo de cambio) el frontend recalcula el histórico con exactamente las mismas funciones que
-usa para el día de hoy, y una corrección de fórmula se propaga sola hacia atrás.
+  - el ajuste es el precio oficial de cierre, no el último operado, que es lo que corresponde en
+    una serie histórica;
+  - no viene diferido 20 minutos ni falla de forma intermitente;
+  - trae volumen e interés abierto, que dicen si el contrato realmente operó esa rueda.
+
+A cambio publica con un día de rezago —el ajuste sale después del proceso de clearing—, así que la
+rueda de hoy entra recién mañana. Para el intradía la solapa sigue usando Eco.
+
+QUÉ GUARDA. Los INSUMOS de cada rueda, no el spread ya calculado: precio de cada futuro, tasa de
+cada bono y tipo de cambio. El spread sale de interpolar curvas, elegir convenciones de
+anualización y aplicar comisiones, y todo eso vive en sinteticos.html; recalcularlo acá en Python
+sería una segunda implementación de la misma fórmula, y en algún momento divergen sin que nadie se
+entere. Con los insumos crudos el frontend rearma el histórico con las mismas funciones que usa
+para hoy, y una corrección de fórmula se propaga sola hacia atrás.
 
 SALIDA: spreads_sinteticos.json
-    { "2026-08-27": { "tc": 1514.1634,
-                      "fut":   { "DLR/SEP26": 1538.0, ... },
-                      "lecap": { "S30S6": 28.26, ... },      # TEA en %
-                      "dl":    { "D30S6": 9.73, ... } },     # TIR en %
+    { "2026-08-26": { "tc": 1514.16,
+                      "fut":   { "DLR/SEP26": 1538.0, ... },     # precio de ajuste
+                      "vol":   { "DLR/SEP26": 130791, ... },     # volumen de esa rueda
+                      "lecap": { "S30S6": 28.26, ... },          # TEA en %
+                      "dl":    { "D30S6": 9.73, ... } },         # TIR en %
       ... }
 
 USO
-    python actualizar_spreads.py             # agrega la rueda de hoy
-    python actualizar_spreads.py --forzar    # reescribe la de hoy si ya está
+    python actualizar_spreads.py                    # completa lo que falte desde DESDE_POR_DEFECTO
+    python actualizar_spreads.py --desde 2025-06-01 # backfill más largo
+    python actualizar_spreads.py --rehacer          # ignora lo ya guardado y rearma todo
 """
 
 import json
 import os
-import re
 import sys
 import time
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 
 import requests
 
 try:
-    from precios_1816 import Cliente1816, Error1816
+    from precios_1816 import Cliente1816, Error1816, MAX_TICKERS_SERIES
 except ImportError:
     print("ERROR: no se pudo importar precios_1816", file=sys.stderr)
     sys.exit(1)
@@ -42,140 +52,181 @@ except ImportError:
 from actualizar_historicos import hoy_art, leer_tickers
 
 SALIDA = "spreads_sinteticos.json"
-ECO = "https://bonos.ecovalores.com.ar/eco/ticker.php"
+CEM = "https://apicem.matbarofex.com.ar/api/v2/closing-prices"
 BCRA_WORKER = "https://indicadoresbcra.granda-fra.workers.dev"
 
-# Mismos contratos que la solapa. Los vencidos se filtran solos por fecha.
-FUTUROS = ["DLR/AGO26", "DLR/SEP26", "DLR/OCT26", "DLR/NOV26", "DLR/DIC26",
-           "DLR/ENE27", "DLR/FEB27", "DLR/MAR27", "DLR/ABR27"]
+# Desde dónde se arma si no se pide otra cosa. Antes de 2026 las LECAPs y los dólar linked que hoy
+# sigue el monitor casi no existían, así que la curva quedaría armada con dos puntos y la
+# interpolación diría cualquier cosa. Se puede pisar con --desde para un backfill más largo.
+DESDE_POR_DEFECTO = "2026-01-02"
 
-MESES = {"ENE": 1, "FEB": 2, "MAR": 3, "ABR": 4, "MAY": 5, "JUN": 6,
-         "JUL": 7, "AGO": 8, "SEP": 9, "OCT": 10, "NOV": 11, "DIC": 12}
+CABECERAS = {"User-Agent": "Mozilla/5.0", "Accept": "application/json",
+             "Referer": "https://cem.matbarofex.com.ar/"}
 
-CABECERAS = {
-    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
-    "Accept": "text/html",
-    "Referer": "https://bonos.ecovalores.com.ar",
-}
+MES_A_TXT = {1: "ENE", 2: "FEB", 3: "MAR", 4: "ABR", 5: "MAY", 6: "JUN",
+             7: "JUL", 8: "AGO", 9: "SEP", 10: "OCT", 11: "NOV", 12: "DIC"}
 
 
-def venc_contrato(tk):
-    """DLR/SEP26 -> date(2026, 9, 30). El vencimiento es siempre fin de mes."""
-    m = MESES.get(tk[4:7])
-    a = 2000 + int(tk[7:9])
-    if not m:
+def a_ticker_solapa(symbol):
+    """DLR082026 -> DLR/AGO26. Devuelve None para lo que no sea un futuro de dólar simple.
+
+    Las opciones vienen en el mismo listado como 'DLR082026 Call 1500': se descartan por el
+    espacio. Si entraran, el frontend las tomaría como contratos y armaría curvas con strikes.
+    """
+    if not symbol or " " in symbol or not symbol.startswith("DLR"):
         return None
-    return date(a + (m == 12), (m % 12) + 1, 1) - timedelta(days=1)
+    resto = symbol[3:]
+    if len(resto) != 6 or not resto.isdigit():
+        return None
+    mes, anio = int(resto[:2]), int(resto[2:])
+    if mes not in MES_A_TXT:
+        return None
+    return f"DLR/{MES_A_TXT[mes]}{anio % 100:02d}"
 
 
-def precio_futuro(tk, intentos=3):
-    """Precio de cierre del contrato, o None. Eco devuelve la página sin datos de forma
-    intermitente —medido, ~40% de las consultas—, así que se reintenta."""
-    for i in range(intentos):
+def futuros_cem(desde, hasta):
+    """-> { 'AAAA-MM-DD': { 'DLR/SEP26': {'p': ajuste, 'v': volumen} } }"""
+    out = {}
+    pagina, porPagina = 1, 1000
+    while True:
         try:
-            r = requests.get(f"{ECO}?t={tk}", headers=CABECERAS, timeout=20)
-            m = re.search(r'<td class="precioticker">\s*([\d.,]+)\s*</td>', r.text)
-            if m:
-                return float(m.group(1).replace(".", "").replace(",", "."))
-        except Exception:
-            pass
-        time.sleep(1.5 * (i + 1))
-    return None
+            r = requests.get(CEM, headers=CABECERAS, timeout=60, params={
+                "product": "DLR", "from": desde, "to": hasta,
+                "page": pagina, "pageSize": porPagina, "sort": "dateTime", "sortDir": "ASC"})
+            r.raise_for_status()
+            d = r.json()
+        except Exception as e:
+            print(f"AVISO: CEM falló en la página {pagina} ({e})", file=sys.stderr)
+            break
+        filas = d.get("data") or []
+        for x in filas:
+            tk = a_ticker_solapa(x.get("symbol"))
+            precio = x.get("settlement") or x.get("close")
+            if not tk or not precio:
+                continue
+            f = str(x.get("dateTime", ""))[:10]
+            out.setdefault(f, {})[tk] = {"p": round(float(precio), 4),
+                                         "v": int(x.get("volume") or 0)}
+        total = d.get("totalEntries")
+        if len(filas) < porPagina or (total and pagina * porPagina >= total):
+            break
+        pagina += 1
+        time.sleep(0.3)
+    return out
 
 
-def tc_mayorista():
-    """A3500 más reciente, el mismo que usa el monitor para valuar los dólar linked."""
-    hoy = hoy_art()
-    desde = (hoy - timedelta(days=20)).strftime("%Y-%m-%d")
+def tc_bcra(desde, hasta):
+    """-> { 'AAAA-MM-DD': A3500 }"""
     try:
-        r = requests.get(f"{BCRA_WORKER}/?serie=usd&desde={desde}"
-                         f"&hasta={hoy.strftime('%Y-%m-%d')}", timeout=25)
+        r = requests.get(f"{BCRA_WORKER}/?serie=usd&desde={desde}&hasta={hasta}", timeout=40)
         det = (r.json().get("results") or [{}])[0].get("detalle") or []
-        det = [d for d in det if d.get("fecha") and d.get("valor")]
-        if det:
-            det.sort(key=lambda d: d["fecha"], reverse=True)
-            return float(det[0]["valor"])
+        return {d["fecha"]: float(d["valor"]) for d in det if d.get("fecha") and d.get("valor")}
     except Exception as e:
         print(f"AVISO: no se pudo traer el TC mayorista ({e})", file=sys.stderr)
-    return None
-
-
-def tasas_1816(cli, items, fecha):
-    """-> { ticker_del_monitor: tea_en_% } para los items dados."""
-    if not items:
         return {}
+
+
+def series_tea(cli, items, desde, hasta):
+    """-> { 'AAAA-MM-DD': { ticker_del_monitor: tea_% } } para los items dados."""
     porT = {it["t1816"]: it["eco"] for it in items if it["t1816"]}
-    filas = None
-    for espera in (0, 15, 45):
-        if espera:
-            print(f"  reintentando en {espera}s...", file=sys.stderr)
-            time.sleep(espera)
-        try:
-            filas = cli.precios(sorted(porT), ["tea"], moneda="ars", fecha_operacion=fecha)
-            break
-        except Error1816 as e:
-            ultimo = e
-    if filas is None:
-        print(f"AVISO: 1816 no respondió ({ultimo})", file=sys.stderr)
-        return {}
     out = {}
-    for f in filas:
-        v = f.get("tea")
-        eco = porT.get(f.get("ticker"))
-        if eco and isinstance(v, (int, float)):
-            out[eco] = round(v * 100, 6)     # 1816 devuelve la tea como decimal
+    tickers = sorted(porT)
+    for i in range(0, len(tickers), MAX_TICKERS_SERIES):
+        lote = tickers[i:i + MAX_TICKERS_SERIES]
+        filas = None
+        for espera in (0, 15, 45):
+            if espera:
+                print(f"    reintentando en {espera}s...", file=sys.stderr)
+                time.sleep(espera)
+            try:
+                filas = cli.series(lote, ["tea"], moneda="ars",
+                                   fecha_inicial=desde, fecha_final=hasta)
+                break
+            except Error1816 as e:
+                ultimo = e
+        if filas is None:
+            print(f"AVISO: 1816 falló en un lote ({ultimo})", file=sys.stderr)
+            continue
+        for f in filas:
+            v = f.get("tea")
+            eco = porT.get(f.get("ticker"))
+            fecha = str(f.get("fecha", ""))[:10]
+            if eco and fecha and isinstance(v, (int, float)):
+                out.setdefault(fecha, {})[eco] = round(v * 100, 6)
     return out
 
 
 def main(argv):
-    forzar = "--forzar" in argv
-    hoy = hoy_art()
-    clave = hoy.strftime("%Y-%m-%d")
+    rehacer = "--rehacer" in argv
+    desde = DESDE_POR_DEFECTO
+    if "--desde" in argv:
+        desde = argv[argv.index("--desde") + 1]
+    # El ajuste del día sale recién después del clearing, así que se pide hasta ayer.
+    hasta = (hoy_art() - timedelta(days=1)).strftime("%Y-%m-%d")
 
     datos = {}
-    if os.path.exists(SALIDA):
+    if os.path.exists(SALIDA) and not rehacer:
         with open(SALIDA, encoding="utf-8") as fh:
             datos = json.load(fh)
-    if clave in datos and not forzar:
-        print(f"Ya existe la rueda {clave}, saliendo. (--forzar para reescribirla)")
+
+    print(f"Insumos del spread · {desde} a {hasta}"
+          + (f" · {len(datos)} ruedas ya guardadas" if datos else ""))
+
+    print("Futuros (CEM de A3)...")
+    fut = futuros_cem(desde, hasta)
+    print(f"  {len(fut)} ruedas con futuros")
+    if not fut:
+        print("Sin futuros, no hay nada que armar.", file=sys.stderr)
+        return 1
+
+    # Sólo se piden las tasas de las ruedas que falten: 1816 cobra por ticker y por día.
+    faltan = sorted(f for f in fut if rehacer or f not in datos)
+    if not faltan:
+        print("No hay ruedas nuevas.")
         return 0
-
-    print(f"Insumos del spread para {clave}")
-
-    fut = {}
-    for tk in FUTUROS:
-        v = venc_contrato(tk)
-        if not v or v <= hoy:
-            continue
-        p = precio_futuro(tk)
-        if p:
-            fut[tk] = p
-        else:
-            print(f"  {tk}: sin precio tras 3 intentos", file=sys.stderr)
-    print(f"  futuros: {len(fut)}")
+    print(f"  {len(faltan)} ruedas nuevas: {faltan[0]} a {faltan[-1]}")
 
     items = leer_tickers()
     lecaps = [it for it in items if it["hoja"] == "LECAPS"]
     dls = [it for it in items if it["hoja"] == "USD Linked"]
-
     cli = Cliente1816()
-    tLecap = tasas_1816(cli, lecaps, clave)
-    tDL = tasas_1816(cli, dls, clave)
-    print(f"  lecaps: {len(tLecap)} · dólar linked: {len(tDL)}")
 
-    tc = tc_mayorista()
-    print(f"  TC mayorista: {tc}")
+    print(f"Tasas de 1816 ({len(lecaps)} lecaps + {len(dls)} dólar linked)...")
+    tLecap = series_tea(cli, lecaps, faltan[0], faltan[-1])
+    tDL = series_tea(cli, dls, faltan[0], faltan[-1])
+    print(f"  lecaps: {len(tLecap)} ruedas · dólar linked: {len(tDL)} ruedas")
 
-    # Sin futuros o sin bonos no hay spread posible: no se escribe una fila hueca que después
-    # aparezca como un bache en el gráfico.
-    if not fut or not tLecap or not tDL:
-        print("Faltan insumos, no se guarda la rueda.", file=sys.stderr)
-        return 1
+    tcs = tc_bcra(faltan[0], faltan[-1])
+    print(f"  TC mayorista: {len(tcs)} ruedas")
 
-    datos[clave] = {"tc": tc, "fut": fut, "lecap": tLecap, "dl": tDL}
+    nuevas, sinTasas = 0, 0
+    for f in faltan:
+        # El A3500 de una rueda puede no estar publicado todavía; se usa el último anterior, que es
+        # lo mismo que hace el monitor al valuar los dólar linked.
+        tc = tcs.get(f)
+        if tc is None:
+            previas = [k for k in sorted(tcs) if k <= f]
+            tc = tcs[previas[-1]] if previas else None
+        if not tc or not tLecap.get(f) or not tDL.get(f):
+            sinTasas += 1
+            continue
+        datos[f] = {"tc": round(tc, 4),
+                    "fut": {k: v["p"] for k, v in fut[f].items()},
+                    "vol": {k: v["v"] for k, v in fut[f].items()},
+                    "lecap": tLecap[f], "dl": tDL[f]}
+        nuevas += 1
+
+    if sinTasas:
+        print(f"  {sinTasas} ruedas sin tasas o sin TC, se saltean")
+    if not nuevas:
+        print("No se agregó ninguna rueda.")
+        return 0
+
     with open(SALIDA, "w", encoding="utf-8") as fh:
         json.dump(datos, fh, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
-    print(f"\n{SALIDA} actualizado: {len(datos)} ruedas")
+    fechas = sorted(datos)
+    print(f"\n{SALIDA}: +{nuevas} ruedas · {len(datos)} en total "
+          f"({fechas[0]} a {fechas[-1]}) · {os.path.getsize(SALIDA) // 1024} kB")
     return 0
 
 

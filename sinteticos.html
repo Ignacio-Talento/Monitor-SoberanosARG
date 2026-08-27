@@ -689,11 +689,11 @@ function renderHistorico() {
   if (pts.length < 2) {
     cont.innerHTML = '';
     nota.innerHTML = pts.length
-      ? `Sólo hay <strong>${pts.length} rueda</strong> guardada de ${contrato}
-         (spread en pesos ${signo(pts[0].pesos)} pp). El histórico se acumula desde el 27/08/2026:
-         no existe una fuente pública de series de futuros, así que se construye día a día con el
-         job diario. Con dos semanas ya se puede ver un rango.`
-      : `Todavía no hay ruedas guardadas de ${contrato}.`;
+      ? `Sólo hay <strong>${pts.length} rueda</strong> con spread calculable para ${contrato}
+         (${signo(pts[0].pesos)} pp en pesos). Hace falta que en esa rueda existan al menos dos
+         LECAPs y dos dólar linked que envuelvan el plazo del contrato; en los meses más viejos
+         había un solo DL y la curva no se puede interpolar.`
+      : `No hay ruedas con spread calculable para ${contrato}.`;
     return;
   }
 
@@ -758,10 +758,11 @@ function renderHistorico() {
      por debajo, el sintético. Hoy está en <strong>${signo(ult.pesos)} pp</strong> en pesos, contra
      un rango de ${signo(Math.min(...eps))} a ${signo(Math.max(...eps))} en las
      ${pts.length} ruedas guardadas.
-     <span class="no-p">El histórico arranca el 27/08/2026: no hay fuente pública de series de
-     futuros, así que se acumula día a día con el job diario. El último punto no tiene por qué
-     coincidir con las tablas de arriba: acá las tasas de los bonos son las que publica 1816 al
-     cierre de esa rueda, y allá las calcula el motor sobre el precio en vivo.</span>`;
+     <span class="no-p">Los futuros salen del Centro de Estadísticas de A3 Mercados, con el
+     <strong>precio de ajuste</strong> de cada rueda —el oficial de cierre, no el último operado— y
+     las tasas de los bonos son las que publica 1816 ese día. Por eso el último punto no tiene por
+     qué coincidir con las tablas de arriba, que usan el precio en vivo de Eco. El ajuste sale
+     después del clearing, así que el histórico va con un día de rezago.</span>`;
 }
 
 // ── REM DE INFLACIÓN ─────────────────────────────────────────────────────────────────────────
