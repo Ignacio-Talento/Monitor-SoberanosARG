@@ -664,10 +664,14 @@ function renderHistorico() {
     const contratos = [...new Set(fechas.flatMap(f => Object.keys(historico[f].fut || {})))].sort();
     sel.innerHTML = contratos.map(c => `<option value="${c}">${c}</option>`).join('');
     // Arranca en el contrato con más ruedas: es el que tiene el gráfico más informativo.
-    let mejor = null, n = -1;
+    let mejor = null, n = -1, vMejor = null;
     for (const c of contratos) {
       const k = fechas.filter(f => (historico[f].fut || {})[c]).length;
-      if (k > n) { n = k; mejor = c; }
+      const v = MonitorCore.vencContrato(c);
+      // Con la misma cantidad de ruedas gana el de vencimiento más cercano: son los que
+      // realmente operan. Sin este desempate, el primer día —cuando todos empatan en 1— salía
+      // DLR/ABR27, que es justamente el que no opera.
+      if (k > n || (k === n && v && vMejor && v < vMejor)) { n = k; mejor = c; vMejor = v; }
     }
     if (mejor) sel.value = mejor;
   }
@@ -752,7 +756,9 @@ function renderHistorico() {
      un rango de ${signo(Math.min(...eps))} a ${signo(Math.max(...eps))} en las
      ${pts.length} ruedas guardadas.
      <span class="no-p">El histórico arranca el 27/08/2026: no hay fuente pública de series de
-     futuros, así que se acumula día a día con el job diario.</span>`;
+     futuros, así que se acumula día a día con el job diario. El último punto no tiene por qué
+     coincidir con las tablas de arriba: acá las tasas de los bonos son las que publica 1816 al
+     cierre de esa rueda, y allá las calcula el motor sobre el precio en vivo.</span>`;
 }
 
 // ── REM DE INFLACIÓN ─────────────────────────────────────────────────────────────────────────
