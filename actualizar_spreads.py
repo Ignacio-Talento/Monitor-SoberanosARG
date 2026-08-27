@@ -4,15 +4,15 @@
 DE DÓNDE SALEN LOS FUTUROS. Del Centro de Estadísticas de Mercado de A3 Mercados (ex Matba Rofex),
 que expone una API pública sin credenciales: apicem.matbarofex.com.ar/api/v2/closing-prices. Da
 precio de AJUSTE, volumen, interés abierto y tasa implícita por contrato y por rueda, con datos
-desde el 2020-01-02. Es mejor fuente que el scraping de Eco que usa la solapa en vivo:
+desde el 2020-01-02:
 
   - el ajuste es el precio oficial de cierre, no el último operado, que es lo que corresponde en
     una serie histórica;
-  - no viene diferido 20 minutos ni falla de forma intermitente;
   - trae volumen e interés abierto, que dicen si el contrato realmente operó esa rueda.
 
-A cambio publica con un día de rezago —el ajuste sale después del proceso de clearing—, así que la
-rueda de hoy entra recién mañana. Para el intradía la solapa sigue usando Eco.
+A cambio el AJUSTE se publica con un día de rezago —sale después del proceso de clearing—, así que
+la rueda de hoy entra recién mañana. La solapa muestra el intradía con el otro endpoint del mismo
+CEM (tick-prices, vía /api/futuros), que sí tiene las operaciones del día.
 
 QUÉ GUARDA. Los INSUMOS de cada rueda, no el spread ya calculado: precio de cada futuro, tasa de
 cada bono y tipo de cambio. El spread sale de interpolar curvas, elegir convenciones de
