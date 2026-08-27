@@ -478,8 +478,11 @@ function renderFuturos() {
     .filter(x => x.dias > 0).sort((a, b) => a.dias - b.dias);
   tb.innerHTML = filas.map(({ tk, f, dias }) => {
     const directa = tcSpot ? (f.precio / tcSpot - 1) * 100 : null;
-    return `<tr>
-      <td class="lft">${tk}</td>
+    // Sin volumen = el contrato no operó en esta rueda, y su precio es de antes. Importa marcarlo:
+    // el 27/08/2026 DLR/ABR27 no operó y su precio sostenía el spread más ancho de toda la tabla.
+    const inerte = !f.volumenVN;
+    return `<tr${inerte ? ' style="opacity:.62"' : ''}>
+      <td class="lft">${tk}${inerte ? ' <span class="no-p" style="font-size:9px;">sin operar</span>' : ''}</td>
       <td>${fmtFechaDMY(f.venc)}</td>
       <td>${dias}</td>
       <td>${fmt(f.precio, 1)}</td>
@@ -497,6 +500,16 @@ function renderFuturos() {
     + ` <span style="color:#7a4b00;">Eco publica información de BYMA <strong>diferida 20 minutos</strong>,
        así que estos precios no son en vivo.</span> <strong>Últ. op.</strong> es la hora de la última
        operación del contrato: si es de hace rato, el precio no se movió aunque el mercado sí.`
+    + (() => {
+        const quietos = filas.filter(x => !x.f.volumenVN).map(x => x.tk);
+        const finos = filas.filter(x => x.f.volumenVN && x.f.volumenVN < 1000).map(x => x.tk);
+        let t = '';
+        if (quietos.length) t += ` <span style="color:#7a4b00;"><strong>${quietos.join(', ')}</strong>
+          no operó en esta rueda: su precio es de antes y las tasas que salen de él no son de hoy.</span>`;
+        if (finos.length) t += ` <span style="color:#7a4b00;">${finos.join(', ')} operó muy poco
+          (menos de 1.000 de volumen), así que su precio es indicativo.</span>`;
+        return t;
+      })()
     + (futurosFallidos.length
         ? ` <span style="color:#7a4b00;">Sin dato: ${futurosFallidos.join(', ')}.</span>`
         : '');
@@ -514,8 +527,10 @@ function renderSinteticos() {
         : 'Sintético en pesos · y bono DL sobre el sintético';
     }
     const ref = i => i ? `<span class="no-p" style="font-size:9px;"> (${i.entre[0]}–${i.entre[1]})</span>` : '';
-    return `<tr>
-      <td class="lft">${r.tk}</td>
+    const f = futuros[r.tk] || {};
+    const inerte = !f.volumenVN;
+    return `<tr${inerte ? ' style="opacity:.62"' : ''}>
+      <td class="lft">${r.tk}${inerte ? ' <span class="no-p" style="font-size:9px;">sin operar</span>' : ''}</td>
       <td>${r.dias}</td>
       <td>${r.lecap ? pct(r.lecap.tasa) : '—'}${ref(r.lecap)}</td>
       <td>${r.dl ? pct(r.dl.tasa) : '—'}${ref(r.dl)}</td>
