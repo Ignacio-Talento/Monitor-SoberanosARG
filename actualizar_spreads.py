@@ -269,8 +269,11 @@ def main(argv):
     desde = DESDE_POR_DEFECTO
     if "--desde" in argv:
         desde = argv[argv.index("--desde") + 1]
-    # El ajuste del día sale recién después del clearing, así que se pide hasta ayer.
-    hasta = (hoy_art() - timedelta(days=1)).strftime("%Y-%m-%d")
+    # Se pide hasta HOY aunque el ajuste del día normalmente no esté todavía: si no está, el CEM
+    # simplemente no devuelve esa rueda y no cuesta nada. Recortar a ayer garantizaba perderla
+    # incluso el día que A3 publique más temprano. Verificado el 27/08/2026 a las 18:36: el ajuste
+    # de ese mismo día aún no estaba, así que en la práctica el histórico va un día atrás.
+    hasta = hoy_art().strftime("%Y-%m-%d")
 
     datos = {}
     if os.path.exists(SALIDA) and not rehacer:
