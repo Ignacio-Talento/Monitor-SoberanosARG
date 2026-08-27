@@ -380,7 +380,9 @@
 <script>
 const EXCEL_URL = 'Instrumentos.xlsx';
 const BCRA_URL  = 'https://indicadoresbcra.granda-fra.workers.dev';
-const FERIADOS_WORKER = 'https://feriados-proxy.granda-fra.workers.dev';
+// `FERIADOS_WORKER` lo declara monitor-core.js, que carga antes. Redeclararlo con const acá es un
+// SyntaxError y mata la página ENTERA: el bloque <script> no se evalúa y la solapa queda
+// vacía, sin más pista que un error en la consola.
 let lecaps = [];
 // `precios` lo declara monitor-core.js, que carga antes. Redeclararlo con let acá sería un
 // SyntaxError —dos let del mismo nombre en el scope global— y mataría la página entera,

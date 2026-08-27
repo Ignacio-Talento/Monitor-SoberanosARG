@@ -274,7 +274,9 @@
 
 <script>
 const BCRA_URL  = 'https://indicadoresbcra.granda-fra.workers.dev';
-const ECO_URL   = 'https://ecovalores-proxy.granda-fra.workers.dev';
+// `ECO_URL` lo declara monitor-core.js, que carga antes. Redeclararlo con const acá es un
+// SyntaxError y mata la página ENTERA: el bloque <script> no se evalúa y la solapa queda
+// vacía, sin más pista que un error en la consola.
 const EXCEL_URL = 'Instrumentos.xlsx';
 
 // Contratos de futuros de dólar (plazo calculado dinámicamente, no hardcodeado)
