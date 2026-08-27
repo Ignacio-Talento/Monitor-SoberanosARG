@@ -255,19 +255,27 @@
 
   <div class="panel">
     <div style="display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;">
-      <div class="panel-title" style="margin-bottom:0;">Comisión del futuro</div>
-      <div style="display:flex;align-items:center;gap:10px;">
-        <input id="inp-comision" class="rot-inp" type="number" step="0.05" min="0" value="0.1"
-               oninput="onComision(this.value)" style="width:90px;">
-        <span class="nota" style="margin:0;">%&nbsp;sobre el nocional</span>
+      <div class="panel-title" style="margin-bottom:0;">Comisiones</div>
+      <div style="display:flex;align-items:center;gap:18px;flex-wrap:wrap;">
+        <label class="nota" style="margin:0;display:flex;align-items:center;gap:7px;">LECAP
+          <input id="com-lecap" class="rot-inp" type="number" step="0.05" min="0" value="0.5"
+                 oninput="onComision('lecap', this.value)" style="width:78px;"> %</label>
+        <label class="nota" style="margin:0;display:flex;align-items:center;gap:7px;">Bono DL
+          <input id="com-dl" class="rot-inp" type="number" step="0.05" min="0" value="0.5"
+                 oninput="onComision('dl', this.value)" style="width:78px;"> %</label>
+        <label class="nota" style="margin:0;display:flex;align-items:center;gap:7px;">Futuro
+          <input id="com-fut" class="rot-inp" type="number" step="0.05" min="0" value="0.1"
+                 oninput="onComision('fut', this.value)" style="width:78px;"> %</label>
       </div>
       <div class="precio-st" id="estado-datos">Cargando…</div>
     </div>
     <div class="nota" style="margin-top:12px;">
-      Las dos alternativas compran un bono, así que la comisión de bono se cancela y no mueve el spread:
-      lo único que el sintético paga de más es <strong>la comisión del futuro</strong>. El spread neto la descuenta,
-      anualizada al plazo de cada contrato — por eso pesa mucho más en los vencimientos cortos que en los largos.
-      No incluye el costo de la garantía inmovilizada en Rofex, que depende del aforo de cada cliente.
+      El <strong>spread bruto</strong> compara tasas de mercado, como el informe. El <strong>neto</strong> le aplica
+      las tres comisiones: la de la LECAP baja su tasa, y las del bono DL y el futuro bajan la del sintético.
+      Si las de LECAP y bono DL son iguales se cancelan casi por completo y el neto queda a un paso del bruto;
+      la del futuro es la que el sintético paga de más siempre. Todas se anualizan al plazo de cada contrato,
+      así que pesan mucho más en los vencimientos cortos. No incluye la garantía inmovilizada en Rofex,
+      que depende del aforo de cada cliente.
     </div>
   </div>
 
@@ -337,7 +345,7 @@
 
 let futuros = {};        // { 'DLR/SEP26': { precio, venc, dias } }
 let futurosFallidos = [];
-let comisionFut = 0.1;   // % por punta, SÓLO la del futuro (ver costoExtraTEA)
+let comisiones = { lecap: 0.5, dl: 0.5, fut: 0.1 };   // % por operación
 let tcSpot = null;
 
 // Hasta ABR27: Rofex lista los contratos con unos ocho meses de anticipación y MAY27/JUN27
@@ -410,18 +418,15 @@ function devaluacionTEA(f, dias) {
   return (Math.pow(f.precio / tcSpot, 365 / dias) - 1) * 100;
 }
 
-// Costo que diferencia al sintético, anualizado.
-//
-// OJO CON QUÉ SE COBRA. Las dos alternativas compran UN bono: la LECAP directa paga comisión de
-// bono, y el sintético también (la paga sobre el dólar linked). Esa punta se cancela y no mueve el
-// spread. Lo único que el sintético paga de más es la comisión DEL FUTURO, que además suele ser
-// bastante menor que la de un bono. Cobrarle una punta de bono entera —como se hacía acá al
-// principio— sobreestimaba el costo y daba vuelta el veredicto en casi todas las filas.
-function costoExtraTEA(dias) {
-  if (dias <= 0) return 0;
-  const c = comisionFut / 100;
-  if (c <= 0) return 0;
-  return (Math.pow(1 / (1 - c), 365 / dias) - 1) * 100;
+// Una comisión aplicada a una tasa ya anualizada. No hace falta el precio: comprar a P(1+c) en
+// lugar de P deja (1 + TEA_neta) = (1 + TEA_bruta) / (1+c)^(365/d), así que alcanza con dividir.
+// `sobreNocional` es para el futuro, donde el costo no encarece una compra sino que achica lo que
+// se cobra al vender: ahí el factor es (1-c)^(365/d) y multiplica en vez de dividir.
+function netaDeComision(tasaPct, comPct, dias, sobreNocional) {
+  if (dias <= 0 || !comPct) return tasaPct;
+  const c = comPct / 100;
+  const f = Math.pow(sobreNocional ? (1 - c) : 1 / (1 + c), 365 / dias);
+  return ((1 + tasaPct / 100) * f - 1) * 100;
 }
 
 function filasSinteticos() {
@@ -444,9 +449,13 @@ function filasSinteticos() {
       sint = ((1 + iD.tasa / 100) * (1 + dev / 100) - 1) * 100;
       if (iL) {
         spread = iL.tasa - sint;
-        // El costo extra siempre juega EN CONTRA del sintético, sea cual sea el signo del spread:
-        // suma al spread cuando ya favorece a la LECAP y lo achica cuando favorece al sintético.
-        neto = spread + costoExtraTEA(dias);
+        // Neto: cada pata con su propia comisión. La LECAP se encarece por la suya; el sintético,
+        // por la del bono DL (que compra) y la del futuro (que vende).
+        const lecapNeta = netaDeComision(iL.tasa, comisiones.lecap, dias, false);
+        const dlNeta = netaDeComision(iD.tasa, comisiones.dl, dias, false);
+        const devNeta = netaDeComision(dev, comisiones.fut, dias, true);
+        const sintNeto = ((1 + dlNeta / 100) * (1 + devNeta / 100) - 1) * 100;
+        neto = lecapNeta - sintNeto;
       }
     }
     out.push({ tk, dias, dev, lecap: iL, dl: iD, sint, spread, neto, venc: f.venc, precio: f.precio });
@@ -560,7 +569,7 @@ function renderGrafico() {
 }
 
 function redibujar() { renderFuturos(); renderSinteticos(); renderGrafico(); }
-function onComision(v) { const x = parseFloat(v); comisionFut = isNaN(x) ? 0 : Math.max(0, x); redibujar(); }
+function onComision(cual, v) { const x = parseFloat(v); comisiones[cual] = isNaN(x) ? 0 : Math.max(0, x); redibujar(); }
 
 // ── CARGA ────────────────────────────────────────────────────────────────────────────────────
 function itemsPedido() {
