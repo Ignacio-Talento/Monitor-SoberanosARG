@@ -670,10 +670,17 @@ function renderHistorico() {
   // ya vencieron también tienen historia que sirve mirar.
   if (!sel.options.length) {
     const contratos = [...new Set(fechas.flatMap(f => Object.keys(historico[f].fut || {})))].sort();
-    sel.innerHTML = contratos.map(c => `<option value="${c}">${c}</option>`).join('');
+    const hoy = new Date(); hoy.setHours(0, 0, 0, 0);
+    const vivo = c => { const v = MonitorCore.vencContrato(c); return v && v > hoy; };
+    sel.innerHTML = contratos.map(c =>
+      `<option value="${c}">${c}${vivo(c) ? '' : ' (vencido)'}</option>`).join('');
     // Arranca en el contrato con más ruedas: es el que tiene el gráfico más informativo.
+    // El contrato inicial se busca entre los VIGENTES. El criterio de 'más ruedas' solo elegía
+    // siempre uno viejo —cuanto antes venció, más historia acumuló—, y arrancaba mostrando un
+    // contrato de enero que ya no se puede operar. Los vencidos quedan en el selector, que para
+    // mirar historia sirven.
     let mejor = null, n = -1, vMejor = null;
-    for (const c of contratos) {
+    for (const c of contratos.filter(vivo).length ? contratos.filter(vivo) : contratos) {
       // Se cuentan las ruedas con spread CALCULABLE, no las apariciones del contrato: un futuro
       // puede estar guardado y aun así no dar spread —porque vence en menos de 10 días o porque
       // ese día faltaba la curva—. Contando apariciones, el primer día salía elegido DLR/AGO26,
