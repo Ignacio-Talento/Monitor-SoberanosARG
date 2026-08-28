@@ -195,7 +195,7 @@ def main():
         print("ERROR: sin cliente de 1816. Hace falta el secret API_1816_KEY.")
         return 1
 
-    hoy = hoy_art().date()
+    hoy = hoy_art()          # ya viene como date, en calendario argentino
     fer = feriados(hoy.year)
     if not es_habil(hoy, fer):
         print(f"{hoy} no es rueda hábil; no se arma informe.")
