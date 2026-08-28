@@ -273,14 +273,19 @@
 
   <!-- CAUCION -->
   <div class="caucion">
-    <div class="caucion-header"><div class="caucion-title">Caución de referencia</div></div>
+    <div class="caucion-header"><div class="caucion-title">Tasa de fondeo de referencia</div></div>
     <div class="caucion-body">
       <div class="caucion-row" style="justify-content: space-between; align-items: flex-start;">
         <div style="display:flex; align-items:flex-end; gap:32px; flex-wrap:wrap;">
           <div class="caucion-input-wrap">
-            <div class="caucion-lbl">TNA Caución 1d (%)</div>
+            <div class="caucion-lbl">TNA de fondeo 1d (%)</div>
             <input class="caucion-input" id="caucion-tna-input" type="number" step="0.01" value="20" placeholder="ej: 20" oninput="recalcCaucion()">
             <div style="font-size:9px;color:var(--text-3);font-family:var(--mono);margin-top:2px;" id="caucion-fuente"></div>
+            <div style="font-size:10px;color:var(--text-3);margin-top:6px;max-width:330px;line-height:1.45;">
+              El valor que viene cargado <strong>no es la caución bursátil</strong>: es la tasa de
+              pases entre terceros a 1 día que publica el BCRA, que es el proxy más cercano
+              disponible. Si tenés la caución de tu agente, pisá el número.
+            </div>
           </div>
           <div class="caucion-results">
             <div class="caucion-stat"><div class="lbl">TNA</div><div class="val" id="cau-tna">—</div></div>
@@ -587,7 +592,12 @@ async function cargarCaucionBCRA() {
       const val = parseFloat(det[0].valor);
       if (!isNaN(val)) {
         document.getElementById('caucion-tna-input').value = val.toFixed(2);
-        document.getElementById('caucion-fuente').textContent = `BCRA · ${det[0].fecha}`;
+        // Se nombra la serie, no "caución": la 150 del BCRA es la tasa de PASES ENTRE TERCEROS a
+        // 1 día. Es el proxy más cercano que hay publicado —no existe fuente pública de caución
+        // bursátil: el BCRA no la publica, 1816 no la tiene y la API de BYMA pide OAuth— pero es
+        // otro mercado, así que el campo dice de dónde sale y el usuario decide si lo pisa.
+        document.getElementById('caucion-fuente').textContent =
+          `Pases entre terceros 1d · BCRA · ${det[0].fecha}`;
       }
     }
   } catch(e) { console.warn('Caución BCRA error:', e); }

@@ -43,7 +43,10 @@ from statistics import median
 
 import requests
 
-from actualizar_historicos import cliente_1816, hoy_art, leer_tickers
+from openpyxl import load_workbook
+
+from actualizar_historicos import (INSTRUMENTOS_FILE, cliente_1816, hoy_art,
+                                    leer_tickers)
 from macro_informe import datos_macro
 
 DIR_INFORMES = Path("informes")
@@ -66,8 +69,10 @@ FAMILIAS = {
     "USD Bonares": "Bonares",
     "USD Globales": "Globales",
     "USD Bopreales": "BOPREALes",
-    "ON USD": "ONs ley local",
-    "ONs": "ONs ley NY",
+    # Las ONs NO se clasifican por hoja: ver mapa_ley_ons(). Se dejan acá para que el instrumento
+    # entre al universo, pero la familia se pisa después con la ley que declara el Excel.
+    "ON USD": "ONs",
+    "ONs": "ONs",
     "Subsoberanos": "Subsoberanos",
 }
 
@@ -85,10 +90,46 @@ METRICA = {
     "BOPREALes": "TIR",
     "ONs ley local": "TIR",
     "ONs ley NY": "TIR",
+    "ONs": "TIR",                 # sólo si alguna quedó sin ley declarada
     "Subsoberanos": "TIR",
 }
 
 FERIADOS_API = "https://api.argentinadatos.com/v1/feriados/{anio}"
+
+
+def mapa_ley_ons():
+    """ticker -> "local" | "ny", leído de la columna Ley de la hoja ONs.
+
+    HACE FALTA PORQUE LA HOJA NO ES LA LEY. Al armar el informe se supuso que la hoja "ON USD" eran
+    las ONs de ley local y la hoja "ONs" las de ley NY, y las dos cosas eran falsas:
+
+      · "ON USD" no es un listado de instrumentos sino una tabla de CRONOGRAMA DE FLUJOS —columnas
+        Fecha, Valor Residual, Cupón, Renta, Amortización—. Sus 56 filas son cupones de apenas
+        cuatro tickers, que además ya figuran en la otra hoja. El informe del 28/08/2026 reportó
+        por eso una familia "ONs ley local" de cuatro instrumentos.
+      · "ONs" tiene las dos leyes juntas y las distingue en su columna Ley: 61 local y 36 ny. Todas
+        salieron reportadas como ley NY.
+
+    Con la ley leída del Excel, un instrumento va a su familia venga de la hoja que venga.
+    """
+    wb = load_workbook(INSTRUMENTOS_FILE, data_only=True)
+    if "ONs" not in wb.sheetnames:
+        return {}
+    ws = wb["ONs"]
+    filas = list(ws.iter_rows(values_only=True))
+    if not filas:
+        return {}
+    cab = [str(c).strip().lower() if c else "" for c in filas[0]]
+    if "ticker" not in cab or "ley" not in cab:
+        print("AVISO: la hoja ONs no tiene columnas Ticker y Ley; no se separan por legislación")
+        return {}
+    i_tk, i_ley = cab.index("ticker"), cab.index("ley")
+    out = {}
+    for f in filas[1:]:
+        if not f or not f[i_tk] or not f[i_ley]:
+            continue
+        out[str(f[i_tk]).strip()] = str(f[i_ley]).strip().lower()
+    return out
 
 
 def feriados(anio):
@@ -227,12 +268,22 @@ def main():
     datos = pedir_series(cli, items, ayer.isoformat(), hoy.isoformat())
     print(f"1816 devolvió datos de {len(datos)} tickers")
 
+    leyes = mapa_ley_ons()
+    print(f"Leyes de ONs leídas: {sum(1 for v in leyes.values() if v == 'local')} local, "
+          f"{sum(1 for v in leyes.values() if v == 'ny')} NY")
+
     instrumentos, por_familia = [], defaultdict(list)
-    sin_dato = []
+    sin_dato, sin_ley = [], []
     for it in items:
         fam = FAMILIAS.get(it["hoja"])
         if not fam or not it["t1816"]:
             continue
+        if fam == "ONs":
+            ley = leyes.get(it["eco"])
+            fam = {"local": "ONs ley local", "ny": "ONs ley NY"}.get(ley)
+            if not fam:
+                sin_ley.append(it["eco"])
+                continue
         serie = datos.get(it["t1816"], {})
         h = serie.get(hoy.isoformat())
         a = serie.get(ayer.isoformat())
@@ -314,6 +365,9 @@ def main():
         "feriadosLeidos": fer is not None,
         "universo": len(items),
         "sinDato": sin_dato,
+        # ONs que no declaran ley en el Excel: quedan fuera del informe en vez de caer en una
+        # familia arbitraria, y se listan para que se pueda completar la columna.
+        "onsSinLey": sin_ley,
         "campos": CAMPOS,
         "resumen": resumen,
         "instrumentos": instrumentos,
