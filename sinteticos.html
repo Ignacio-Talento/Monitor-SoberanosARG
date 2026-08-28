@@ -373,6 +373,27 @@
     <div class="nota" id="graf-empty" style="display:none;">
       No hay datos suficientes. Hacen falta precios de LECAPs y dólar linked, y al menos un futuro cotizando.
     </div>
+    <div class="nota">
+      La curva azul son las LECAPs con su TEA; los puntos celestes, el sintético armado con el
+      contrato de cada vencimiento —comprar el dólar linked y vender el futuro—. Donde el celeste
+      queda por encima, el sintético paga más que la LECAP de ese plazo.
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-title">Bono dólar linked contra sintético DL</div>
+    <div id="graf-sint-dl"></div>
+    <div class="nota" id="graf-dl-empty" style="display:none;">
+      No hay datos suficientes. Hacen falta precios de LECAPs y dólar linked, y al menos un futuro cotizando.
+    </div>
+    <div class="nota">
+      La misma comparación vista desde la otra moneda: la curva de los dólar linked contra el
+      sintético DL —comprar la LECAP y comprar el futuro—. Es la imagen espejo del gráfico de
+      arriba, no información nueva: si el sintético en pesos paga más que la LECAP, entonces el
+      sintético DL paga menos que el bono DL, siempre. Vale la pena verla igual porque las
+      distancias no son las mismas: el mismo spread pesa distinto medido en una moneda o en la
+      otra, y se divide por (1 + devaluación implícita) al pasar de pesos a dólares.
+    </div>
   </div>
 
 </div>
@@ -1046,18 +1067,33 @@ function inflacionTEA(desde, hasta) {
 }
 
 // ── GRÁFICO ──────────────────────────────────────────────────────────────────────────────────
-function renderGrafico() {
-  const cont = document.getElementById('graf-sint');
-  const vacio = document.getElementById('graf-empty');
-  const filas = filasSinteticos().filter(r => r.pesos);
-  const cLecap = curvaDe('lecap');
+// Dos gráficos con la misma maquinaria. Se parametriza en vez de duplicar porque son la MISMA
+// comparación vista desde cada moneda —el sintético en pesos contra la LECAP, y el sintético DL
+// contra el bono DL— y cualquier arreglo de ejes, tooltip o escala tiene que valer para los dos.
+const GRAFICOS_SINT = {
+  pesos: {
+    cont: 'graf-sint', vacio: 'graf-empty', grupo: 'lecap', lado: 'pesos',
+    rotDirecto: 'LECAPs (TEA)', rotSint: 'Sintético en pesos',
+  },
+  dolar: {
+    cont: 'graf-sint-dl', vacio: 'graf-dl-empty', grupo: 'usdlinked', lado: 'dolar',
+    rotDirecto: 'Bonos DL (TIR)', rotSint: 'Sintético DL',
+  },
+};
+
+function renderGrafico(cfg) {
+  const cont = document.getElementById(cfg.cont);
+  const vacio = document.getElementById(cfg.vacio);
+  if (!cont) return;
+  const filas = filasSinteticos().filter(r => r[cfg.lado]);
+  const cLecap = curvaDe(cfg.grupo);
   if (!filas.length || !cLecap.length) {
-    cont.innerHTML = ''; vacio.style.display = 'block'; return;
+    cont.innerHTML = ''; if (vacio) vacio.style.display = 'block'; return;
   }
-  vacio.style.display = 'none';
+  if (vacio) vacio.style.display = 'none';
 
   const W = 900, H = 340, mL = 56, mR = 20, mT = 18, mB = 40;
-  const serieSint = filas.map(r => ({ x: r.dias, y: r.pesos.sint, t: r.tk }));
+  const serieSint = filas.map(r => ({ x: r.dias, y: r[cfg.lado].sint, t: r.tk }));
   const serieLec = cLecap.map(p => ({ x: p.dias, y: p.tasa, t: p.ticker }));
   const todos = serieSint.concat(serieLec);
   const xs = todos.map(p => p.x), ys = todos.map(p => p.y);
@@ -1094,9 +1130,9 @@ function renderGrafico() {
     ${linea(serieSint, '#00a3e4')}${puntos(serieSint, '#00a3e4')}
     <g font-size="11" font-weight="600">
       <rect x="${W - 210}" y="${mT}" width="10" height="10" fill="#0d2055"/>
-      <text x="${W - 195}" y="${mT + 9}" fill="#0d2055">LECAPs (TEA)</text>
+      <text x="${W - 195}" y="${mT + 9}" fill="#0d2055">${cfg.rotDirecto}</text>
       <rect x="${W - 210}" y="${mT + 18}" width="10" height="10" fill="#00a3e4"/>
-      <text x="${W - 195}" y="${mT + 27}" fill="#0d2055">Sintético en pesos</text>
+      <text x="${W - 195}" y="${mT + 27}" fill="#0d2055">${cfg.rotSint}</text>
     </g>
   </svg>`;
 
@@ -1117,7 +1153,7 @@ function renderGrafico() {
       return f;
     },
     r => `${r.tk} · ${r.dias} días`,
-    r => py(r.pesos.sint));
+    r => py(r[cfg.lado].sint));
 }
 
 // Devaluación implícita de los futuros contra inflación esperada del REM.
@@ -1293,7 +1329,10 @@ function renderGraficoREM() {
         : '');
 }
 
-function redibujar() { renderFuturos(); renderSinteticos(); renderHistorico(); renderGraficoREM(); renderGrafico(); }
+function redibujar() {
+  renderFuturos(); renderSinteticos(); renderHistorico(); renderGraficoREM();
+  renderGrafico(GRAFICOS_SINT.pesos); renderGrafico(GRAFICOS_SINT.dolar);
+}
 function onComision(cual, v) { const x = parseFloat(v); comisiones[cual] = isNaN(x) ? 0 : Math.max(0, x); redibujar(); }
 
 // ── CARGA ────────────────────────────────────────────────────────────────────────────────────
