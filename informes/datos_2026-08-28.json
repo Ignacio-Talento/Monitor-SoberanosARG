@@ -5,7 +5,7 @@
   "diario",
   "semanal"
  ],
- "generado": "2026-08-28T16:06:04+00:00",
+ "generado": "2026-08-28T16:45:19+00:00",
  "feriadosLeidos": true,
  "universo": 186,
  "sinDato": [
@@ -51,6 +51,7 @@
   "VSCYD",
   "VSCPD"
  ],
+ "onsSinLey": [],
  "campos": [
   "precioDirty",
   "tea",
@@ -275,29 +276,58 @@
    ]
   },
   "ONs ley local": {
-   "instrumentos": 4,
-   "conVariacion": 4,
+   "instrumentos": 46,
+   "conVariacion": 44,
    "metrica": "TIR",
    "precio": {
-    "mediana": -0.118,
-    "min": -0.769,
-    "max": 0.592,
-    "n": 4
+    "mediana": 0.195,
+    "min": -2.159,
+    "max": 4.177,
+    "n": 44
    },
    "tasa": {
-    "mediana": -0.015,
-    "min": -0.203,
-    "max": 0.186,
-    "n": 4
+    "mediana": -0.076,
+    "min": -1.744,
+    "max": 2.702,
+    "n": 44
    },
    "teaMediana": {
-    "mediana": 7.694,
-    "min": 6.871,
-    "max": 7.896,
-    "n": 4
+    "mediana": 5.779,
+    "min": 1.57,
+    "max": 24.446,
+    "n": 46
    },
-   "mejor": "PQCSD",
-   "peor": "TLCPD",
+   "mejor": "YM39D",
+   "peor": "MR44D",
+   "convencionDudosa": [
+    "MR44D",
+    "RC2CD"
+   ]
+  },
+  "ONs ley NY": {
+   "instrumentos": 20,
+   "conVariacion": 19,
+   "metrica": "TIR",
+   "precio": {
+    "mediana": 0.0,
+    "min": -1.168,
+    "max": 0.487,
+    "n": 19
+   },
+   "tasa": {
+    "mediana": 0.009,
+    "min": -0.163,
+    "max": 0.337,
+    "n": 19
+   },
+   "teaMediana": {
+    "mediana": 7.627,
+    "min": 6.616,
+    "max": 11.282,
+    "n": 20
+   },
+   "mejor": "YMCJD",
+   "peor": "IRCPD",
    "convencionDudosa": []
   },
   "Subsoberanos": {
@@ -325,35 +355,6 @@
    "mejor": "BDC36",
    "peor": "BA37D",
    "convencionDudosa": []
-  },
-  "ONs ley NY": {
-   "instrumentos": 62,
-   "conVariacion": 59,
-   "metrica": "TIR",
-   "precio": {
-    "mediana": 0.093,
-    "min": -2.159,
-    "max": 4.177,
-    "n": 59
-   },
-   "tasa": {
-    "mediana": -0.016,
-    "min": -1.744,
-    "max": 2.702,
-    "n": 59
-   },
-   "teaMediana": {
-    "mediana": 6.212,
-    "min": 1.57,
-    "max": 24.446,
-    "n": 62
-   },
-   "mejor": "YM39D",
-   "peor": "MR44D",
-   "convencionDudosa": [
-    "MR44D",
-    "RC2CD"
-   ]
   }
  },
  "instrumentos": [
@@ -1347,7 +1348,7 @@
   },
   {
    "ticker": "TLCPD",
-   "familia": "ONs ley local",
+   "familia": "ONs ley NY",
    "moneda": "ccl",
    "precio": 109.65,
    "tea": 7.896,
@@ -1360,7 +1361,7 @@
   },
   {
    "ticker": "GN49D",
-   "familia": "ONs ley local",
+   "familia": "ONs ley NY",
    "moneda": "ccl",
    "precio": 102.9,
    "tea": 7.679,
@@ -1438,7 +1439,7 @@
   },
   {
    "ticker": "RC2CD",
-   "familia": "ONs ley NY",
+   "familia": "ONs ley local",
    "moneda": "mep",
    "precio": 102.8,
    "tea": 1.57,
@@ -1451,7 +1452,7 @@
   },
   {
    "ticker": "DNC3D",
-   "familia": "ONs ley NY",
+   "familia": "ONs ley local",
    "moneda": "mep",
    "precio": 104,
    "tea": 4.061,
@@ -1464,7 +1465,7 @@
   },
   {
    "ticker": "YM37D",
-   "familia": "ONs ley NY",
+   "familia": "ONs ley local",
    "moneda": "mep",
    "precio": 102.70000000000003,
    "tea": 3.708,
@@ -1477,7 +1478,7 @@
   },
   {
    "ticker": "YFCMD",
-   "familia": "ONs ley NY",
+   "familia": "ONs ley local",
    "moneda": "mep",
    "precio": 102.40000000000002,
    "tea": 3.439,
@@ -1490,7 +1491,7 @@
   },
   {
    "ticker": "HJCID",
-   "familia": "ONs ley NY",
+   "familia": "ONs ley local",
    "moneda": "mep",
    "precio": 103.75000000000003,
    "tea": 5.06,
@@ -1503,7 +1504,7 @@
   },
   {
    "ticker": "PFC2D",
-   "familia": "ONs ley NY",
+   "familia": "ONs ley local",
    "moneda": "mep",
    "precio": 103,
    "tea": 4.864,
@@ -1516,7 +1517,7 @@
   },
   {
    "ticker": "YM38D",
-   "familia": "ONs ley NY",
+   "familia": "ONs ley local",
    "moneda": "mep",
    "precio": 103.5,
    "tea": 4.487,
@@ -1529,7 +1530,7 @@
   },
   {
    "ticker": "LOC5D",
-   "familia": "ONs ley NY",
+   "familia": "ONs ley local",
    "moneda": "mep",
    "precio": 103.60000000000001,
    "tea": 4.874,
@@ -1542,7 +1543,7 @@
   },
   {
    "ticker": "OZC3D",
-   "familia": "ONs ley NY",
+   "familia": "ONs ley local",
    "moneda": "mep",
    "precio": 104.1,
    "tea": 6.356,
@@ -1555,7 +1556,7 @@
   },
   {
    "ticker": "CICAD",
-   "familia": "ONs ley NY",
+   "familia": "ONs ley local",
    "moneda": "mep",
    "precio": 104,
    "tea": 6.851,
@@ -1568,7 +1569,7 @@
   },
   {
    "ticker": "OLC5D",
-   "familia": "ONs ley NY",
+   "familia": "ONs ley local",
    "moneda": "mep",
    "precio": 106.15000000000002,
    "tea": 5.321,
@@ -1581,7 +1582,7 @@
   },
   {
    "ticker": "CS48D",
-   "familia": "ONs ley NY",
+   "familia": "ONs ley local",
    "moneda": "mep",
    "precio": 105.35,
    "tea": 5.648,
@@ -1594,7 +1595,7 @@
   },
   {
    "ticker": "DNC5D",
-   "familia": "ONs ley NY",
+   "familia": "ONs ley local",
    "moneda": "mep",
    "precio": 105.25,
    "tea": 7.049,
@@ -1607,7 +1608,7 @@
   },
   {
    "ticker": "MGCQD",
-   "familia": "ONs ley NY",
+   "familia": "ONs ley local",
    "moneda": "ccl",
    "precio": 104,
    "tea": 5.389,
@@ -1620,7 +1621,7 @@
   },
   {
    "ticker": "YMCYD",
-   "familia": "ONs ley NY",
+   "familia": "ONs ley local",
    "moneda": "mep",
    "precio": 103.60000000000001,
    "tea": 5.254,
@@ -1633,7 +1634,7 @@
   },
   {
    "ticker": "CS47D",
-   "familia": "ONs ley NY",
+   "familia": "ONs ley local",
    "moneda": "mep",
    "precio": 104.35,
    "tea": 5.965,
@@ -1646,7 +1647,7 @@
   },
   {
    "ticker": "HJCLD",
-   "familia": "ONs ley NY",
+   "familia": "ONs ley local",
    "moneda": "mep",
    "precio": 102.4,
    "tea": 6.155,
@@ -1659,7 +1660,7 @@
   },
   {
    "ticker": "LUC5D",
-   "familia": "ONs ley NY",
+   "familia": "ONs ley local",
    "moneda": "mep",
    "precio": 102.60000000000001,
    "tea": 7.013,
@@ -1672,7 +1673,7 @@
   },
   {
    "ticker": "PLC6D",
-   "familia": "ONs ley NY",
+   "familia": "ONs ley local",
    "moneda": "mep",
    "precio": 105.1,
    "tea": 5.784,
@@ -1685,7 +1686,7 @@
   },
   {
    "ticker": "YM42D",
-   "familia": "ONs ley NY",
+   "familia": "ONs ley local",
    "moneda": "mep",
    "precio": 105,
    "tea": 5.658,
@@ -1698,7 +1699,7 @@
   },
   {
    "ticker": "TLCUD",
-   "familia": "ONs ley NY",
+   "familia": "ONs ley local",
    "moneda": "mep",
    "precio": 105.3,
    "tea": 5.664,
@@ -1711,7 +1712,7 @@
   },
   {
    "ticker": "MCC1D",
-   "familia": "ONs ley NY",
+   "familia": "ONs ley local",
    "moneda": "mep",
    "precio": 107,
    "tea": 6.598,
@@ -1724,7 +1725,7 @@
   },
   {
    "ticker": "MGCTD",
-   "familia": "ONs ley NY",
+   "familia": "ONs ley local",
    "moneda": "mep",
    "precio": 102.34999999999998,
    "tea": 5.535,
@@ -1737,7 +1738,7 @@
   },
   {
    "ticker": "OLC6D",
-   "familia": "ONs ley NY",
+   "familia": "ONs ley local",
    "moneda": "mep",
    "precio": 106.15,
    "tea": 5.846,
@@ -1763,7 +1764,7 @@
   },
   {
    "ticker": "VSCZD",
-   "familia": "ONs ley NY",
+   "familia": "ONs ley local",
    "moneda": "mep",
    "precio": 99.5,
    "tea": 5.5,
@@ -1776,7 +1777,7 @@
   },
   {
    "ticker": "NPCCD",
-   "familia": "ONs ley NY",
+   "familia": "ONs ley local",
    "moneda": "ccl",
    "precio": 103.49999999999999,
    "tea": 6.85,
@@ -1789,7 +1790,7 @@
   },
   {
    "ticker": "PN41D",
-   "familia": "ONs ley NY",
+   "familia": "ONs ley local",
    "moneda": "mep",
    "precio": 105.60000000000001,
    "tea": 5.549,
@@ -1802,7 +1803,7 @@
   },
   {
    "ticker": "PN35D",
-   "familia": "ONs ley NY",
+   "familia": "ONs ley local",
    "moneda": "mep",
    "precio": 107.4,
    "tea": 5.503,
@@ -1815,7 +1816,7 @@
   },
   {
    "ticker": "PFC3D",
-   "familia": "ONs ley NY",
+   "familia": "ONs ley local",
    "moneda": "mep",
    "precio": 101.8,
    "tea": 5.833,
@@ -1828,7 +1829,7 @@
   },
   {
    "ticker": "PLC2D",
-   "familia": "ONs ley NY",
+   "familia": "ONs ley local",
    "moneda": "mep",
    "precio": 107.69999999999999,
    "tea": 5.912,
@@ -1841,7 +1842,7 @@
   },
   {
    "ticker": "OLC7D",
-   "familia": "ONs ley NY",
+   "familia": "ONs ley local",
    "moneda": "mep",
    "precio": 104.2,
    "tea": 5.684,
@@ -1854,7 +1855,7 @@
   },
   {
    "ticker": "YM43D",
-   "familia": "ONs ley NY",
+   "familia": "ONs ley local",
    "moneda": "mep",
    "precio": 101.15,
    "tea": 5.875,
@@ -1867,7 +1868,7 @@
   },
   {
    "ticker": "NPCDD",
-   "familia": "ONs ley NY",
+   "familia": "ONs ley local",
    "moneda": "mep",
    "precio": 101.8,
    "tea": 6.157,
@@ -1880,7 +1881,7 @@
   },
   {
    "ticker": "MCC3D",
-   "familia": "ONs ley NY",
+   "familia": "ONs ley local",
    "moneda": "mep",
    "precio": 102.70000000000002,
    "tea": 7.495,
@@ -1893,7 +1894,7 @@
   },
   {
    "ticker": "YM39D",
-   "familia": "ONs ley NY",
+   "familia": "ONs ley local",
    "moneda": "ccl",
    "precio": 109.74999999999999,
    "tea": 6.266,
@@ -1984,7 +1985,7 @@
   },
   {
    "ticker": "VSCRD",
-   "familia": "ONs ley NY",
+   "familia": "ONs ley local",
    "moneda": "ccl",
    "precio": 105.1,
    "tea": 7.17,
@@ -1997,7 +1998,7 @@
   },
   {
    "ticker": "PN36D",
-   "familia": "ONs ley NY",
+   "familia": "ONs ley local",
    "moneda": "mep",
    "precio": 109.1,
    "tea": 5.774,
@@ -2101,7 +2102,7 @@
   },
   {
    "ticker": "MR44D",
-   "familia": "ONs ley NY",
+   "familia": "ONs ley local",
    "moneda": "mep",
    "precio": 24.02,
    "tea": 24.446,
@@ -2153,7 +2154,7 @@
   },
   {
    "ticker": "AEC3D",
-   "familia": "ONs ley NY",
+   "familia": "ONs ley local",
    "moneda": "mep",
    "precio": 100,
    "tea": 6.825,
@@ -2179,7 +2180,7 @@
   },
   {
    "ticker": "CP40D",
-   "familia": "ONs ley NY",
+   "familia": "ONs ley local",
    "moneda": "mep",
    "precio": 103.85,
    "tea": 8.568,
@@ -2192,7 +2193,7 @@
   },
   {
    "ticker": "PLC3D",
-   "familia": "ONs ley NY",
+   "familia": "ONs ley local",
    "moneda": "mep",
    "precio": 103.85,
    "tea": 5.286,
@@ -2205,7 +2206,7 @@
   },
   {
    "ticker": "HJCKD",
-   "familia": "ONs ley NY",
+   "familia": "ONs ley local",
    "moneda": "mep",
    "precio": 103.90000000000002,
    "tea": 6.502,
@@ -2218,7 +2219,7 @@
   },
   {
    "ticker": "YM41D",
-   "familia": "ONs ley NY",
+   "familia": "ONs ley local",
    "moneda": "mep",
    "precio": 101.55000000000001,
    "tea": 4.175,
@@ -2231,7 +2232,7 @@
   },
   {
    "ticker": "EMC1D",
-   "familia": "ONs ley NY",
+   "familia": "ONs ley local",
    "moneda": "mep",
    "precio": 102.80000000000001,
    "tea": 5.585,
