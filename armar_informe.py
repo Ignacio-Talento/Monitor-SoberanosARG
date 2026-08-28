@@ -103,6 +103,44 @@ FERIADOS_API = "https://api.argentinadatos.com/v1/feriados/{anio}"
 ART = timezone(timedelta(hours=-3))
 
 
+# Tipo de pata en Instrumentos.xlsx -> sufijo del ticker en 1816. Verificado contra el catálogo el
+# 2026-08-28: para TXMD8 existen "TXMD8 @CER" y "TXMD8 @TAMAR", y cada uno devuelve la tasa de SU
+# pata —6,18% real y 40,71% nominal—, mientras el ticker pelado devuelve la de la pata que manda.
+SUFIJO_PATA = {"CER": "@CER", "TAMAR": "@TAMAR", "LECAP": "@Tasa Fija", "LINKED": "@USD-L"}
+
+
+def patas_duales():
+    """[(ticker, tipo, ticker1816)] con las patas de cada dual, leídas de la hoja Duales.
+
+    POR QUÉ SE PUEDEN PEDIR. Un dual paga el máximo entre sus dos patas, así que su TIR "entera" es
+    la de la pata que domina y la otra no aparece por ningún lado: con un solo número no se puede
+    ubicar el instrumento ni en la curva CER ni en la TAMAR. 1816 publica las dos por separado, con
+    un ticker por pata, y eso es exactamente lo que hace falta para dibujarlas.
+
+    LA PATA DOMINADA DEVUELVE NULL, y no es un error sino información: 1816 sólo calcula
+    indicadores para la pata que va a pagar. "TTS26 @Tasa Fija" viene con todo en null porque hoy
+    manda la TAMAR. Así se identifica la pata in the money sin calcular nada.
+
+    El tipo sale del Excel y no del catálogo de 1816: la hoja ya tiene una fila por pata con su
+    tipo, es gratis y no gasta una consulta por dual.
+    """
+    wb = load_workbook(INSTRUMENTOS_FILE, data_only=True)
+    if "Duales" not in wb.sheetnames:
+        return []
+    filas = list(wb["Duales"].iter_rows(values_only=True))
+    out, vistos = [], set()
+    for f in filas:
+        if not f or not f[0] or str(f[0]).strip() in ("Ticker", "None"):
+            continue
+        tk, tipo = str(f[0]).strip(), str(f[1] or "").strip().upper()
+        suf = SUFIJO_PATA.get(tipo)
+        if not suf or (tk, tipo) in vistos:
+            continue
+        vistos.add((tk, tipo))
+        out.append((tk, tipo, f"{tk} {suf}"))
+    return out
+
+
 def mapa_ons():
     """ticker -> {"ley": "local"|"ny", "moneda": "mep"|"ccl"}, leído de la hoja ONs.
 
@@ -333,6 +371,17 @@ def main():
     # Cuesta unos 430 créditos —54 tickers por 4 campos por 2 ruedas— contra los ~1.500 del pedido
     # principal. Convertir con el canje habría salido gratis, pero mete un supuesto propio en cada
     # número; pedirlo es exacto y barato.
+    # PATAS DE LOS DUALES. Son pocas —dos por dual— así que el costo es marginal: catorce tickers
+    # por cuatro campos por dos ruedas, unos 110 créditos.
+    patas = patas_duales()
+    datos_patas = {}
+    if patas:
+        falsos = [{"eco": t1816, "t1816": t1816, "moneda": "ars"} for _, _, t1816 in patas]
+        datos_patas = pedir_series(cli, falsos, ayer.isoformat(), hoy.isoformat())
+        con = sum(1 for _, _, t in patas if datos_patas.get(t, {}).get(hoy.isoformat(), {}).get("tea"))
+        print(f"Patas de duales: {len(patas)} pedidas, {con} con tasa "
+              f"(las dominadas vienen en null a propósito)")
+
     en_ccl = [dict(it, moneda="mep") for it in items if it.get("moneda") == "ccl"]
     homogeneos = {}
     if en_ccl:
@@ -397,6 +446,22 @@ def main():
             "varParidad": delta(pct(h.get("paridad")), pct((a or {}).get("paridad"))),
             "conAyer": bool(a),
         }
+        # Las patas, para los duales. `itm` marca la que hoy manda: es la única para la que 1816
+        # calcula indicadores, así que tener tasa ES la señal.
+        if fam == "Duales":
+            pp = {}
+            for tk, tipo, t1816 in patas:
+                if tk != it["eco"]:
+                    continue
+                v = datos_patas.get(t1816, {}).get(hoy.isoformat())
+                if not v:
+                    continue
+                pp[tipo] = {"tea": redondear(pct(v.get("tea"))),
+                            "durationMod": redondear(v.get("durationMod")),
+                            "itm": v.get("tea") is not None}
+            if pp:
+                reg["patas"] = pp
+
         # La punta homogénea, para poder compararlo con los que se valúan en MEP. Va como campo
         # aparte y no reemplaza al principal: la tabla por familia tiene que seguir mostrando lo
         # mismo que la pantalla.
