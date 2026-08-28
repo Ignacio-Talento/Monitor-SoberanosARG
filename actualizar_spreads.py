@@ -199,11 +199,17 @@ def series_tea_universo(cli, insts, desde, hasta):
     d1 = date.fromisoformat(hasta)
     porVentana = {}
     for it in insts:
-        ini = it["emision"].isoformat()
-        fin = min(it["venc"], d1).isoformat()
-        if ini >= fin:
-            continue
-        porVentana.setdefault((ini, fin), []).append(it["ticker"])
+        venc = min(it["venc"], d1)
+        emi = it["emision"]
+        if emi > venc:
+            continue                       # no estuvo vivo en el rango
+        # /series no devuelve NADA cuando fechaInicial == fechaFinal, así que una ventana de un
+        # solo día hay que ensancharla. Pasa todos los días en la corrida diaria, que pide
+        # exactamente una rueda nueva: sin esto no se pedía una sola tasa y la rueda se salteaba
+        # entera por "sin tasas". Las ruedas de más se descartan solas al indexar por fecha.
+        if emi >= venc:
+            emi = venc - timedelta(days=4)   # 4 días: cubre un fin de semana largo
+        porVentana.setdefault((emi.isoformat(), venc.isoformat()), []).append(it["ticker"])
 
     out, pedidos = {}, 0
     for (ini, fin), tickers in sorted(porVentana.items()):
