@@ -9,8 +9,15 @@ QUÉ TRAE Y DE DÓNDE.
 
   · Riesgo país — argentinadatos.com, que republica el EMBI+ Argentina. El BCRA no lo publica.
 
-  · Caución bursátil — NO está en el BCRA: cero coincidencias con "cauc" en las 1.610 series. Se
-    intenta con 1816 y, si tampoco está, el informe lo dice en vez de sustituirla por otra tasa.
+  · Caución bursátil — NO HAY FUENTE PÚBLICA. Se buscó el 2026-08-28 y no está en ningún lado
+    accesible: el BCRA no la publica (cero coincidencias con "cauc" en sus 1.610 series), 1816
+    tampoco la tiene en el plan contratado, y la API de BYMA Data —que sí la tiene, su bundle
+    referencia una ruta /cauciones— está detrás de OAuth con usuario y contraseña. Rava y Bolsar
+    devuelven 404 en los endpoints que se probaron.
+
+    Lo más cercano que queda es la tasa de PASES ENTRE TERCEROS a 1 día (serie 150), que es el
+    proxy que ya usa la solapa Caución vs LECAP. Se sirve con ese nombre y no como "caución": ver
+    la nota de abajo.
 
 LA CONFUSIÓN QUE HAY QUE EVITAR. La solapa Caución vs LECAP muestra como "caución 1 día" la serie
 150 del BCRA, que en realidad es la tasa de pases entre terceros. Son mercados parecidos y las tasas
@@ -123,12 +130,12 @@ def datos_macro(hoy=None, cliente_1816=None):
 
 
 def caucion_1816(cli):
-    """Busca la curva de cauciones en 1816.
+    """Busca la curva de cauciones en 1816. Al 2026-08-28 no la tiene: devuelve lista vacía.
 
-    No está documentada en la guía y puede no existir en el plan contratado, así que esto es
-    exploratorio y falla en silencio hacia un resultado explícito: el informe prefiere decir que no
-    tiene la caución antes que mostrar en su lugar la tasa de pases, que es parecida pero es otra
-    cosa.
+    Se deja la consulta hecha igual, y barata —un solo request—, porque el catálogo de 1816 crece:
+    cuando la agreguen, esto la va a encontrar sin que haya que acordarse de volver a probar. El
+    informe prefiere decir que no tiene la caución antes que mostrar en su lugar la tasa de pases,
+    que es parecida pero es otra cosa.
     """
     res = {"disponible": False}
     try:
