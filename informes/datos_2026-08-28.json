@@ -5,7 +5,7 @@
   "diario",
   "semanal"
  ],
- "generado": "2026-08-28T15:48:36+00:00",
+ "generado": "2026-08-28T15:51:48+00:00",
  "feriadosLeidos": true,
  "universo": 186,
  "sinDato": [
@@ -81,7 +81,8 @@
     "n": 12
    },
    "mejor": "T30J7",
-   "peor": "TY30P"
+   "peor": "TY30P",
+   "convencionDudosa": []
   },
   "CER": {
    "instrumentos": 22,
@@ -106,7 +107,11 @@
     "n": 22
    },
    "mejor": "TZX27",
-   "peor": "TZXA7"
+   "peor": "TZXA7",
+   "convencionDudosa": [
+    "TZXO6",
+    "X30S6"
+   ]
   },
   "TAMAR": {
    "instrumentos": 5,
@@ -131,7 +136,8 @@
     "n": 5
    },
    "mejor": "TMF27",
-   "peor": "TML27"
+   "peor": "TML27",
+   "convencionDudosa": []
   },
   "Dólar linked": {
    "instrumentos": 7,
@@ -156,7 +162,10 @@
     "n": 7
    },
    "mejor": "TZVD8",
-   "peor": "D15E7"
+   "peor": "D15E7",
+   "convencionDudosa": [
+    "TZV27"
+   ]
   },
   "Bonares": {
    "instrumentos": 9,
@@ -181,7 +190,8 @@
     "n": 9
    },
    "mejor": "AL29D",
-   "peor": "AO28D"
+   "peor": "AO28D",
+   "convencionDudosa": []
   },
   "Globales": {
    "instrumentos": 6,
@@ -206,7 +216,8 @@
     "n": 6
    },
    "mejor": "GD29D",
-   "peor": "GD35D"
+   "peor": "GD35D",
+   "convencionDudosa": []
   },
   "BOPREALes": {
    "instrumentos": 6,
@@ -231,7 +242,8 @@
     "n": 6
    },
    "mejor": "BPA8D",
-   "peor": "BPB7D"
+   "peor": "BPB7D",
+   "convencionDudosa": []
   },
   "Duales": {
    "instrumentos": 7,
@@ -256,7 +268,11 @@
     "n": 7
    },
    "mejor": "TXMJ8",
-   "peor": "TMVE8"
+   "peor": "TMVE8",
+   "convencionDudosa": [
+    "TXMJ8",
+    "TXMJ9"
+   ]
   },
   "ONs ley local": {
    "instrumentos": 4,
@@ -281,7 +297,8 @@
     "n": 4
    },
    "mejor": "PQCSD",
-   "peor": "TLCPD"
+   "peor": "TLCPD",
+   "convencionDudosa": []
   },
   "Subsoberanos": {
    "instrumentos": 5,
@@ -306,7 +323,8 @@
     "n": 5
    },
    "mejor": "BDC36",
-   "peor": "BA37D"
+   "peor": "BA37D",
+   "convencionDudosa": []
   },
   "ONs ley NY": {
    "instrumentos": 62,
@@ -331,7 +349,11 @@
     "n": 62
    },
    "mejor": "YM39D",
-   "peor": "MR44D"
+   "peor": "MR44D",
+   "convencionDudosa": [
+    "MR44D",
+    "RC2CD"
+   ]
   }
  },
  "instrumentos": [
