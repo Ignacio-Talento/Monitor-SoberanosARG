@@ -5,7 +5,7 @@
   "diario",
   "semanal"
  ],
- "generado": "2026-08-28T17:08:12+00:00",
+ "generado": "2026-08-28T14:36:59+00:00 ART",
  "feriadosLeidos": true,
  "universo": 186,
  "sinDato": [
@@ -3072,51 +3072,11 @@
   },
   "caucion": {
    "disponible": true,
-   "rueda": "2026-08-27",
-   "contratos": [
-    {
-     "symbol": "CAUC/AGO26",
-     "tasa": 23.23,
-     "volumen": 73,
-     "operaciones": 29,
-     "openInterest": 241.0,
-     "vencimiento": "2026-08-31",
-     "diasAlVenc": 4
-    },
-    {
-     "symbol": "CAUC/SEP26",
-     "tasa": 23.37,
-     "volumen": 0,
-     "operaciones": 0,
-     "openInterest": 100.0,
-     "vencimiento": "2026-09-30",
-     "diasAlVenc": 34
-    },
-    {
-     "symbol": "CAUC/OCT26",
-     "tasa": 22.7,
-     "volumen": 0,
-     "operaciones": 0,
-     "openInterest": 40.0,
-     "vencimiento": "2026-10-31",
-     "diasAlVenc": 65
-    }
-   ],
-   "referencia": {
-    "symbol": "CAUC/AGO26",
-    "tasa": 23.23,
-    "volumen": 73,
-    "operaciones": 29,
-    "openInterest": 241.0,
-    "vencimiento": "2026-08-31",
-    "diasAlVenc": 4
-   },
-   "fuente": "A3 Mercados · futuro de tasa de caución (CAUC)"
-  },
-  "caucion1816": {
-   "disponible": false,
-   "busqueda": [],
-   "motivo": "1816 no devuelve instrumentos que matcheen 'cauc'"
+   "tasa": 21.54,
+   "fecha": "2026-08-26",
+   "rezagoDias": 2,
+   "fuente": "BCRA serie 150 · pases entre terceros a 1 día",
+   "esCaucionBursatil": false
   }
  }
 }
