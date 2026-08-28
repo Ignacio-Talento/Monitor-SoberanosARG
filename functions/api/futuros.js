@@ -60,10 +60,12 @@ function aTicker(symbol) {
   return `DLR/${MES_TXT[mes - 1]}${String(anio % 100).padStart(2, "0")}`;
 }
 
-async function pedir(ruta, params) {
+async function pedir(ruta, params, ms) {
   const url = new URL(CEM + ruta);
   for (const [k, v] of Object.entries(params)) url.searchParams.set(k, v);
-  const r = await fetch(url, { headers: CABECERAS });
+  // Timeout propio: cuando tick-prices se degrada, A3 tarda 31 segundos en contestar 424. Sin
+  // cortar antes, la página espera medio minuto para terminar sin datos.
+  const r = await fetch(url, { headers: CABECERAS, signal: AbortSignal.timeout(ms || 10000) });
   if (!r.ok) {
     // El cuerpo del error viaja en el mensaje: A3 explica qué parámetro no le gustó, y sin eso
     // un 400 o un 424 son indistinguibles de "la API se cayó".
@@ -106,7 +108,17 @@ export async function onRequest({ request }) {
   //
   // Primero se sondea con pageSize=1 si esa fecha tuvo operaciones, y sólo entonces se trae
   // completa: así un sábado cuesta dos consultas mínimas en vez de una pesada que vuelve vacía.
-  let filas = null, rueda = null, cierres = null;
+  // DOS FUENTES, POR ORDEN DE PREFERENCIA.
+  //
+  //  1. tick-prices — operación por operación, con hora. Es lo que permite mostrar el último
+  //     precio operado y a qué hora, o sea la foto real de la rueda en curso.
+  //  2. closing-prices — el ajuste. Se usa SÓLO si la primera falla.
+  //
+  // Hace falta el segundo porque tick-prices se cae con cierta frecuencia del lado de A3: devuelve
+  // 424 con "Execution Timeout Expired" después de 31 segundos, y no depende del pedido — el
+  // 28/08/2026 fallaba hasta el sondeo de un solo registro mientras closing-prices contestaba en
+  // dos segundos. Sin fallback, la solapa se queda sin precios enteros.
+  let filas = null, rueda = null, cierres = null, modo = "intradia", avisoTicks = null;
   try {
     for (let atras = 0; atras <= DIAS_ATRAS && !filas; atras++) {
       const ref = new Date(ahora.getTime() - atras * 86400000);
@@ -116,32 +128,47 @@ export async function onRequest({ request }) {
       const fin = new Date(Date.UTC(y, m, d + 1, 2, 59, 59));   // 23:59 ARG
       const sondeo = await pedir("/tick-prices", {
         product: "DLR", from: iso(ini), to: iso(fin), pageSize: 1,
-      });
+      }, 8000);
       if (!(sondeo.data || []).length) continue;                // esa fecha no tuvo mercado
       const completo = await pedir("/tick-prices", {
         product: "DLR", from: iso(ini), to: iso(fin), pageSize: 5000,
-      });
+      }, 20000);
       filas = completo.data || [];
       rueda = `${y}-${String(m + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
     }
-    // Cierres previos: aportan el ajuste y el interés abierto. Sólo se usa el más reciente de cada
-    // contrato, así que alcanza con una página chica.
+  } catch (e) {
+    avisoTicks = String((e && e.message) || e);
+    filas = null;
+  }
+
+  try {
     cierres = await pedir("/closing-prices", {
       product: "DLR", type: "FUT",
       from: dia(new Date(ahora.getTime() - DIAS_ATRAS * 86400000)), to: dia(ahora),
       pageSize: 300, sort: "dateTime", sortDir: "DESC",
-    });
+    }, 15000);
   } catch (e) {
-    return json({ error: String((e && e.message) || e) }, 502);
+    // Si además falla esto no queda nada que servir.
+    if (!filas) return json({ error: `A3 no responde · ticks: ${avisoTicks} · cierres: ${e.message}` }, 502);
+    cierres = { data: [] };
   }
 
   if (!filas || !filas.length) {
-    return json({ error: `A3 no devolvió operaciones en los últimos ${DIAS_ATRAS} días` }, 502);
+    modo = "ajuste";
+    const porFecha = {};
+    for (const x of cierres.data || []) {
+      const f = String(x.dateTime).slice(0, 10);
+      (porFecha[f] ||= []).push(x);
+    }
+    rueda = Object.keys(porFecha).sort().pop() || null;
+    if (!rueda) {
+      return json({ error: `A3 no devolvió datos · ticks: ${avisoTicks || "sin operaciones"}` }, 502);
+    }
   }
 
   // ── agregación de los ticks por contrato ──
   const agg = {};
-  for (const x of filas) {
+  for (const x of (filas || [])) {
     const tk = aTicker(x.symbol);
     if (!tk) continue;
     const a = (agg[tk] ||= { volumen: 0, operaciones: 0, ultimo: null, precio: null,
@@ -169,9 +196,37 @@ export async function onRequest({ request }) {
     ? new Date(new Date(s).getTime() - 3 * 3600000).toISOString().slice(11, 19)
     : null;
 
+  // En modo ajuste, el "precio" es el settlement de la rueda y el volumen el de esa rueda: no hay
+  // hora de última operación, y se dice explícitamente para que el frontend no lo muestre como si
+  // fuera intradía.
+  const deRueda = {};
+  if (modo === "ajuste") {
+    for (const x of cierres.data || []) {
+      if (String(x.dateTime).slice(0, 10) !== rueda) continue;
+      const tk = aTicker(x.symbol);
+      if (tk) deRueda[tk] = x;
+    }
+  }
+
   const futuros = {}, fallos = [];
   for (const tk of pedidos) {
-    const a = agg[tk], p = previo[tk];
+    const a = agg[tk], p = previo[tk], c = deRueda[tk];
+    if (modo === "ajuste") {
+      if (!c) { fallos.push(tk); continue; }
+      futuros[tk] = {
+        precio: Number(c.settlement) || Number(c.close) || null,
+        volumen: Number(c.volume) || 0,
+        operaciones: Number(c.tradeCount) || 0,
+        ultimaOperacion: null,
+        apertura: Number(c.open) || null,
+        minimo: Number(c.low) || null,
+        maximo: Number(c.high) || null,
+        ajusteAnterior: Number(c.previousClose) || null,
+        openInterest: Number(c.openInterest) || null,
+        fechaAjuste: rueda,
+      };
+      continue;
+    }
     // Sin ticks pero con ajuste previo: el contrato existe y no operó en la rueda. Se devuelve el
     // ajuste con volumen 0 para que el frontend lo marque, en vez de omitirlo como si no existiera.
     if (!a && !p) { fallos.push(tk); continue; }
@@ -191,9 +246,12 @@ export async function onRequest({ request }) {
 
   const salida = json(
     { futuros, fallos,
-      diag: { rueda, pedidos: pedidos.length, resueltos: Object.keys(futuros).length,
-              ticks: filas.length,
-              fuente: "A3 Mercados · CEM (tick-prices + closing-prices)" } },
+      diag: { rueda, modo, pedidos: pedidos.length, resueltos: Object.keys(futuros).length,
+              ticks: (filas || []).length,
+              ...(avisoTicks ? { avisoTicks } : {}),
+              fuente: modo === "intradia"
+                ? "A3 Mercados · CEM (tick-prices)"
+                : "A3 Mercados · CEM (closing-prices · ajuste, tick-prices no respondió)" } },
     200, { "cache-control": `public, max-age=${CACHE_TTL}` });
 
   if (Object.keys(futuros).length) await cache.put(clave, salida.clone());

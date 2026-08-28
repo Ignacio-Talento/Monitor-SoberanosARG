@@ -388,6 +388,7 @@
 
 let futuros = {};        // { 'DLR/SEP26': { precio, venc, dias } }
 let futurosFallidos = [];
+let futurosModo = 'intradia';   // 'ajuste' cuando A3 no dio los ticks del día
 // Aranceles por defecto, de la tabla de costos del back-office (grupos "NO REG"):
 //   futuro 0,20% — el valor de casi todos los grupos; hay alguno en 0,50% y uno en 0,75%
 //   bonos  0,50%
@@ -548,10 +549,14 @@ function renderFuturos() {
   }).join('');
   const n = document.getElementById('nota-futuros');
   n.innerHTML = `TC oficial (A3500) de referencia: <strong>${fmt(tcSpot, 4)}</strong>.`
-    + ` Precios de <strong>A3 Mercados</strong> (ex Matba Rofex), operación por operación:
-       el precio es el de la última que se cruzó y el volumen es el de toda la rueda.
-       <strong>Últ. op.</strong> es la hora de esa operación: si es de hace rato, el precio no se
-       movió aunque el mercado sí.`
+    + (futurosModo === 'ajuste'
+        ? ` <span style="color:#7a4b00;">El servicio de operaciones de A3 no respondió, así que estos son
+           los <strong>precios de ajuste</strong> de la última rueda —el cierre oficial, no el intradía—
+           y por eso no hay hora de última operación.</span>`
+        : ` Precios de <strong>A3 Mercados</strong> (ex Matba Rofex), operación por operación:
+           el precio es el de la última que se cruzó y el volumen es el de toda la rueda.
+           <strong>Últ. op.</strong> es la hora de esa operación: si es de hace rato, el precio no se
+           movió aunque el mercado sí.`)
     + (() => {
         const quietos = filas.filter(x => !x.f.volumenVN).map(x => x.tk);
         const finos = filas.filter(x => x.f.volumenVN && x.f.volumenVN < 1000).map(x => x.tk);
@@ -1277,6 +1282,7 @@ async function init() {
     const fu = await MonitorCore.futurosDolar(FUTUROS_TICKERS);
     futuros = fu.futuros;
     futurosFallidos = fu.fallidos;
+    futurosModo = fu.modo || 'intradia';
   } catch (e) {
     console.warn('futuros:', e);
   }

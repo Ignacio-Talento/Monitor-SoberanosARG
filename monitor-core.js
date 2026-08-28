@@ -202,7 +202,7 @@
   // dato, volumen y puntas; lo cacheado con el formato anterior sólo tenía precio, y se seguía
   // sirviendo durante diez minutos con las columnas nuevas vacías y sin ningún error a la vista.
   // Subir este número invalida lo viejo de una.
-  var FUT_VER = 3;   // v3: la fuente pasa a ser A3 y cambian los campos
+  var FUT_VER = 4;   // v4: viaja el modo (intradía o ajuste)
 
   function futurosCacheados() {
     try {
@@ -270,7 +270,9 @@
             ajusteAnterior: f.ajusteAnterior, openInterest: f.openInterest,
           };
         }
-        var r2 = { futuros: out, fallidos: (d.fallos || []), deCache: false };
+        var r2 = { futuros: out, fallidos: (d.fallos || []), deCache: false,
+                   modo: (d.diag && d.diag.modo) || 'intradia',
+                   rueda: (d.diag && d.diag.rueda) || null };
         if (Object.keys(out).length) guardarFuturos(r2);
         return r2;
       })
