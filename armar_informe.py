@@ -36,7 +36,7 @@ SALIDA: informes/datos_AAAA-MM-DD.json
 import json
 import os
 import sys
-from collections import defaultdict
+from collections import Counter, defaultdict
 from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 from statistics import median
@@ -103,8 +103,8 @@ FERIADOS_API = "https://api.argentinadatos.com/v1/feriados/{anio}"
 ART = timezone(timedelta(hours=-3))
 
 
-def mapa_ley_ons():
-    """ticker -> "local" | "ny", leído de la columna Ley de la hoja ONs.
+def mapa_ons():
+    """ticker -> {"ley": "local"|"ny", "moneda": "mep"|"ccl"}, leído de la hoja ONs.
 
     HACE FALTA PORQUE LA HOJA NO ES LA LEY. Al armar el informe se supuso que la hoja "ON USD" eran
     las ONs de ley local y la hoja "ONs" las de ley NY, y las dos cosas eran falsas:
@@ -117,6 +117,12 @@ def mapa_ley_ons():
         salieron reportadas como ley NY.
 
     Con la ley leída del Excel, un instrumento va a su familia venga de la hoja que venga.
+
+    La moneda se lee acá SÓLO para poder controlarla contra la que ya resolvió leer_tickers() y para
+    informarla en el resumen. La regla es la misma que aplica el monitor en monedaDeON() (ons.html)
+    y que actualizar_historicos.py ya implementa en moneda_on(): las de ley NY van todas al CCL, y
+    las locales en la moneda en la que PAGAN, que es lo que dice la columna Divisa, scrapeada del
+    domicilio de pago. Hoy son 43 al CCL —36 de ley NY y 7 locales que pagan en cable— y 54 al MEP.
     """
     wb = load_workbook(INSTRUMENTOS_FILE, data_only=True)
     if "ONs" not in wb.sheetnames:
@@ -130,11 +136,17 @@ def mapa_ley_ons():
         print("AVISO: la hoja ONs no tiene columnas Ticker y Ley; no se separan por legislación")
         return {}
     i_tk, i_ley = cab.index("ticker"), cab.index("ley")
+    i_div = cab.index("divisa") if "divisa" in cab else None
     out = {}
     for f in filas[1:]:
         if not f or not f[i_tk] or not f[i_ley]:
             continue
-        out[str(f[i_tk]).strip()] = str(f[i_ley]).strip().lower()
+        ley = str(f[i_ley]).strip().lower()
+        div = str(f[i_div] or "").strip().upper() if i_div is not None else ""
+        out[str(f[i_tk]).strip()] = {
+            "ley": ley,
+            "moneda": "ccl" if (ley == "ny" or div == "CCL") else "mep",
+        }
     return out
 
 
@@ -269,14 +281,28 @@ def main():
 
     ayer = rueda_anterior_habil(hoy, fer)
     items = leer_tickers()
+
+    # CONTROL DE QUE LA MONEDA COINCIDE CON LA DEL MONITOR. No corrige nada: leer_tickers() ya
+    # resuelve bien la punta de cada ON —moneda_on() en actualizar_historicos.py aplica la misma
+    # regla que monedaDeON() en ons.html: ley NY al CCL, locales según su columna Divisa—. Lo que
+    # hace es avisar si alguna vez divergen.
+    #
+    # Vale la pena tenerlo porque son dos implementaciones de la misma regla en dos lenguajes, y
+    # nada obliga a que se muevan juntas: el día que alguien cambie una y no la otra, el informe
+    # va a estar mostrando una punta y la pantalla otra, y sin este control no se enteraría nadie.
+    ons = mapa_ons()
+    discrepan = [it["eco"] for it in items
+                 if ons.get(it["eco"]) and it["moneda"] != ons[it["eco"]]["moneda"]]
     print(f"Universo: {len(items)} instrumentos · ruedas {ayer} y {hoy}")
+    if discrepan:
+        print(f"ATENCIÓN: {len(discrepan)} ONs con moneda distinta a la del monitor: "
+              f"{', '.join(discrepan[:12])}")
 
     datos = pedir_series(cli, items, ayer.isoformat(), hoy.isoformat())
     print(f"1816 devolvió datos de {len(datos)} tickers")
 
-    leyes = mapa_ley_ons()
-    print(f"Leyes de ONs leídas: {sum(1 for v in leyes.values() if v == 'local')} local, "
-          f"{sum(1 for v in leyes.values() if v == 'ny')} NY")
+    print(f"Leyes de ONs: {sum(1 for v in ons.values() if v['ley'] == 'local')} local, "
+          f"{sum(1 for v in ons.values() if v['ley'] == 'ny')} NY")
 
     instrumentos, por_familia = [], defaultdict(list)
     sin_dato, sin_ley = [], []
@@ -285,8 +311,8 @@ def main():
         if not fam or not it["t1816"]:
             continue
         if fam == "ONs":
-            ley = leyes.get(it["eco"])
-            fam = {"local": "ONs ley local", "ny": "ONs ley NY"}.get(ley)
+            info = ons.get(it["eco"]) or {}
+            fam = {"local": "ONs ley local", "ny": "ONs ley NY"}.get(info.get("ley"))
             if not fam:
                 sin_ley.append(it["eco"])
                 continue
@@ -353,6 +379,11 @@ def main():
             # Tickers cuya tasa está en otra escala que el resto de su familia: hay que mirarlos
             # antes de compararlos con sus pares. Ver el comentario de arriba.
             "convencionDudosa": raros,
+            # MONEDA EN LA QUE SE VALÚA LA FAMILIA, la misma que muestra el chip del monitor. No
+            # siempre es una sola: las ONs de ley local son 54 en MEP y 7 en CCL, según en qué
+            # moneda paga cada emisor. Por eso va el reparto completo y no un rótulo único, que
+            # para esa familia sería mentira.
+            "monedas": dict(Counter(r["moneda"] for r in regs).most_common()),
         }
 
     # BCRA, riesgo país y caución. Va después de los bonos y no antes porque si 1816 no responde el
