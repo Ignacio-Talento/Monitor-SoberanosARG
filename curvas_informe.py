@@ -445,6 +445,13 @@ def generar(ruta_json, dir_salida="curvas"):
                 print(f"  {nombre}: sin datos suficientes")
         except Exception as e:                                    # noqa: BLE001
             print(f"  {nombre}: FALLÓ ({e})")
+
+    # Las curvas viajan al mail por link, no incrustadas: el envío de Gmail descarta los <img>.
+    try:
+        from pagina_curvas import escribir
+        print(f"  página: {escribir(out, hechos, d['fecha'])}")
+    except Exception as e:                                        # noqa: BLE001
+        print(f"  página: FALLÓ ({e})")
     return hechos
 
 
