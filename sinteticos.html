@@ -264,12 +264,15 @@
           <input id="com-dl" class="rot-inp" type="number" step="0.05" min="0" value="0.5"
                  oninput="onComision('dl', this.value)" style="width:78px;"> %</label>
         <label class="nota" style="margin:0;display:flex;align-items:center;gap:7px;">Futuro
-          <input id="com-fut" class="rot-inp" type="number" step="0.05" min="0" value="0.1"
+          <input id="com-fut" class="rot-inp" type="number" step="0.05" min="0" value="0.2"
                  oninput="onComision('fut', this.value)" style="width:78px;"> %</label>
       </div>
       <div class="precio-st" id="estado-datos">Cargando…</div>
     </div>
     <div class="nota" style="margin-top:12px;">
+      Los valores por defecto salen de la tabla de aranceles: <strong>0,20 %</strong> el futuro y
+      <strong>0,50 %</strong> los bonos. El arancel del futuro es 0,20 % en casi todos los grupos, pero
+      hay alguno en 0,50 % y uno en 0,75 %, así que conviene poner el del grupo que corresponda.<br><br>
       El <strong>spread bruto</strong> compara tasas de mercado, como el informe. El <strong>neto</strong> le aplica
       las tres comisiones: la de la LECAP baja su tasa, y las del bono DL y el futuro bajan la del sintético.
       Si las de LECAP y bono DL son iguales se cancelan casi por completo y el neto queda a un paso del bruto;
@@ -385,7 +388,11 @@
 
 let futuros = {};        // { 'DLR/SEP26': { precio, venc, dias } }
 let futurosFallidos = [];
-let comisiones = { lecap: 0.5, dl: 0.5, fut: 0.1 };   // % por operación
+// Aranceles por defecto, de la tabla de costos del back-office (grupos "NO REG"):
+//   futuro 0,20% — el valor de casi todos los grupos; hay alguno en 0,50% y uno en 0,75%
+//   bonos  0,50%
+// Por eso los tres quedan editables: el arancel depende del grupo en el que esté cada cliente.
+let comisiones = { lecap: 0.5, dl: 0.5, fut: 0.2 };   // % por operación
 let tcSpot = null;
 
 // Hasta ABR27: Rofex lista los contratos con unos ocho meses de anticipación y MAY27/JUN27
