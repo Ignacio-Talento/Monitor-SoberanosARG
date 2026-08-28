@@ -139,7 +139,10 @@ def _serie(ax, pts, color, rotulo, marcador="o", linea="-", etiquetas=True, cada
 # base64 —que es como viajan— casi 800. A 120 dpi con paleta indexada bajan a menos de un quinto sin
 # que se note en pantalla, porque son líneas y texto sobre fondo plano: no hay degradados que
 # sufran la cuantización.
-DPI = 120
+# 100 dpi da ~950 px de ancho: el doble de lo que un cliente de correo muestra (unos 600), así que
+# se ve nítido en pantallas retina sin pesar de más. El base64 viaja inflado un 34%, y con seis
+# gráficos eso importa.
+DPI = 100
 
 
 def _comprimir(ruta):
@@ -147,7 +150,7 @@ def _comprimir(ruta):
     try:
         from PIL import Image
         im = Image.open(ruta).convert("RGB")
-        im.quantize(colors=128, method=Image.MEDIANCUT).save(ruta, optimize=True)
+        im.quantize(colors=64, method=Image.MEDIANCUT).save(ruta, optimize=True)
     except Exception:                                             # noqa: BLE001
         pass
     return ruta

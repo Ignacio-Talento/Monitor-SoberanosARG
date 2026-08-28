@@ -6,4 +6,4 @@
 __pycache__/
 *.pyc
 inf_tmp.json
-curvas/
+/curvas/
