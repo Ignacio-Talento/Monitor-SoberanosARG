@@ -4,7 +4,7 @@
 POR QUÉ PNG Y NO SVG. El informe va por mail y Gmail no renderiza SVG inline: lo descarta sin
 avisar y el lector ve un hueco. Los PNG van adjuntos inline y se ven en todos los clientes.
 
-QUÉ CURVAS. Nueve, cada una con la métrica y la moneda en la que se negocia:
+QUÉ CURVAS. Siete, cada una con la métrica y la moneda en la que se negocia:
 
   1. Globales contra Bonares — LAS DOS PATAS EN MEP. Es la única forma de que el spread signifique
      algo: el monitor valúa los globales al CCL y los bonares al MEP, y restarlos así mezcla dos
@@ -15,17 +15,11 @@ QUÉ CURVAS. Nueve, cada una con la métrica y la moneda en la que se negocia:
   5. TAMAR — TEA.
   6. Dólar linked — TIR.
   7. Subsoberanos — TIR al CCL.
-  8. ONs de ley argentina — TIR al MEP, incluidas las que pagan en cable, pedidas en esa punta.
-  9. ONs de ley Nueva York — TIR al CCL.
 
-LAS DOS DE ONs SON DISPERSIÓN, NO CURVA. En la soberana la línea tiene sentido porque es un solo
-emisor a distintos plazos, y el trazo entre dos puntos es la tasa que ese emisor pagaría en el
-medio. Con cincuenta corporativos cada punto es una empresa con su propio riesgo: entre YPF a tres
-años y Pampa a cuatro no hay nada que interpolar, y la línea inventaría una estructura temporal.
-
-Ahí además se acota el eje: siempre hay algún ilíquido que se va al 25% o cae al 0,2% y deja al
-resto apretado. Se recorta al grueso y se nombra a los que quedaron fuera con su tasa, que es
-distinto de esconderlos.
+NO HAY GRÁFICO DE ONs. Se hicieron y se sacaron: con cincuenta y pico de corporativos el gráfico es
+una nube de emisores distintos, no una curva —entre YPF a tres años y Pampa a cuatro no hay nada que
+interpolar—, y como nube aportaba menos que las medianas de la tabla. La función curva_ons() queda
+por si alguna vez se quiere mirar un subconjunto emparejado por emisor, que sí tendría sentido.
 
 LOS DUALES ENTRAN CON SU PATA, no con la tasa del instrumento entero. 1816 publica un ticker por
 pata —"TXMD8 @CER" y "TXMD8 @TAMAR"— y cada uno devuelve la tasa de la suya: 6,04% real y 40,53%
@@ -154,7 +148,11 @@ def _serie(ax, pts, color, rotulo, marcador="o", linea="-", etiquetas=True, cada
         _etiquetar(ax, pts, color, cada)
 
 
-# El peso importa porque los gráficos viajan al mail. A 100 dpi con paleta indexada quedan en unos
+# EL PESO IMPORTA PORQUE VAN ADJUNTOS AL MAIL, en base64, que infla un 34%. No se pueden servir por
+# URL desde el repo aunque sea público: raw.githubusercontent manda
+# "Content-Security-Policy: default-src 'none'; sandbox" y el proxy de imágenes de Gmail lo respeta,
+# así que el lector ve huecos. Probado el 2026-08-28.
+# A 100 dpi con paleta indexada quedan en unos
 # 15 KB cada uno contra 100 sin comprimir, y no se nota: son líneas y texto sobre fondo plano, sin
 # degradados que sufran la cuantización. 100 dpi da ~950 px de ancho, el doble de lo que muestra un
 # cliente de correo, así que se ve nítido también en pantallas retina.
@@ -436,10 +434,6 @@ def generar(ruta_json, dir_salida="curvas"):
         ("tamar", lambda p: curva_tamar(instr, p, d_tam, tamar_spot)),
         ("dl", lambda p: curva_dl(instr, p)),
         ("subsoberanos", lambda p: curva_subsoberanos(instr, p)),
-        ("ons_local", lambda p: curva_ons(instr, p, "ONs ley local",
-                                          "ONs de ley argentina", "MEP", en_mep=True)),
-        ("ons_ny", lambda p: curva_ons(instr, p, "ONs ley NY",
-                                       "ONs de ley Nueva York", "CCL")),
     ]:
         ruta = out / f"{nombre}.png"
         try:
