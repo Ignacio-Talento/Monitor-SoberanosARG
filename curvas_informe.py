@@ -4,7 +4,7 @@
 POR QUÉ PNG Y NO SVG. El informe va por mail y Gmail no renderiza SVG inline: lo descarta sin
 avisar y el lector ve un hueco. Los PNG van adjuntos inline y se ven en todos los clientes.
 
-QUÉ CURVAS. Las seis que se miran a diario, cada una con la métrica en la que se negocia:
+QUÉ CURVAS. Nueve, cada una con la métrica y la moneda en la que se negocia:
 
   1. Globales contra Bonares — LAS DOS PATAS EN MEP. Es la única forma de que el spread signifique
      algo: el monitor valúa los globales al CCL y los bonares al MEP, y restarlos así mezcla dos
@@ -14,6 +14,18 @@ QUÉ CURVAS. Las seis que se miran a diario, cada una con la métrica en la que 
   4. LECAPs contra CER — las dos curvas juntas más el breakeven de inflación que las iguala.
   5. TAMAR — TEA.
   6. Dólar linked — TIR.
+  7. Subsoberanos — TIR al CCL.
+  8. ONs de ley argentina — TIR al MEP, incluidas las que pagan en cable, pedidas en esa punta.
+  9. ONs de ley Nueva York — TIR al CCL.
+
+LAS DOS DE ONs SON DISPERSIÓN, NO CURVA. En la soberana la línea tiene sentido porque es un solo
+emisor a distintos plazos, y el trazo entre dos puntos es la tasa que ese emisor pagaría en el
+medio. Con cincuenta corporativos cada punto es una empresa con su propio riesgo: entre YPF a tres
+años y Pampa a cuatro no hay nada que interpolar, y la línea inventaría una estructura temporal.
+
+Ahí además se acota el eje: siempre hay algún ilíquido que se va al 25% o cae al 0,2% y deja al
+resto apretado. Se recorta al grueso y se nombra a los que quedaron fuera con su tasa, que es
+distinto de esconderlos.
 
 LOS DUALES ENTRAN CON SU PATA, no con la tasa del instrumento entero. 1816 publica un ticker por
 pata —"TXMD8 @CER" y "TXMD8 @TAMAR"— y cada uno devuelve la tasa de la suya: 6,04% real y 40,53%
@@ -62,14 +74,21 @@ AMBAR = COLORS.get("moderado", "#E08E16")
 
 
 def _puntos(instr, familia, campo="tea", en_mep=False):
-    """[(duration en años, tasa, ticker)] ordenado por duration."""
+    """[(duration en años, tasa, ticker)] ordenado por duration.
+
+    `en_mep=True` devuelve TODOS los instrumentos de la familia en esa punta, no sólo los que
+    tienen el campo enMep. Hace falta la distinción para las ONs de ley argentina: 47 se valúan en
+    MEP de origen y 6 en CCL, porque pagan en cable. Tomando sólo enMep quedarían esas 6 y el
+    gráfico mostraría la excepción en vez de la familia; tomando sólo la tasa nativa, esas 6
+    entrarían en otra moneda. Se usa enMep donde existe y la nativa —que ya es MEP— donde no.
+    """
     out = []
     for r in instr:
         if r["familia"] != familia or r.get("durationMod") is None:
             continue
         if en_mep:
             m = r.get("enMep") or {}
-            v = m.get(campo)
+            v = m.get(campo) if m else (r.get(campo) if r.get("moneda") == "mep" else None)
         else:
             v = r.get(campo)
         if v is None:
@@ -135,13 +154,10 @@ def _serie(ax, pts, color, rotulo, marcador="o", linea="-", etiquetas=True, cada
         _etiquetar(ax, pts, color, cada)
 
 
-# Los PNG van adjuntos al mail, así que el peso importa: seis gráficos a dpi 170 son 600 KB, y en
-# base64 —que es como viajan— casi 800. A 120 dpi con paleta indexada bajan a menos de un quinto sin
-# que se note en pantalla, porque son líneas y texto sobre fondo plano: no hay degradados que
-# sufran la cuantización.
-# 100 dpi da ~950 px de ancho: el doble de lo que un cliente de correo muestra (unos 600), así que
-# se ve nítido en pantallas retina sin pesar de más. El base64 viaja inflado un 34%, y con seis
-# gráficos eso importa.
+# El peso importa porque los gráficos viajan al mail. A 100 dpi con paleta indexada quedan en unos
+# 15 KB cada uno contra 100 sin comprimir, y no se nota: son líneas y texto sobre fondo plano, sin
+# degradados que sufran la cuantización. 100 dpi da ~950 px de ancho, el doble de lo que muestra un
+# cliente de correo, así que se ve nítido también en pantallas retina.
 DPI = 100
 
 
@@ -317,6 +333,84 @@ def curva_dl(instr, salida):
     return _cerrar(fig, ax, salida)
 
 
+# ── 7 · Subsoberanos ─────────────────────────────────────────────────────────
+def curva_subsoberanos(instr, salida):
+    pts = _puntos(instr, "Subsoberanos")
+    if not pts:
+        return None
+    fig, ax = balanz_figure(figsize=(9.5, 5.2))
+    _serie(ax, pts, NAVY, "Subsoberanos · TIR")
+    _ejes(ax, "Curva subsoberana en dólares", "TIR (%)")
+    ax.text(.01, -.16, "Valuados al CCL, la punta en la que los muestra el monitor. Son provincias "
+                       "con riesgos crediticios distintos entre sí, no una curva de un solo emisor: "
+                       "la línea ordena por plazo, no dice que sean sustitutos.",
+            transform=ax.transAxes, fontsize=8, color=GRIS, va="top")
+    return _cerrar(fig, ax, salida)
+
+
+# ── 8 y 9 · ONs por legislación ──────────────────────────────────────────────
+def curva_ons(instr, salida, familia, titulo, moneda, en_mep=False):
+    """Dispersión, no curva: cada punto es un emisor distinto.
+
+    Unir estos puntos con una línea sería el error de fondo del gráfico. En la curva soberana la
+    línea tiene sentido porque es UN emisor a distintos plazos, y el trazo entre dos puntos es la
+    tasa que ese emisor pagaría a un plazo intermedio. Acá cada punto es una empresa con su propio
+    riesgo: entre YPF a tres años y Pampa a cuatro no hay nada que interpolar, y el trazo sugeriría
+    una estructura temporal que no existe.
+    """
+    pts = _puntos(instr, familia, en_mep=en_mep)
+    if len(pts) < 2:
+        return None
+    fig, ax = balanz_figure(figsize=(9.5, 5.2))
+    _serie(ax, pts, NAVY, f"{familia} · TIR", linea="", etiquetas=False)
+
+    # Con cincuenta y pico de instrumentos no entran todas las etiquetas. Se rotulan los extremos
+    # de cada tramo —el que más rinde y el que menos, cada dos años de duration— que son los que
+    # uno quiere identificar de un vistazo.
+    marcados = []
+    for corte in range(0, 12, 2):
+        tramo = [p for p in pts if corte <= p[0] < corte + 2]
+        if tramo:
+            marcados.append(max(tramo, key=lambda p: p[1]))
+            if len(tramo) > 1:
+                marcados.append(min(tramo, key=lambda p: p[1]))
+
+    _ejes(ax, titulo, "TIR (%)")
+
+    # RECORTE DEL EJE Y. En una nube de cincuenta corporativos siempre hay alguno muy ilíquido o
+    # muy castigado que se va al 25% y deja al resto apretado en una banda de dos centímetros.
+    # Se acota la escala al grueso y se DICE cuántos quedaron fuera con su nombre: esconderlos
+    # sería peor que el gráfico ilegible.
+    ys = sorted(y for _, y, _ in pts)
+    if len(ys) >= 8:
+        q1, q3 = ys[len(ys) // 4], ys[3 * len(ys) // 4]
+        rango = max(q3 - q1, 0.5)
+        lo, hi = q1 - 2.5 * rango, q3 + 2.5 * rango
+        afuera = [(x, y, tk) for x, y, tk in pts if not (lo <= y <= hi)]
+        if afuera:
+            ax.set_ylim(min(lo, ys[0] if ys[0] >= lo else lo), hi)
+    else:
+        afuera = []
+
+    nota = [f"Valuadas al {moneda}" + (
+        ", pidiéndolas en esa punta aunque el monitor muestre algunas al CCL: sin eso las que"
+        " pagan en cable no serían comparables con el resto." if en_mep else
+        ", la punta en la que las muestra el monitor.")]
+    nota.append(f"Son {len(pts)} emisores distintos, así que van como puntos sueltos: entre dos "
+                "empresas a plazos parecidos no hay nada que interpolar.")
+    if afuera:
+        nota.append("Fuera de escala: "
+                    + ", ".join(f"{tk} al {y:.1f}%" for _, y, tk in sorted(afuera, key=lambda p: -p[1]))
+                    + ". Suelen ser los más ilíquidos, en una punta o en la otra.")
+    # Se rotula después de fijar la escala, y sin los que quedaron afuera: su etiqueta caería en
+    # el borde del gráfico apuntando a un punto que no se ve.
+    fuera = {tk for _, _, tk in afuera}
+    _etiquetar(ax, [p for p in marcados if p[2] not in fuera], NAVY)
+
+    ax.text(.01, -.16, "\n".join(nota), transform=ax.transAxes, fontsize=8, color=GRIS, va="top")
+    return _cerrar(fig, ax, salida)
+
+
 def generar(ruta_json, dir_salida="curvas"):
     d = json.loads(Path(ruta_json).read_text(encoding="utf-8"))
     instr = d["instrumentos"]
@@ -341,6 +435,11 @@ def generar(ruta_json, dir_salida="curvas"):
         ("lecaps_cer", lambda p: lecaps_vs_cer(instr, p, dud_cer)),
         ("tamar", lambda p: curva_tamar(instr, p, d_tam, tamar_spot)),
         ("dl", lambda p: curva_dl(instr, p)),
+        ("subsoberanos", lambda p: curva_subsoberanos(instr, p)),
+        ("ons_local", lambda p: curva_ons(instr, p, "ONs ley local",
+                                          "ONs de ley argentina", "MEP", en_mep=True)),
+        ("ons_ny", lambda p: curva_ons(instr, p, "ONs ley NY",
+                                       "ONs de ley Nueva York", "CCL")),
     ]:
         ruta = out / f"{nombre}.png"
         try:
