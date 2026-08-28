@@ -346,7 +346,15 @@
   <div class="panel">
     <div style="display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;">
       <div class="panel-title" style="margin-bottom:0;">Histórico del spread</div>
-      <select id="sel-hist" class="rot-inp" onchange="renderHistorico()" style="text-align:left;"></select>
+      <div style="display:flex;gap:8px;">
+        <select id="sel-hist" class="rot-inp" onchange="renderHistorico()" style="text-align:left;"></select>
+        <select id="sel-per" class="rot-inp" onchange="renderHistorico()" style="text-align:left;">
+          <option value="90">3 meses</option>
+          <option value="180">6 meses</option>
+          <option value="365" selected>1 año</option>
+          <option value="0">Todo</option>
+        </select>
+      </div>
     </div>
     <div id="graf-hist" style="margin-top:14px;"></div>
     <div class="nota" id="nota-hist"></div>
@@ -773,6 +781,23 @@ function renderHistorico() {
     if (sp) pts.push({ f, ...sp });
   }
 
+  // RECORTE POR PERÍODO. El archivo arranca en enero de 2024, en pleno cepo, cuando el spread de
+  // TODOS los contratos estaba entre +36 y +47 pp: era otro régimen cambiario, no otro nivel del
+  // mismo mercado. Mostrando todo junto, esos meses se comen la escala —el último año queda
+  // aplastado contra el cero— y el "rango" de la nota deja de servir como referencia de si el
+  // spread de hoy está caro o barato. El default es un año: entra el mercado sin cepo y nada más.
+  const dias = parseInt(document.getElementById('sel-per').value, 10);
+  const total = pts.length;
+  let recortadas = 0;
+  if (dias) {
+    const corte = new Date(); corte.setHours(0, 0, 0, 0);
+    corte.setDate(corte.getDate() - dias);
+    const visibles = pts.filter(p => parseLocalDate(p.f) >= corte);
+    recortadas = pts.length - visibles.length;
+    if (visibles.length >= 2) { pts.length = 0; pts.push(...visibles); }
+    else recortadas = 0;    // el período elegido no llega a dos puntos: se muestra todo
+  }
+
   if (pts.length < 2) {
     cont.innerHTML = '';
     nota.innerHTML = pts.length
@@ -847,7 +872,14 @@ function renderHistorico() {
      día. <strong>Por encima de cero</strong> paga más el instrumento directo (LECAP o bono DL);
      por debajo, el sintético. Hoy está en <strong>${signo(ult.pesos)} pp</strong> en pesos, contra
      un rango de ${signo(Math.min(...eps))} a ${signo(Math.max(...eps))} en las
-     ${pts.length} ruedas guardadas.
+     ${pts.length} ruedas del período elegido.
+     ${recortadas
+        ? `<span class="no-p">Quedan <strong>${recortadas} ruedas anteriores</strong> fuera del
+           gráfico. Con <em>Todo</em> se ven, pero conviene saber qué hay ahí: el archivo arranca en
+           enero de 2024, con el cepo puesto, y en esos meses el spread de todos los contratos se
+           iba a +40 pp o más. Es otro régimen cambiario, no otro nivel de este mercado, así que
+           mezclarlo en el mismo rango no dice nada sobre si el spread de hoy está caro.</span>`
+        : ``}
      ${plazoFijo
         ? `<span class="no-p">Serie a <strong>plazo constante</strong>: en cada rueda se interpola el
            spread de los contratos vivos a los ${plazoFijo} días, así que todos los puntos miden lo
