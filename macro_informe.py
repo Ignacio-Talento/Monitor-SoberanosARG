@@ -9,21 +9,34 @@ QUÉ TRAE Y DE DÓNDE.
 
   · Riesgo país — argentinadatos.com, que republica el EMBI+ Argentina. El BCRA no lo publica.
 
-  · Caución bursátil — NO HAY FUENTE PÚBLICA. Se buscó el 2026-08-28 y no está en ningún lado
-    accesible: el BCRA no la publica (cero coincidencias con "cauc" en sus 1.610 series), 1816
-    tampoco la tiene en el plan contratado, y la API de BYMA Data —que sí la tiene, su bundle
-    referencia una ruta /cauciones— está detrás de OAuth con usuario y contraseña. Rava y Bolsar
-    devuelven 404 en los endpoints que se probaron.
+  · Caución — FUTURO DE TASA DE CAUCIÓN de A3 Mercados, misma API pública que los futuros de dólar.
+    Los contratos son CAUC/MMMAA y cotizan la tasa directamente en porcentaje.
 
-    Lo más cercano que queda es la tasa de PASES ENTRE TERCEROS a 1 día (serie 150), que es el
-    proxy que ya usa la solapa Caución vs LECAP. Se sirve con ese nombre y no como "caución": ver
-    la nota de abajo.
+    Se llegó acá después de descartar todo lo demás: el BCRA no publica la caución (cero
+    coincidencias con "cauc" en sus 1.610 series), 1816 no la tiene en el plan contratado, la API
+    de BYMA Data la tiene pero pide OAuth, y Rava y Bolsar dan 404. MAE, que era la otra
+    candidata, resultó ser el mismo lugar: su producto se llama "Cauciones A3" y su sitio
+    redirige a a3mercados.com.ar, porque A3 es la fusión de Matba Rofex con MAE.
 
-LA CONFUSIÓN QUE HAY QUE EVITAR. La solapa Caución vs LECAP muestra como "caución 1 día" la serie
-150 del BCRA, que en realidad es la tasa de pases entre terceros. Son mercados parecidos y las tasas
-suelen andar cerca, pero no son lo mismo: la caución es bursátil, se pacta en BYMA y la garantiza el
-mercado; los pases entre terceros son operaciones de recompra entre entidades. Acá se las trata como
-dos series distintas y cada una se nombra por lo que es.
+    ES UN FUTURO, NO LA TASA SPOT, y eso importa: el contrato liquida contra el promedio de la
+    caución del período, así que a principio de mes cotiza una expectativa a 30 días y recién
+    cerca del vencimiento converge a la tasa de hoy. Por eso se informa siempre `diasAlVenc`: con
+    dos o tres días es prácticamente spot, con veinticinco no.
+
+    A cambio de esa imprecisión trae algo que ninguna otra fuente daba: volumen y cantidad de
+    operaciones, así que se sabe si el número salió de un mercado o de un ajuste teórico. El
+    2026-08-27 el contrato de agosto cerró en 23,23% con 29 operaciones.
+
+LAS TRES TASAS DE FONDEO SON DISTINTAS y el informe las trae por separado, cada una con su nombre:
+
+  · caución (A3, CAUC)      — bursátil, garantizada por el mercado. 23,23% al 2026-08-27.
+  · pases entre terceros    — recompras entre entidades. Serie 150 del BCRA. 21,54%.
+  · BAIBAR                  — préstamos entre bancos privados. Serie 146. 21,29%.
+
+Los ~170 puntos básicos entre la primera y las otras dos no son ruido: son mercados con distinta
+garantía y distintos participantes. Mostrar una en lugar de otra —que es lo que hacía la solapa
+Caución vs LECAP con la serie 150 bajo el rótulo "caución"— cambia el resultado de cualquier cuenta
+de fondeo.
 
 VERIFICAR EL SSL. El BCRA usa una cadena de certificados que Python no siempre valida en Windows
 —el mismo problema que tuvo BYMA en el runner de Ubuntu—. Si la verificación falla, se reintenta sin
@@ -36,6 +49,7 @@ from datetime import date, timedelta
 import requests
 
 BCRA = "https://api.bcra.gob.ar/estadisticas/v4.0/monetarias"
+CEM = "https://apicem.matbarofex.com.ar/api/v2"
 RIESGO_PAIS = "https://api.argentinadatos.com/v1/finanzas/indices/riesgo-pais/ultimo"
 UA = {"User-Agent": "Mozilla/5.0", "Accept": "application/json"}
 
@@ -123,10 +137,76 @@ def datos_macro(hoy=None, cliente_1816=None):
     except Exception as e:                                        # noqa: BLE001
         out["fallos"].append(f"riesgoPais: {e}")
 
-    out["caucion"] = caucion_1816(cliente_1816) if cliente_1816 else {
-        "disponible": False, "motivo": "sin cliente de 1816"}
+    out["caucion"] = caucion_a3(hoy)
+    # 1816 queda como sonda: hoy no tiene cauciones, pero el catálogo crece y cuesta un request.
+    if cliente_1816:
+        out["caucion1816"] = caucion_1816(cliente_1816)
 
     return out
+
+
+def caucion_a3(hoy, dias_atras=10):
+    """Curva de futuros de tasa de caución de A3.
+
+    -> {"contratos": [...], "referencia": {...}, "rueda": "AAAA-MM-DD"} o {"disponible": False}.
+
+    La REFERENCIA es el contrato vivo más cercano que haya operado: es el que mejor aproxima la
+    caución de hoy, porque cuanto menos le queda al contrato menos margen hay entre el promedio que
+    liquida y la tasa spot. Se exige que haya OPERADO y no sólo que exista, porque los contratos
+    largos publican ajuste teórico todos los días sin que nadie los toque, y ese número no es un
+    precio de mercado — el 2026-08-27, de los tres contratos vivos sólo el de agosto tenía
+    operaciones.
+    """
+    try:
+        u = (f"{CEM}/closing-prices?product=Tasa%20de%20Cauci%C3%B3n&type=FUT"
+             f"&from={(hoy - timedelta(days=dias_atras)).isoformat()}&to={hoy.isoformat()}"
+             f"&pageSize=400&sort=dateTime&sortDir=DESC")
+        d, _ = _get(u, timeout=40)
+    except Exception as e:                                        # noqa: BLE001
+        return {"disponible": False, "motivo": f"A3 no respondió: {e}"}
+
+    # El filtro por product del endpoint no siempre aplica, así que se filtra también acá por el
+    # prefijo del símbolo. Sin esto entran los futuros de dólar, soja y todo lo demás.
+    filas = [x for x in d.get("data", []) if str(x.get("symbol", "")).startswith("CAUC")]
+    if not filas:
+        return {"disponible": False, "motivo": "A3 no devolvió contratos CAUC en la ventana"}
+
+    rueda = max(x["dateTime"][:10] for x in filas)
+    delaRueda = [x for x in filas if x["dateTime"][:10] == rueda]
+
+    contratos = []
+    for x in delaRueda:
+        venc = _venc_cauc(x["symbol"])
+        contratos.append({
+            "symbol": x["symbol"],
+            "tasa": x.get("settlement"),
+            "volumen": x.get("volume") or 0,
+            "operaciones": x.get("tradeCount") or 0,
+            "openInterest": x.get("openInterest"),
+            "vencimiento": venc.isoformat() if venc else None,
+            "diasAlVenc": (venc - date.fromisoformat(rueda)).days if venc else None,
+        })
+    contratos.sort(key=lambda c: c["diasAlVenc"] if c["diasAlVenc"] is not None else 9999)
+
+    operados = [c for c in contratos if c["operaciones"] > 0 and c["tasa"]]
+    ref = operados[0] if operados else None
+    return {"disponible": bool(ref), "rueda": rueda, "contratos": contratos, "referencia": ref,
+            "fuente": "A3 Mercados · futuro de tasa de caución (CAUC)",
+            **({} if ref else {"motivo": "ningún contrato CAUC operó en esa rueda"})}
+
+
+_MESES = {"ENE": 1, "FEB": 2, "MAR": 3, "ABR": 4, "MAY": 5, "JUN": 6,
+          "JUL": 7, "AGO": 8, "SEP": 9, "OCT": 10, "NOV": 11, "DIC": 12}
+
+
+def _venc_cauc(symbol):
+    """CAUC/AGO26 -> 2026-08-31. El contrato vence el último día del mes que nombra."""
+    try:
+        _, per = symbol.split("/")
+        mes, anio = _MESES[per[:3].upper()], 2000 + int(per[3:])
+        return date(anio + (mes == 12), 1 if mes == 12 else mes + 1, 1) - timedelta(days=1)
+    except Exception:                                             # noqa: BLE001
+        return None
 
 
 def caucion_1816(cli):

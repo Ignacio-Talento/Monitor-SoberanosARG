@@ -281,11 +281,7 @@
             <div class="caucion-lbl">TNA de fondeo 1d (%)</div>
             <input class="caucion-input" id="caucion-tna-input" type="number" step="0.01" value="20" placeholder="ej: 20" oninput="recalcCaucion()">
             <div style="font-size:9px;color:var(--text-3);font-family:var(--mono);margin-top:2px;" id="caucion-fuente"></div>
-            <div style="font-size:10px;color:var(--text-3);margin-top:6px;max-width:330px;line-height:1.45;">
-              El valor que viene cargado <strong>no es la caución bursátil</strong>: es la tasa de
-              pases entre terceros a 1 día que publica el BCRA, que es el proxy más cercano
-              disponible. Si tenés la caución de tu agente, pisá el número.
-            </div>
+            <div id="caucion-detalle" style="font-size:10px;color:var(--text-3);margin-top:6px;max-width:360px;line-height:1.45;"></div>
           </div>
           <div class="caucion-results">
             <div class="caucion-stat"><div class="lbl">TNA</div><div class="val" id="cau-tna">—</div></div>
@@ -579,8 +575,39 @@ function recalcCaucion() {
   renderTabla();
 }
 
-// Pre-cargar caución 1d real del BCRA (editable)
-async function cargarCaucionBCRA() {
+// Pre-cargar la tasa de fondeo (editable).
+//
+// PRIMERO LA CAUCIÓN DE VERDAD. El futuro de tasa de caución de A3 (contratos CAUC) es la única
+// fuente pública de caución bursátil que existe: el BCRA no la publica, 1816 no la tiene y la API
+// de BYMA pide OAuth. Es un futuro y no la spot —liquida contra el promedio del período—, así que
+// se dice a cuántos días del vencimiento está: con pocos días es prácticamente la tasa de hoy.
+//
+// Si no operó ningún contrato, se cae a la serie 150 del BCRA (pases entre terceros), que es de
+// otro mercado y suele estar más de cien puntos básicos por debajo. Por eso es el plan B y no el
+// default, y por eso el campo dice siempre de dónde salió el número.
+async function cargarTasaFondeo() {
+  try {
+    const r = await fetch('/api/caucion');
+    const j = await r.json();
+    const ref = j && j.referencia;
+    if (ref && ref.tasa) {
+      document.getElementById('caucion-tna-input').value = ref.tasa.toFixed(2);
+      document.getElementById('caucion-fuente').textContent =
+        `Caución ${ref.symbol} · A3 · ${j.rueda} · ${ref.operaciones} ops`;
+      document.getElementById('caucion-detalle').innerHTML =
+        `Es el <strong>futuro de tasa de caución</strong> de A3, contrato ${ref.symbol}, a
+         <strong>${ref.diasAlVenc} días</strong> de vencer. Liquida contra el promedio de la caución
+         del período, así que cuanto menos le queda más se parece a la tasa de hoy. Operó
+         ${ref.operaciones} ${ref.operaciones === 1 ? 'vez' : 'veces'} en la rueda. Si tenés la
+         caución de tu agente, pisá el número.`;
+      recalcCaucion();
+      return;
+    }
+  } catch(e) { console.warn('Caución A3 error:', e); }
+  await cargarFondeoBCRA();
+}
+
+async function cargarFondeoBCRA() {
   try {
     const hoy = new Date();
     const desde = new Date(hoy); desde.setDate(desde.getDate() - 12);
@@ -598,6 +625,10 @@ async function cargarCaucionBCRA() {
         // otro mercado, así que el campo dice de dónde sale y el usuario decide si lo pisa.
         document.getElementById('caucion-fuente').textContent =
           `Pases entre terceros 1d · BCRA · ${det[0].fecha}`;
+        document.getElementById('caucion-detalle').innerHTML =
+          `No se pudo traer la caución de A3, así que esto <strong>no es la caución bursátil</strong>:
+           es la tasa de pases entre terceros a 1 día del BCRA, que es otro mercado y suele estar
+           bastante por debajo. Conviene pisar el número con el de tu agente.`;
       }
     }
   } catch(e) { console.warn('Caución BCRA error:', e); }
@@ -895,7 +926,7 @@ async function init() {
   await cargarUniverso1816(); // agrega LECAPs vivas de 1816 que no están en el Excel (fila en blanco)
   await cargarPreciosMonitor();
   actualizarSelectSim();
-  await cargarCaucionBCRA(); // pre-carga caución + recalcCaucion() → renderTabla()
+  await cargarTasaFondeo(); // pre-carga caución + recalcCaucion() → renderTabla()
 }
 init();
 </script>
