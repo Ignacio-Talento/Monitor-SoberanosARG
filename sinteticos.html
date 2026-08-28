@@ -351,6 +351,7 @@
         <select id="sel-per" class="rot-inp" onchange="renderHistorico()" style="text-align:left;">
           <option value="90">3 meses</option>
           <option value="180">6 meses</option>
+          <option value="ytd">En el año</option>
           <option value="365" selected>1 año</option>
           <option value="0">Todo</option>
         </select>
@@ -786,12 +787,17 @@ function renderHistorico() {
   // mismo mercado. Mostrando todo junto, esos meses se comen la escala —el último año queda
   // aplastado contra el cero— y el "rango" de la nota deja de servir como referencia de si el
   // spread de hoy está caro o barato. El default es un año: entra el mercado sin cepo y nada más.
-  const dias = parseInt(document.getElementById('sel-per').value, 10);
+  // El período puede ser una ventana móvil en días o el año calendario ("ytd", desde el 1 de enero).
+  // El YTD no es una ventana de 240 días: se va estirando y en enero es de días, que es justamente
+  // lo que se quiere cuando la pregunta es "cómo viene el año".
+  const per = document.getElementById('sel-per').value;
+  const dias = per === 'ytd' ? -1 : parseInt(per, 10);
   const total = pts.length;
   let recortadas = 0;
   if (dias) {
     const corte = new Date(); corte.setHours(0, 0, 0, 0);
-    corte.setDate(corte.getDate() - dias);
+    if (per === 'ytd') corte.setMonth(0, 1);
+    else corte.setDate(corte.getDate() - dias);
     const visibles = pts.filter(p => parseLocalDate(p.f) >= corte);
     recortadas = pts.length - visibles.length;
     if (visibles.length >= 2) { pts.length = 0; pts.push(...visibles); }
@@ -872,7 +878,8 @@ function renderHistorico() {
      día. <strong>Por encima de cero</strong> paga más el instrumento directo (LECAP o bono DL);
      por debajo, el sintético. Hoy está en <strong>${signo(ult.pesos)} pp</strong> en pesos, contra
      un rango de ${signo(Math.min(...eps))} a ${signo(Math.max(...eps))} en las
-     ${pts.length} ruedas del período elegido.
+     ${pts.length} ruedas ${per === 'ytd' ? `de ${new Date().getFullYear()}`
+                          : dias ? `de los últimos ${dias} días` : 'guardadas'}.
      ${recortadas
         ? `<span class="no-p">Quedan <strong>${recortadas} ruedas anteriores</strong> fuera del
            gráfico. Con <em>Todo</em> se ven, pero conviene saber qué hay ahí: el archivo arranca en
