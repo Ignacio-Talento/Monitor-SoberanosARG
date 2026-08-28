@@ -193,6 +193,22 @@ def tipos_de_cierre(d, fer):
     return tipos
 
 
+def ultima_rueda_de_periodo_anterior(d, fer, periodo):
+    """Última rueda hábil de la semana o del mes ANTERIOR a la de d.
+
+    Es contra esta rueda que se mide el cierre semanal y el mensual. Se busca hacia atrás desde el
+    primer día del período de d, saltando fines de semana y feriados: para el viernes 28/08/2026 la
+    referencia semanal es el viernes 21 y la mensual, el jueves 31/07.
+    """
+    if periodo == "semanal":
+        x = d - timedelta(days=d.weekday() + 1)          # domingo anterior al lunes de esta semana
+    else:
+        x = d.replace(day=1) - timedelta(days=1)         # último día del mes anterior
+    while not es_habil(x, fer):
+        x -= timedelta(days=1)
+    return x
+
+
 def rueda_anterior_habil(d, fer):
     x = d - timedelta(days=1)
     while not es_habil(x, fer):
@@ -280,6 +296,7 @@ def main():
         return 0
 
     ayer = rueda_anterior_habil(hoy, fer)
+    tipos = tipos_de_cierre(hoy, fer)
     items = leer_tickers()
 
     # CONTROL DE QUE LA MONEDA COINCIDE CON LA DEL MONITOR. No corrige nada: leer_tickers() ya
@@ -300,6 +317,26 @@ def main():
 
     datos = pedir_series(cli, items, ayer.isoformat(), hoy.isoformat())
     print(f"1816 devolvió datos de {len(datos)} tickers")
+
+    # RUEDAS DE REFERENCIA PARA LOS CIERRES. Se piden aparte y sólo el día que hacen falta: el
+    # rango hoy-ayer no las cubre, y traer toda la semana o todo el mes multiplicaría los créditos
+    # por cinco o por veinte para usar dos fechas.
+    #
+    # Se le piden a 1816 y no se sacan de historicos.xlsx aunque el Excel tenga la serie desde
+    # diciembre: ahí sólo hay PRECIO, y el informe compara además tasas, paridades y durations. Con
+    # el Excel el cierre semanal podría decir cuánto se movió el precio pero no cuánto la TIR, que
+    # en pesos es justamente lo que se mira.
+    refs = {}
+    for tipo in ("semanal", "mensual"):
+        if tipo not in tipos:
+            continue
+        f = ultima_rueda_de_periodo_anterior(hoy, fer, tipo)
+        print(f"Cierre {tipo}: referencia {f}")
+        # Se pide con un día de margen hacia atrás porque /series no devuelve nada cuando la fecha
+        # inicial y la final coinciden; después se toma sólo la rueda que interesa.
+        d2 = pedir_series(cli, items, (f - timedelta(days=4)).isoformat(), f.isoformat())
+        refs[tipo] = {"fecha": f.isoformat(), "datos": d2}
+        print(f"  {sum(1 for v in d2.values() if f.isoformat() in v)} tickers con dato en esa rueda")
 
     print(f"Leyes de ONs: {sum(1 for v in ons.values() if v['ley'] == 'local')} local, "
           f"{sum(1 for v in ons.values() if v['ley'] == 'ny')} NY")
@@ -338,6 +375,13 @@ def main():
             "varParidad": delta(pct(h.get("paridad")), pct((a or {}).get("paridad"))),
             "conAyer": bool(a),
         }
+        # Variación contra el cierre de la semana y del mes anteriores, con la misma vara que la
+        # diaria: porcentaje de precio y puntos de tasa.
+        for tipo, ref in refs.items():
+            r0 = (datos_ref := ref["datos"].get(it["t1816"], {})).get(ref["fecha"])
+            if r0:
+                reg[f"varPrecio_{tipo}"] = variacion(h.get("precioDirty"), r0.get("precioDirty"))
+                reg[f"varTasa_{tipo}"] = delta(pct(h.get("tea")), pct(r0.get("tea")))
         instrumentos.append(reg)
         por_familia[fam].append(reg)
 
@@ -385,6 +429,11 @@ def main():
             # para esa familia sería mentira.
             "monedas": dict(Counter(r["moneda"] for r in regs).most_common()),
         }
+        for tipo in refs:
+            rp = resumir([r.get(f"varPrecio_{tipo}") for r in regs])
+            rt = resumir([r.get(f"varTasa_{tipo}") for r in regs])
+            if rp or rt:
+                resumen[fam][tipo] = {"precio": rp, "tasa": rt}
 
     # BCRA, riesgo país y caución. Va después de los bonos y no antes porque si 1816 no responde el
     # informe no sale igual: sin precios no hay nada que contar, y estas series son el contexto.
@@ -397,7 +446,7 @@ def main():
     salida = {
         "fecha": hoy.isoformat(),
         "ruedaAnterior": ayer.isoformat(),
-        "tipos": tipos_de_cierre(hoy, fer),
+        "tipos": tipos,
         # EN HORA ARGENTINA. El runner de GitHub corre en UTC, así que datetime.now() daba las
         # 17:08 para una corrida de las 14:08 de Buenos Aires. El informe del 28/08/2026 salió
         # diciendo "tomados a las 17:08 con el mercado ya cerrado" cuando el mercado estaba abierto
@@ -413,6 +462,9 @@ def main():
         "resumen": resumen,
         "instrumentos": instrumentos,
         "macro": macro,
+        # Fechas contra las que se midió cada cierre, para que el informe pueda nombrarlas en vez
+        # de decir "la semana pasada".
+        "referencias": {t: r["fecha"] for t, r in refs.items()},
     }
 
     DIR_INFORMES.mkdir(exist_ok=True)
