@@ -168,6 +168,20 @@ def pedir_series(cli, items, desde, hasta):
     return datos
 
 
+def pct(x):
+    """1816 devuelve tea y paridad como FRACCIÓN: 0,2672 es una TEA de 26,72%.
+
+    Verificado el 2026-08-28 contra la pantalla: S30S6 vino con tea 0,26726 y la solapa Sintéticos
+    mostraba 26,68% para el mismo instrumento. Sin esta conversión el informe reportaba tasas cien
+    veces más chicas, y peor: el redondeo a tres decimales dejaba una TEA del 26,7% sin el decimal
+    que importa, y una variación de -1,5 pp aparecía como "-0,015 pp", o sea como si no se hubiera
+    movido nada.
+
+    durationMod NO se toca: viene en años y así se usa.
+    """
+    return None if x is None else x * 100
+
+
 def variacion(hoy, ayer):
     if hoy is None or ayer in (None, 0):
         return None
@@ -178,6 +192,10 @@ def delta(hoy, ayer):
     if hoy is None or ayer is None:
         return None
     return round(hoy - ayer, 3)
+
+
+def redondear(x, n=3):
+    return None if x is None else round(x, n)
 
 
 def resumir(valores):
@@ -225,15 +243,15 @@ def main():
             "familia": fam,
             "moneda": it["moneda"],
             "precio": h.get("precioDirty"),
-            "tea": h.get("tea"),
-            "durationMod": h.get("durationMod"),
-            "paridad": h.get("paridad"),
+            "tea": redondear(pct(h.get("tea"))),
+            "durationMod": redondear(h.get("durationMod")),
+            "paridad": redondear(pct(h.get("paridad"))),
             # Las dos varas: el % de precio, que es lo que ve el tenedor, y los puntos de tasa, que
             # es lo que se negocia. Para una LECAP la primera es casi siempre positiva por el mero
             # devengamiento, así que sin la segunda el informe diría que "todo subió" todos los días.
             "varPrecio": variacion(h.get("precioDirty"), (a or {}).get("precioDirty")),
-            "varTasa": delta(h.get("tea"), (a or {}).get("tea")),
-            "varParidad": delta(h.get("paridad"), (a or {}).get("paridad")),
+            "varTasa": delta(pct(h.get("tea")), pct((a or {}).get("tea"))),
+            "varParidad": delta(pct(h.get("paridad")), pct((a or {}).get("paridad"))),
             "conAyer": bool(a),
         }
         instrumentos.append(reg)

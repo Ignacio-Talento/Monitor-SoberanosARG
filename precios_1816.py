@@ -174,7 +174,18 @@ class Cliente1816:
     # -- Request genérico ------------------------------------------------------
     def _get(self, path, params):
         url = f"{self.base_url}{path}"
-        for intento in range(2):  # 1 reintento si el token expiró (401)
+        # Hasta 4 vueltas: una por token vencido (401) y hasta tres por rate limit (429).
+        #
+        # El 429 antes abortaba el lote entero. Espaciar 1.2 s entre requests achica la chance pero
+        # no la elimina: el limitador de 1816 mira su propio reloj, y con la latencia de red dos
+        # pedidos separados 1.2 s de este lado pueden caer en la misma ventana del otro. Pasó el
+        # 2026-08-28 en el informe diario, que perdió diez instrumentos CER de una: el lote falló,
+        # la corrida siguió y el JSON salió incompleto sin que nada se pusiera en rojo.
+        #
+        # Reintentar es barato —el 429 no consume créditos, la request ni se procesó— y convierte
+        # una pérdida silenciosa de datos en dos segundos más de corrida.
+        espera_429 = 2.0
+        for intento in range(4):
             self._esperar_rate_limit()
             headers = {"Authorization": f"Bearer {self._token_valido()}"}
             try:
@@ -182,6 +193,14 @@ class Cliente1816:
             except requests.RequestException as e:
                 raise Error1816(f"Fallo de red en {url}: {e}")
 
+            if resp.status_code == 429 and intento < 3:
+                # Se respeta Retry-After si la API lo manda; si no, backoff 2s, 4s, 8s.
+                ra = resp.headers.get("Retry-After")
+                pausa = float(ra) if (ra or "").strip().isdigit() else espera_429
+                print(f"  429 en {path}: reintento en {pausa:.0f}s")
+                time.sleep(pausa)
+                espera_429 *= 2
+                continue
             if resp.status_code == 401 and intento == 0:
                 # Token vencido/inválido: forzar renovación y reintentar una vez.
                 self._token = None
@@ -190,7 +209,7 @@ class Cliente1816:
             if resp.status_code == 402:
                 raise Error1816("Créditos insuficientes (HTTP 402). Revisá tu balance.")
             if resp.status_code == 429:
-                raise Error1816("Demasiadas peticiones (HTTP 429). Bajá el ritmo.")
+                raise Error1816("Demasiadas peticiones (HTTP 429) tras 3 reintentos.")
             if not resp.ok:
                 raise Error1816(f"Error en {path} (HTTP {resp.status_code}): {resp.text}")
             return resp.json()
