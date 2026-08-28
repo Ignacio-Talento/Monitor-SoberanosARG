@@ -47,28 +47,34 @@ from datetime import date, timedelta
 import requests
 
 BCRA = "https://api.bcra.gob.ar/estadisticas/v4.0/monetarias"
-RIESGO_PAIS = "https://api.argentinadatos.com/v1/finanzas/indices/riesgo-pais/ultimo"
+RIESGO_PAIS = "https://api.argentinadatos.com/v1/finanzas/indices/riesgo-pais"
 UA = {"User-Agent": "Mozilla/5.0", "Accept": "application/json"}
 
 # Series del BCRA que le interesan al informe. Se piden por ID porque los nombres se repiten: hay
 # cuatro series distintas llamadas casi igual "Tasa de interés TAMAR de bancos privados", que se
 # diferencian sólo en nominal contra efectiva y en si incluyen bancos públicos.
+# El cuarto campo dice si la serie es un STOCK —un nivel, del que interesa cuánto cambió— o un
+# FLUJO —lo que pasó ESE día, del que interesa cuánto se acumuló—. La distinción cambia qué número
+# se informa en los cierres: para la TAMAR, la variación semanal es la diferencia contra el viernes
+# pasado; para la compra de divisas, esa diferencia no significa nada, porque el Central no compra
+# "más que el viernes", compra tanto por día. Lo que se quiere ahí es la suma de la semana.
 SERIES = {
-    "tamarTEA":       (45,  "TAMAR bancos privados", "% TEA"),
-    "tamarTNA":       (44,  "TAMAR bancos privados", "% TNA"),
-    "badlarTEA":      (35,  "BADLAR bancos privados", "% TEA"),
-    "pasesTerceros":  (150, "Pases entre terceros a 1 día", "% TNA"),
-    "volPases":       (151, "Volumen de pases entre terceros a 1 día", "millones ARS"),
+    "tamarTEA":       (45,  "TAMAR bancos privados", "% TEA", "stock"),
+    "tamarTNA":       (44,  "TAMAR bancos privados", "% TNA", "stock"),
+    "badlarTEA":      (35,  "BADLAR bancos privados", "% TEA", "stock"),
+    "pasesTerceros":  (150, "Pases entre terceros a 1 día", "% TNA", "stock"),
+    "volPases":       (151, "Volumen de pases entre terceros a 1 día", "millones ARS", "flujo"),
     # BAIBAR es la tasa a la que se prestan los bancos privados entre sí: el call interbancario
     # propiamente dicho, distinto de los pases entre terceros de arriba.
-    "baibar":         (146, "BAIBAR · préstamos entre bancos privados", "% TNA"),
-    "interbancario":  (148, "Préstamos entre entidades financieras locales", "% TNA"),
-    "plazoFijo30":    (1207, "Plazo fijo a 30 días", "% TNA"),
+    "baibar":         (146, "BAIBAR · préstamos entre bancos privados", "% TNA", "stock"),
+    "interbancario":  (148, "Préstamos entre entidades financieras locales", "% TNA", "stock"),
+    "plazoFijo30":    (1207, "Plazo fijo a 30 días", "% TNA", "stock"),
     # Compras del BCRA en el mercado de cambios, medidas por su impacto en reservas. Es la serie que
     # responde "cuántos dólares compró el Central", en millones de USD.
-    "comprasMLC":     (78,  "Compra de divisas · variación de reservas", "millones USD"),
-    "efectoMonetario": (47, "Efecto monetario de compras netas al sector privado", "millones ARS"),
-    "reservas":       (1,   "Reservas internacionales", "millones USD"),
+    "comprasMLC":     (78,  "Compra de divisas · variación de reservas", "millones USD", "flujo"),
+    "efectoMonetario": (47, "Efecto monetario de compras netas al sector privado", "millones ARS",
+                        "flujo"),
+    "reservas":       (1,   "Reservas internacionales", "millones USD", "stock"),
 }
 
 
@@ -96,17 +102,49 @@ def serie_bcra(id_var, desde, hasta):
     return filas, seguro
 
 
-def datos_macro(hoy=None, cliente_1816=None):
+def _agregar_periodos(reg, filas, valor_hoy, referencias, clase="stock"):
+    """Suma al registro la variación contra el cierre de la semana y del mes anteriores.
+
+    LA FECHA DE REFERENCIA NO SIEMPRE EXISTE EN LA SERIE, y por eso se busca el último dato en o
+    antes de esa fecha en vez de pedirla exacta: el BCRA publica con dos a cuatro días hábiles de
+    rezago, así que un viernes la referencia semanal —el viernes anterior— puede no tener dato y el
+    último disponible ser el miércoles. Se informa qué fecha se terminó usando, que no es un
+    detalle: comparar contra el miércoles y llamarlo "la semana" sin decirlo es engañoso.
+    """
+    if not referencias:
+        return
+    filas_asc = sorted(filas)
+    for tipo, fref in referencias.items():
+        anterior = [(f, v) for f, v in filas_asc if f <= fref]
+        if not anterior:
+            continue
+        f0, v0 = anterior[-1]
+        if clase == "flujo":
+            # Acumulado del período: todo lo que pasó DESPUÉS de la rueda de referencia, esa
+            # incluida no. Se informa también cuántas ruedas entraron, porque con el rezago de
+            # publicación el acumulado de "la semana" puede tener tres días y no cinco.
+            tramo = [(f, v) for f, v in filas_asc if f > f0]
+            reg[tipo] = {"desde": f0, "acumulado": round(sum(v for _, v in tramo), 4),
+                         "ruedas": len(tramo), "pedida": fref, "exacta": f0 == fref,
+                         "clase": "flujo"}
+        else:
+            reg[tipo] = {"fecha": f0, "valor": v0, "variacion": round(valor_hoy - v0, 4),
+                         "pedida": fref, "exacta": f0 == fref, "clase": "stock"}
+
+
+def datos_macro(hoy=None, cliente_1816=None, referencias=None):
     """Devuelve el bloque macro del informe. Nunca lanza: lo que falla queda anotado en 'fallos'."""
     hoy = hoy or date.today()
-    # Ventana de 20 días para que un feriado largo o el rezago de publicación no dejen la serie
-    # vacía. El BCRA publica las tasas con uno o dos días hábiles de atraso, y las de reservas y
-    # compras de divisas suelen ir un día más atrás que las de tasas.
-    desde = hoy - timedelta(days=20)
+    # Ventana de 50 días: 20 alcanzaban para la variación diaria, pero el cierre mensual necesita
+    # llegar al último día del mes anterior, que un 31 está a 31 días, y hace falta margen para que
+    # el rezago de publicación no deje ese extremo afuera.
+    desde = hoy - timedelta(days=50)
 
-    out = {"fecha": hoy.isoformat(), "series": {}, "fallos": [], "sslSinVerificar": False}
+    referencias = referencias or {}
+    out = {"fecha": hoy.isoformat(), "series": {}, "fallos": [], "sslSinVerificar": False,
+           "referencias": referencias}
 
-    for clave, (idv, nombre, unidad) in SERIES.items():
+    for clave, (idv, nombre, unidad, clase) in SERIES.items():
         try:
             filas, seguro = serie_bcra(idv, desde, hoy)
             if not seguro:
@@ -116,21 +154,33 @@ def datos_macro(hoy=None, cliente_1816=None):
                 continue
             f, v = filas[0]
             reg = {"nombre": nombre, "unidad": unidad, "id": idv, "fecha": f, "valor": v,
-                   "rezagoDias": (hoy - date.fromisoformat(f)).days}
+                   "clase": clase, "rezagoDias": (hoy - date.fromisoformat(f)).days}
             if len(filas) > 1:
                 reg["previo"] = {"fecha": filas[1][0], "valor": filas[1][1]}
                 reg["variacion"] = round(v - filas[1][1], 4)
             # La serie completa de la ventana sirve para ver la tendencia de la semana sin volver
             # a pedirla; son 20 puntos, no pesa.
             reg["ventana"] = [{"fecha": f2, "valor": v2} for f2, v2 in filas[:15]]
+            _agregar_periodos(reg, filas, v, referencias, clase)
             out["series"][clave] = reg
         except Exception as e:                                    # noqa: BLE001
             out["fallos"].append(f"{clave} (id {idv}): {e}")
 
     try:
-        d, _ = _get(RIESGO_PAIS)
-        out["riesgoPais"] = {"valor": d.get("valor"), "fecha": d.get("fecha"),
-                             "fuente": "EMBI+ Argentina vía argentinadatos.com"}
+        # La serie entera y no /ultimo: son 7.689 puntos desde 1999 y pesan 400 KB, pero es el
+        # único modo de tener la variación semanal y mensual sin pedir el endpoint tres veces.
+        d, _ = _get(RIESGO_PAIS, timeout=45)
+        filas = sorted(((x["fecha"], float(x["valor"])) for x in d if x.get("fecha")),
+                       reverse=True)
+        if filas:
+            f, v = filas[0]
+            reg = {"valor": v, "fecha": f, "rezagoDias": (hoy - date.fromisoformat(f)).days,
+                   "fuente": "EMBI+ Argentina vía argentinadatos.com"}
+            if len(filas) > 1:
+                reg["previo"] = {"fecha": filas[1][0], "valor": filas[1][1]}
+                reg["variacion"] = round(v - filas[1][1], 2)
+            _agregar_periodos(reg, filas, v, referencias)
+            out["riesgoPais"] = reg
     except Exception as e:                                        # noqa: BLE001
         out["fallos"].append(f"riesgoPais: {e}")
 

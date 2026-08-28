@@ -438,7 +438,8 @@ def main():
     # BCRA, riesgo país y caución. Va después de los bonos y no antes porque si 1816 no responde el
     # informe no sale igual: sin precios no hay nada que contar, y estas series son el contexto.
     print("Pidiendo BCRA, riesgo país y caución...")
-    macro = datos_macro(hoy, cliente_1816=cli)
+    macro = datos_macro(hoy, cliente_1816=cli,
+                        referencias={t: r["fecha"] for t, r in refs.items()})
     if macro["fallos"]:
         print("  fallos macro:", "; ".join(macro["fallos"]))
     print(f"  {len(macro['series'])} series del BCRA · caución 1816: {macro['caucion']}")
