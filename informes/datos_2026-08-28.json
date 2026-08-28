@@ -5,7 +5,7 @@
   "diario",
   "semanal"
  ],
- "generado": "2026-08-28T14:41:50-03:00",
+ "generado": "2026-08-28T14:55:32-03:00",
  "feriadosLeidos": true,
  "universo": 186,
  "sinDato": [
@@ -71,7 +71,10 @@
    },
    "mejor": "T15E7",
    "peor": "TY30P",
-   "convencionDudosa": []
+   "convencionDudosa": [],
+   "monedas": {
+    "ars": 12
+   }
   },
   "CER": {
    "instrumentos": 22,
@@ -100,7 +103,10 @@
    "convencionDudosa": [
     "TZXO6",
     "X30S6"
-   ]
+   ],
+   "monedas": {
+    "ars": 22
+   }
   },
   "TAMAR": {
    "instrumentos": 5,
@@ -126,7 +132,10 @@
    },
    "mejor": "TML27",
    "peor": "TMF28",
-   "convencionDudosa": []
+   "convencionDudosa": [],
+   "monedas": {
+    "ars": 5
+   }
   },
   "Dólar linked": {
    "instrumentos": 7,
@@ -152,7 +161,10 @@
    },
    "mejor": "D30S6",
    "peor": "TZVD8",
-   "convencionDudosa": []
+   "convencionDudosa": [],
+   "monedas": {
+    "ars": 7
+   }
   },
   "Bonares": {
    "instrumentos": 9,
@@ -178,7 +190,10 @@
    },
    "mejor": "AL29D",
    "peor": "AO29D",
-   "convencionDudosa": []
+   "convencionDudosa": [],
+   "monedas": {
+    "mep": 9
+   }
   },
   "Globales": {
    "instrumentos": 6,
@@ -204,7 +219,10 @@
    },
    "mejor": "GD29D",
    "peor": "GD38D",
-   "convencionDudosa": []
+   "convencionDudosa": [],
+   "monedas": {
+    "ccl": 6
+   }
   },
   "BOPREALes": {
    "instrumentos": 6,
@@ -230,7 +248,10 @@
    },
    "mejor": "BPA8D",
    "peor": "BPA7D",
-   "convencionDudosa": []
+   "convencionDudosa": [],
+   "monedas": {
+    "mep": 6
+   }
   },
   "Duales": {
    "instrumentos": 7,
@@ -259,7 +280,10 @@
    "convencionDudosa": [
     "TXMJ8",
     "TXMJ9"
-   ]
+   ],
+   "monedas": {
+    "ars": 7
+   }
   },
   "ONs ley local": {
    "instrumentos": 52,
@@ -288,7 +312,11 @@
    "convencionDudosa": [
     "MR44D",
     "RC2CD"
-   ]
+   ],
+   "monedas": {
+    "mep": 46,
+    "ccl": 6
+   }
   },
   "ONs ley NY": {
    "instrumentos": 26,
@@ -314,7 +342,10 @@
    },
    "mejor": "PLC7D",
    "peor": "TLCTD",
-   "convencionDudosa": []
+   "convencionDudosa": [],
+   "monedas": {
+    "ccl": 26
+   }
   },
   "Subsoberanos": {
    "instrumentos": 5,
@@ -340,7 +371,10 @@
    },
    "mejor": "BDC36",
    "peor": "BA37D",
-   "convencionDudosa": []
+   "convencionDudosa": [],
+   "monedas": {
+    "ccl": 5
+   }
   }
  },
  "instrumentos": [
