@@ -1,0 +1,60 @@
+# Datos duros de la rueda para el informe diario que sale por mail a las 20:00.
+#
+# POR QUÉ CORRE ACÁ Y NO EN LA MÁQUINA. La API key de 1816 vive sólo como Secret de este repo. El
+# proxy de producción tampoco sirve de atajo: está detrás de Cloudflare Access y devuelve 302 al
+# login sin sesión de navegador. Así que el único lugar donde se pueden pedir las TIRs sin poner la
+# key en un disco es acá.
+#
+# ESTE JOB NO MANDA EL MAIL. Deja el JSON commiteado; la tarea programada de las 20:00 lo baja,
+# escribe el análisis y manda el correo. La separación es la que hace que el informe sea auditable:
+# los números quedan versionados junto al commit que los produjo, y se puede releer cualquier rueda
+# pasada sin volver a gastar créditos.
+name: Datos del Informe Diario
+
+on:
+  schedule:
+    # 19:15 hora Argentina (UTC-3) = 22:15 UTC, lunes a viernes.
+    #
+    # Los 45 minutos de margen contra las 20:00 no son cortesía: GitHub demora los crones cuando hay
+    # cola —quince o veinte minutos es habitual— y si el JSON no está, el mail sale sin datos.
+    #
+    # Tampoco antes: el job de precios corre 17:20 y 18:20, y 1816 necesita tener el cierre cargado.
+    # El mercado cierra a las 17:00, así que a las 19:15 la rueda está completa y quieta.
+    #
+    # El minuto :15 y no :00 a propósito: la hora en punto es la franja más congestionada de Actions.
+    - cron: '15 22 * * 1-5'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  informe:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repositorio
+        uses: actions/checkout@v4
+
+      - name: Configurar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Instalar dependencias
+        run: pip install requests openpyxl
+
+      # El script se planta solo si el día no es hábil (feriado que Actions igual dispara) y sale
+      # sin escribir nada.
+      - name: Extraer datos de la rueda
+        env:
+          API_1816_KEY: ${{ secrets.API_1816_KEY }}
+        run: python armar_informe.py
+
+      - name: Commit y push si hay cambios
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git add informes/
+          git diff --staged --quiet || git commit -m "Datos del informe $(date +'%Y-%m-%d')"
+          git push
