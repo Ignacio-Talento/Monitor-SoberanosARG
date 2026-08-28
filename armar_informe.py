@@ -318,6 +318,28 @@ def main():
     datos = pedir_series(cli, items, ayer.isoformat(), hoy.isoformat())
     print(f"1816 devolvió datos de {len(datos)} tickers")
 
+    # SEGUNDA PASADA EN MEP PARA LO QUE SE VALÚA EN CCL.
+    #
+    # La tabla por familia muestra cada grupo en la punta del monitor, y ahí globales, subsoberanos
+    # y ONs de ley NY van al CCL. Pero comparar un global contra su bonar gemelo con esas puntas
+    # cruzadas da un número que sale, es plausible, y no significa lo que dice: la propia solapa
+    # Glob vs Bon lo tiene documentado —el canje de AL29/GD29 pasa de +4,02% a +0,17% según se
+    # mezclen o no—. Por eso esa solapa descarta lo que no esté en MEP en vez de convertirlo.
+    #
+    # Acá se hace lo mismo pero sin perder el par: se pide una segunda vez en MEP sólo lo que se
+    # valúa en CCL, y el instrumento queda con las dos puntas. La tabla sigue usando la del
+    # monitor; cualquier comparación entre familias usa la homogénea.
+    #
+    # Cuesta unos 430 créditos —54 tickers por 4 campos por 2 ruedas— contra los ~1.500 del pedido
+    # principal. Convertir con el canje habría salido gratis, pero mete un supuesto propio en cada
+    # número; pedirlo es exacto y barato.
+    en_ccl = [dict(it, moneda="mep") for it in items if it.get("moneda") == "ccl"]
+    homogeneos = {}
+    if en_ccl:
+        homogeneos = pedir_series(cli, en_ccl, ayer.isoformat(), hoy.isoformat())
+        print(f"Segunda pasada en MEP para {len(en_ccl)} instrumentos que se valúan en CCL: "
+              f"{len(homogeneos)} con dato")
+
     # RUEDAS DE REFERENCIA PARA LOS CIERRES. Se piden aparte y sólo el día que hacen falta: el
     # rango hoy-ayer no las cubre, y traer toda la semana o todo el mes multiplicaría los créditos
     # por cinco o por veinte para usar dos fechas.
@@ -375,6 +397,16 @@ def main():
             "varParidad": delta(pct(h.get("paridad")), pct((a or {}).get("paridad"))),
             "conAyer": bool(a),
         }
+        # La punta homogénea, para poder compararlo con los que se valúan en MEP. Va como campo
+        # aparte y no reemplaza al principal: la tabla por familia tiene que seguir mostrando lo
+        # mismo que la pantalla.
+        if it["moneda"] == "ccl":
+            hm = homogeneos.get(it["t1816"], {}).get(hoy.isoformat())
+            if hm:
+                reg["enMep"] = {"precio": hm.get("precioDirty"),
+                                "tea": redondear(pct(hm.get("tea"))),
+                                "paridad": redondear(pct(hm.get("paridad")))}
+
         # Variación contra el cierre de la semana y del mes anteriores, con la misma vara que la
         # diaria: porcentaje de precio y puntos de tasa.
         for tipo, ref in refs.items():
