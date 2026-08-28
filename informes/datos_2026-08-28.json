@@ -5,7 +5,7 @@
   "diario",
   "semanal"
  ],
- "generado": "2026-08-28T15:41:36-03:00",
+ "generado": "2026-08-28T16:07:33-03:00",
  "feriadosLeidos": true,
  "universo": 186,
  "sinDato": [
@@ -1367,6 +1367,11 @@
    "varTasa": 0.324,
    "varParidad": -0.354,
    "conAyer": true,
+   "enMep": {
+    "precio": 55.55999999999999,
+    "tea": 6.133,
+    "paridad": 92.469
+   },
    "varPrecio_semanal": -0.577,
    "varTasa_semanal": 0.516
   },
@@ -1382,6 +1387,11 @@
    "varTasa": 0.145,
    "varParidad": -0.175,
    "conAyer": true,
+   "enMep": {
+    "precio": 57.70000000000001,
+    "tea": 6.675,
+    "paridad": 90.061
+   },
    "varPrecio_semanal": 0.145,
    "varTasa_semanal": 0.01
   },
@@ -1397,6 +1407,11 @@
    "varTasa": 0.124,
    "varParidad": -0.425,
    "conAyer": true,
+   "enMep": {
+    "precio": 79.65,
+    "tea": 9.341,
+    "paridad": 79.187
+   },
    "varPrecio_semanal": -0.716,
    "varTasa_semanal": 0.182
   },
@@ -1412,6 +1427,11 @@
    "varTasa": 0.162,
    "varParidad": -0.509,
    "conAyer": true,
+   "enMep": {
+    "precio": 83.48,
+    "tea": 9.126,
+    "paridad": 82.893
+   },
    "varPrecio_semanal": -0.349,
    "varTasa_semanal": 0.125
   },
@@ -1427,6 +1447,11 @@
    "varTasa": 0.122,
    "varParidad": -0.422,
    "conAyer": true,
+   "enMep": {
+    "precio": 74.1,
+    "tea": 9.477,
+    "paridad": 73.734
+   },
    "varPrecio_semanal": -0.602,
    "varTasa_semanal": 0.146
   },
@@ -1441,7 +1466,12 @@
    "varPrecio": -0.399,
    "varTasa": 0.083,
    "varParidad": -0.301,
-   "conAyer": true
+   "conAyer": true,
+   "enMep": {
+    "precio": 67.83,
+    "tea": 9.42,
+    "paridad": 74.18
+   }
   },
   {
    "ticker": "BPC7D",
@@ -1680,6 +1710,11 @@
    "varTasa": 0.186,
    "varParidad": -0.885,
    "conAyer": true,
+   "enMep": {
+    "precio": 114.4,
+    "tea": 6.956,
+    "paridad": 111.758
+   },
    "varPrecio_semanal": -0.046,
    "varTasa_semanal": 0.043
   },
@@ -1694,7 +1729,12 @@
    "varPrecio": -0.387,
    "varTasa": 0.097,
    "varParidad": -0.457,
-   "conAyer": true
+   "conAyer": true,
+   "enMep": {
+    "precio": 107.69999999999999,
+    "tea": 6.702,
+    "paridad": 105.675
+   }
   },
   {
    "ticker": "NDT25",
@@ -1707,7 +1747,12 @@
    "varPrecio": null,
    "varTasa": null,
    "varParidad": null,
-   "conAyer": false
+   "conAyer": false,
+   "enMep": {
+    "precio": 64.67,
+    "tea": 5.385,
+    "paridad": 102.677
+   }
   },
   {
    "ticker": "SFD34",
@@ -1721,6 +1766,11 @@
    "varTasa": null,
    "varParidad": null,
    "conAyer": false,
+   "enMep": {
+    "precio": 105.75000000000001,
+    "tea": 7.467,
+    "paridad": 103.88
+   },
    "varPrecio_semanal": 0.148,
    "varTasa_semanal": 0.001
   },
@@ -1736,6 +1786,11 @@
    "varTasa": -0.035,
    "varParidad": 0.178,
    "conAyer": true,
+   "enMep": {
+    "precio": 103.75000000000001,
+    "tea": 8.184,
+    "paridad": 103.061
+   },
    "varPrecio_semanal": -0.551,
    "varTasa_semanal": 0.139
   },
@@ -1751,6 +1806,11 @@
    "varTasa": -0.346,
    "varParidad": 2.117,
    "conAyer": true,
+   "enMep": {
+    "precio": 105.5,
+    "tea": 6.63,
+    "paridad": 103.335
+   },
    "varPrecio_semanal": 2.743,
    "varTasa_semanal": -0.424
   },
@@ -1766,6 +1826,11 @@
    "varTasa": 0.15,
    "varParidad": -0.399,
    "conAyer": true,
+   "enMep": {
+    "precio": 77.45,
+    "tea": 10.948,
+    "paridad": 84.304
+   },
    "varPrecio_semanal": -0.537,
    "varTasa_semanal": 0.206
   },
@@ -1901,6 +1966,11 @@
    "varTasa": null,
    "varParidad": null,
    "conAyer": false,
+   "enMep": {
+    "precio": 106.3,
+    "tea": 0.202,
+    "paridad": 105.923
+   },
    "varPrecio_semanal": 0.691,
    "varTasa_semanal": -0.664
   },
@@ -2021,6 +2091,11 @@
    "varTasa": null,
    "varParidad": null,
    "conAyer": false,
+   "enMep": {
+    "precio": 106.89999999999999,
+    "tea": 3.823,
+    "paridad": 106.372
+   },
    "varPrecio_semanal": 0.439,
    "varTasa_semanal": -0.187
   },
@@ -2201,6 +2276,11 @@
    "varTasa": 0.133,
    "varParidad": -0.189,
    "conAyer": true,
+   "enMep": {
+    "precio": 93.9,
+    "tea": 3.702,
+    "paridad": 107.931
+   },
    "varPrecio_semanal": -0.508,
    "varTasa_semanal": 0.449
   },
@@ -2216,6 +2296,11 @@
    "varTasa": -0.225,
    "varParidad": 0.516,
    "conAyer": true,
+   "enMep": {
+    "precio": 99.34,
+    "tea": 8.415,
+    "paridad": 98.15
+   },
    "varPrecio_semanal": -0.529,
    "varTasa_semanal": 0.301
   },
@@ -2260,7 +2345,12 @@
    "varPrecio": 0.976,
    "varTasa": -0.359,
    "varParidad": 0.931,
-   "conAyer": true
+   "conAyer": true,
+   "enMep": {
+    "precio": 107.95000000000002,
+    "tea": 5.212,
+    "paridad": 107.808
+   }
   },
   {
    "ticker": "PN41D",
@@ -2394,6 +2484,11 @@
    "varTasa": -1.278,
    "varParidad": 4.284,
    "conAyer": true,
+   "enMep": {
+    "precio": 111.75000000000001,
+    "tea": 5.7,
+    "paridad": 110.689
+   },
    "varPrecio_semanal": 3.489,
    "varTasa_semanal": -1.042
   },
@@ -2409,6 +2504,11 @@
    "varTasa": -0.182,
    "varParidad": 0.478,
    "conAyer": true,
+   "enMep": {
+    "precio": 110.30000000000001,
+    "tea": 7.371,
+    "paridad": 106.66
+   },
    "varPrecio_semanal": 0.713,
    "varTasa_semanal": -0.22
   },
@@ -2424,6 +2524,11 @@
    "varTasa": 0.06,
    "varParidad": -0.189,
    "conAyer": true,
+   "enMep": {
+    "precio": 109.05,
+    "tea": 5.903,
+    "paridad": 106.413
+   },
    "varPrecio_semanal": -0.048,
    "varTasa_semanal": 0.054
   },
@@ -2439,6 +2544,11 @@
    "varTasa": 0.337,
    "varParidad": -1.037,
    "conAyer": true,
+   "enMep": {
+    "precio": 110.55,
+    "tea": 9.893,
+    "paridad": 107.294
+   },
    "varPrecio_semanal": 0.094,
    "varTasa_semanal": 0.036
   },
@@ -2454,6 +2564,11 @@
    "varTasa": -0.058,
    "varParidad": 0.191,
    "conAyer": true,
+   "enMep": {
+    "precio": 108.35,
+    "tea": 7.983,
+    "paridad": 105.912
+   },
    "varPrecio_semanal": -0.144,
    "varTasa_semanal": 0.11
   },
@@ -2469,6 +2584,11 @@
    "varTasa": 0.119,
    "varParidad": -0.437,
    "conAyer": true,
+   "enMep": {
+    "precio": 110.45,
+    "tea": 6.198,
+    "paridad": 107.965
+   },
    "varPrecio_semanal": -0.189,
    "varTasa_semanal": 0.089
   },
@@ -2484,6 +2604,11 @@
    "varTasa": 0.108,
    "varParidad": -0.353,
    "conAyer": true,
+   "enMep": {
+    "precio": 112.99999999999999,
+    "tea": 6.101,
+    "paridad": 111.761
+   },
    "varPrecio_semanal": -0.46,
    "varTasa_semanal": 0.193
   },
@@ -2499,6 +2624,11 @@
    "varTasa": 0.004,
    "varParidad": -0.001,
    "conAyer": true,
+   "enMep": {
+    "precio": 114.05000000000001,
+    "tea": 6.233,
+    "paridad": 109.55
+   },
    "varPrecio_semanal": -0.137,
    "varTasa_semanal": 0.081
   },
@@ -2514,6 +2644,11 @@
    "varTasa": null,
    "varParidad": null,
    "conAyer": false,
+   "enMep": {
+    "precio": 111.90000000000002,
+    "tea": 5.278,
+    "paridad": 108.644
+   },
    "varPrecio_semanal": 0.803,
    "varTasa_semanal": -0.204
   },
@@ -2544,6 +2679,11 @@
    "varTasa": 0.014,
    "varParidad": -0.048,
    "conAyer": true,
+   "enMep": {
+    "precio": 111.34999999999998,
+    "tea": 6.649,
+    "paridad": 109.033
+   },
    "varPrecio_semanal": 0.0,
    "varTasa_semanal": 0.033
   },
@@ -2559,6 +2699,11 @@
    "varTasa": 0.032,
    "varParidad": -0.099,
    "conAyer": true,
+   "enMep": {
+    "precio": 106.05,
+    "tea": 9.04,
+    "paridad": 102.742
+   },
    "varPrecio_semanal": -0.294,
    "varTasa_semanal": 0.121
   },
@@ -2574,6 +2719,11 @@
    "varTasa": 0.003,
    "varParidad": -0.025,
    "conAyer": true,
+   "enMep": {
+    "precio": 113.35,
+    "tea": 6.2,
+    "paridad": 111.223
+   },
    "varPrecio_semanal": 0.092,
    "varTasa_semanal": 0.009
   },
@@ -2589,6 +2739,11 @@
    "varTasa": -0.135,
    "varParidad": 0.594,
    "conAyer": true,
+   "enMep": {
+    "precio": 107.69999999999999,
+    "tea": 6.059,
+    "paridad": 104.648
+   },
    "varPrecio_semanal": 0.437,
    "varTasa_semanal": -0.072
   },
@@ -2604,6 +2759,11 @@
    "varTasa": 0.012,
    "varParidad": -0.047,
    "conAyer": true,
+   "enMep": {
+    "precio": 110.2,
+    "tea": 6.578,
+    "paridad": 109.125
+   },
    "varPrecio_semanal": -1.678,
    "varTasa_semanal": 0.381
   },
@@ -2618,7 +2778,12 @@
    "varPrecio": 0.654,
    "varTasa": -0.119,
    "varParidad": 0.576,
-   "conAyer": true
+   "conAyer": true,
+   "enMep": {
+    "precio": 103.90000000000002,
+    "tea": 8.052,
+    "paridad": 103.097
+   }
   },
   {
    "ticker": "MGCOD",
@@ -2632,6 +2797,11 @@
    "varTasa": null,
    "varParidad": null,
    "conAyer": false,
+   "enMep": {
+    "precio": 109.85000000000001,
+    "tea": 6.67,
+    "paridad": 108.077
+   },
    "varPrecio_semanal": 0.143,
    "varTasa_semanal": -0.001
   },
@@ -2647,6 +2817,11 @@
    "varTasa": 0.216,
    "varParidad": -1.157,
    "conAyer": true,
+   "enMep": {
+    "precio": 110.4,
+    "tea": 6.899,
+    "paridad": 106.839
+   },
    "varPrecio_semanal": -0.33,
    "varTasa_semanal": 0.089
   },
@@ -2662,6 +2837,11 @@
    "varTasa": 0.063,
    "varParidad": -0.386,
    "conAyer": true,
+   "enMep": {
+    "precio": 109.1,
+    "tea": 6.833,
+    "paridad": 106.801
+   },
    "varPrecio_semanal": -0.806,
    "varTasa_semanal": 0.152
   },
@@ -2677,6 +2857,11 @@
    "varTasa": 0.194,
    "varParidad": -1.188,
    "conAyer": true,
+   "enMep": {
+    "precio": 109.2,
+    "tea": 7.346,
+    "paridad": 108.178
+   },
    "varPrecio_semanal": -0.048,
    "varTasa_semanal": 0.033
   },
@@ -2692,6 +2877,11 @@
    "varTasa": -0.013,
    "varParidad": 0.095,
    "conAyer": true,
+   "enMep": {
+    "precio": 104.4,
+    "tea": 9.55,
+    "paridad": 102.349
+   },
    "varPrecio_semanal": 0.553,
    "varTasa_semanal": -0.067
   },
@@ -2722,6 +2912,11 @@
    "varTasa": 0.017,
    "varParidad": -0.115,
    "conAyer": true,
+   "enMep": {
+    "precio": 108.70000000000002,
+    "tea": 6.732,
+    "paridad": 107.634
+   },
    "varPrecio_semanal": -0.096,
    "varTasa_semanal": 0.037
   },
@@ -2737,6 +2932,11 @@
    "varTasa": -0.021,
    "varParidad": 0.156,
    "conAyer": true,
+   "enMep": {
+    "precio": 105.2,
+    "tea": 7.108,
+    "paridad": 103.893
+   },
    "varPrecio_semanal": -0.148,
    "varTasa_semanal": 0.044
   },
@@ -2752,6 +2952,11 @@
    "varTasa": 0.009,
    "varParidad": -0.042,
    "conAyer": true,
+   "enMep": {
+    "precio": 107.25,
+    "tea": 7.216,
+    "paridad": 104.857
+   },
    "varPrecio_semanal": -0.387,
    "varTasa_semanal": 0.076
   },
@@ -2767,6 +2972,11 @@
    "varTasa": 0.009,
    "varParidad": -0.065,
    "conAyer": true,
+   "enMep": {
+    "precio": 110.5,
+    "tea": 6.994,
+    "paridad": 107.148
+   },
    "varPrecio_semanal": -1.215,
    "varTasa_semanal": 0.203
   },
@@ -2797,6 +3007,11 @@
    "varTasa": null,
    "varParidad": null,
    "conAyer": false,
+   "enMep": {
+    "precio": 114.1,
+    "tea": 5.784,
+    "paridad": 110.956
+   },
    "varPrecio_semanal": 0.137,
    "varTasa_semanal": -0.003
   },
