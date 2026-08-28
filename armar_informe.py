@@ -96,6 +96,12 @@ METRICA = {
 
 FERIADOS_API = "https://api.argentinadatos.com/v1/feriados/{anio}"
 
+# El runner de GitHub corre en UTC. Sin esto, datetime.now() daba las 17:08 para una corrida de las
+# 14:08 de Buenos Aires, y el informe del 2026-08-28 salió diciendo "tomados a las 17:08 con el
+# mercado ya cerrado" cuando el mercado estaba abierto y los precios eran intradía. Con el tzinfo
+# puesto el offset viaja en el propio string (-03:00) y no hay forma de leerlo mal.
+ART = timezone(timedelta(hours=-3))
+
 
 def mapa_ley_ons():
     """ticker -> "local" | "ny", leído de la columna Ley de la hoja ONs.
@@ -365,7 +371,7 @@ def main():
         # 17:08 para una corrida de las 14:08 de Buenos Aires. El informe del 28/08/2026 salió
         # diciendo "tomados a las 17:08 con el mercado ya cerrado" cuando el mercado estaba abierto
         # y los precios eran intradía.
-        "generado": (datetime.now(timezone.utc) - timedelta(hours=3)).isoformat(timespec="seconds") + " ART",
+        "generado": datetime.now(ART).isoformat(timespec="seconds"),
         "feriadosLeidos": fer is not None,
         "universo": len(items),
         "sinDato": sin_dato,
