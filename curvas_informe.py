@@ -15,16 +15,14 @@ QUÉ CURVAS. Las seis que se miran a diario, cada una con la métrica en la que 
   5. TAMAR — TEA.
   6. Dólar linked — TIR.
 
-LO QUE NO ESTÁ: LAS PATAS DE LOS DUALES. El monitor las calcula en el frontend, descomponiendo el
-cronograma de cada dual en su pata CER y su pata TAMAR y sacándole la TIR a cada una; el respaldo
-bonos_data guarda una fila por pata con su pataTipo. 1816, en cambio, devuelve UNA sola tasa por
-instrumento, y encima no siempre en la misma convención —el 2026-08-28 daba TXMD8 en TEA nominal y
-TXMJ8 en TIR real—.
+LOS DUALES ENTRAN CON SU PATA, no con la tasa del instrumento entero. 1816 publica un ticker por
+pata —"TXMD8 @CER" y "TXMD8 @TAMAR"— y cada uno devuelve la tasa de la suya: 6,04% real y 40,53%
+nominal para el mismo bono. El ticker pelado devuelve la de la pata que domina, y no es la misma en
+todos: TXMJ8 informa su pata CER y TXMD8 su pata TAMAR.
 
-Calcularlas acá sería reimplementar en Python una fórmula que ya vive en JavaScript, y esas dos
-copias divergen sin que nadie se entere. Así que los duales entran en la curva que les corresponde
-según la convención en la que 1816 los devuelve, marcados con otro símbolo y dichos como lo que
-son: la tasa del instrumento entero, no la de su pata.
+Van con otro símbolo igual, porque un dual no es un bono puro: se cobra el máximo entre las dos
+patas, así que su pata CER rinde menos que un CER equivalente —esa diferencia es el precio de la
+opcionalidad— y dibujarlos como un punto más de la curva sugeriría que son sustitutos.
 """
 import json
 import sys
@@ -77,6 +75,23 @@ def _puntos(instr, familia, campo="tea", en_mep=False):
         if v is None:
             continue
         out.append((r["durationMod"], v, r["ticker"]))
+    return sorted(out)
+
+
+def _patas(instr, tipo):
+    """[(duration, tasa, ticker)] de la pata pedida de cada dual.
+
+    Usa la duration DE LA PATA, que no es la del instrumento: la pata CER de TXMD8 tiene 2,22 años
+    y la TAMAR 1,82, porque cada una descuenta un flujo distinto.
+    """
+    out = []
+    for r in instr:
+        if r["familia"] != "Duales":
+            continue
+        p = (r.get("patas") or {}).get(tipo)
+        if not p or p.get("tea") is None or p.get("durationMod") is None:
+            continue
+        out.append((p["durationMod"], p["tea"], r["ticker"]))
     return sorted(out)
 
 
@@ -185,14 +200,15 @@ def curva_cer(instr, salida, duales_cer):
     fig, ax = balanz_figure(figsize=(9.5, 5.2))
     _serie(ax, pts, NAVY, "CER · TIR real", cada=2)
     if duales_cer:
-        _serie(ax, duales_cer, AMBAR, "Duales (tasa del instrumento)", marcador="D", linea="")
+        _serie(ax, duales_cer, AMBAR, "Duales · pata CER", marcador="D", linea="")
     _ejes(ax, "Curva CER · rendimiento real sobre el índice", "CER + x % (TIR real)")
     ax.axhline(0, color=GRIS, linewidth=.9, linestyle=":", zorder=1)
     nota = ("Cada punto es el «CER más x%» que paga el bono. El tramo ultracorto puede dar "
             "negativo, que es normal cuando el mercado paga por cobertura inmediata.")
     if duales_cer:
-        nota += ("\nLos duales van con la tasa del instrumento ENTERO, no la de su pata CER: esa "
-                 "la calcula el monitor con el cronograma y 1816 no la publica.")
+        nota += ("\nLos rombos son la PATA CER de cada dual, no el instrumento entero. Rinden "
+                 "menos que un CER puro de la misma duration: en un dual se cobra el máximo entre "
+                 "las dos patas, y esa opcionalidad se paga.")
     ax.text(.01, -.16, nota, transform=ax.transAxes, fontsize=8, color=GRIS, va="top")
     return _cerrar(fig, ax, salida)
 
@@ -265,7 +281,7 @@ def curva_tamar(instr, salida, duales_tamar, tamar_bcra=None):
     fig, ax = balanz_figure(figsize=(9.5, 5.2))
     _serie(ax, pts, NAVY, "TAMAR · TEA")
     if duales_tamar:
-        _serie(ax, duales_tamar, AMBAR, "Duales (tasa del instrumento)", marcador="D", linea="")
+        _serie(ax, duales_tamar, AMBAR, "Duales · pata TAMAR", marcador="D", linea="")
     if tamar_bcra:
         ax.axhline(tamar_bcra, color=VERDE, linewidth=1.4, linestyle="--", zorder=2,
                    label=f"TAMAR spot BCRA · {tamar_bcra:.2f}%")
@@ -275,9 +291,9 @@ def curva_tamar(instr, salida, duales_tamar, tamar_bcra=None):
         nota = ("La línea es la TAMAR de bancos privados que publica el BCRA, con dos días hábiles "
                 "de rezago: es el nivel spot contra el que se paran los bonos.")
     if duales_tamar:
-        nota += ("\nLos duales van con la tasa del instrumento ENTERO, no la de su pata TAMAR."
-                 if nota else
-                 "Los duales van con la tasa del instrumento ENTERO, no la de su pata TAMAR.")
+        extra = ("Los rombos son la PATA TAMAR de cada dual, no el instrumento entero: rinden "
+                 "menos que un TAMAR puro porque incluyen el costo de la opcionalidad.")
+        nota = (nota + "\n" + extra) if nota else extra
     if nota:
         ax.text(.01, -.16, nota, transform=ax.transAxes, fontsize=8, color=GRIS, va="top")
     return _cerrar(fig, ax, salida)
@@ -304,12 +320,11 @@ def generar(ruta_json, dir_salida="curvas"):
     dud_cer = set(d["resumen"].get("CER", {}).get("convencionDudosa") or [])
     dud_dua = set(d["resumen"].get("Duales", {}).get("convencionDudosa") or [])
 
-    # Reparto de los duales: los que 1816 devuelve en una escala parecida a la de los CER van al
-    # gráfico CER, y el resto al de TAMAR. Es la misma heurística que marca convencionDudosa, y no
-    # reemplaza al cálculo por pata que hace el monitor: sólo ubica cada punto donde es legible.
-    duales = _puntos(instr, "Duales")
-    d_cer = [p for p in duales if p[2] in dud_dua]
-    d_tam = [p for p in duales if p[2] not in dud_dua]
+    # Cada dual va a su curva con SU pata, pedida a 1816 por separado. Antes esto era una
+    # heurística sobre la escala de la tasa del instrumento entero, que ubicaba los puntos donde
+    # parecían caber; ahora es el dato.
+    d_cer = _patas(instr, "CER")
+    d_tam = _patas(instr, "TAMAR")
 
     tamar_spot = (d.get("macro", {}).get("series", {}).get("tamarTEA") or {}).get("valor")
 

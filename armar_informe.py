@@ -446,8 +446,7 @@ def main():
             "varParidad": delta(pct(h.get("paridad")), pct((a or {}).get("paridad"))),
             "conAyer": bool(a),
         }
-        # Las patas, para los duales. `itm` marca la que hoy manda: es la única para la que 1816
-        # calcula indicadores, así que tener tasa ES la señal.
+        # Las patas, para los duales.
         if fam == "Duales":
             pp = {}
             for tk, tipo, t1816 in patas:
@@ -456,9 +455,14 @@ def main():
                 v = datos_patas.get(t1816, {}).get(hoy.isoformat())
                 if not v:
                     continue
+                # `conDatos` y NO `itm`: 1816 devuelve null para algunas patas dominadas
+                # —"TTS26 @Tasa Fija" viene entero en null— pero para otras publica las dos, así
+                # que tener tasa no alcanza para afirmar que esa pata es la que va a pagar. Cuál
+                # manda lo decide comparar los valores finales al vencimiento, que es lo que hace
+                # el monitor; acá sólo se dice si el dato existe.
                 pp[tipo] = {"tea": redondear(pct(v.get("tea"))),
                             "durationMod": redondear(v.get("durationMod")),
-                            "itm": v.get("tea") is not None}
+                            "conDatos": v.get("tea") is not None}
             if pp:
                 reg["patas"] = pp
 
@@ -484,15 +488,18 @@ def main():
 
     resumen = {}
     for fam, regs in por_familia.items():
-        # OUTLIERS DE CONVENCIÓN. Dentro de una familia, 1816 no siempre devuelve la tasa en la
-        # misma convención. Los duales CER/TAMAR son el caso claro: pagan el máximo entre CER más
-        # margen y TAMAR, y el 2026-08-28 la API devolvía TXMD8 al 40,55% —TEA nominal— y TXMJ8 al
-        # 5,71%, que sólo se entiende como TIR real. Promediarlas da un número que no significa
-        # nada, y peor, un informe que afirma que los duales rinden 25%.
+        # TASAS QUE NO SON COMPARABLES CON SUS PARES. Dentro de una familia puede haber
+        # instrumentos cuya tasa está en otra escala, y hay que marcarlos para que nadie los
+        # promedie ni los lea como equivalentes.
         #
-        # No se corrigen ni se descartan: se marcan. Cuál de las dos convenciones es la correcta
-        # depende del instrumento y no se puede resolver desde acá; lo que sí se puede es evitar que
-        # el análisis los lea como comparables.
+        # En los DUALES la causa está entendida: el ticker pelado devuelve la tasa de la pata que
+        # DOMINA, y no todos tienen la misma. TXMJ8 viene al 5,82% porque en ese bono manda la pata
+        # CER, y TXMD8 al 40,53% porque manda la TAMAR. No es un error de la fuente ni una
+        # convención inconsistente —como supuse al principio—: son dos cosas distintas informadas
+        # correctamente. Para compararlos está el campo `patas`, que trae cada una por separado.
+        #
+        # En el resto de las familias puede ser simplemente un valor extremo legítimo, como el CER
+        # ultracorto con TIR real negativa.
         teas = [r["tea"] for r in regs if r["tea"] is not None]
         raros = []
         if len(teas) >= 4:
