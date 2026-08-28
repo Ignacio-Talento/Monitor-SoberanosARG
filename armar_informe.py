@@ -37,7 +37,7 @@ import json
 import os
 import sys
 from collections import defaultdict
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 from statistics import median
 
@@ -361,7 +361,11 @@ def main():
         "fecha": hoy.isoformat(),
         "ruedaAnterior": ayer.isoformat(),
         "tipos": tipos_de_cierre(hoy, fer),
-        "generado": datetime.now().astimezone().isoformat(timespec="seconds"),
+        # EN HORA ARGENTINA. El runner de GitHub corre en UTC, así que datetime.now() daba las
+        # 17:08 para una corrida de las 14:08 de Buenos Aires. El informe del 28/08/2026 salió
+        # diciendo "tomados a las 17:08 con el mercado ya cerrado" cuando el mercado estaba abierto
+        # y los precios eran intradía.
+        "generado": (datetime.now(timezone.utc) - timedelta(hours=3)).isoformat(timespec="seconds") + " ART",
         "feriadosLeidos": fer is not None,
         "universo": len(items),
         "sinDato": sin_dato,

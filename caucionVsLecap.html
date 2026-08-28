@@ -577,37 +577,16 @@ function recalcCaucion() {
 
 // Pre-cargar la tasa de fondeo (editable).
 //
-// PRIMERO LA CAUCIÓN DE VERDAD. El futuro de tasa de caución de A3 (contratos CAUC) es la única
-// fuente pública de caución bursátil que existe: el BCRA no la publica, 1816 no la tiene y la API
-// de BYMA pide OAuth. Es un futuro y no la spot —liquida contra el promedio del período—, así que
-// se dice a cuántos días del vencimiento está: con pocos días es prácticamente la tasa de hoy.
+// De dónde sale: la SERIE 150 del BCRA, "tasa de interés por operaciones de pases entre terceros a
+// 1 día". NO es la caución bursátil, y el panel lo dice: la caución se opera en BYMA y en MAE, y
+// las dos la tienen detrás de credenciales —BYMA pide OAuth y el endpoint de MAE devuelve 401—.
 //
-// Si no operó ningún contrato, se cae a la serie 150 del BCRA (pases entre terceros), que es de
-// otro mercado y suele estar más de cien puntos básicos por debajo. Por eso es el plan B y no el
-// default, y por eso el campo dice siempre de dónde salió el número.
+// Se probó también el futuro de tasa de caución de A3 (contratos CAUC), que es público y opera de
+// verdad, pero se descartó: es un futuro MENSUAL que liquida contra el promedio del período, no una
+// tasa a 1 día, y sólo el contrato más cercano tiene liquidez —en agosto de 2026 el de agosto operó
+// las 18 ruedas y los de septiembre y octubre, tres y dos—. Para una cuenta de fondeo a un día, una
+// tasa spot de un mercado cercano sirve más que una expectativa mensual del mercado exacto.
 async function cargarTasaFondeo() {
-  try {
-    const r = await fetch('/api/caucion');
-    const j = await r.json();
-    const ref = j && j.referencia;
-    if (ref && ref.tasa) {
-      document.getElementById('caucion-tna-input').value = ref.tasa.toFixed(2);
-      document.getElementById('caucion-fuente').textContent =
-        `Caución ${ref.symbol} · A3 · ${j.rueda} · ${ref.operaciones} ops`;
-      document.getElementById('caucion-detalle').innerHTML =
-        `Es el <strong>futuro de tasa de caución</strong> de A3, contrato ${ref.symbol}, a
-         <strong>${ref.diasAlVenc} días</strong> de vencer. Liquida contra el promedio de la caución
-         del período, así que cuanto menos le queda más se parece a la tasa de hoy. Operó
-         ${ref.operaciones} ${ref.operaciones === 1 ? 'vez' : 'veces'} en la rueda. Si tenés la
-         caución de tu agente, pisá el número.`;
-      recalcCaucion();
-      return;
-    }
-  } catch(e) { console.warn('Caución A3 error:', e); }
-  await cargarFondeoBCRA();
-}
-
-async function cargarFondeoBCRA() {
   try {
     const hoy = new Date();
     const desde = new Date(hoy); desde.setDate(desde.getDate() - 12);
@@ -626,9 +605,10 @@ async function cargarFondeoBCRA() {
         document.getElementById('caucion-fuente').textContent =
           `Pases entre terceros 1d · BCRA · ${det[0].fecha}`;
         document.getElementById('caucion-detalle').innerHTML =
-          `No se pudo traer la caución de A3, así que esto <strong>no es la caución bursátil</strong>:
-           es la tasa de pases entre terceros a 1 día del BCRA, que es otro mercado y suele estar
-           bastante por debajo. Conviene pisar el número con el de tu agente.`;
+          `<strong>No es la caución bursátil</strong>: es la tasa de pases entre terceros a 1 día que
+           publica el BCRA, que es el proxy público más cercano —la caución de BYMA y de MAE está
+           detrás de credenciales—. Suele correr por debajo de la caución. Si tenés la de tu agente,
+           pisá el número.`;
       }
     }
   } catch(e) { console.warn('Caución BCRA error:', e); }
