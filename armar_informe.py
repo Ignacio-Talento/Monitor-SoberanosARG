@@ -44,6 +44,7 @@ from statistics import median
 import requests
 
 from actualizar_historicos import cliente_1816, hoy_art, leer_tickers
+from macro_informe import datos_macro
 
 DIR_INFORMES = Path("informes")
 
@@ -297,6 +298,14 @@ def main():
             "convencionDudosa": raros,
         }
 
+    # BCRA, riesgo país y caución. Va después de los bonos y no antes porque si 1816 no responde el
+    # informe no sale igual: sin precios no hay nada que contar, y estas series son el contexto.
+    print("Pidiendo BCRA, riesgo país y caución...")
+    macro = datos_macro(hoy, cliente_1816=cli)
+    if macro["fallos"]:
+        print("  fallos macro:", "; ".join(macro["fallos"]))
+    print(f"  {len(macro['series'])} series del BCRA · caución 1816: {macro['caucion']}")
+
     salida = {
         "fecha": hoy.isoformat(),
         "ruedaAnterior": ayer.isoformat(),
@@ -308,6 +317,7 @@ def main():
         "campos": CAMPOS,
         "resumen": resumen,
         "instrumentos": instrumentos,
+        "macro": macro,
     }
 
     DIR_INFORMES.mkdir(exist_ok=True)
