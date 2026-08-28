@@ -259,6 +259,24 @@ def main():
 
     resumen = {}
     for fam, regs in por_familia.items():
+        # OUTLIERS DE CONVENCIÓN. Dentro de una familia, 1816 no siempre devuelve la tasa en la
+        # misma convención. Los duales CER/TAMAR son el caso claro: pagan el máximo entre CER más
+        # margen y TAMAR, y el 2026-08-28 la API devolvía TXMD8 al 40,55% —TEA nominal— y TXMJ8 al
+        # 5,71%, que sólo se entiende como TIR real. Promediarlas da un número que no significa
+        # nada, y peor, un informe que afirma que los duales rinden 25%.
+        #
+        # No se corrigen ni se descartan: se marcan. Cuál de las dos convenciones es la correcta
+        # depende del instrumento y no se puede resolver desde acá; lo que sí se puede es evitar que
+        # el análisis los lea como comparables.
+        teas = [r["tea"] for r in regs if r["tea"] is not None]
+        raros = []
+        if len(teas) >= 4:
+            m = median(teas)
+            # Factor 3 y no un múltiplo de desvío: lo que se busca no es un instrumento caro sino
+            # una unidad distinta, y eso siempre aparece como un salto de orden de magnitud.
+            raros = sorted(r["ticker"] for r in regs
+                           if r["tea"] is not None and m > 0
+                           and (r["tea"] > m * 3 or r["tea"] < m / 3))
         # La MEDIANA y no el promedio: en cada familia hay siempre algún instrumento ilíquido cuyo
         # precio quedó de hace tres ruedas y salta 4% cuando por fin opera. Con promedio, ese solo
         # dato define el signo de toda la familia.
@@ -274,6 +292,9 @@ def main():
             "teaMediana": resumir([r["tea"] for r in regs]),
             "mejor": max(con_var, key=lambda r: r["varPrecio"])["ticker"] if con_var else None,
             "peor": min(con_var, key=lambda r: r["varPrecio"])["ticker"] if con_var else None,
+            # Tickers cuya tasa está en otra escala que el resto de su familia: hay que mirarlos
+            # antes de compararlos con sus pares. Ver el comentario de arriba.
+            "convencionDudosa": raros,
         }
 
     salida = {
