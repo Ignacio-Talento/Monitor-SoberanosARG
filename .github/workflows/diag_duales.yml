@@ -1,0 +1,25 @@
+# Diagnóstico de una sola vez: ¿cómo expone 1816 las patas de los duales?
+#
+# El monitor las calcula en el frontend, pero hay indicios de que 1816 las publica con un ticker
+# propio por pata —bonos.html menciona "TTS26 @Tasa Fija"—. Si es así, el informe puede pedirlas
+# directo en vez de reimplementar el cálculo.
+#
+# Se borra cuando la pregunta esté contestada.
+name: Diagnóstico · patas de duales
+
+on:
+  workflow_dispatch:
+
+jobs:
+  diag:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: pip install requests openpyxl
+      - name: Buscar los duales en el catálogo de 1816
+        env:
+          API_1816_KEY: ${{ secrets.API_1816_KEY }}
+        run: python diag_duales.py
