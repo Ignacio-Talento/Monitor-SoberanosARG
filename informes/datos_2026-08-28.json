@@ -5,7 +5,7 @@
   "diario",
   "semanal"
  ],
- "generado": "2026-08-28T15:32:34-03:00",
+ "generado": "2026-08-28T15:38:40-03:00",
  "feriadosLeidos": true,
  "universo": 186,
  "sinDato": [
@@ -2900,6 +2900,7 @@
     "id": 45,
     "fecha": "2026-08-26",
     "valor": 28.21,
+    "clase": "stock",
     "rezagoDias": 2,
     "previo": {
      "fecha": "2026-08-25",
@@ -2954,8 +2955,28 @@
      {
       "fecha": "2026-08-10",
       "valor": 25.96
+     },
+     {
+      "fecha": "2026-08-07",
+      "valor": 26.03
+     },
+     {
+      "fecha": "2026-08-06",
+      "valor": 25.88
+     },
+     {
+      "fecha": "2026-08-05",
+      "valor": 25.42
      }
-    ]
+    ],
+    "semanal": {
+     "fecha": "2026-08-21",
+     "valor": 28.45,
+     "variacion": -0.24,
+     "pedida": "2026-08-21",
+     "exacta": true,
+     "clase": "stock"
+    }
    },
    "tamarTNA": {
     "nombre": "TAMAR bancos privados",
@@ -2963,6 +2984,7 @@
     "id": 44,
     "fecha": "2026-08-26",
     "valor": 25.125,
+    "clase": "stock",
     "rezagoDias": 2,
     "previo": {
      "fecha": "2026-08-25",
@@ -3017,8 +3039,28 @@
      {
       "fecha": "2026-08-10",
       "valor": 23.3125
+     },
+     {
+      "fecha": "2026-08-07",
+      "valor": 23.375
+     },
+     {
+      "fecha": "2026-08-06",
+      "valor": 23.25
+     },
+     {
+      "fecha": "2026-08-05",
+      "valor": 22.875
      }
-    ]
+    ],
+    "semanal": {
+     "fecha": "2026-08-21",
+     "valor": 25.3125,
+     "variacion": -0.1875,
+     "pedida": "2026-08-21",
+     "exacta": true,
+     "clase": "stock"
+    }
    },
    "badlarTEA": {
     "nombre": "BADLAR bancos privados",
@@ -3026,6 +3068,7 @@
     "id": 35,
     "fecha": "2026-08-26",
     "valor": 25.8,
+    "clase": "stock",
     "rezagoDias": 2,
     "previo": {
      "fecha": "2026-08-25",
@@ -3080,8 +3123,28 @@
      {
       "fecha": "2026-08-10",
       "valor": 23.89
+     },
+     {
+      "fecha": "2026-08-07",
+      "valor": 23.74
+     },
+     {
+      "fecha": "2026-08-06",
+      "valor": 24.35
+     },
+     {
+      "fecha": "2026-08-05",
+      "valor": 22.98
      }
-    ]
+    ],
+    "semanal": {
+     "fecha": "2026-08-21",
+     "valor": 26.96,
+     "variacion": -1.16,
+     "pedida": "2026-08-21",
+     "exacta": true,
+     "clase": "stock"
+    }
    },
    "pasesTerceros": {
     "nombre": "Pases entre terceros a 1 día",
@@ -3089,6 +3152,7 @@
     "id": 150,
     "fecha": "2026-08-26",
     "valor": 21.54,
+    "clase": "stock",
     "rezagoDias": 2,
     "previo": {
      "fecha": "2026-08-25",
@@ -3143,8 +3207,28 @@
      {
       "fecha": "2026-08-10",
       "valor": 22.38
+     },
+     {
+      "fecha": "2026-08-07",
+      "valor": 22.99
+     },
+     {
+      "fecha": "2026-08-06",
+      "valor": 22.99
+     },
+     {
+      "fecha": "2026-08-05",
+      "valor": 22.79
      }
-    ]
+    ],
+    "semanal": {
+     "fecha": "2026-08-21",
+     "valor": 24.0,
+     "variacion": -2.46,
+     "pedida": "2026-08-21",
+     "exacta": true,
+     "clase": "stock"
+    }
    },
    "volPases": {
     "nombre": "Volumen de pases entre terceros a 1 día",
@@ -3152,6 +3236,7 @@
     "id": 151,
     "fecha": "2026-08-26",
     "valor": 3448560.0,
+    "clase": "flujo",
     "rezagoDias": 2,
     "previo": {
      "fecha": "2026-08-25",
@@ -3206,8 +3291,28 @@
      {
       "fecha": "2026-08-10",
       "valor": 2307870.0
+     },
+     {
+      "fecha": "2026-08-07",
+      "valor": 2116592.0
+     },
+     {
+      "fecha": "2026-08-06",
+      "valor": 1817943.0
+     },
+     {
+      "fecha": "2026-08-05",
+      "valor": 1746691.0
      }
-    ]
+    ],
+    "semanal": {
+     "desde": "2026-08-21",
+     "acumulado": 10491234.0,
+     "ruedas": 3,
+     "pedida": "2026-08-21",
+     "exacta": true,
+     "clase": "flujo"
+    }
    },
    "baibar": {
     "nombre": "BAIBAR · préstamos entre bancos privados",
@@ -3215,6 +3320,7 @@
     "id": 146,
     "fecha": "2026-08-26",
     "valor": 21.29,
+    "clase": "stock",
     "rezagoDias": 2,
     "previo": {
      "fecha": "2026-08-25",
@@ -3269,8 +3375,28 @@
      {
       "fecha": "2026-08-10",
       "valor": 21.65
+     },
+     {
+      "fecha": "2026-08-07",
+      "valor": 20.6
+     },
+     {
+      "fecha": "2026-08-06",
+      "valor": 22.42
+     },
+     {
+      "fecha": "2026-08-05",
+      "valor": 21.98
      }
-    ]
+    ],
+    "semanal": {
+     "fecha": "2026-08-21",
+     "valor": 23.99,
+     "variacion": -2.7,
+     "pedida": "2026-08-21",
+     "exacta": true,
+     "clase": "stock"
+    }
    },
    "interbancario": {
     "nombre": "Préstamos entre entidades financieras locales",
@@ -3278,6 +3404,7 @@
     "id": 148,
     "fecha": "2026-08-26",
     "valor": 21.86,
+    "clase": "stock",
     "rezagoDias": 2,
     "previo": {
      "fecha": "2026-08-25",
@@ -3332,8 +3459,28 @@
      {
       "fecha": "2026-08-10",
       "valor": 22.32
+     },
+     {
+      "fecha": "2026-08-07",
+      "valor": 22.24
+     },
+     {
+      "fecha": "2026-08-06",
+      "valor": 22.7
+     },
+     {
+      "fecha": "2026-08-05",
+      "valor": 22.52
      }
-    ]
+    ],
+    "semanal": {
+     "fecha": "2026-08-21",
+     "valor": 24.07,
+     "variacion": -2.21,
+     "pedida": "2026-08-21",
+     "exacta": true,
+     "clase": "stock"
+    }
    },
    "plazoFijo30": {
     "nombre": "Plazo fijo a 30 días",
@@ -3341,6 +3488,7 @@
     "id": 1207,
     "fecha": "2026-08-26",
     "valor": 21.07,
+    "clase": "stock",
     "rezagoDias": 2,
     "previo": {
      "fecha": "2026-08-25",
@@ -3395,8 +3543,28 @@
      {
       "fecha": "2026-08-10",
       "valor": 20.67
+     },
+     {
+      "fecha": "2026-08-07",
+      "valor": 20.46
+     },
+     {
+      "fecha": "2026-08-06",
+      "valor": 20.55
+     },
+     {
+      "fecha": "2026-08-05",
+      "valor": 19.89
      }
-    ]
+    ],
+    "semanal": {
+     "fecha": "2026-08-21",
+     "valor": 22.3,
+     "variacion": -1.23,
+     "pedida": "2026-08-21",
+     "exacta": true,
+     "clase": "stock"
+    }
    },
    "comprasMLC": {
     "nombre": "Compra de divisas · variación de reservas",
@@ -3404,6 +3572,7 @@
     "id": 78,
     "fecha": "2026-08-24",
     "valor": 11.5,
+    "clase": "flujo",
     "rezagoDias": 4,
     "previo": {
      "fecha": "2026-08-21",
@@ -3450,8 +3619,36 @@
      {
       "fecha": "2026-08-10",
       "valor": 13.5
+     },
+     {
+      "fecha": "2026-08-07",
+      "valor": 16.0
+     },
+     {
+      "fecha": "2026-08-06",
+      "valor": 41.0
+     },
+     {
+      "fecha": "2026-08-05",
+      "valor": 8.0
+     },
+     {
+      "fecha": "2026-08-04",
+      "valor": 28.0
+     },
+     {
+      "fecha": "2026-08-03",
+      "valor": 18.0
      }
-    ]
+    ],
+    "semanal": {
+     "desde": "2026-08-21",
+     "acumulado": 11.5,
+     "ruedas": 1,
+     "pedida": "2026-08-21",
+     "exacta": true,
+     "clase": "flujo"
+    }
    },
    "efectoMonetario": {
     "nombre": "Efecto monetario de compras netas al sector privado",
@@ -3459,6 +3656,7 @@
     "id": 47,
     "fecha": "2026-08-24",
     "valor": 17365.0,
+    "clase": "flujo",
     "rezagoDias": 4,
     "previo": {
      "fecha": "2026-08-21",
@@ -3505,8 +3703,36 @@
      {
       "fecha": "2026-08-10",
       "valor": 20223.0
+     },
+     {
+      "fecha": "2026-08-07",
+      "valor": 23976.0
+     },
+     {
+      "fecha": "2026-08-06",
+      "valor": 61419.5
+     },
+     {
+      "fecha": "2026-08-05",
+      "valor": 11968.0
+     },
+     {
+      "fecha": "2026-08-04",
+      "valor": 41915.0
+     },
+     {
+      "fecha": "2026-08-03",
+      "valor": 26898.5
      }
-    ]
+    ],
+    "semanal": {
+     "desde": "2026-08-21",
+     "acumulado": 17365.0,
+     "ruedas": 1,
+     "pedida": "2026-08-21",
+     "exacta": true,
+     "clase": "flujo"
+    }
    },
    "reservas": {
     "nombre": "Reservas internacionales",
@@ -3514,6 +3740,7 @@
     "id": 1,
     "fecha": "2026-08-25",
     "valor": 50913.0,
+    "clase": "stock",
     "rezagoDias": 3,
     "previo": {
      "fecha": "2026-08-24",
@@ -3564,16 +3791,57 @@
      {
       "fecha": "2026-08-10",
       "valor": 49564.0
+     },
+     {
+      "fecha": "2026-08-07",
+      "valor": 49457.0
+     },
+     {
+      "fecha": "2026-08-06",
+      "valor": 48834.0
+     },
+     {
+      "fecha": "2026-08-05",
+      "valor": 50058.0
+     },
+     {
+      "fecha": "2026-08-04",
+      "valor": 49639.0
      }
-    ]
+    ],
+    "semanal": {
+     "fecha": "2026-08-21",
+     "valor": 50660.0,
+     "variacion": 253.0,
+     "pedida": "2026-08-21",
+     "exacta": true,
+     "clase": "stock"
+    }
    }
   },
   "fallos": [],
   "sslSinVerificar": false,
+  "referencias": {
+   "semanal": "2026-08-21"
+  },
   "riesgoPais": {
-   "valor": 509,
+   "valor": 509.0,
    "fecha": "2026-08-27",
-   "fuente": "EMBI+ Argentina vía argentinadatos.com"
+   "rezagoDias": 1,
+   "fuente": "EMBI+ Argentina vía argentinadatos.com",
+   "previo": {
+    "fecha": "2026-08-26",
+    "valor": 517.0
+   },
+   "variacion": -8.0,
+   "semanal": {
+    "fecha": "2026-08-21",
+    "valor": 505.0,
+    "variacion": 4.0,
+    "pedida": "2026-08-21",
+    "exacta": true,
+    "clase": "stock"
+   }
   },
   "caucion": {
    "disponible": true,
