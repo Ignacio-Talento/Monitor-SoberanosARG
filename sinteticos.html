@@ -676,18 +676,17 @@ function renderHistorico() {
   // El selector se arma con los contratos que aparecen en alguna rueda, no con los de hoy: los que
   // ya vencieron también tienen historia que sirve mirar.
   if (!sel.options.length) {
-    const contratos = [...new Set(fechas.flatMap(f => Object.keys(historico[f].fut || {})))].sort();
+    // SÓLO CONTRATOS VIGENTES. El archivo guarda ruedas desde 2024, así que arrastra decenas de
+    // contratos ya vencidos: el selector tenía DLR/ABR24 y compañía, que no se pueden operar y
+    // sepultaban a los nueve que sí. Su historia sigue en el archivo; lo que se saca es la opción
+    // de elegirlos.
     const hoy = new Date(); hoy.setHours(0, 0, 0, 0);
     const vivo = c => { const v = MonitorCore.vencContrato(c); return v && v > hoy; };
-    sel.innerHTML = contratos.map(c =>
-      `<option value="${c}">${c}${vivo(c) ? '' : ' (vencido)'}</option>`).join('');
-    // Arranca en el contrato con más ruedas: es el que tiene el gráfico más informativo.
-    // El contrato inicial se busca entre los VIGENTES. El criterio de 'más ruedas' solo elegía
-    // siempre uno viejo —cuanto antes venció, más historia acumuló—, y arrancaba mostrando un
-    // contrato de enero que ya no se puede operar. Los vencidos quedan en el selector, que para
-    // mirar historia sirven.
+    const contratos = [...new Set(fechas.flatMap(f => Object.keys(historico[f].fut || {})))]
+      .filter(vivo).sort();
+    sel.innerHTML = contratos.map(c => `<option value="${c}">${c}</option>`).join('');
     let mejor = null, n = -1, vMejor = null;
-    for (const c of contratos.filter(vivo).length ? contratos.filter(vivo) : contratos) {
+    for (const c of contratos) {
       // Se cuentan las ruedas con spread CALCULABLE, no las apariciones del contrato: un futuro
       // puede estar guardado y aun así no dar spread —porque vence en menos de 10 días o porque
       // ese día faltaba la curva—. Contando apariciones, el primer día salía elegido DLR/AGO26,
@@ -780,6 +779,9 @@ function renderHistorico() {
      por debajo, el sintético. Hoy está en <strong>${signo(ult.pesos)} pp</strong> en pesos, contra
      un rango de ${signo(Math.min(...eps))} a ${signo(Math.max(...eps))} en las
      ${pts.length} ruedas guardadas.
+     <span class="no-p">Ojo al comparar contra su propio pasado: el plazo del contrato se acorta
+     rueda a rueda —arranca con ${pts[0].dias} días por delante y hoy le quedan ${ult.dias}—, así que
+     los extremos del rango no miden exactamente lo mismo que el nivel de hoy.</span>
      <span class="no-p">Los futuros salen del Centro de Estadísticas de A3 Mercados, con el
      <strong>precio de ajuste</strong> de cada rueda —el oficial de cierre, no el último operado— y
      las tasas de los bonos son las que publica 1816 ese día. Por eso el último punto no tiene por
