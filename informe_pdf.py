@@ -118,10 +118,23 @@ def _color_num(v):
     return VERDE if (v or 0) > 0 else (ROJO if (v or 0) < 0 else GRIS)
 
 
-def tabla_familias(resumen, ancho):
+def periodo_de(tipos):
+    """Qué período compara este informe: la clave del JSON, el rótulo y el nombre en prosa.
+
+    El mes gana sobre la semana cuando la rueda cierra los dos, que pasa cuando el último hábil del
+    mes cae viernes. Devuelve None en un informe puramente diario.
+    """
+    if "mensual" in (tipos or []):
+        return "mensual", "En el mes", "mes"
+    if "semanal" in (tipos or []):
+        return "semanal", "En la semana", "semana"
+    return None, "", ""
+
+
+def tabla_familias(resumen, ancho, periodo="semanal", rotulo="En la semana"):
     """Variaciones por familia. Sin la columna de conteo por moneda: al lector externo le importa
     en qué moneda se lee la TIR, no cuántos instrumentos hay de cada punta."""
-    grupo = ["", "", "En el día", "", "En la semana", "", "", ""]
+    grupo = ["", "", "En el día", "", rotulo, "", "", ""]
     cab = ["Familia", "N", "Precio", "Tasa (pp)", "Precio", "Tasa (pp)", "Nivel", "Mon."]
     filas = [grupo, cab]
     estilos = [("SPAN", (2, 0), (3, 0)), ("SPAN", (4, 0), (5, 0)),
@@ -136,7 +149,7 @@ def tabla_familias(resumen, ancho):
         r = resumen.get(fam)
         if not r:
             continue
-        sem = r.get("semanal") or {}
+        sem = r.get(periodo) or {}
         sp = (sem.get("precio") or {}).get("mediana")
         st = (sem.get("tasa") or {}).get("mediana")
         monedas = list(r.get("monedas", {}))
@@ -171,10 +184,10 @@ def tabla_familias(resumen, ancho):
     return t
 
 
-def tabla_macro(macro, ancho):
+def tabla_macro(macro, ancho, periodo="semanal", rotulo="Semana"):
     S = macro["series"]
     rp = macro["riesgoPais"]
-    filas = [["Serie", "Valor", "", "Día", "Semana", "Al día"]]
+    filas = [["Serie", "Valor", "", "Día", rotulo, "Al día"]]
     estilos = []
 
     def agregar(etiqueta, r, unidad, dec=2, monto=False):
@@ -184,7 +197,7 @@ def tabla_macro(macro, ancho):
         var = r.get("variacion")
         cd = "—" if var is None else ((miles(var, 1) if abs(var) >= 1000 else num(var, 1, True))
                                       if monto else num(var, dec, True))
-        w = r.get("semanal") or {}
+        w = r.get(periodo) or {}
         if not w:
             cs = "—"
         elif w.get("clase") == "flujo":
@@ -202,7 +215,7 @@ def tabla_macro(macro, ancho):
 
     # El riesgo país mejora cuando BAJA: el color se invierte a mano respecto del resto.
     i = len(filas)
-    w = rp.get("semanal") or {}
+    w = rp.get(periodo) or {}
     filas.append(["Riesgo país · EMBI+", f"{rp['valor']:.0f}", "bps", num(rp["variacion"], 0, True),
                   num(w.get("variacion"), 0, True) if w else "—",
                   f"{rp['fecha'][8:10]}/{rp['fecha'][5:7]}"])
@@ -280,6 +293,7 @@ def construir(ruta_json, dir_curvas, textos, salida):
     tipos = d.get("tipos") or []
     clase = ("Reporte mensual" if "mensual" in tipos else
              "Reporte semanal" if "semanal" in tipos else "Reporte diario")
+    periodo, rotulo, nombre = periodo_de(tipos)
 
     def portada(canvas, doc):
         canvas.saveState()
@@ -334,10 +348,10 @@ def construir(ruta_json, dir_curvas, textos, salida):
     E.append(Spacer(1, 4))
 
     E.append(Paragraph("Variaciones por familia", H2))
-    E.append(tabla_familias(d["resumen"], ANCHO))
+    E.append(tabla_familias(d["resumen"], ANCHO, periodo or "semanal", rotulo or "Período"))
     E.append(Spacer(1, 4))
-    ref = d.get("referencias", {}).get("semanal")
-    nota_ref = (f"La semana se mide contra el cierre del {ref[8:10]}/{ref[5:7]}. " if ref else "")
+    ref = d.get("referencias", {}).get(periodo) if periodo else None
+    nota_ref = (f"El {nombre} se mide contra el cierre del {ref[8:10]}/{ref[5:7]}. " if ref else "")
     E.append(Paragraph(
         nota_ref + "Las columnas de precio y tasa son <b>medianas</b>, no promedios: el movimiento "
         "del instrumento típico de cada familia, sin ponderar por volumen ni por circulante. En "
@@ -406,7 +420,8 @@ def construir(ruta_json, dir_curvas, textos, salida):
                 "Provinciales y municipales en CCL, ordenados por duration.", ANCHO)
 
     E.append(KeepTogether([Paragraph("Dinero, tasas y macro", H2),
-                           tabla_macro(d["macro"], ANCHO)]))
+                           tabla_macro(d["macro"], ANCHO, periodo or "semanal",
+                                       "Mes" if periodo == "mensual" else "Semana")]))
     E.append(Spacer(1, 4))
     E.append(Paragraph(
         "<b>Las series no son todas del mismo día</b>, por eso la columna «Al día»: el BCRA publica "
@@ -421,8 +436,9 @@ def construir(ruta_json, dir_curvas, textos, salida):
         E.append(Paragraph(t, P))
 
     E.append(PageBreak())
-    E.append(Paragraph("Cierre semanal", H2))
-    for t in textos["semanal"]:
+    E.append(Paragraph(f"Cierre {'mensual' if periodo == 'mensual' else 'semanal'}", H2))
+    # El bloque acepta las dos claves: `cierre` para lo nuevo y `semanal` por lo ya escrito.
+    for t in (textos.get("cierre") or textos.get("semanal") or []):
         E.append(Paragraph(t, P))
 
     E.append(Spacer(1, 8))
