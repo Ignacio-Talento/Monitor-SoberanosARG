@@ -74,12 +74,12 @@ except Exception:                                                 # noqa: BLE001
 
 # CUERPOS. La figura sale a 950 px y se muestra en 674, así que en la página se ven al 71%: lo que
 # acá dice 10 se lee como 7 sobre el papel. Están calibrados contra el cuerpo del informe, que es 9.
-TAM_TITULO = 15
-TAM_EJE = 11
-TAM_TICK = 10
-TAM_LEYENDA = 11
-TAM_ROTULO = 10
-TAM_NOTA = 9
+TAM_TITULO = 16
+TAM_EJE = 12
+TAM_TICK = 11
+TAM_LEYENDA = 12
+TAM_ROTULO = 11
+TAM_NOTA = 10
 
 NAVY = COLORS["navy"]
 CYAN = COLORS["cyan"]
@@ -172,8 +172,11 @@ def _acomodar(ax):
         textos, ax=ax,
         x=[a[0] for a in anclas], y=[a[1] for a in anclas],
         expand=(1.25, 1.45),
-        force_text=(.6, .9), force_static=(.4, .7), force_pull=(.004, .004),
-        max_move=(40, 40),
+        force_text=(.7, 1.0), force_static=(.45, .8), force_pull=(.003, .003),
+        force_explode=(.35, .8),
+        # Margen amplio de desplazamiento: en el tramo corto hay cinco instrumentos en una decima
+        # de duration y el rotulo tiene que poder subir hasta la franja vacia para no encimarse.
+        max_move=(75, 75),
         arrowprops=dict(arrowstyle="-", color=COLORS.get("border_gray", "#C8D3E0"),
                         lw=.7, shrinkA=1, shrinkB=3),
         min_arrow_len=7)
@@ -220,7 +223,7 @@ def _comprimir(ruta):
 # Caracteres por línea del pie. A cuerpo 8 sobre una figura de 9,5 pulgadas, 108 entran holgados;
 # más que eso y `bbox_inches="tight"` empieza a ensanchar la figura para que el texto entre, con lo
 # que esa curva sale con otra proporción que el resto del juego.
-ANCHO_NOTA = 96
+ANCHO_NOTA = 86
 
 
 def _nota(ax, texto, y=-.16):
@@ -326,46 +329,35 @@ def _cer_contra_fija(instr, dudosos_cer):
     return lec, cer_vis, bei, len(cer) - len(cer_vis), xmax
 
 
-def lecaps_vs_cer(instr, salida, dudosos_cer):
+def lecaps_vs_cer(instr, salida, dudosos_cer, infl_anual=None):
+    """Tasa fija contra CER, las dos en TEA nominal sobre un solo eje.
+
+    Los CER se convierten con `infl_anual`, la inflación publicada anualizada. Sin ese dato el
+    gráfico no se dibuja: inventar la inflación de conversión sería inventar la comparación.
+    """
     datos = _cer_contra_fija(instr, dudosos_cer)
     if not datos:
         return None
+    if infl_anual is None:
+        print("    (sin dato de inflación: no se puede llevar los CER a nominal)")
+        return None
     lec, cer_vis, _bei, _fuera, xmax = datos
+    cer_nom = [(d, ((1 + infl_anual / 100) * (1 + r / 100) - 1) * 100, tk) for d, r, tk in cer_vis]
 
     fig, ax = balanz_figure(figsize=(9.5, 5.2))
-    # DOS ESCALAS. La tasa fija corre entre 26% y 30% y el rendimiento real de los CER entre 2% y
-    # 10%: en un solo eje los CER quedan aplastados contra el piso y no se distingue el escalón
-    # entre TZXO6 y X30N6, que son dos puntos y medio. Cada eje se pinta del color de su curva
-    # para que no haya que adivinar cuál se lee de qué lado.
     _serie(ax, lec, NAVY, "LECAPs · TEA nominal", cada=2)
-    _ejes(ax, "Tasa fija contra CER", "Tasa fija · TEA (%)")
+    _serie(ax, cer_nom, ACERO, "Bonos CER · CER + TIR", marcador="s", cada=2)
+    _ejes(ax, "Tasa fija contra CER", "TEA (%)")
     ax.set_xlim(-xmax * .05, xmax)
-    ax.yaxis.label.set_color(NAVY)
-    ax.tick_params(axis="y", colors=NAVY)
-
-    axc = ax.twinx()
-    _serie(axc, cer_vis, ACERO, "CER · TIR real", marcador="s", cada=2)
-    axc.set_xlim(-xmax * .05, xmax)
-    axc.set_ylabel("CER · TIR real (%)", color=ACERO, fontsize=TAM_EJE)
-    axc.yaxis.set_major_formatter(mtick.FormatStrFormatter("%.1f%%"))
-    axc.tick_params(axis="y", colors=ACERO, labelsize=TAM_TICK)
-    axc.spines["top"].set_visible(False)
-    axc.spines["right"].set_color(ACERO)
-
-    # Abajo a la derecha: las dos curvas suben hacia el extremo superior derecho y se cruzan en el
-    # medio, así que la franja central no queda libre.
-    manijas = ax.get_legend_handles_labels()[0] + axc.get_legend_handles_labels()[0]
-    rotulos = ax.get_legend_handles_labels()[1] + axc.get_legend_handles_labels()[1]
-    ax.legend(manijas, rotulos, frameon=False, fontsize=TAM_LEYENDA, labelcolor=NAVY,
-              loc="lower right")
-    _acomodar(ax)
-    _acomodar(axc)
-    # El pie va cortado a mano: en una sola linea, bbox_inches="tight" ensancha la figura para
-    # que entre el texto y la curva sale con otra proporcion que el resto del juego.
-    _nota(ax, "Cada curva tiene su escala: la tasa fija a la izquierda, el rendimiento " "real de los CER a la derecha.\n" "Con escalas distintas la separación entre las líneas no es el breakeven: " "ese va en el gráfico siguiente.")
-    fig.savefig(salida, dpi=DPI, bbox_inches="tight", facecolor="white")
-    plt.close(fig)
-    return _comprimir(salida)
+    ax.legend(frameon=False, fontsize=TAM_LEYENDA, labelcolor=NAVY, loc="lower right")
+    _nota(ax, "Los CER están llevados a tasa nominal con la inflación efectivamente publicada: los "
+              f"tres últimos meses del IPC anualizados dan {infl_anual:.1f}%.\nNo es lo que el "
+              "mercado espera —eso es el breakeven del gráfico siguiente, bastante más bajo—, sino "
+              "cuánto rendiría cada CER si la inflación se mantuviera en el ritmo actual. Que la "
+              "curva CER corra por encima es esa diferencia.")
+    # Por _cerrar y no por savefig directo: es el que llama a _acomodar. Guardando a mano, los
+    # rotulos quedaban donde cayeron.
+    return _cerrar(fig, ax, salida, leyenda=False)
 
 
 def breakeven_cer(instr, salida, dudosos_cer):
@@ -625,6 +617,7 @@ def generar(ruta_json, dir_salida="curvas"):
     d_tam = _patas(instr, "TAMAR")
 
     tamar_spot = (d.get("macro", {}).get("series", {}).get("tamarTEA") or {}).get("valor")
+    infl = (d.get("macro", {}).get("inflacion") or {}).get("anualizada3m")
 
     out = Path(dir_salida)
     out.mkdir(exist_ok=True)
@@ -633,7 +626,7 @@ def generar(ruta_json, dir_salida="curvas"):
         ("globales_bonares", lambda p: globales_vs_bonares(instr, p)),
         ("lecaps_tem", lambda p: lecaps_tem(instr, p)),
         ("cer", lambda p: curva_cer(instr, p, d_cer)),
-        ("lecaps_cer", lambda p: lecaps_vs_cer(instr, p, dud_cer)),
+        ("lecaps_cer", lambda p: lecaps_vs_cer(instr, p, dud_cer, infl)),
         ("breakeven", lambda p: breakeven_cer(instr, p, dud_cer)),
         ("tamar", lambda p: curva_tamar(instr, p, d_tam, tamar_spot)),
         ("dl", lambda p: curva_dl(instr, p)),

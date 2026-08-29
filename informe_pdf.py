@@ -103,14 +103,15 @@ def _fecha_larga(iso):
 
 
 # ── estilos ──────────────────────────────────────────────────────────────────
-P = ParagraphStyle("p", fontName=REG, fontSize=9, leading=13.5, textColor=colors.HexColor("#202124"),
-                   alignment=TA_JUSTIFY, spaceAfter=7)
-P_CHICO = ParagraphStyle("pc", parent=P, fontSize=7.6, leading=11, textColor=GRIS, spaceAfter=4)
-H2 = ParagraphStyle("h2", fontName=SEMI, fontSize=12, leading=15, textColor=NAVY,
-                    spaceBefore=13, spaceAfter=6)
+P = ParagraphStyle("p", fontName=REG, fontSize=10, leading=15,
+                   textColor=colors.HexColor("#202124"), alignment=TA_JUSTIFY, spaceAfter=8)
+P_CHICO = ParagraphStyle("pc", parent=P, fontSize=8.5, leading=12.4, textColor=GRIS,
+                         spaceAfter=5)
+H2 = ParagraphStyle("h2", fontName=SEMI, fontSize=13.5, leading=17, textColor=NAVY,
+                    spaceBefore=14, spaceAfter=7)
 PIE_FIG = ParagraphStyle("pf", parent=P_CHICO, alignment=0, spaceBefore=2, spaceAfter=10)
-LEDE = ParagraphStyle("lede", parent=P, fontSize=11, leading=16.5, spaceAfter=12)
-CELDA = ParagraphStyle("cel", fontName=REG, fontSize=7.8, leading=10,
+LEDE = ParagraphStyle("lede", parent=P, fontSize=12, leading=18, spaceAfter=13)
+CELDA = ParagraphStyle("cel", fontName=REG, fontSize=8.8, leading=11,
                        textColor=colors.HexColor("#202124"))
 
 
@@ -125,9 +126,9 @@ def periodo_de(tipos):
     mes cae viernes. Devuelve None en un informe puramente diario.
     """
     if "mensual" in (tipos or []):
-        return "mensual", "En el mes", "mes"
+        return "mensual", "En el mes", "El mes"
     if "semanal" in (tipos or []):
-        return "semanal", "En la semana", "semana"
+        return "semanal", "En la semana", "La semana"
     return None, "", ""
 
 
@@ -138,11 +139,11 @@ def tabla_familias(resumen, ancho, periodo="semanal", rotulo="En la semana"):
     cab = ["Familia", "N", "Precio", "Tasa (pp)", "Precio", "Tasa (pp)", "Nivel", "Mon."]
     filas = [grupo, cab]
     estilos = [("SPAN", (2, 0), (3, 0)), ("SPAN", (4, 0), (5, 0)),
-               ("FONT", (0, 0), (-1, 0), SEMI, 6.5),
+               ("FONT", (0, 0), (-1, 0), SEMI, 7.4),
                ("TEXTCOLOR", (0, 0), (-1, 0), GRIS),
                ("ALIGN", (2, 0), (5, 0), "CENTER"),
                ("BOTTOMPADDING", (0, 0), (-1, 0), 1),
-               ("FONT", (0, 1), (-1, 1), SEMI, 7),
+               ("FONT", (0, 1), (-1, 1), SEMI, 8),
                ("TEXTCOLOR", (0, 1), (-1, 1), GRIS),
                ("LINEBELOW", (0, 1), (-1, 1), .8, BORDE)]
     for fam in ORDEN:
@@ -169,7 +170,7 @@ def tabla_familias(resumen, ancho, periodo="semanal", rotulo="En la semana"):
     anchos = [w * ancho for w in (.28, .05, .105, .095, .105, .095, .19, .08)]
     t = Table(filas, colWidths=anchos, repeatRows=2)
     t.setStyle(TableStyle([
-        ("FONT", (0, 2), (-1, -1), REG, 7.8),
+        ("FONT", (0, 2), (-1, -1), REG, 8.8),
         ("ALIGN", (1, 1), (6, -1), "RIGHT"),
         ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
         ("LINEAFTER", (3, 1), (3, -1), .5, SUAVE),
@@ -238,11 +239,11 @@ def tabla_macro(macro, ancho, periodo="semanal", rotulo="Semana"):
     anchos = [w * ancho for w in (.35, .13, .09, .13, .17, .13)]
     t = Table(filas, colWidths=anchos, repeatRows=1)
     t.setStyle(TableStyle([
-        ("FONT", (0, 0), (-1, 0), SEMI, 7),
+        ("FONT", (0, 0), (-1, 0), SEMI, 8),
         ("TEXTCOLOR", (0, 0), (-1, 0), GRIS),
         ("LINEBELOW", (0, 0), (-1, 0), .8, BORDE),
-        ("FONT", (0, 1), (-1, -1), REG, 7.8),
-        ("FONT", (1, 1), (1, -1), SEMI, 7.8),
+        ("FONT", (0, 1), (-1, -1), REG, 8.8),
+        ("FONT", (1, 1), (1, -1), SEMI, 8.8),
         ("ALIGN", (1, 0), (1, -1), "RIGHT"),
         ("ALIGN", (3, 0), (-1, -1), "RIGHT"),
         ("TEXTCOLOR", (2, 1), (2, -1), GRIS),
@@ -257,10 +258,10 @@ def tabla_macro(macro, ancho, periodo="semanal", rotulo="Semana"):
 
 def tabla_simple(filas, anchos_rel, ancho, alinear_der=()):
     t = Table(filas, colWidths=[w * ancho for w in anchos_rel], repeatRows=1)
-    est = [("FONT", (0, 0), (-1, 0), SEMI, 7),
+    est = [("FONT", (0, 0), (-1, 0), SEMI, 8),
            ("TEXTCOLOR", (0, 0), (-1, 0), GRIS),
            ("LINEBELOW", (0, 0), (-1, 0), .8, BORDE),
-           ("FONT", (0, 1), (-1, -1), REG, 7.8),
+           ("FONT", (0, 1), (-1, -1), REG, 8.8),
            ("TOPPADDING", (0, 0), (-1, -1), 3.5),
            ("BOTTOMPADDING", (0, 0), (-1, -1), 3.5),
            ("LEFTPADDING", (0, 0), (-1, -1), 3)]
@@ -300,13 +301,13 @@ def construir(ruta_json, dir_curvas, textos, salida):
         canvas.setFillColor(NAVY)
         canvas.rect(0, A4[1] - 30 * mm, A4[0], 30 * mm, stroke=0, fill=1)
         canvas.setFillColor(CYAN)
-        canvas.setFont(SEMI, 7.5)
+        canvas.setFont(SEMI, 8.5)
         canvas.drawString(MARGEN, A4[1] - 12 * mm, "RENTA FIJA ARGENTINA")
         canvas.setFillColor(colors.white)
-        canvas.setFont(BOLD, 15)
+        canvas.setFont(BOLD, 16.5)
         canvas.drawString(MARGEN, A4[1] - 19.5 * mm, f"Cierre de mercado · {clase}")
         _lockup(canvas, "balanz_lockup_white.png", A4[0] - MARGEN, A4[1] - 15 * mm, 46 * mm)
-        canvas.setFont(REG, 9.5)
+        canvas.setFont(REG, 10.5)
         canvas.setFillColor(colors.HexColor("#C8D7EE"))
         canvas.drawString(MARGEN, A4[1] - 25.5 * mm, _fecha_larga(fecha).capitalize())
         pie(canvas, doc)
@@ -318,7 +319,7 @@ def construir(ruta_json, dir_curvas, textos, salida):
         canvas.setLineWidth(.6)
         canvas.line(MARGEN, A4[1] - 13 * mm, A4[0] - MARGEN, A4[1] - 13 * mm)
         canvas.setFillColor(GRIS)
-        canvas.setFont(REG, 7.5)
+        canvas.setFont(REG, 8.5)
         canvas.drawString(MARGEN, A4[1] - 11.5 * mm,
                           f"Renta fija Argentina · {clase.lower()} · "
                           f"{fecha[8:10]}/{fecha[5:7]}/{fecha[:4]}")
@@ -328,7 +329,7 @@ def construir(ruta_json, dir_curvas, textos, salida):
 
     def pie(canvas, doc):
         canvas.setFillColor(GRIS)
-        canvas.setFont(REG, 7)
+        canvas.setFont(REG, 8)
         canvas.drawString(MARGEN, 10 * mm,
                           "Elaborado con datos públicos de mercado. No constituye asesoramiento "
                           "de inversión ni recomendación de compra o venta.")
@@ -351,7 +352,7 @@ def construir(ruta_json, dir_curvas, textos, salida):
     E.append(tabla_familias(d["resumen"], ANCHO, periodo or "semanal", rotulo or "Período"))
     E.append(Spacer(1, 4))
     ref = d.get("referencias", {}).get(periodo) if periodo else None
-    nota_ref = (f"El {nombre} se mide contra el cierre del {ref[8:10]}/{ref[5:7]}. " if ref else "")
+    nota_ref = (f"{nombre} se mide contra el cierre del {ref[8:10]}/{ref[5:7]}. " if ref else "")
     E.append(Paragraph(
         nota_ref + "Las columnas de precio y tasa son <b>medianas</b>, no promedios: el movimiento "
         "del instrumento típico de cada familia, sin ponderar por volumen ni por circulante. En "

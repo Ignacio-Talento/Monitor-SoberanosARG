@@ -102,6 +102,29 @@ def serie_bcra(id_var, desde, hasta):
     return filas, seguro
 
 
+def inflacion(hoy):
+    """IPC mensual publicado y su anualización, para llevar los bonos CER a tasa nominal.
+
+    Se anualizan los tres últimos meses: el interanual arrastra un régimen que puede haber quedado
+    atrás —33,8% contra 27% en agosto de 2026— y un mes solo se monta sobre un único dato.
+    """
+    filas, _ = serie_bcra(27, hoy - timedelta(days=220), hoy)
+    if len(filas) < 3:
+        return None
+    ultimos = filas[:3]
+    acum = 1.0
+    for _f, v in ultimos:
+        acum *= 1 + v / 100
+    try:
+        inter, _ = serie_bcra(28, hoy - timedelta(days=220), hoy)
+    except Exception:                                             # noqa: BLE001
+        inter = []
+    return {"mensuales": [{"fecha": f, "valor": v} for f, v in ultimos],
+            "anualizada3m": (acum ** 4 - 1) * 100,
+            "interanual": inter[0][1] if inter else None,
+            "fecha": ultimos[0][0]}
+
+
 def _agregar_periodos(reg, filas, valor_hoy, referencias, clase="stock"):
     """Suma al registro la variación contra el cierre de la semana y del mes anteriores.
 
@@ -143,6 +166,12 @@ def datos_macro(hoy=None, cliente_1816=None, referencias=None):
     referencias = referencias or {}
     out = {"fecha": hoy.isoformat(), "series": {}, "fallos": [], "sslSinVerificar": False,
            "referencias": referencias}
+
+    try:
+        out["inflacion"] = inflacion(hoy)
+    except Exception as e:                                        # noqa: BLE001
+        out["inflacion"] = None
+        out["fallos"].append(f"inflacion: {e}")
 
     for clave, (idv, nombre, unidad, clase) in SERIES.items():
         try:
