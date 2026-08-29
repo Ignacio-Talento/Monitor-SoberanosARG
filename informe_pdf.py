@@ -103,15 +103,15 @@ def _fecha_larga(iso):
 
 
 # ── estilos ──────────────────────────────────────────────────────────────────
-P = ParagraphStyle("p", fontName=REG, fontSize=10, leading=15,
-                   textColor=colors.HexColor("#202124"), alignment=TA_JUSTIFY, spaceAfter=8)
-P_CHICO = ParagraphStyle("pc", parent=P, fontSize=8.5, leading=12.4, textColor=GRIS,
-                         spaceAfter=5)
-H2 = ParagraphStyle("h2", fontName=SEMI, fontSize=13.5, leading=17, textColor=NAVY,
-                    spaceBefore=14, spaceAfter=7)
-PIE_FIG = ParagraphStyle("pf", parent=P_CHICO, alignment=0, spaceBefore=2, spaceAfter=10)
-LEDE = ParagraphStyle("lede", parent=P, fontSize=12, leading=18, spaceAfter=13)
-CELDA = ParagraphStyle("cel", fontName=REG, fontSize=8.8, leading=11,
+P = ParagraphStyle("p", fontName=REG, fontSize=11, leading=17,
+                   textColor=colors.HexColor("#202124"), alignment=TA_JUSTIFY, spaceAfter=10)
+P_CHICO = ParagraphStyle("pc", parent=P, fontSize=9.3, leading=14, textColor=GRIS,
+                         spaceAfter=7)
+H2 = ParagraphStyle("h2", fontName=SEMI, fontSize=15, leading=19, textColor=NAVY,
+                    spaceBefore=19, spaceAfter=9)
+PIE_FIG = ParagraphStyle("pf", parent=P_CHICO, alignment=0, spaceBefore=4, spaceAfter=15)
+LEDE = ParagraphStyle("lede", parent=P, fontSize=13, leading=20, spaceAfter=16)
+CELDA = ParagraphStyle("cel", fontName=REG, fontSize=9.6, leading=12,
                        textColor=colors.HexColor("#202124"))
 
 
@@ -139,11 +139,11 @@ def tabla_familias(resumen, ancho, periodo="semanal", rotulo="En la semana"):
     cab = ["Familia", "N", "Precio", "Tasa (pp)", "Precio", "Tasa (pp)", "Nivel", "Mon."]
     filas = [grupo, cab]
     estilos = [("SPAN", (2, 0), (3, 0)), ("SPAN", (4, 0), (5, 0)),
-               ("FONT", (0, 0), (-1, 0), SEMI, 7.4),
+               ("FONT", (0, 0), (-1, 0), SEMI, 8),
                ("TEXTCOLOR", (0, 0), (-1, 0), GRIS),
                ("ALIGN", (2, 0), (5, 0), "CENTER"),
                ("BOTTOMPADDING", (0, 0), (-1, 0), 1),
-               ("FONT", (0, 1), (-1, 1), SEMI, 8),
+               ("FONT", (0, 1), (-1, 1), SEMI, 8.8),
                ("TEXTCOLOR", (0, 1), (-1, 1), GRIS),
                ("LINEBELOW", (0, 1), (-1, 1), .8, BORDE)]
     for fam in ORDEN:
@@ -170,14 +170,14 @@ def tabla_familias(resumen, ancho, periodo="semanal", rotulo="En la semana"):
     anchos = [w * ancho for w in (.28, .05, .105, .095, .105, .095, .19, .08)]
     t = Table(filas, colWidths=anchos, repeatRows=2)
     t.setStyle(TableStyle([
-        ("FONT", (0, 2), (-1, -1), REG, 8.8),
+        ("FONT", (0, 2), (-1, -1), REG, 9.6),
         ("ALIGN", (1, 1), (6, -1), "RIGHT"),
         ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
         ("LINEAFTER", (3, 1), (3, -1), .5, SUAVE),
         ("LINEAFTER", (5, 1), (5, -1), .5, SUAVE),
         ("TEXTCOLOR", (1, 2), (1, -1), GRIS),
-        ("TOPPADDING", (0, 0), (-1, -1), 3.5),
-        ("BOTTOMPADDING", (0, 0), (-1, -1), 3.5),
+        ("TOPPADDING", (0, 0), (-1, -1), 5),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
         ("LEFTPADDING", (0, 0), (-1, -1), 3),
         ("RIGHTPADDING", (0, 0), (-1, -1), 3),
         ("LEFTPADDING", (7, 0), (7, -1), 11),
@@ -239,18 +239,18 @@ def tabla_macro(macro, ancho, periodo="semanal", rotulo="Semana"):
     anchos = [w * ancho for w in (.35, .13, .09, .13, .17, .13)]
     t = Table(filas, colWidths=anchos, repeatRows=1)
     t.setStyle(TableStyle([
-        ("FONT", (0, 0), (-1, 0), SEMI, 8),
+        ("FONT", (0, 0), (-1, 0), SEMI, 8.8),
         ("TEXTCOLOR", (0, 0), (-1, 0), GRIS),
         ("LINEBELOW", (0, 0), (-1, 0), .8, BORDE),
-        ("FONT", (0, 1), (-1, -1), REG, 8.8),
-        ("FONT", (1, 1), (1, -1), SEMI, 8.8),
+        ("FONT", (0, 1), (-1, -1), REG, 9.6),
+        ("FONT", (1, 1), (1, -1), SEMI, 9.6),
         ("ALIGN", (1, 0), (1, -1), "RIGHT"),
         ("ALIGN", (3, 0), (-1, -1), "RIGHT"),
         ("TEXTCOLOR", (2, 1), (2, -1), GRIS),
         ("TEXTCOLOR", (5, 1), (5, -1), GRIS),
         ("LINEAFTER", (3, 0), (3, -1), .5, SUAVE),
-        ("TOPPADDING", (0, 0), (-1, -1), 3.5),
-        ("BOTTOMPADDING", (0, 0), (-1, -1), 3.5),
+        ("TOPPADDING", (0, 0), (-1, -1), 5),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
         ("LEFTPADDING", (0, 0), (-1, -1), 3),
     ] + estilos))
     return t
@@ -258,17 +258,18 @@ def tabla_macro(macro, ancho, periodo="semanal", rotulo="Semana"):
 
 def tabla_simple(filas, anchos_rel, ancho, alinear_der=()):
     t = Table(filas, colWidths=[w * ancho for w in anchos_rel], repeatRows=1)
-    est = [("FONT", (0, 0), (-1, 0), SEMI, 8),
+    est = [("FONT", (0, 0), (-1, 0), SEMI, 8.8),
            ("TEXTCOLOR", (0, 0), (-1, 0), GRIS),
            ("LINEBELOW", (0, 0), (-1, 0), .8, BORDE),
-           ("FONT", (0, 1), (-1, -1), REG, 8.8),
-           ("TOPPADDING", (0, 0), (-1, -1), 3.5),
-           ("BOTTOMPADDING", (0, 0), (-1, -1), 3.5),
+           ("FONT", (0, 1), (-1, -1), REG, 9.6),
+           ("TOPPADDING", (0, 0), (-1, -1), 5),
+           ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
            ("LEFTPADDING", (0, 0), (-1, -1), 3)]
     for c in alinear_der:
         est.append(("ALIGN", (c, 0), (c, -1), "RIGHT"))
     t.setStyle(TableStyle(est))
-    return t
+    # Entera o en la pagina siguiente: cinco filas partidas al medio no se leen.
+    return KeepTogether([t])
 
 
 def figura(ruta, pie, ancho):
@@ -299,17 +300,17 @@ def construir(ruta_json, dir_curvas, textos, salida):
     def portada(canvas, doc):
         canvas.saveState()
         canvas.setFillColor(NAVY)
-        canvas.rect(0, A4[1] - 30 * mm, A4[0], 30 * mm, stroke=0, fill=1)
+        canvas.rect(0, A4[1] - 34 * mm, A4[0], 34 * mm, stroke=0, fill=1)
         canvas.setFillColor(CYAN)
-        canvas.setFont(SEMI, 8.5)
-        canvas.drawString(MARGEN, A4[1] - 12 * mm, "RENTA FIJA ARGENTINA")
+        canvas.setFont(SEMI, 9.3)
+        canvas.drawString(MARGEN, A4[1] - 13 * mm, "RENTA FIJA ARGENTINA")
         canvas.setFillColor(colors.white)
-        canvas.setFont(BOLD, 16.5)
-        canvas.drawString(MARGEN, A4[1] - 19.5 * mm, f"Cierre de mercado · {clase}")
-        _lockup(canvas, "balanz_lockup_white.png", A4[0] - MARGEN, A4[1] - 15 * mm, 46 * mm)
-        canvas.setFont(REG, 10.5)
+        canvas.setFont(BOLD, 18)
+        canvas.drawString(MARGEN, A4[1] - 21.5 * mm, f"Cierre de mercado · {clase}")
+        _lockup(canvas, "balanz_lockup_white.png", A4[0] - MARGEN, A4[1] - 16.5 * mm, 48 * mm)
+        canvas.setFont(REG, 11.5)
         canvas.setFillColor(colors.HexColor("#C8D7EE"))
-        canvas.drawString(MARGEN, A4[1] - 25.5 * mm, _fecha_larga(fecha).capitalize())
+        canvas.drawString(MARGEN, A4[1] - 28.5 * mm, _fecha_larga(fecha).capitalize())
         pie(canvas, doc)
         canvas.restoreState()
 
@@ -317,30 +318,30 @@ def construir(ruta_json, dir_curvas, textos, salida):
         canvas.saveState()
         canvas.setStrokeColor(BORDE)
         canvas.setLineWidth(.6)
-        canvas.line(MARGEN, A4[1] - 13 * mm, A4[0] - MARGEN, A4[1] - 13 * mm)
+        canvas.line(MARGEN, A4[1] - 14 * mm, A4[0] - MARGEN, A4[1] - 14 * mm)
         canvas.setFillColor(GRIS)
-        canvas.setFont(REG, 8.5)
-        canvas.drawString(MARGEN, A4[1] - 11.5 * mm,
+        canvas.setFont(REG, 9.3)
+        canvas.drawString(MARGEN, A4[1] - 12.2 * mm,
                           f"Renta fija Argentina · {clase.lower()} · "
                           f"{fecha[8:10]}/{fecha[5:7]}/{fecha[:4]}")
-        _lockup(canvas, "balanz_lockup_navy.png", A4[0] - MARGEN, A4[1] - 10.9 * mm, 30 * mm)
+        _lockup(canvas, "balanz_lockup_navy.png", A4[0] - MARGEN, A4[1] - 11.5 * mm, 32 * mm)
         pie(canvas, doc)
         canvas.restoreState()
 
     def pie(canvas, doc):
         canvas.setFillColor(GRIS)
-        canvas.setFont(REG, 8)
+        canvas.setFont(REG, 8.6)
         canvas.drawString(MARGEN, 10 * mm,
-                          "Elaborado con datos públicos de mercado. No constituye asesoramiento "
-                          "de inversión ni recomendación de compra o venta.")
+                          "No constituye asesoramiento de inversión ni recomendación de "
+                          "compra o venta.")
         canvas.drawRightString(A4[0] - MARGEN, 10 * mm, str(canvas.getPageNumber()))
 
     doc = BaseDocTemplate(str(salida), pagesize=A4, leftMargin=MARGEN, rightMargin=MARGEN,
                           topMargin=MARGEN, bottomMargin=MARGEN,
                           title=f"Renta fija Argentina · cierre {fecha}",
                           author="", subject="Cierre de mercado de renta fija argentina")
-    marco_p = Frame(MARGEN, MARGEN + 4 * mm, ANCHO, A4[1] - 34 * mm - MARGEN, id="p")
-    marco_i = Frame(MARGEN, MARGEN + 4 * mm, ANCHO, A4[1] - 18 * mm - MARGEN, id="i")
+    marco_p = Frame(MARGEN, MARGEN + 4 * mm, ANCHO, A4[1] - 39 * mm - MARGEN, id="p")
+    marco_i = Frame(MARGEN, MARGEN + 4 * mm, ANCHO, A4[1] - 20 * mm - MARGEN, id="i")
     doc.addPageTemplates([PageTemplate(id="portada", frames=[marco_p], onPage=portada),
                           PageTemplate(id="interior", frames=[marco_i], onPage=interior)])
 
@@ -379,7 +380,8 @@ def construir(ruta_json, dir_curvas, textos, salida):
                               alinear_der=(1, 2, 3, 4)))
         E.append(Spacer(1, 6))
     E += figura(dir_curvas / "lecaps_cer.png",
-                "Las dos curvas sobre el tramo que comparten, cada una en su escala.", ANCHO)
+                "Las dos curvas en la misma escala de TEA: los CER llevados a nominal con la "
+                "inflación publicada.", ANCHO)
     E += figura(dir_curvas / "breakeven.png",
                 "La inflación a la que una LECAP y un CER del mismo plazo rinden lo mismo.", ANCHO)
     E += figura(dir_curvas / "tamar.png",

@@ -74,12 +74,12 @@ except Exception:                                                 # noqa: BLE001
 
 # CUERPOS. La figura sale a 950 px y se muestra en 674, así que en la página se ven al 71%: lo que
 # acá dice 10 se lee como 7 sobre el papel. Están calibrados contra el cuerpo del informe, que es 9.
-TAM_TITULO = 16
-TAM_EJE = 12
-TAM_TICK = 11
-TAM_LEYENDA = 12
-TAM_ROTULO = 11
-TAM_NOTA = 10
+TAM_TITULO = 18
+TAM_EJE = 13
+TAM_TICK = 12
+TAM_LEYENDA = 13
+TAM_ROTULO = 12
+TAM_NOTA = 11
 
 NAVY = COLORS["navy"]
 CYAN = COLORS["cyan"]
@@ -223,7 +223,7 @@ def _comprimir(ruta):
 # Caracteres por línea del pie. A cuerpo 8 sobre una figura de 9,5 pulgadas, 108 entran holgados;
 # más que eso y `bbox_inches="tight"` empieza a ensanchar la figura para que el texto entre, con lo
 # que esa curva sale con otra proporción que el resto del juego.
-ANCHO_NOTA = 86
+ANCHO_NOTA = 78
 
 
 def _nota(ax, texto, y=-.16):
