@@ -150,9 +150,13 @@ def _etiquetar(ax, pts, color, cada=1, tam=TAM_ROTULO):
     if guardados is None:
         guardados = ax._rotulos = []
         ax._anclas = []
+    ultimo = len(pts) - 1
     for i, (x, y, tk) in enumerate(pts):
         ax._anclas.append((x, y))
-        if i % cada:
+        # Los extremos van siempre: definen el rango de la curva y son los dos que uno busca.
+        # Sin esto, saltear de a  dejaba sin nombre al bono mas largo cuando la cantidad de
+        # puntos hacia que le tocara indice impar -CUAP, a 9,5 de duration, en la curva CER-.
+        if i % cada and i not in (0, ultimo):
             continue
         guardados.append(ax.text(x, y, tk, fontsize=tam, color=color, alpha=.95,
                                  ha="center", va="bottom", zorder=5))
@@ -278,7 +282,7 @@ def curva_cer(instr, salida, duales_cer):
     if not pts:
         return None
     fig, ax = balanz_figure(figsize=(9.5, 5.2))
-    _serie(ax, pts, NAVY, "CER · TIR real", cada=2)
+    _serie(ax, pts, NAVY, "CER · TIR real")
     if duales_cer:
         _serie(ax, duales_cer, AMBAR, "Duales · pata CER", marcador="D", linea="")
     _ejes(ax, "Curva CER · rendimiento real sobre el índice", "CER + x % (TIR real)")
