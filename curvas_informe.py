@@ -349,10 +349,10 @@ def lecaps_vs_cer(instr, salida, dudosos_cer, infl_anual=None):
     cer_nom = [(d, ((1 + infl_anual / 100) * (1 + r / 100) - 1) * 100, tk) for d, r, tk in cer_vis]
 
     fig, ax = balanz_figure(figsize=(9.5, 5.2))
-    _serie(ax, lec, NAVY, "LECAPs · TEA nominal", cada=2)
-    _serie(ax, cer_nom, ACERO, "Bonos CER · CER + TIR", marcador="s", cada=2)
+    _serie(ax, lec, NAVY, "LECAPs · TEA nominal")
+    _serie(ax, cer_nom, ACERO, "Bonos CER · CER + TIR", marcador="s")
     _ejes(ax, "Tasa fija contra CER", "TEA (%)")
-    ax.set_xlim(-xmax * .05, xmax)
+    ax.set_xlim(-xmax * .09, xmax)
     ax.legend(frameon=False, fontsize=TAM_LEYENDA, labelcolor=NAVY, loc="lower right")
     _nota(ax, "Los CER están llevados a tasa nominal con la inflación efectivamente publicada: los "
               f"tres últimos meses del IPC anualizados dan {infl_anual:.1f}%.\nNo es lo que el "
