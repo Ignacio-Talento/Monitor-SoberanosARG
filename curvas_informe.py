@@ -66,6 +66,21 @@ except Exception as e:                                            # noqa: BLE001
     def balanz_figure(figsize=(10, 5.6)):
         return plt.subplots(figsize=figsize, facecolor="white")
 
+try:
+    from adjustText import adjust_text
+except Exception:                                                 # noqa: BLE001
+    adjust_text = None
+    print("AVISO: sin adjustText; los rótulos se dibujan sin separar")
+
+# CUERPOS. La figura sale a 950 px y se muestra en 674, así que en la página se ven al 71%: lo que
+# acá dice 10 se lee como 7 sobre el papel. Están calibrados contra el cuerpo del informe, que es 9.
+TAM_TITULO = 15
+TAM_EJE = 11
+TAM_TICK = 10
+TAM_LEYENDA = 11
+TAM_ROTULO = 10
+TAM_NOTA = 9
+
 NAVY = COLORS["navy"]
 CYAN = COLORS["cyan"]
 GRIS = COLORS["label_gray"]
@@ -116,53 +131,56 @@ def _patas(instr, tipo):
 
 
 def _ejes(ax, titulo, ylab, xlab="Duration modificada (años)"):
-    ax.set_title(titulo, color=NAVY, fontweight="bold", fontsize=13, pad=12)
-    ax.set_xlabel(xlab, color=GRIS, fontsize=10)
-    ax.set_ylabel(ylab, color=GRIS, fontsize=10)
+    ax.set_title(titulo, color=NAVY, fontweight="bold", fontsize=TAM_TITULO, pad=14)
+    ax.set_xlabel(xlab, color=GRIS, fontsize=TAM_EJE)
+    ax.set_ylabel(ylab, color=GRIS, fontsize=TAM_EJE)
     ax.yaxis.set_major_formatter(mtick.FormatStrFormatter("%.1f%%"))
     ax.grid(True, color=COLORS.get("border_gray", "#C8D3E0"), alpha=.5, linewidth=.8)
     ax.set_axisbelow(True)
+    # Aire en los bordes para que el rotulo del primer y del ultimo punto no quede pegado al eje.
+    ax.margins(x=.08, y=.05)
     for lado in ("top", "right"):
         ax.spines[lado].set_visible(False)
-    ax.tick_params(colors=GRIS, labelsize=9)
+    ax.tick_params(colors=GRIS, labelsize=TAM_TICK)
 
 
-def _etiquetar(ax, pts, color, cada=1, dy=6, tam=7.5, aislar=False):
-    """Rotula los puntos. Con curvas de muchos instrumentos se saltea de a `cada`.
-
-    Los rótulos van arriba del punto salvo cuando dos puntos caen casi encima —AN29D y AO29D
-    difieren en 0,07 de duration y en medio punto básico de TIR—: ahí el segundo pasa abajo. El
-    criterio es la distancia normalizada al rango de la serie, no una distancia en píxeles, porque
-    los límites de los ejes todavía no están fijados cuando se dibuja.
-    """
-    xs = [p[0] for p in pts]
-    ys = [p[1] for p in pts]
-    rx = (max(xs) - min(xs)) or 1
-    ry = (max(ys) - min(ys)) or 1
-    lado, ant = 1, None
+def _etiquetar(ax, pts, color, cada=1, tam=TAM_ROTULO):
+    """Crea los rótulos y los deja anotados en el eje; la posición la fija _acomodar()."""
+    guardados = getattr(ax, "_rotulos", None)
+    if guardados is None:
+        guardados = ax._rotulos = []
+        ax._anclas = []
     for i, (x, y, tk) in enumerate(pts):
+        ax._anclas.append((x, y))
         if i % cada:
             continue
-        if ant and abs(x - ant[0]) / rx < .06 and abs(y - ant[1]) / ry < .12:
-            lado = -lado
-        else:
-            lado = 1
-        arriba, ha, va, dx = lado > 0, "center", "baseline", 0
-        if aislar:
-            if 0 < i < len(pts) - 1 and y < ys[i - 1] and y < ys[i + 1]:
-                arriba = False                      # mínimo local: arriba está la V
-            if i == 0:
-                ha, va, dx = "right", "center", -9
-            elif i == len(pts) - 1:
-                ha, va, dx = "left", "center", 9
-        desvio = 0 if va == "center" else (dy if arriba else -(dy + tam + 5))
-        ax.annotate(tk, (x, y), textcoords="offset points", xytext=(dx, desvio),
-                    ha=ha, va=va, fontsize=tam, color=color, alpha=.9)
-        ant = (x, y)
+        guardados.append(ax.text(x, y, tk, fontsize=tam, color=color, alpha=.95,
+                                 ha="center", va="bottom", zorder=5))
 
 
-def _serie(ax, pts, color, rotulo, marcador="o", linea="-", etiquetas=True, cada=1, tam=7.5,
-           aislar=False):
+def _acomodar(ax):
+    """Separa los rótulos que se pisan entre sí y de los puntos de la curva.
+
+    Corre al final a propósito: adjustText trabaja en coordenadas de pantalla y necesita que los
+    ejes ya tengan sus límites, que hasta que no se dibujan todas las series no están definidos.
+    """
+    textos = getattr(ax, "_rotulos", None)
+    if not textos or adjust_text is None:
+        return
+    anclas = getattr(ax, "_anclas", [])
+    adjust_text(
+        textos, ax=ax,
+        x=[a[0] for a in anclas], y=[a[1] for a in anclas],
+        expand=(1.25, 1.45),
+        force_text=(.6, .9), force_static=(.4, .7), force_pull=(.004, .004),
+        max_move=(40, 40),
+        arrowprops=dict(arrowstyle="-", color=COLORS.get("border_gray", "#C8D3E0"),
+                        lw=.7, shrinkA=1, shrinkB=3),
+        min_arrow_len=7)
+
+
+def _serie(ax, pts, color, rotulo, marcador="o", linea="-", etiquetas=True, cada=1,
+           tam=TAM_ROTULO):
     """Una serie de la curva. `linea=""` deja los puntos SUELTOS, sin unir.
 
     Hace falta distinguirlo: matplotlib interpreta la cadena vacía como «formato por defecto» y
@@ -176,9 +194,9 @@ def _serie(ax, pts, color, rotulo, marcador="o", linea="-", etiquetas=True, cada
     ys = [p[1] for p in pts]
     ax.plot(xs, ys, color=color, linewidth=2 if linea else 0,
             linestyle=linea if linea else "none",
-            marker=marcador, markersize=6, label=rotulo, zorder=3)
+            marker=marcador, markersize=7, label=rotulo, zorder=3)
     if etiquetas:
-        _etiquetar(ax, pts, color, cada, tam=tam, aislar=aislar)
+        _etiquetar(ax, pts, color, cada, tam=tam)
 
 
 # EL PESO IMPORTA POR EL PDF que se adjunta al mail: ocho imágenes pesadas lo vuelven inadjuntable.
@@ -202,7 +220,7 @@ def _comprimir(ruta):
 # Caracteres por línea del pie. A cuerpo 8 sobre una figura de 9,5 pulgadas, 108 entran holgados;
 # más que eso y `bbox_inches="tight"` empieza a ensanchar la figura para que el texto entre, con lo
 # que esa curva sale con otra proporción que el resto del juego.
-ANCHO_NOTA = 108
+ANCHO_NOTA = 96
 
 
 def _nota(ax, texto, y=-.16):
@@ -210,12 +228,14 @@ def _nota(ax, texto, y=-.16):
     lineas = []
     for parrafo in str(texto).split("\n"):
         lineas.extend(textwrap.wrap(parrafo, ANCHO_NOTA) or [""])
-    ax.text(.01, y, "\n".join(lineas), transform=ax.transAxes, fontsize=8, color=GRIS, va="top")
+    ax.text(.01, y, "\n".join(lineas), transform=ax.transAxes, fontsize=TAM_NOTA,
+            color=GRIS, va="top")
 
 
 def _cerrar(fig, ax, ruta, leyenda=True):
+    _acomodar(ax)
     if leyenda:
-        ax.legend(frameon=False, fontsize=9.5, labelcolor=NAVY)
+        ax.legend(frameon=False, fontsize=TAM_LEYENDA, labelcolor=NAVY)
     fig.savefig(ruta, dpi=DPI, bbox_inches="tight", facecolor="white")
     plt.close(fig)
     return _comprimir(ruta)
@@ -319,16 +339,16 @@ def lecaps_vs_cer(instr, salida, dudosos_cer):
     # para que no haya que adivinar cuál se lee de qué lado.
     _serie(ax, lec, NAVY, "LECAPs · TEA nominal", cada=2)
     _ejes(ax, "Tasa fija contra CER", "Tasa fija · TEA (%)")
-    ax.set_xlim(0, xmax)
+    ax.set_xlim(-xmax * .05, xmax)
     ax.yaxis.label.set_color(NAVY)
     ax.tick_params(axis="y", colors=NAVY)
 
     axc = ax.twinx()
     _serie(axc, cer_vis, ACERO, "CER · TIR real", marcador="s", cada=2)
-    axc.set_xlim(0, xmax)
-    axc.set_ylabel("CER · TIR real (%)", color=ACERO, fontsize=10)
+    axc.set_xlim(-xmax * .05, xmax)
+    axc.set_ylabel("CER · TIR real (%)", color=ACERO, fontsize=TAM_EJE)
     axc.yaxis.set_major_formatter(mtick.FormatStrFormatter("%.1f%%"))
-    axc.tick_params(axis="y", colors=ACERO, labelsize=9)
+    axc.tick_params(axis="y", colors=ACERO, labelsize=TAM_TICK)
     axc.spines["top"].set_visible(False)
     axc.spines["right"].set_color(ACERO)
 
@@ -336,7 +356,10 @@ def lecaps_vs_cer(instr, salida, dudosos_cer):
     # medio, así que la franja central no queda libre.
     manijas = ax.get_legend_handles_labels()[0] + axc.get_legend_handles_labels()[0]
     rotulos = ax.get_legend_handles_labels()[1] + axc.get_legend_handles_labels()[1]
-    ax.legend(manijas, rotulos, frameon=False, fontsize=9.5, labelcolor=NAVY, loc="lower right")
+    ax.legend(manijas, rotulos, frameon=False, fontsize=TAM_LEYENDA, labelcolor=NAVY,
+              loc="lower right")
+    _acomodar(ax)
+    _acomodar(axc)
     # El pie va cortado a mano: en una sola linea, bbox_inches="tight" ensancha la figura para
     # que entre el texto y la curva sale con otra proporcion que el resto del juego.
     _nota(ax, "Cada curva tiene su escala: la tasa fija a la izquierda, el rendimiento " "real de los CER a la derecha.\n" "Con escalas distintas la separación entre las líneas no es el breakeven: " "ese va en el gráfico siguiente.")
@@ -413,7 +436,7 @@ def curva_subsoberanos(instr, salida):
     fig, ax = balanz_figure(figsize=(9.5, 5.2))
     # Son cinco puntos en todo el ancho del gráfico: el rótulo de 7,5 que sirve para una curva de
     # veinte instrumentos acá queda diminuto sin ninguna razón.
-    _serie(ax, pts, NAVY, "Subsoberanos · TIR", tam=10.5, aislar=True)
+    _serie(ax, pts, NAVY, "Subsoberanos · TIR")
     _ejes(ax, "Curva subsoberana en dólares", "TIR (%)")
     _nota(ax, "Valuados al CCL. Son provincias " "con riesgos crediticios distintos entre sí, no una curva de un solo emisor: " "la línea ordena por plazo, no dice que sean sustitutos.")
     return _cerrar(fig, ax, salida)
@@ -543,7 +566,7 @@ def curva_futuros(salida, ruta_spreads="spreads_sinteticos.json"):
     # del contrato mas corto, que por definicion esta pegado al spot.
     ax.annotate(f"Mayorista  {spot:,.2f}".replace(",", "@").replace(".", ",").replace("@", "."),
                 (xs[-1], spot), textcoords="offset points", xytext=(0, 7),
-                ha="right", fontsize=9, color=CYAN, fontweight="bold")
+                ha="right", fontsize=TAM_EJE, color=CYAN, fontweight="bold")
 
     # El precio arriba del punto y la devaluación abajo. Antes sólo estaba el porcentaje, y el
     # precio del contrato —que es la serie que dibuja la curva y lo primero que se busca en un
@@ -551,23 +574,24 @@ def curva_futuros(salida, ruta_spreads="spreads_sinteticos.json"):
     for x, y in zip(xs, ys):
         dev = (y / spot - 1) * 100
         ax.annotate(f"{y:,.0f}".replace(",", "."), (x, y), textcoords="offset points",
-                    xytext=(0, 10), ha="center", fontsize=8.5, color=NAVY, fontweight="semibold")
+                    xytext=(0, 11), ha="center", fontsize=TAM_ROTULO, color=NAVY,
+                    fontweight="semibold")
         ax.annotate(f"{dev:+.1f}%".replace(".", ","), (x, y), textcoords="offset points",
-                    xytext=(0, -17), ha="center", fontsize=7.5, color=GRIS)
+                    xytext=(0, -19), ha="center", fontsize=TAM_ROTULO - 1.5, color=GRIS)
 
     ax.set_title(f"Futuros de dólar · ajuste del {ult[8:10]}/{ult[5:7]}",
-                 color=NAVY, fontweight="bold", fontsize=13, pad=12)
-    ax.set_xlabel("Vencimiento del contrato", color=GRIS, fontsize=10)
-    ax.set_ylabel("Precio del futuro (ARS)", color=GRIS, fontsize=10)
+                 color=NAVY, fontweight="bold", fontsize=TAM_TITULO, pad=14)
+    ax.set_xlabel("Vencimiento del contrato", color=GRIS, fontsize=TAM_EJE)
+    ax.set_ylabel("Precio del futuro (ARS)", color=GRIS, fontsize=TAM_EJE)
     ax.set_xticks(xs)
-    ax.set_xticklabels(etiquetas, fontsize=8.5)
+    ax.set_xticklabels(etiquetas, fontsize=TAM_TICK)
     ax.yaxis.set_major_formatter(mtick.FuncFormatter(
         lambda v, _: f"{v:,.0f}".replace(",", ".")))
     ax.grid(True, color=COLORS.get("border_gray", "#C8D3E0"), alpha=.5, linewidth=.8)
     ax.set_axisbelow(True)
     for lado in ("top",):
         ax.spines[lado].set_visible(False)
-    ax.tick_params(colors=GRIS, labelsize=9)
+    ax.tick_params(colors=GRIS, labelsize=TAM_TICK)
 
     lo, hi = min(ys), max(ys)
     pad = (hi - lo) * .12
@@ -577,11 +601,12 @@ def curva_futuros(salida, ruta_spreads="spreads_sinteticos.json"):
     # izquierda expresado como devaluación acumulada contra el spot.
     der = ax.secondary_yaxis("right", functions=(lambda v: (v / spot - 1) * 100,
                                                  lambda p: spot * (1 + p / 100)))
-    der.set_ylabel("Devaluación acumulada contra el mayorista", color=GRIS, fontsize=10)
+    der.set_ylabel("Devaluación acumulada contra el mayorista", color=GRIS,
+               fontsize=TAM_EJE)
     der.yaxis.set_major_formatter(mtick.FormatStrFormatter("%.1f%%"))
-    der.tick_params(colors=GRIS, labelsize=9)
+    der.tick_params(colors=GRIS, labelsize=TAM_TICK)
 
-    ax.legend(frameon=False, fontsize=9, labelcolor=NAVY, loc="upper left")
+    ax.legend(frameon=False, fontsize=TAM_LEYENDA, labelcolor=NAVY, loc="upper left")
     fig.savefig(salida, dpi=DPI, bbox_inches="tight", facecolor="white")
     plt.close(fig)
     return _comprimir(salida)
