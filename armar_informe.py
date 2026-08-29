@@ -414,6 +414,9 @@ def main():
 
     instrumentos, por_familia = [], defaultdict(list)
     sin_dato, sin_ley = [], []
+    # Agrupados por familia además de la lista plana: sin eso no se puede decir en cada curva
+    # cuántos de su panel faltan, que en los chicos cambia cómo se lee.
+    sin_dato_fam = defaultdict(list)
     for it in items:
         fam = FAMILIAS.get(it["hoja"])
         if not fam or not it["t1816"]:
@@ -429,6 +432,7 @@ def main():
         a = serie.get(ayer.isoformat())
         if not h:
             sin_dato.append(it["eco"])
+            sin_dato_fam[fam].append(it["eco"])
             continue
         reg = {
             "ticker": it["eco"],
@@ -560,6 +564,7 @@ def main():
         "feriadosLeidos": fer is not None,
         "universo": len(items),
         "sinDato": sin_dato,
+        "sinDatoPorFamilia": dict(sin_dato_fam),
         # ONs que no declaran ley en el Excel: quedan fuera del informe en vez de caer en una
         # familia arbitraria, y se listan para que se pueda completar la columna.
         "onsSinLey": sin_ley,

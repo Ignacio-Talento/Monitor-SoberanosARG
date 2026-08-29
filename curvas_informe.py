@@ -230,6 +230,24 @@ def _comprimir(ruta):
 ANCHO_NOTA = 78
 
 
+def falta(d, *familias):
+    """Frase para el pie: cuántos instrumentos del panel no operaron, y cuáles.
+
+    Sin esto la curva se lee como si fuera el panel entero. En subsoberanos eso es la mitad —cinco
+    de once el 28/08/2026—, y con paneles chicos saber CUÁL falta importa tanto como cuántos.
+    """
+    ausentes = []
+    for f in familias:
+        ausentes += (d.get("sinDatoPorFamilia") or {}).get(f, [])
+    if not ausentes:
+        return ""
+    presentes = sum((d["resumen"].get(f) or {}).get("instrumentos", 0) for f in familias)
+    quienes = ", ".join(ausentes[:8]) + (", …" if len(ausentes) > 8 else "")
+    return (f"\nEstán los {presentes} de {presentes + len(ausentes)} que operaron; "
+            f"no cotizaron {quienes}.")
+
+
+
 def _nota(ax, texto, y=-.16):
     """Dibuja el pie del gráfico cortado a ANCHO_NOTA, respetando los saltos que ya traiga."""
     lineas = []
@@ -249,7 +267,7 @@ def _cerrar(fig, ax, ruta, leyenda=True):
 
 
 # ── 1 · Globales contra Bonares ──────────────────────────────────────────────
-def globales_vs_bonares(instr, salida):
+def globales_vs_bonares(instr, salida, faltan=""):
     bon = _puntos(instr, "Bonares")
     glo = _puntos(instr, "Globales", en_mep=True)
     if not (bon and glo):
@@ -258,12 +276,12 @@ def globales_vs_bonares(instr, salida):
     _serie(ax, bon, NAVY, "Bonares · ley local")
     _serie(ax, glo, CYAN, "Globales · ley NY", marcador="s")
     _ejes(ax, "Curva soberana en dólares · ley local contra ley NY", "TIR (%)")
-    _nota(ax, "Ambas curvas en MEP. Los globales se llevan a esa punta a propósito: se " "negocian al CCL y restar dos monedas daría un spread que no existe.")
+    _nota(ax, "Ambas curvas en MEP. Los globales se llevan a esa punta a propósito: se " "negocian al CCL y restar dos monedas daría un spread que no existe." + faltan)
     return _cerrar(fig, ax, salida)
 
 
 # ── 2 · LECAPs en TEM ────────────────────────────────────────────────────────
-def lecaps_tem(instr, salida):
+def lecaps_tem(instr, salida, faltan=""):
     pts = [(d, ((1 + t / 100) ** (1 / 12) - 1) * 100, tk)
            for d, t, tk in _puntos(instr, "LECAPs y tasa fija")]
     if not pts:
@@ -272,12 +290,12 @@ def lecaps_tem(instr, salida):
     _serie(ax, pts, NAVY, "LECAPs y tasa fija")
     _ejes(ax, "Curva de pesos a tasa fija · TEM", "TEM (%)")
     ax.yaxis.set_major_formatter(mtick.FormatStrFormatter("%.2f%%"))
-    _nota(ax, "La TEM se deriva de la TEA informada: (1 + TEA)^(1/12) − 1.")
+    _nota(ax, "La TEM se deriva de la TEA informada: (1 + TEA)^(1/12) − 1." + faltan)
     return _cerrar(fig, ax, salida)
 
 
 # ── 3 · CER ──────────────────────────────────────────────────────────────────
-def curva_cer(instr, salida, duales_cer):
+def curva_cer(instr, salida, duales_cer, faltan=""):
     pts = _puntos(instr, "CER")
     if not pts:
         return None
@@ -293,7 +311,7 @@ def curva_cer(instr, salida, duales_cer):
         nota += ("\nLos rombos son la PATA CER de cada dual, no el instrumento entero. Rinden "
                  "menos que un CER puro de la misma duration: en un dual se cobra el máximo entre "
                  "las dos patas, y esa opcionalidad se paga.")
-    _nota(ax, nota)
+    _nota(ax, nota + faltan)
     return _cerrar(fig, ax, salida)
 
 
@@ -386,7 +404,7 @@ def breakeven_cer(instr, salida, dudosos_cer):
 
 
 # ── 5 · TAMAR ────────────────────────────────────────────────────────────────
-def curva_tamar(instr, salida, duales_tamar, tamar_bcra=None):
+def curva_tamar(instr, salida, duales_tamar, tamar_bcra=None, faltan=""):
     pts = _puntos(instr, "TAMAR")
     if not pts:
         return None
@@ -407,12 +425,12 @@ def curva_tamar(instr, salida, duales_tamar, tamar_bcra=None):
                  "menos que un TAMAR puro porque incluyen el costo de la opcionalidad.")
         nota = (nota + "\n" + extra) if nota else extra
     if nota:
-        _nota(ax, nota)
+        _nota(ax, nota + faltan)
     return _cerrar(fig, ax, salida)
 
 
 # ── 6 · Dólar linked ─────────────────────────────────────────────────────────
-def curva_dl(instr, salida):
+def curva_dl(instr, salida, faltan=""):
     pts = _puntos(instr, "Dólar linked")
     if not pts:
         return None
@@ -420,12 +438,12 @@ def curva_dl(instr, salida):
     _serie(ax, pts, NAVY, "Dólar linked · TIR")
     _ejes(ax, "Curva dólar linked", "TIR (%)")
     ax.axhline(0, color=GRIS, linewidth=.9, linestyle=":", zorder=1)
-    _nota(ax, "Rendimiento por encima de la devaluación oficial. Son pocos instrumentos y " "algunos muy ilíquidos, así que la curva es indicativa.")
+    _nota(ax, "Rendimiento por encima de la devaluación oficial. Son pocos instrumentos y " "algunos muy ilíquidos, así que la curva es indicativa." + faltan)
     return _cerrar(fig, ax, salida)
 
 
 # ── 7 · Subsoberanos ─────────────────────────────────────────────────────────
-def curva_subsoberanos(instr, salida):
+def curva_subsoberanos(instr, salida, faltan=""):
     pts = _puntos(instr, "Subsoberanos")
     if not pts:
         return None
@@ -434,7 +452,7 @@ def curva_subsoberanos(instr, salida):
     # veinte instrumentos acá queda diminuto sin ninguna razón.
     _serie(ax, pts, NAVY, "Subsoberanos · TIR")
     _ejes(ax, "Curva subsoberana en dólares", "TIR (%)")
-    _nota(ax, "Valuados al CCL. Son provincias " "con riesgos crediticios distintos entre sí, no una curva de un solo emisor: " "la línea ordena por plazo, no dice que sean sustitutos.")
+    _nota(ax, "Valuados al CCL. Son provincias " "con riesgos crediticios distintos entre sí, no una curva de un solo emisor: " "la línea ordena por plazo, no dice que sean sustitutos." + faltan)
     return _cerrar(fig, ax, salida)
 
 
@@ -627,14 +645,14 @@ def generar(ruta_json, dir_salida="curvas"):
     out.mkdir(exist_ok=True)
     hechos = {}
     for nombre, fn in [
-        ("globales_bonares", lambda p: globales_vs_bonares(instr, p)),
-        ("lecaps_tem", lambda p: lecaps_tem(instr, p)),
-        ("cer", lambda p: curva_cer(instr, p, d_cer)),
+        ("globales_bonares", lambda p: globales_vs_bonares(instr, p, falta(d, "Bonares", "Globales"))),
+        ("lecaps_tem", lambda p: lecaps_tem(instr, p, falta(d, "LECAPs y tasa fija"))),
+        ("cer", lambda p: curva_cer(instr, p, d_cer, falta(d, "CER"))),
         ("lecaps_cer", lambda p: lecaps_vs_cer(instr, p, dud_cer, infl)),
         ("breakeven", lambda p: breakeven_cer(instr, p, dud_cer)),
-        ("tamar", lambda p: curva_tamar(instr, p, d_tam, tamar_spot)),
-        ("dl", lambda p: curva_dl(instr, p)),
-        ("subsoberanos", lambda p: curva_subsoberanos(instr, p)),
+        ("tamar", lambda p: curva_tamar(instr, p, d_tam, tamar_spot, falta(d, "TAMAR"))),
+        ("dl", lambda p: curva_dl(instr, p, falta(d, "Dólar linked"))),
+        ("subsoberanos", lambda p: curva_subsoberanos(instr, p, falta(d, "Subsoberanos"))),
         ("futuros", lambda p: curva_futuros(p)),
     ]:
         ruta = out / f"{nombre}.png"
