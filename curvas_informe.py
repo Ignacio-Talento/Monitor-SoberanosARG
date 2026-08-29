@@ -125,16 +125,42 @@ def _ejes(ax, titulo, ylab, xlab="Duration modificada (años)"):
     ax.tick_params(colors=GRIS, labelsize=9)
 
 
-def _etiquetar(ax, pts, color, cada=1, dy=6):
-    """Rotula los puntos. Con curvas de muchos instrumentos se saltea de a `cada`."""
+def _etiquetar(ax, pts, color, cada=1, dy=6, tam=7.5, aislar=False):
+    """Rotula los puntos. Con curvas de muchos instrumentos se saltea de a `cada`.
+
+    Los rótulos van arriba del punto salvo cuando dos puntos caen casi encima —AN29D y AO29D
+    difieren en 0,07 de duration y en medio punto básico de TIR—: ahí el segundo pasa abajo. El
+    criterio es la distancia normalizada al rango de la serie, no una distancia en píxeles, porque
+    los límites de los ejes todavía no están fijados cuando se dibuja.
+    """
+    xs = [p[0] for p in pts]
+    ys = [p[1] for p in pts]
+    rx = (max(xs) - min(xs)) or 1
+    ry = (max(ys) - min(ys)) or 1
+    lado, ant = 1, None
     for i, (x, y, tk) in enumerate(pts):
         if i % cada:
             continue
-        ax.annotate(tk, (x, y), textcoords="offset points", xytext=(0, dy),
-                    ha="center", fontsize=7.5, color=color, alpha=.9)
+        if ant and abs(x - ant[0]) / rx < .06 and abs(y - ant[1]) / ry < .12:
+            lado = -lado
+        else:
+            lado = 1
+        arriba, ha, va, dx = lado > 0, "center", "baseline", 0
+        if aislar:
+            if 0 < i < len(pts) - 1 and y < ys[i - 1] and y < ys[i + 1]:
+                arriba = False                      # mínimo local: arriba está la V
+            if i == 0:
+                ha, va, dx = "right", "center", -9
+            elif i == len(pts) - 1:
+                ha, va, dx = "left", "center", 9
+        desvio = 0 if va == "center" else (dy if arriba else -(dy + tam + 5))
+        ax.annotate(tk, (x, y), textcoords="offset points", xytext=(dx, desvio),
+                    ha=ha, va=va, fontsize=tam, color=color, alpha=.9)
+        ant = (x, y)
 
 
-def _serie(ax, pts, color, rotulo, marcador="o", linea="-", etiquetas=True, cada=1):
+def _serie(ax, pts, color, rotulo, marcador="o", linea="-", etiquetas=True, cada=1, tam=7.5,
+           aislar=False):
     """Una serie de la curva. `linea=""` deja los puntos SUELTOS, sin unir.
 
     Hace falta distinguirlo: matplotlib interpreta la cadena vacía como «formato por defecto» y
@@ -150,7 +176,7 @@ def _serie(ax, pts, color, rotulo, marcador="o", linea="-", etiquetas=True, cada
             linestyle=linea if linea else "none",
             marker=marcador, markersize=6, label=rotulo, zorder=3)
     if etiquetas:
-        _etiquetar(ax, pts, color, cada)
+        _etiquetar(ax, pts, color, cada, tam=tam, aislar=aislar)
 
 
 # EL PESO IMPORTA POR EL PDF que se adjunta al mail: ocho imágenes pesadas lo vuelven inadjuntable.
@@ -189,8 +215,8 @@ def globales_vs_bonares(instr, salida):
     _serie(ax, bon, NAVY, "Bonares · ley local")
     _serie(ax, glo, CYAN, "Globales · ley NY", marcador="s")
     _ejes(ax, "Curva soberana en dólares · ley local contra ley NY", "TIR (%)")
-    ax.text(.01, -.16, "Ambas curvas en MEP. Los globales se piden en esa punta a propósito: el "
-                       "monitor los valúa al CCL y mezclarlos daría un spread que no existe.",
+    ax.text(.01, -.16, "Ambas curvas en MEP. Los globales se llevan a esa punta a propósito: se "
+                       "negocian al CCL y restar dos monedas daría un spread que no existe.",
             transform=ax.transAxes, fontsize=8, color=GRIS, va="top")
     return _cerrar(fig, ax, salida)
 
@@ -267,20 +293,39 @@ def lecaps_vs_cer(instr, salida, dudosos_cer):
 
     fig, (ax, ax2) = plt.subplots(2, 1, figsize=(9.5, 7.4), facecolor="white",
                                   gridspec_kw={"height_ratios": [1.25, 1], "hspace": .42})
+    # DOS ESCALAS. La tasa fija corre entre 26% y 30% y el rendimiento real de los CER entre 2% y
+    # 10%: en un solo eje los CER quedan aplastados contra el piso y no se distingue el escalón
+    # entre TZXO6 y X30N6, que son dos puntos y medio. Cada eje se pinta del color de su curva
+    # para que no haya que adivinar cuál se lee de qué lado.
     _serie(ax, lec, NAVY, "LECAPs · TEA nominal", cada=2)
-    _serie(ax, cer_vis, ACERO, "CER · TIR real", marcador="s", cada=2)
-    _ejes(ax, "Tasa fija contra CER", "Tasa (%)")
+    _ejes(ax, "Tasa fija contra CER", "Tasa fija · TEA (%)")
     ax.set_xlim(0, xmax)
     ax.set_xlabel("")
+    ax.yaxis.label.set_color(NAVY)
+    ax.tick_params(axis="y", colors=NAVY)
+
+    axc = ax.twinx()
+    _serie(axc, cer_vis, ACERO, "CER · TIR real", marcador="s", cada=2)
+    axc.set_xlim(0, xmax)
+    axc.set_ylabel("CER · TIR real (%)", color=ACERO, fontsize=10)
+    axc.yaxis.set_major_formatter(mtick.FormatStrFormatter("%.1f%%"))
+    axc.tick_params(axis="y", colors=ACERO, labelsize=9)
+    axc.spines["top"].set_visible(False)
+    axc.spines["right"].set_color(ACERO)
 
     _serie(ax2, bei, CYAN, "Inflación breakeven", etiquetas=False)
     _ejes(ax2, "Inflación que iguala las dos curvas", "Breakeven anual (%)")
     ax2.legend(frameon=False, fontsize=9.5, labelcolor=NAVY)
-    # Al centro-izquierda: las LECAPs corren por arriba y los CER por abajo, así que la franja del
-    # medio es la única que queda libre. Con `best`, matplotlib la ponía sobre los CER largos.
-    ax.legend(frameon=False, fontsize=9.5, labelcolor=NAVY, loc="center left")
-    nota = ("El breakeven es la inflación a la que una LECAP y un CER del mismo plazo rinden lo "
-            "mismo: por encima conviene el CER, por debajo la tasa fija.\nCada CER se compara "
+    # Abajo a la derecha: con dos escalas las dos curvas suben hacia el extremo superior
+    # derecho y se cruzan en el medio, asi que la franja central dejo de estar libre.
+    manijas = ax.get_legend_handles_labels()[0] + axc.get_legend_handles_labels()[0]
+    rotulos = ax.get_legend_handles_labels()[1] + axc.get_legend_handles_labels()[1]
+    ax.legend(manijas, rotulos, frameon=False, fontsize=9.5, labelcolor=NAVY, loc="lower right")
+    nota = ("Cada curva tiene su escala: la tasa fija a la izquierda, el rendimiento real de los "
+            "CER a la derecha. Con escalas distintas la separación entre las líneas ya no es el "
+            "breakeven, y por eso va calculado en el panel de abajo."
+            "\nEl breakeven es la inflación a la que una LECAP y un CER del mismo plazo rinden lo "
+            "mismo: por encima conviene el CER, por debajo la tasa fija. Cada CER se compara "
             "contra la LECAP interpolada a su misma duration, no contra la más cercana.")
     if fuera:
         nota += (f"\nQuedan {fuera} CER largos fuera del panel de arriba —hasta nueve años de "
@@ -338,7 +383,9 @@ def curva_subsoberanos(instr, salida):
     if not pts:
         return None
     fig, ax = balanz_figure(figsize=(9.5, 5.2))
-    _serie(ax, pts, NAVY, "Subsoberanos · TIR")
+    # Son cinco puntos en todo el ancho del gráfico: el rótulo de 7,5 que sirve para una curva de
+    # veinte instrumentos acá queda diminuto sin ninguna razón.
+    _serie(ax, pts, NAVY, "Subsoberanos · TIR", tam=10.5, aislar=True)
     _ejes(ax, "Curva subsoberana en dólares", "TIR (%)")
     ax.text(.01, -.16, "Valuados al CCL. Son provincias "
                        "con riesgos crediticios distintos entre sí, no una curva de un solo emisor: "
@@ -467,14 +514,21 @@ def curva_futuros(salida, ruta_spreads="spreads_sinteticos.json"):
                 .replace(",", "."))
 
     ax.axhline(spot, color=CYAN, linestyle="--", linewidth=1.5, zorder=2)
+    # Al extremo DERECHO de la linea punteada: sobre la izquierda se pisaba con la devaluacion
+    # del contrato mas corto, que por definicion esta pegado al spot.
     ax.annotate(f"Mayorista  {spot:,.2f}".replace(",", "@").replace(".", ",").replace("@", "."),
-                (xs[0], spot), textcoords="offset points", xytext=(2, -14),
-                fontsize=9, color=CYAN, fontweight="bold")
+                (xs[-1], spot), textcoords="offset points", xytext=(0, 7),
+                ha="right", fontsize=9, color=CYAN, fontweight="bold")
 
-    for i, (x, y) in enumerate(zip(xs, ys)):
+    # El precio arriba del punto y la devaluación abajo. Antes sólo estaba el porcentaje, y el
+    # precio del contrato —que es la serie que dibuja la curva y lo primero que se busca en un
+    # gráfico de futuros— había que leerlo del eje.
+    for x, y in zip(xs, ys):
         dev = (y / spot - 1) * 100
-        ax.annotate(f"{dev:,.1f}%".replace(".", ","), (x, y), textcoords="offset points",
-                    xytext=(0, 9), ha="center", fontsize=8, color=NAVY, alpha=.9)
+        ax.annotate(f"{y:,.0f}".replace(",", "."), (x, y), textcoords="offset points",
+                    xytext=(0, 10), ha="center", fontsize=8.5, color=NAVY, fontweight="semibold")
+        ax.annotate(f"{dev:+.1f}%".replace(".", ","), (x, y), textcoords="offset points",
+                    xytext=(0, -17), ha="center", fontsize=7.5, color=GRIS)
 
     ax.set_title(f"Futuros de dólar · ajuste del {ult[8:10]}/{ult[5:7]}",
                  color=NAVY, fontweight="bold", fontsize=13, pad=12)

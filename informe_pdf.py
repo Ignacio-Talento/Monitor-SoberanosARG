@@ -95,6 +95,7 @@ P_CHICO = ParagraphStyle("pc", parent=P, fontSize=7.6, leading=11, textColor=GRI
 H2 = ParagraphStyle("h2", fontName=SEMI, fontSize=12, leading=15, textColor=NAVY,
                     spaceBefore=13, spaceAfter=6)
 PIE_FIG = ParagraphStyle("pf", parent=P_CHICO, alignment=0, spaceBefore=2, spaceAfter=10)
+LEDE = ParagraphStyle("lede", parent=P, fontSize=11, leading=16.5, spaceAfter=12)
 CELDA = ParagraphStyle("cel", fontName=REG, fontSize=7.8, leading=10,
                        textColor=colors.HexColor("#202124"))
 
@@ -106,8 +107,8 @@ def _color_num(v):
 def tabla_familias(resumen, ancho):
     """Variaciones por familia. Sin la columna de conteo por moneda: al lector externo le importa
     en qué moneda se lee la TIR, no cuántos instrumentos hay de cada punta."""
-    grupo = ["", "", "En el día", "", "En la semana", "", "", "", ""]
-    cab = ["Familia", "N", "Precio", "Tasa (pp)", "Precio", "Tasa (pp)", "Nivel", "Mon.", "Métrica"]
+    grupo = ["", "", "En el día", "", "En la semana", "", "", ""]
+    cab = ["Familia", "N", "Precio", "Tasa (pp)", "Precio", "Tasa (pp)", "Nivel", "Mon."]
     filas = [grupo, cab]
     estilos = [("SPAN", (2, 0), (3, 0)), ("SPAN", (4, 0), (5, 0)),
                ("FONT", (0, 0), (-1, 0), SEMI, 6.5),
@@ -132,13 +133,13 @@ def tabla_familias(resumen, ancho):
                       num(r["tasa"]["mediana"], 2, True),
                       (num(sp, 2, True) + "%") if sp is not None else "—",
                       num(st, 2, True) if st is not None else "—",
-                      num(r["teaMediana"]["mediana"]) + "%", mon, r["metrica"]])
+                      f'{num(r["teaMediana"]["mediana"])}%  {r["metrica"]}', mon])
         for col, val in ((2, r["precio"]["mediana"]), (3, r["tasa"]["mediana"]),
                          (4, sp), (5, st)):
             if val is not None:
                 estilos.append(("TEXTCOLOR", (col, i), (col, i), _color_num(val)))
 
-    anchos = [w * ancho for w in (.215, .04, .085, .075, .085, .075, .085, .075, .265)]
+    anchos = [w * ancho for w in (.28, .05, .105, .095, .105, .095, .19, .08)]
     t = Table(filas, colWidths=anchos, repeatRows=2)
     t.setStyle(TableStyle([
         ("FONT", (0, 2), (-1, -1), REG, 7.8),
@@ -147,11 +148,11 @@ def tabla_familias(resumen, ancho):
         ("LINEAFTER", (3, 1), (3, -1), .5, SUAVE),
         ("LINEAFTER", (5, 1), (5, -1), .5, SUAVE),
         ("TEXTCOLOR", (1, 2), (1, -1), GRIS),
-        ("TEXTCOLOR", (8, 2), (8, -1), GRIS),
         ("TOPPADDING", (0, 0), (-1, -1), 3.5),
         ("BOTTOMPADDING", (0, 0), (-1, -1), 3.5),
         ("LEFTPADDING", (0, 0), (-1, -1), 3),
         ("RIGHTPADDING", (0, 0), (-1, -1), 3),
+        ("LEFTPADDING", (7, 0), (7, -1), 11),
     ] + estilos))
     return t
 
@@ -308,7 +309,7 @@ def construir(ruta_json, dir_curvas, textos, salida):
                           PageTemplate(id="interior", frames=[marco_i], onPage=interior)])
 
     E = [NextPageTemplate("interior")]
-    E.append(Paragraph(textos["resumen"], P))
+    E.append(Paragraph(textos["resumen"], LEDE))
     E.append(Spacer(1, 4))
 
     E.append(Paragraph("Variaciones por familia", H2))
@@ -325,17 +326,14 @@ def construir(ruta_json, dir_curvas, textos, salida):
         "forman un spread, porque parte de la diferencia es canje. Por eso las comparaciones entre "
         "legislaciones que siguen están todas llevadas a MEP.", P_CHICO))
 
-    E.append(Spacer(1, 6))
+    E.append(PageBreak())
     E.append(Paragraph("La curva de pesos", H2))
     for t in textos["pesos"]:
         E.append(Paragraph(t, P))
     E += figura(dir_curvas / "lecaps_tem.png",
                 "Curva de tasa fija en pesos, en tasa efectiva mensual.", ANCHO)
     E += figura(dir_curvas / "cer.png",
-                "Curva CER: rendimiento real por duration. Los rombos son la pata CER de los "
-                "duales, con su propia duration; rinden menos que un CER puro equivalente porque "
-                "en un dual se cobra el máximo entre las dos patas y esa opcionalidad se paga.",
-                ANCHO)
+                "Rendimiento real por duration. Los rombos son la pata CER de cada dual.", ANCHO)
 
     E.append(Paragraph("Tasa fija contra CER: la inflación implícita", H2))
     for t in textos["breakeven"]:
@@ -345,8 +343,8 @@ def construir(ruta_json, dir_curvas, textos, salida):
                               alinear_der=(1, 2, 3, 4)))
         E.append(Spacer(1, 6))
     E += figura(dir_curvas / "lecaps_cer.png",
-                "Las dos curvas sobre el tramo que comparten. La distancia vertical entre ellas es "
-                "la inflación que iguala los dos rendimientos.", ANCHO)
+                "Las dos curvas sobre el tramo que comparten, cada una en su escala, y abajo la "
+                "inflación que las iguala.", ANCHO)
     E += figura(dir_curvas / "tamar.png",
                 "Curva TAMAR, con la pata TAMAR de los duales y la TAMAR spot de bancos privados.",
                 ANCHO)
@@ -376,18 +374,14 @@ def construir(ruta_json, dir_curvas, textos, salida):
     E += figura(dir_curvas / "dl.png", "Curva dólar linked: devaluación implícita por vencimiento.",
                 ANCHO)
     E += figura(dir_curvas / "futuros.png",
-                "Precio de cada contrato a la izquierda y, sobre el eje derecho, la devaluación "
-                "acumulada que ese precio implica contra el mayorista. Es una sola curva leída en "
-                "dos escalas: el porcentaje acumulado es una función lineal del precio. Los "
-                "círculos huecos son contratos de volumen fino, donde el ajuste lo pone la cámara "
-                "y no el mercado.", ANCHO)
+                "Precio de cada contrato y, en el eje derecho, la devaluación acumulada que "
+                "implica. Los círculos huecos son contratos de volumen fino.", ANCHO)
 
     E.append(Paragraph("Subsoberanos", H2))
     for t in textos["subsoberanos"]:
         E.append(Paragraph(t, P))
     E += figura(dir_curvas / "subsoberanos.png",
-                "Provinciales y municipales en CCL. La línea ordena por duration; no afirma que "
-                "sean sustitutos, porque son créditos distintos entre sí.", ANCHO)
+                "Provinciales y municipales en CCL, ordenados por duration.", ANCHO)
 
     E.append(KeepTogether([Paragraph("Dinero, tasas y macro", H2),
                            tabla_macro(d["macro"], ANCHO)]))
@@ -404,6 +398,7 @@ def construir(ruta_json, dir_curvas, textos, salida):
     for t in textos["macro"]:
         E.append(Paragraph(t, P))
 
+    E.append(PageBreak())
     E.append(Paragraph("Cierre semanal", H2))
     for t in textos["semanal"]:
         E.append(Paragraph(t, P))
