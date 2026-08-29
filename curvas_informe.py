@@ -38,6 +38,7 @@ opcionalidad— y dibujarlos como un punto más de la curva sugeriría que son s
 """
 import json
 import sys
+import textwrap
 from pathlib import Path
 
 import matplotlib
@@ -198,6 +199,20 @@ def _comprimir(ruta):
     return ruta
 
 
+# Caracteres por línea del pie. A cuerpo 8 sobre una figura de 9,5 pulgadas, 108 entran holgados;
+# más que eso y `bbox_inches="tight"` empieza a ensanchar la figura para que el texto entre, con lo
+# que esa curva sale con otra proporción que el resto del juego.
+ANCHO_NOTA = 108
+
+
+def _nota(ax, texto, y=-.16):
+    """Dibuja el pie del gráfico cortado a ANCHO_NOTA, respetando los saltos que ya traiga."""
+    lineas = []
+    for parrafo in str(texto).split("\n"):
+        lineas.extend(textwrap.wrap(parrafo, ANCHO_NOTA) or [""])
+    ax.text(.01, y, "\n".join(lineas), transform=ax.transAxes, fontsize=8, color=GRIS, va="top")
+
+
 def _cerrar(fig, ax, ruta, leyenda=True):
     if leyenda:
         ax.legend(frameon=False, fontsize=9.5, labelcolor=NAVY)
@@ -216,9 +231,7 @@ def globales_vs_bonares(instr, salida):
     _serie(ax, bon, NAVY, "Bonares · ley local")
     _serie(ax, glo, CYAN, "Globales · ley NY", marcador="s")
     _ejes(ax, "Curva soberana en dólares · ley local contra ley NY", "TIR (%)")
-    ax.text(.01, -.16, "Ambas curvas en MEP. Los globales se llevan a esa punta a propósito: se "
-                       "negocian al CCL y restar dos monedas daría un spread que no existe.",
-            transform=ax.transAxes, fontsize=8, color=GRIS, va="top")
+    _nota(ax, "Ambas curvas en MEP. Los globales se llevan a esa punta a propósito: se " "negocian al CCL y restar dos monedas daría un spread que no existe.")
     return _cerrar(fig, ax, salida)
 
 
@@ -232,8 +245,7 @@ def lecaps_tem(instr, salida):
     _serie(ax, pts, NAVY, "LECAPs y tasa fija")
     _ejes(ax, "Curva de pesos a tasa fija · TEM", "TEM (%)")
     ax.yaxis.set_major_formatter(mtick.FormatStrFormatter("%.2f%%"))
-    ax.text(.01, -.16, "La TEM se deriva de la TEA informada: (1 + TEA)^(1/12) − 1.",
-            transform=ax.transAxes, fontsize=8, color=GRIS, va="top")
+    _nota(ax, "La TEM se deriva de la TEA informada: (1 + TEA)^(1/12) − 1.")
     return _cerrar(fig, ax, salida)
 
 
@@ -254,7 +266,7 @@ def curva_cer(instr, salida, duales_cer):
         nota += ("\nLos rombos son la PATA CER de cada dual, no el instrumento entero. Rinden "
                  "menos que un CER puro de la misma duration: en un dual se cobra el máximo entre "
                  "las dos patas, y esa opcionalidad se paga.")
-    ax.text(.01, -.16, nota, transform=ax.transAxes, fontsize=8, color=GRIS, va="top")
+    _nota(ax, nota)
     return _cerrar(fig, ax, salida)
 
 
@@ -327,11 +339,7 @@ def lecaps_vs_cer(instr, salida, dudosos_cer):
     ax.legend(manijas, rotulos, frameon=False, fontsize=9.5, labelcolor=NAVY, loc="lower right")
     # El pie va cortado a mano: en una sola linea, bbox_inches="tight" ensancha la figura para
     # que entre el texto y la curva sale con otra proporcion que el resto del juego.
-    ax.text(.01, -.16, "Cada curva tiene su escala: la tasa fija a la izquierda, el rendimiento "
-                       "real de los CER a la derecha.\n"
-                       "Con escalas distintas la separación entre las líneas no es el breakeven: "
-                       "ese va en el gráfico siguiente.",
-            transform=ax.transAxes, fontsize=8, color=GRIS, va="top")
+    _nota(ax, "Cada curva tiene su escala: la tasa fija a la izquierda, el rendimiento " "real de los CER a la derecha.\n" "Con escalas distintas la separación entre las líneas no es el breakeven: " "ese va en el gráfico siguiente.")
     fig.savefig(salida, dpi=DPI, bbox_inches="tight", facecolor="white")
     plt.close(fig)
     return _comprimir(salida)
@@ -354,7 +362,7 @@ def breakeven_cer(instr, salida, dudosos_cer):
     if fuera:
         nota += (f"\nQuedan {fuera} CER largos afuera —hasta nueve años de duration—: más allá del "
                  f"último punto de tasa fija no hay contra qué compararlos.")
-    ax.text(.01, -.16, nota, transform=ax.transAxes, fontsize=8, color=GRIS, va="top")
+    _nota(ax, nota)
     return _cerrar(fig, ax, salida)
 
 
@@ -380,7 +388,7 @@ def curva_tamar(instr, salida, duales_tamar, tamar_bcra=None):
                  "menos que un TAMAR puro porque incluyen el costo de la opcionalidad.")
         nota = (nota + "\n" + extra) if nota else extra
     if nota:
-        ax.text(.01, -.16, nota, transform=ax.transAxes, fontsize=8, color=GRIS, va="top")
+        _nota(ax, nota)
     return _cerrar(fig, ax, salida)
 
 
@@ -393,9 +401,7 @@ def curva_dl(instr, salida):
     _serie(ax, pts, NAVY, "Dólar linked · TIR")
     _ejes(ax, "Curva dólar linked", "TIR (%)")
     ax.axhline(0, color=GRIS, linewidth=.9, linestyle=":", zorder=1)
-    ax.text(.01, -.16, "Rendimiento por encima de la devaluación oficial. Son pocos instrumentos y "
-                       "algunos muy ilíquidos, así que la curva es indicativa.",
-            transform=ax.transAxes, fontsize=8, color=GRIS, va="top")
+    _nota(ax, "Rendimiento por encima de la devaluación oficial. Son pocos instrumentos y " "algunos muy ilíquidos, así que la curva es indicativa.")
     return _cerrar(fig, ax, salida)
 
 
@@ -409,10 +415,7 @@ def curva_subsoberanos(instr, salida):
     # veinte instrumentos acá queda diminuto sin ninguna razón.
     _serie(ax, pts, NAVY, "Subsoberanos · TIR", tam=10.5, aislar=True)
     _ejes(ax, "Curva subsoberana en dólares", "TIR (%)")
-    ax.text(.01, -.16, "Valuados al CCL. Son provincias "
-                       "con riesgos crediticios distintos entre sí, no una curva de un solo emisor: "
-                       "la línea ordena por plazo, no dice que sean sustitutos.",
-            transform=ax.transAxes, fontsize=8, color=GRIS, va="top")
+    _nota(ax, "Valuados al CCL. Son provincias " "con riesgos crediticios distintos entre sí, no una curva de un solo emisor: " "la línea ordena por plazo, no dice que sean sustitutos.")
     return _cerrar(fig, ax, salida)
 
 
@@ -475,7 +478,7 @@ def curva_ons(instr, salida, familia, titulo, moneda, en_mep=False):
     fuera = {tk for _, _, tk in afuera}
     _etiquetar(ax, [p for p in marcados if p[2] not in fuera], NAVY)
 
-    ax.text(.01, -.16, "\n".join(nota), transform=ax.transAxes, fontsize=8, color=GRIS, va="top")
+    _nota(ax, "\n".join(nota))
     return _cerrar(fig, ax, salida)
 
 
