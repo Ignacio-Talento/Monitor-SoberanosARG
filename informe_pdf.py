@@ -171,7 +171,7 @@ def tabla_familias(resumen, ancho, periodo="semanal", rotulo="En la semana"):
     t = Table(filas, colWidths=anchos, repeatRows=2)
     t.setStyle(TableStyle([
         ("FONT", (0, 2), (-1, -1), REG, 9.6),
-        ("ALIGN", (1, 1), (6, -1), "RIGHT"),
+        ("ALIGN", (1, 1), (-1, -1), "CENTER"),
         ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
         ("LINEAFTER", (3, 1), (3, -1), .5, SUAVE),
         ("LINEAFTER", (5, 1), (5, -1), .5, SUAVE),
@@ -180,7 +180,7 @@ def tabla_familias(resumen, ancho, periodo="semanal", rotulo="En la semana"):
         ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
         ("LEFTPADDING", (0, 0), (-1, -1), 3),
         ("RIGHTPADDING", (0, 0), (-1, -1), 3),
-        ("LEFTPADDING", (7, 0), (7, -1), 11),
+
     ] + estilos))
     return t
 
@@ -244,19 +244,19 @@ def tabla_macro(macro, ancho, periodo="semanal", rotulo="Semana"):
         ("LINEBELOW", (0, 0), (-1, 0), .8, BORDE),
         ("FONT", (0, 1), (-1, -1), REG, 9.6),
         ("FONT", (1, 1), (1, -1), SEMI, 9.6),
-        ("ALIGN", (1, 0), (1, -1), "RIGHT"),
-        ("ALIGN", (3, 0), (-1, -1), "RIGHT"),
+        ("ALIGN", (1, 0), (-1, -1), "CENTER"),
         ("TEXTCOLOR", (2, 1), (2, -1), GRIS),
         ("TEXTCOLOR", (5, 1), (5, -1), GRIS),
         ("LINEAFTER", (3, 0), (3, -1), .5, SUAVE),
         ("TOPPADDING", (0, 0), (-1, -1), 5),
         ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
         ("LEFTPADDING", (0, 0), (-1, -1), 3),
+        ("ALIGN", (0, 0), (0, -1), "LEFT"),
     ] + estilos))
     return t
 
 
-def tabla_simple(filas, anchos_rel, ancho, alinear_der=()):
+def tabla_simple(filas, anchos_rel, ancho, centrar=()):
     t = Table(filas, colWidths=[w * ancho for w in anchos_rel], repeatRows=1)
     est = [("FONT", (0, 0), (-1, 0), SEMI, 8.8),
            ("TEXTCOLOR", (0, 0), (-1, 0), GRIS),
@@ -265,8 +265,8 @@ def tabla_simple(filas, anchos_rel, ancho, alinear_der=()):
            ("TOPPADDING", (0, 0), (-1, -1), 5),
            ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
            ("LEFTPADDING", (0, 0), (-1, -1), 3)]
-    for c in alinear_der:
-        est.append(("ALIGN", (c, 0), (c, -1), "RIGHT"))
+    for c in centrar:
+        est.append(("ALIGN", (c, 0), (c, -1), "CENTER"))
     t.setStyle(TableStyle(est))
     # Entera o en la pagina siguiente: cinco filas partidas al medio no se leen.
     return KeepTogether([t])
@@ -377,7 +377,7 @@ def construir(ruta_json, dir_curvas, textos, salida):
         E.append(Paragraph(t, P))
     if textos.get("tabla_breakeven"):
         E.append(tabla_simple(textos["tabla_breakeven"], (.16, .14, .2, .25, .25), ANCHO,
-                              alinear_der=(1, 2, 3, 4)))
+                              centrar=(1, 2, 3, 4)))
         E.append(Spacer(1, 6))
     E += figura(dir_curvas / "lecaps_cer.png",
                 "Las dos curvas en la misma escala de TEA: los CER llevados a nominal con la "
@@ -393,7 +393,7 @@ def construir(ruta_json, dir_curvas, textos, salida):
         E.append(Paragraph(t, P))
     if textos.get("tabla_legislacion"):
         E.append(tabla_simple(textos["tabla_legislacion"], (.2, .2, .22, .19, .19), ANCHO,
-                              alinear_der=(1, 2, 3, 4)))
+                              centrar=(1, 2, 3, 4)))
         E.append(Spacer(1, 6))
     E += figura(dir_curvas / "globales_bonares.png",
                 "Curva soberana en dólares por legislación, con las dos patas en la misma moneda.",
@@ -404,7 +404,7 @@ def construir(ruta_json, dir_curvas, textos, salida):
         E.append(Paragraph(t, P))
     if textos.get("tabla_bopreal"):
         E.append(tabla_simple(textos["tabla_bopreal"], (.16, .13, .13, .16, .13, .13, .16), ANCHO,
-                              alinear_der=(1, 2, 3, 4, 5, 6)))
+                              centrar=(1, 2, 3, 4, 5, 6)))
         E.append(Spacer(1, 6))
 
     E.append(Paragraph("Dólar linked y futuros", H2))
