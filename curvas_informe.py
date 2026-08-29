@@ -8,14 +8,15 @@ entregado en el servidor. Así que las curvas no se incrustan: se publican en Gi
 una página índice (pagina_curvas.py) y el mail linkea a esa página. SVG tampoco sirve, ni siquiera
 ahí, porque algunos clientes lo descartan.
 
-QUÉ CURVAS. Ocho, cada una con la métrica y la moneda en la que se negocia:
+QUÉ CURVAS. Nueve, cada una con la métrica y la moneda en la que se negocia:
 
   1. Globales contra Bonares — LAS DOS PATAS EN MEP. Es la única forma de que el spread signifique
      algo: el monitor valúa los globales al CCL y los bonares al MEP, y restarlos así mezcla dos
      monedas. La solapa Glob vs Bon resuelve lo mismo descartando lo que no esté en MEP.
   2. LECAPs en TEM — la tasa mensual, que es como se cotiza el tramo corto en la mesa.
   3. CER — TIR real, o sea el "CER más x%" que paga cada bono.
-  4. LECAPs contra CER — las dos curvas juntas más el breakeven de inflación que las iguala.
+  4. LECAPs contra CER — las dos curvas, cada una en su escala.
+  5. Breakeven de inflación — la que iguala a las dos anteriores.
   5. TAMAR — TEA.
   6. Dólar linked — TIR.
   7. Subsoberanos — TIR al CCL.
@@ -258,7 +259,8 @@ def curva_cer(instr, salida, duales_cer):
 
 
 # ── 4 · LECAPs contra CER ────────────────────────────────────────────────────
-def lecaps_vs_cer(instr, salida, dudosos_cer):
+def _cer_contra_fija(instr, dudosos_cer):
+    """Datos compartidos por las dos figuras: las curvas, el breakeven y el recorte del eje x."""
     lec = _puntos(instr, "LECAPs y tasa fija")
     cer = [p for p in _puntos(instr, "CER") if p[2] not in dudosos_cer]
     if not (lec and cer):
@@ -285,14 +287,20 @@ def lecaps_vs_cer(instr, salida, dudosos_cer):
     # apretadas contra el margen izquierdo y no se lee nada. Además, más allá del último punto de
     # tasa fija no hay contra qué comparar, así que ese tramo no pertenece a este gráfico.
     #
-    # El panel de abajo sí usa todos los CER: interpolar contra la curva de LECAPs ya descarta solo
-    # los que quedan fuera de su rango.
+    # El gráfico del breakeven sí usa todos los CER: interpolar contra la curva de LECAPs ya
+    # descarta solo los que quedan fuera de su rango.
     xmax = max(x for x, _, _ in lec) * 1.08
     cer_vis = [p for p in cer if p[0] <= xmax]
-    fuera = len(cer) - len(cer_vis)
+    return lec, cer_vis, bei, len(cer) - len(cer_vis), xmax
 
-    fig, (ax, ax2) = plt.subplots(2, 1, figsize=(9.5, 7.4), facecolor="white",
-                                  gridspec_kw={"height_ratios": [1.25, 1], "hspace": .42})
+
+def lecaps_vs_cer(instr, salida, dudosos_cer):
+    datos = _cer_contra_fija(instr, dudosos_cer)
+    if not datos:
+        return None
+    lec, cer_vis, _bei, _fuera, xmax = datos
+
+    fig, ax = balanz_figure(figsize=(9.5, 5.2))
     # DOS ESCALAS. La tasa fija corre entre 26% y 30% y el rendimiento real de los CER entre 2% y
     # 10%: en un solo eje los CER quedan aplastados contra el piso y no se distingue el escalón
     # entre TZXO6 y X30N6, que son dos puntos y medio. Cada eje se pinta del color de su curva
@@ -300,7 +308,6 @@ def lecaps_vs_cer(instr, salida, dudosos_cer):
     _serie(ax, lec, NAVY, "LECAPs · TEA nominal", cada=2)
     _ejes(ax, "Tasa fija contra CER", "Tasa fija · TEA (%)")
     ax.set_xlim(0, xmax)
-    ax.set_xlabel("")
     ax.yaxis.label.set_color(NAVY)
     ax.tick_params(axis="y", colors=NAVY)
 
@@ -313,27 +320,42 @@ def lecaps_vs_cer(instr, salida, dudosos_cer):
     axc.spines["top"].set_visible(False)
     axc.spines["right"].set_color(ACERO)
 
-    _serie(ax2, bei, CYAN, "Inflación breakeven", etiquetas=False)
-    _ejes(ax2, "Inflación que iguala las dos curvas", "Breakeven anual (%)")
-    ax2.legend(frameon=False, fontsize=9.5, labelcolor=NAVY)
-    # Abajo a la derecha: con dos escalas las dos curvas suben hacia el extremo superior
-    # derecho y se cruzan en el medio, asi que la franja central dejo de estar libre.
+    # Abajo a la derecha: las dos curvas suben hacia el extremo superior derecho y se cruzan en el
+    # medio, así que la franja central no queda libre.
     manijas = ax.get_legend_handles_labels()[0] + axc.get_legend_handles_labels()[0]
     rotulos = ax.get_legend_handles_labels()[1] + axc.get_legend_handles_labels()[1]
     ax.legend(manijas, rotulos, frameon=False, fontsize=9.5, labelcolor=NAVY, loc="lower right")
-    nota = ("Cada curva tiene su escala: la tasa fija a la izquierda, el rendimiento real de los "
-            "CER a la derecha. Con escalas distintas la separación entre las líneas ya no es el "
-            "breakeven, y por eso va calculado en el panel de abajo."
-            "\nEl breakeven es la inflación a la que una LECAP y un CER del mismo plazo rinden lo "
-            "mismo: por encima conviene el CER, por debajo la tasa fija. Cada CER se compara "
-            "contra la LECAP interpolada a su misma duration, no contra la más cercana.")
-    if fuera:
-        nota += (f"\nQuedan {fuera} CER largos fuera del panel de arriba —hasta nueve años de "
-                 f"duration—: más allá del último punto de tasa fija no hay contra qué compararlos.")
-    ax2.text(.01, -.30, nota, transform=ax2.transAxes, fontsize=8, color=GRIS, va="top")
+    # El pie va cortado a mano: en una sola linea, bbox_inches="tight" ensancha la figura para
+    # que entre el texto y la curva sale con otra proporcion que el resto del juego.
+    ax.text(.01, -.16, "Cada curva tiene su escala: la tasa fija a la izquierda, el rendimiento "
+                       "real de los CER a la derecha.\n"
+                       "Con escalas distintas la separación entre las líneas no es el breakeven: "
+                       "ese va en el gráfico siguiente.",
+            transform=ax.transAxes, fontsize=8, color=GRIS, va="top")
     fig.savefig(salida, dpi=DPI, bbox_inches="tight", facecolor="white")
     plt.close(fig)
     return _comprimir(salida)
+
+
+def breakeven_cer(instr, salida, dudosos_cer):
+    datos = _cer_contra_fija(instr, dudosos_cer)
+    if not datos:
+        return None
+    _lec, _cer_vis, bei, fuera, _xmax = datos
+    if not bei:
+        return None
+
+    fig, ax = balanz_figure(figsize=(9.5, 5.2))
+    _serie(ax, bei, CYAN, "Inflación breakeven", etiquetas=False)
+    _ejes(ax, "Inflación que iguala las dos curvas", "Breakeven anual (%)")
+    nota = ("El breakeven es la inflación a la que una LECAP y un CER del mismo plazo rinden lo "
+            "mismo: por encima conviene el CER, por debajo la tasa fija.\nCada CER se compara "
+            "contra la LECAP interpolada a su misma duration, no contra la más cercana.")
+    if fuera:
+        nota += (f"\nQuedan {fuera} CER largos afuera —hasta nueve años de duration—: más allá del "
+                 f"último punto de tasa fija no hay contra qué compararlos.")
+    ax.text(.01, -.16, nota, transform=ax.transAxes, fontsize=8, color=GRIS, va="top")
+    return _cerrar(fig, ax, salida)
 
 
 # ── 5 · TAMAR ────────────────────────────────────────────────────────────────
@@ -584,6 +606,7 @@ def generar(ruta_json, dir_salida="curvas"):
         ("lecaps_tem", lambda p: lecaps_tem(instr, p)),
         ("cer", lambda p: curva_cer(instr, p, d_cer)),
         ("lecaps_cer", lambda p: lecaps_vs_cer(instr, p, dud_cer)),
+        ("breakeven", lambda p: breakeven_cer(instr, p, dud_cer)),
         ("tamar", lambda p: curva_tamar(instr, p, d_tam, tamar_spot)),
         ("dl", lambda p: curva_dl(instr, p)),
         ("subsoberanos", lambda p: curva_subsoberanos(instr, p)),

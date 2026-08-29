@@ -26,6 +26,7 @@ import sys
 from pathlib import Path
 
 from reportlab.lib import colors
+from reportlab.lib.utils import ImageReader
 from reportlab.lib.enums import TA_JUSTIFY
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import ParagraphStyle
@@ -43,9 +44,22 @@ VERDE = colors.HexColor("#137333")
 ROJO = colors.HexColor("#C5221F")
 SUAVE = colors.HexColor("#E8EAED")
 
-FUENTES = (r"C:\Users\Usuario\AppData\Roaming\Claude\local-agent-mode-sessions\skills-plugin"
-           r"\b8cdd89c-febc-4430-ac7d-eb55f2fb0c82\032bf20c-fc9a-48c9-80cf-4f4994992f7e"
-           r"\skills\balanz-design\assets\fonts")
+MARCA = (r"C:\Users\Usuario\AppData\Roaming\Claude\local-agent-mode-sessions\skills-plugin"
+         r"\b8cdd89c-febc-4430-ac7d-eb55f2fb0c82\032bf20c-fc9a-48c9-80cf-4f4994992f7e"
+         r"\skills\balanz-design\assets")
+FUENTES = MARCA + r"\fonts"
+LOGOS = Path(MARCA) / "logo"
+PROPORCION_LOCKUP = 1241 / 142          # el asset oficial, para no deformarlo
+
+
+def _lockup(canvas, archivo, x_der, y_centro, ancho):
+    """Dibuja el lockup alineado a la derecha en x_der y centrado vertical en y_centro."""
+    ruta = LOGOS / archivo
+    if not ruta.exists():
+        return
+    alto = ancho / PROPORCION_LOCKUP
+    canvas.drawImage(ImageReader(str(ruta)), x_der - ancho, y_centro - alto / 2,
+                     width=ancho, height=alto, mask="auto")
 
 MESES = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto",
          "septiembre", "octubre", "noviembre", "diciembre"]
@@ -262,6 +276,11 @@ def construir(ruta_json, dir_curvas, textos, salida):
     MARGEN = 16 * mm
     ANCHO = A4[0] - 2 * MARGEN
 
+    # El mismo campo que decide si hay cierre semanal o mensual nombra el reporte.
+    tipos = d.get("tipos") or []
+    clase = ("Reporte mensual" if "mensual" in tipos else
+             "Reporte semanal" if "semanal" in tipos else "Reporte diario")
+
     def portada(canvas, doc):
         canvas.saveState()
         canvas.setFillColor(NAVY)
@@ -271,7 +290,8 @@ def construir(ruta_json, dir_curvas, textos, salida):
         canvas.drawString(MARGEN, A4[1] - 12 * mm, "RENTA FIJA ARGENTINA")
         canvas.setFillColor(colors.white)
         canvas.setFont(BOLD, 15)
-        canvas.drawString(MARGEN, A4[1] - 19.5 * mm, "Cierre de mercado")
+        canvas.drawString(MARGEN, A4[1] - 19.5 * mm, f"Cierre de mercado · {clase}")
+        _lockup(canvas, "balanz_lockup_white.png", A4[0] - MARGEN, A4[1] - 15 * mm, 46 * mm)
         canvas.setFont(REG, 9.5)
         canvas.setFillColor(colors.HexColor("#C8D7EE"))
         canvas.drawString(MARGEN, A4[1] - 25.5 * mm, _fecha_larga(fecha).capitalize())
@@ -285,9 +305,10 @@ def construir(ruta_json, dir_curvas, textos, salida):
         canvas.line(MARGEN, A4[1] - 13 * mm, A4[0] - MARGEN, A4[1] - 13 * mm)
         canvas.setFillColor(GRIS)
         canvas.setFont(REG, 7.5)
-        canvas.drawString(MARGEN, A4[1] - 11.5 * mm, "Renta fija Argentina · cierre de mercado")
-        canvas.drawRightString(A4[0] - MARGEN, A4[1] - 11.5 * mm,
-                               f"{fecha[8:10]}/{fecha[5:7]}/{fecha[:4]}")
+        canvas.drawString(MARGEN, A4[1] - 11.5 * mm,
+                          f"Renta fija Argentina · {clase.lower()} · "
+                          f"{fecha[8:10]}/{fecha[5:7]}/{fecha[:4]}")
+        _lockup(canvas, "balanz_lockup_navy.png", A4[0] - MARGEN, A4[1] - 10.9 * mm, 30 * mm)
         pie(canvas, doc)
         canvas.restoreState()
 
@@ -343,8 +364,9 @@ def construir(ruta_json, dir_curvas, textos, salida):
                               alinear_der=(1, 2, 3, 4)))
         E.append(Spacer(1, 6))
     E += figura(dir_curvas / "lecaps_cer.png",
-                "Las dos curvas sobre el tramo que comparten, cada una en su escala, y abajo la "
-                "inflación que las iguala.", ANCHO)
+                "Las dos curvas sobre el tramo que comparten, cada una en su escala.", ANCHO)
+    E += figura(dir_curvas / "breakeven.png",
+                "La inflación a la que una LECAP y un CER del mismo plazo rinden lo mismo.", ANCHO)
     E += figura(dir_curvas / "tamar.png",
                 "Curva TAMAR, con la pata TAMAR de los duales y la TAMAR spot de bancos privados.",
                 ANCHO)

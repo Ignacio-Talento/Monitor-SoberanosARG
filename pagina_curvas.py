@@ -23,8 +23,13 @@ FICHAS = [
      "Rendimiento real, CER más un spread. Cada dual entra con su pata CER, pedida a 1816 por "
      "separado y con su propia duration."),
     ("lecaps_cer", "LECAPs contra CER",
-     "Inflación implícita: tasa fija contra rendimiento real, recortado al tramo que las dos "
-     "curvas comparten. Es la lectura de la solapa Sendero CER."),
+     "Las dos curvas sobre el tramo que comparten, cada una en su escala: la tasa fija a la "
+     "izquierda y el rendimiento real de los CER a la derecha. En un solo eje los CER quedaban "
+     "aplastados contra el piso."),
+    ("breakeven", "Inflación implícita",
+     "La inflación a la que una LECAP y un CER del mismo plazo rinden lo mismo. Cada CER se "
+     "compara contra la curva de tasa fija interpolada a su misma duration, no contra la LECAP "
+     "más cercana."),
     ("tamar", "Curva TAMAR",
      "Incluye la pata TAMAR de los duales y la TAMAR spot de bancos privados que publica el BCRA."),
     ("dl", "Curva dólar linked",
