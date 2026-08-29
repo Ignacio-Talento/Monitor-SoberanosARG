@@ -29,6 +29,12 @@ FICHAS = [
      "Incluye la pata TAMAR de los duales y la TAMAR spot de bancos privados que publica el BCRA."),
     ("dl", "Curva dólar linked",
      "Devaluación implícita por vencimiento."),
+    ("futuros", "Futuros de dólar",
+     "Precio de cada contrato a la izquierda y, a la derecha, la devaluación acumulada que ese "
+     "precio implica contra el mayorista. Es una sola curva leída en dos escalas: el porcentaje "
+     "acumulado es una función lineal del precio, así que como segunda línea sería el mismo dato "
+     "dibujado dos veces. Los círculos huecos son contratos de volumen fino, donde el ajuste lo "
+     "pone la cámara y no el mercado."),
     ("subsoberanos", "Subsoberanos en CCL",
      "Provinciales y municipales, valuados en la misma punta en que los muestra el monitor."),
 ]
@@ -58,6 +64,13 @@ def escribir(dir_salida, hechos, fecha):
         # suficientes en la rueda. Callarlo haría pensar que la página se cortó.
         aviso = ('<p class="aviso">Sin datos suficientes en esta rueda para: '
                  + ", ".join(faltan) + ".</p>")
+
+    # Si el PDF del día ya está al lado, la página lo ofrece: es la versión que se comparte.
+    pdf = next((f.name for f in sorted(Path(dir_salida).glob("cierre-*.pdf"))), None)
+    bloque_pdf = ""
+    if pdf:
+        bloque_pdf = (f'<p class="pdf"><a href="{pdf}">Descargar el informe completo en PDF</a>'
+                      f'<span> · mismo contenido, en ocho páginas</span></p>')
 
     html = f"""<!doctype html>
 <html lang="es">
@@ -89,6 +102,11 @@ def escribir(dir_salida, hechos, fecha):
   figure img {{ display:block; width:100%; height:auto; }}
   .aviso {{ background:#fff8e1; border-left:3px solid #f9a825; padding:10px 13px;
             font-size:13px; margin:0 0 20px; }}
+  .barra {{ padding:16px 22px 0; }}
+  .pdf {{ margin:0; font-size:14px; }}
+  .pdf a {{ color:var(--navy); font-weight:600; text-decoration:none;
+            border-bottom:2px solid var(--cyan); padding-bottom:1px; }}
+  .pdf span {{ color:var(--gris); font-weight:400; font-size:12.5px; }}
   footer {{ max-width:960px; margin:0 auto; padding:0 22px 40px;
             font-size:12.5px; color:var(--gris); }}
   footer hr {{ border:none; border-top:1px solid var(--borde); margin:0 0 12px; }}
@@ -102,6 +120,7 @@ def escribir(dir_salida, hechos, fecha):
   <h1>Curvas del {_fecha_larga(fecha)}</h1>
   <p>Las mismas curvas del informe diario, en tamaño completo.</p>
 </div></header>
+<div class="wrap barra">{bloque_pdf}</div>
 <main class="wrap">
 {aviso}
 {chr(10).join(tarjetas)}

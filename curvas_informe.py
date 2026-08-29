@@ -1,10 +1,14 @@
 #!/usr/bin/env python3
 """Genera las curvas del informe diario como PNG, con la identidad de Balanz.
 
-POR QUÉ PNG Y NO SVG. El informe va por mail y Gmail no renderiza SVG inline: lo descarta sin
-avisar y el lector ve un hueco. Los PNG van adjuntos inline y se ven en todos los clientes.
+POR QUÉ PNG Y POR QUÉ VAN POR LINK. El informe va por mail y el envío de Gmail sanitiza el HTML:
+borra TODA etiqueta <img>, en cualquier variante —suelta, con style, dentro de <a>, dentro de
+<table>— y también las propiedades de fondo. Verificado el 28/08/2026 releyendo el mensaje ya
+entregado en el servidor. Así que las curvas no se incrustan: se publican en GitHub Pages junto con
+una página índice (pagina_curvas.py) y el mail linkea a esa página. SVG tampoco sirve, ni siquiera
+ahí, porque algunos clientes lo descartan.
 
-QUÉ CURVAS. Siete, cada una con la métrica y la moneda en la que se negocia:
+QUÉ CURVAS. Ocho, cada una con la métrica y la moneda en la que se negocia:
 
   1. Globales contra Bonares — LAS DOS PATAS EN MEP. Es la única forma de que el spread signifique
      algo: el monitor valúa los globales al CCL y los bonares al MEP, y restarlos así mezcla dos
@@ -15,6 +19,7 @@ QUÉ CURVAS. Siete, cada una con la métrica y la moneda en la que se negocia:
   5. TAMAR — TEA.
   6. Dólar linked — TIR.
   7. Subsoberanos — TIR al CCL.
+  8. Futuros de dólar — precio y devaluación acumulada contra el mayorista, en dos ejes.
 
 NO HAY GRÁFICO DE ONs. Se hicieron y se sacaron: con cincuenta y pico de corporativos el gráfico es
 una nube de emisores distintos, no una curva —entre YPF a tres años y Pampa a cuatro no hay nada que
@@ -148,14 +153,10 @@ def _serie(ax, pts, color, rotulo, marcador="o", linea="-", etiquetas=True, cada
         _etiquetar(ax, pts, color, cada)
 
 
-# EL PESO IMPORTA PORQUE VAN ADJUNTOS AL MAIL, en base64, que infla un 34%. No se pueden servir por
-# URL desde el repo aunque sea público: raw.githubusercontent manda
-# "Content-Security-Policy: default-src 'none'; sandbox" y el proxy de imágenes de Gmail lo respeta,
-# así que el lector ve huecos. Probado el 2026-08-28.
-# A 100 dpi con paleta indexada quedan en unos
-# 15 KB cada uno contra 100 sin comprimir, y no se nota: son líneas y texto sobre fondo plano, sin
-# degradados que sufran la cuantización. 100 dpi da ~950 px de ancho, el doble de lo que muestra un
-# cliente de correo, así que se ve nítido también en pantallas retina.
+# EL PESO IMPORTA POR EL PDF que se adjunta al mail: ocho imágenes pesadas lo vuelven inadjuntable.
+# A 100 dpi con paleta indexada quedan en unos 15 KB cada uno contra 100 sin comprimir, y no se
+# nota: son líneas y texto sobre fondo plano, sin degradados que sufran la cuantización. 100 dpi da
+# ~950 px de ancho, más de lo que muestra cualquier lector, así que se ve nítido igual.
 DPI = 100
 
 
@@ -204,7 +205,7 @@ def lecaps_tem(instr, salida):
     _serie(ax, pts, NAVY, "LECAPs y tasa fija")
     _ejes(ax, "Curva de pesos a tasa fija · TEM", "TEM (%)")
     ax.yaxis.set_major_formatter(mtick.FormatStrFormatter("%.2f%%"))
-    ax.text(.01, -.16, "La TEM sale de la TEA que publica 1816: (1 + TEA)^(1/12) − 1.",
+    ax.text(.01, -.16, "La TEM se deriva de la TEA informada: (1 + TEA)^(1/12) − 1.",
             transform=ax.transAxes, fontsize=8, color=GRIS, va="top")
     return _cerrar(fig, ax, salida)
 
@@ -339,7 +340,7 @@ def curva_subsoberanos(instr, salida):
     fig, ax = balanz_figure(figsize=(9.5, 5.2))
     _serie(ax, pts, NAVY, "Subsoberanos · TIR")
     _ejes(ax, "Curva subsoberana en dólares", "TIR (%)")
-    ax.text(.01, -.16, "Valuados al CCL, la punta en la que los muestra el monitor. Son provincias "
+    ax.text(.01, -.16, "Valuados al CCL. Son provincias "
                        "con riesgos crediticios distintos entre sí, no una curva de un solo emisor: "
                        "la línea ordena por plazo, no dice que sean sustitutos.",
             transform=ax.transAxes, fontsize=8, color=GRIS, va="top")
@@ -409,6 +410,104 @@ def curva_ons(instr, salida, familia, titulo, moneda, en_mep=False):
     return _cerrar(fig, ax, salida)
 
 
+# ── 8 · Futuros de dólar ─────────────────────────────────────────────────────
+MESES_A3 = {"ENE": 1, "FEB": 2, "MAR": 3, "ABR": 4, "MAY": 5, "JUN": 6,
+            "JUL": 7, "AGO": 8, "SEP": 9, "OCT": 10, "NOV": 11, "DIC": 12}
+
+# Un contrato con volumen casi nulo tiene ajuste igual, pero ese ajuste lo pone la cámara, no el
+# mercado. Dibujarlo con el mismo marcador que el AGO26, que opera 863.000 contratos, sugiere que
+# los dos precios tienen la misma información atrás. Se marcan huecos a partir de este umbral.
+VOL_MINIMO = 1000
+
+
+def _orden_contrato(sym):
+    mes = sym.split("/")[-1]
+    return (2000 + int(mes[3:]), MESES_A3[mes[:3]])
+
+
+def curva_futuros(salida, ruta_spreads="spreads_sinteticos.json"):
+    """Precio de los futuros de dólar y devaluación acumulada contra el mayorista.
+
+    DOS EJES, UNA SOLA CURVA. La devaluación acumulada es (F/S − 1)·100: una función lineal del
+    precio, con S fijo. Dibujarla como segunda línea daría exactamente la misma forma desplazada,
+    dos veces el mismo dato. Va como eje derecho de la misma curva, que es lo que el eje secundario
+    resuelve bien: el mismo punto se lee en pesos a la izquierda y en porcentaje a la derecha.
+
+    El ajuste es SIEMPRE de la rueda anterior. A3 lo publica después del clearing, varias horas
+    después del cierre, así que a las 17:30 el del día todavía no existe. El spot que se usa es el
+    mayorista de esa misma rueda: mezclar el futuro de ayer con el spot de hoy metería el movimiento
+    del día en el numerador y no en el denominador.
+    """
+    d = json.loads(Path(ruta_spreads).read_text(encoding="utf-8"))
+    ruedas = sorted(k for k in d if not k.startswith("_"))
+    if not ruedas:
+        return None
+    ult = ruedas[-1]
+    fut = d[ult].get("fut") or {}
+    vol = d[ult].get("vol") or {}
+    spot = d[ult].get("tc")
+    if not fut or not spot:
+        return None
+
+    syms = sorted(fut, key=_orden_contrato)
+    xs = list(range(len(syms)))
+    ys = [fut[s] for s in syms]
+    etiquetas = [f"{s.split('/')[-1][:3]}\n{s.split('/')[-1][3:]}" for s in syms]
+    liquidos = [i for i, s in enumerate(syms) if (vol.get(s) or 0) >= VOL_MINIMO]
+    finos = [i for i in xs if i not in liquidos]
+
+    fig, ax = balanz_figure(figsize=(10, 5.6))
+    ax.plot(xs, ys, color=NAVY, linewidth=2, zorder=3)
+    ax.plot([xs[i] for i in liquidos], [ys[i] for i in liquidos], linestyle="none",
+            marker="o", markersize=7, color=NAVY, zorder=4, label="Con volumen")
+    if finos:
+        ax.plot([xs[i] for i in finos], [ys[i] for i in finos], linestyle="none",
+                marker="o", markersize=7, markerfacecolor="white", markeredgecolor=NAVY,
+                markeredgewidth=1.6, zorder=4, label=f"Menos de {VOL_MINIMO:,} contratos"
+                .replace(",", "."))
+
+    ax.axhline(spot, color=CYAN, linestyle="--", linewidth=1.5, zorder=2)
+    ax.annotate(f"Mayorista  {spot:,.2f}".replace(",", "@").replace(".", ",").replace("@", "."),
+                (xs[0], spot), textcoords="offset points", xytext=(2, -14),
+                fontsize=9, color=CYAN, fontweight="bold")
+
+    for i, (x, y) in enumerate(zip(xs, ys)):
+        dev = (y / spot - 1) * 100
+        ax.annotate(f"{dev:,.1f}%".replace(".", ","), (x, y), textcoords="offset points",
+                    xytext=(0, 9), ha="center", fontsize=8, color=NAVY, alpha=.9)
+
+    ax.set_title(f"Futuros de dólar · ajuste del {ult[8:10]}/{ult[5:7]}",
+                 color=NAVY, fontweight="bold", fontsize=13, pad=12)
+    ax.set_xlabel("Vencimiento del contrato", color=GRIS, fontsize=10)
+    ax.set_ylabel("Precio del futuro (ARS)", color=GRIS, fontsize=10)
+    ax.set_xticks(xs)
+    ax.set_xticklabels(etiquetas, fontsize=8.5)
+    ax.yaxis.set_major_formatter(mtick.FuncFormatter(
+        lambda v, _: f"{v:,.0f}".replace(",", ".")))
+    ax.grid(True, color=COLORS.get("border_gray", "#C8D3E0"), alpha=.5, linewidth=.8)
+    ax.set_axisbelow(True)
+    for lado in ("top",):
+        ax.spines[lado].set_visible(False)
+    ax.tick_params(colors=GRIS, labelsize=9)
+
+    lo, hi = min(ys), max(ys)
+    pad = (hi - lo) * .12
+    ax.set_ylim(lo - pad * 1.6, hi + pad)
+
+    # El eje derecho es la misma escala transformada, no otra serie: cada tick es el precio de la
+    # izquierda expresado como devaluación acumulada contra el spot.
+    der = ax.secondary_yaxis("right", functions=(lambda v: (v / spot - 1) * 100,
+                                                 lambda p: spot * (1 + p / 100)))
+    der.set_ylabel("Devaluación acumulada contra el mayorista", color=GRIS, fontsize=10)
+    der.yaxis.set_major_formatter(mtick.FormatStrFormatter("%.1f%%"))
+    der.tick_params(colors=GRIS, labelsize=9)
+
+    ax.legend(frameon=False, fontsize=9, labelcolor=NAVY, loc="upper left")
+    fig.savefig(salida, dpi=DPI, bbox_inches="tight", facecolor="white")
+    plt.close(fig)
+    return _comprimir(salida)
+
+
 def generar(ruta_json, dir_salida="curvas"):
     d = json.loads(Path(ruta_json).read_text(encoding="utf-8"))
     instr = d["instrumentos"]
@@ -434,6 +533,7 @@ def generar(ruta_json, dir_salida="curvas"):
         ("tamar", lambda p: curva_tamar(instr, p, d_tam, tamar_spot)),
         ("dl", lambda p: curva_dl(instr, p)),
         ("subsoberanos", lambda p: curva_subsoberanos(instr, p)),
+        ("futuros", lambda p: curva_futuros(p)),
     ]:
         ruta = out / f"{nombre}.png"
         try:
