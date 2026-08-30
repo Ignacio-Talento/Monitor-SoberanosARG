@@ -26,6 +26,12 @@ DE DÓNDE SALE CADA UNA, que es lo menos obvio:
   · IPC mensual (serie 27) — API del BCRA. Va crudo, sin anualizar: la TAMAR real se calcula en el
     browser para que el selector de qué inflación usar no obligue a volver a bajar nada.
 
+  · REM — la base histórica del relevamiento, otro XLSX de URL fija. Sirve para UNA cosa: el INDEC
+    publica el IPC de un mes a mediados del siguiente, así que las últimas tres o cuatro semanas de
+    la tasa real no tienen con qué deflactarse. Repetir el último dato conocido es asumir que la
+    inflación no se movió; el REM es lo que el mercado espera para ESE mes. Se guarda la mediana
+    del relevamiento más reciente que haya proyectado cada mes.
+
 LA TAMAR ES CORTA Y NO ES UN BUG. Arranca el 2024-10-01 porque el BCRA creó la serie ahí. Su "Max"
 son dos años, contra treinta de las otras tres, y la página lo dice en vez de dejar que se lea como
 si el resto de la historia se hubiera perdido.
@@ -47,6 +53,12 @@ sys.path.insert(0, str(Path(__file__).parent))
 from macro_informe import BCRA, RIESGO_PAIS, UA, _get        # noqa: E402
 
 ITCRM_XLSX = ("https://www.bcra.gob.ar/archivos/Pdfs/PublicacionesEstadisticas/ITCRMSerie.xlsx")
+# Base histórica del REM. La URL es FIJA y siempre apunta al último relevamiento; la otra planilla
+# que publica la página —"tablas-...-jul-2026.xlsx"— lleva el mes en el nombre y habría que
+# adivinarlo cada mes.
+REM_XLSX = ("https://www.bcra.gob.ar/archivos/Pdfs/PublicacionesEstadisticas/informes/"
+            "historico-relevamiento-expectativas-mercado.xlsx")
+REM_VAR = "Precios minoristas (IPC nivel general; INDEC)"
 SALIDA = Path(__file__).parent / "macro_series.json"
 DESDE = "1990-01-01"
 PAGINA = 3000          # tope real de la API; con más devuelve 3.000 igual
@@ -95,6 +107,37 @@ def itcrm():
     return filas
 
 
+def rem_ipc():
+    """Pronóstico de inflación mensual del REM, uno por mes: la mediana del relevamiento MÁS
+    RECIENTE que haya proyectado ese mes.
+
+    PARA QUÉ. El INDEC publica el IPC de un mes a mediados del siguiente, así que la tasa real de
+    las últimas tres o cuatro semanas no tiene con qué deflactarse. Repetir el último dato conocido
+    es asumir que la inflación no se movió; el REM es el número que el mercado efectivamente
+    espera para ESE mes, que es la pregunta que se está haciendo.
+
+    Se queda con la mediana y no con el promedio: el REM tiene entre 30 y 40 participantes y un
+    outlier mueve el promedio bastante más que la mediana.
+
+    OJO CON LA COLUMNA "Referencia": la misma variable aparece con "var. % mensual" y con una
+    docena de "var. % i.a.; dic-XX". Sin ese filtro se mezclan mensuales con interanuales.
+    """
+    r = requests.get(REM_XLSX, headers={"User-Agent": UA["User-Agent"]}, timeout=180)
+    r.raise_for_status()
+    wb = load_workbook(BytesIO(r.content), read_only=True, data_only=True)
+    ws = wb["Base de Datos Completa"]
+    mejor = {}
+    for fp, var, ref, per, med, _prom in ws.iter_rows(min_row=3, max_col=6, values_only=True):
+        if var != REM_VAR or str(ref).strip() != "var. % mensual":
+            continue
+        if not isinstance(fp, datetime) or not isinstance(per, datetime) or med is None:
+            continue
+        k = per.date().isoformat()
+        if k not in mejor or fp > mejor[k][0]:
+            mejor[k] = (fp, float(med))
+    return [(k, mejor[k][1], mejor[k][0].date().isoformat()) for k in sorted(mejor)]
+
+
 def empaquetar(filas, dec):
     """Dos arrays paralelos en vez de una lista de objetos: pesa un tercio y se dibuja igual."""
     return {"f": [f for f, _ in filas], "v": [round(v, dec) for _, v in filas]}
@@ -119,6 +162,24 @@ def main():
         ("ipc", "IPC nivel general · variación mensual", "% mensual",
          "BCRA/INDEC · serie 27", 2, lambda: serie_larga(27)),
     ]
+    try:
+        filas = rem_ipc()
+        if not filas:
+            raise ValueError("sin pronósticos mensuales")
+        out["rem"] = {
+            "nombre": "IPC mensual esperado · REM del BCRA",
+            "fuente": "BCRA · histórico del REM",
+            "ultimoRelevamiento": max(f[2] for f in filas),
+            "f": [f[0] for f in filas],
+            "v": [round(f[1], 3) for f in filas],
+            "pron": [f[2] for f in filas],
+        }
+        print(f"{'rem':11} {len(filas):6} meses  {filas[0][0]} .. {filas[-1][0]}  "
+              f"relevamiento {out['rem']['ultimoRelevamiento']}")
+    except Exception as e:                                        # noqa: BLE001
+        out["fallos"].append(f"rem: {e}")
+        print(f"{'rem':11} FALLÓ: {e}")
+
     for clave, nombre, unidad, fuente, dec, fn in tareas:
         try:
             filas = fn()
@@ -143,6 +204,8 @@ def main():
         viejo = json.loads(SALIDA.read_text(encoding="utf-8"))
         for clave, val in (viejo.get("series") or {}).items():
             out["series"].setdefault(clave, val)
+        if "rem" not in out and viejo.get("rem"):
+            out["rem"] = viejo["rem"]
 
     SALIDA.write_text(json.dumps(out, ensure_ascii=False, separators=(",", ":")),
                       encoding="utf-8")

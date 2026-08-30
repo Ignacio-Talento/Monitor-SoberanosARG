@@ -248,7 +248,12 @@
                   line-height: 1.25; }
   .g-kpi .k-val.pos { color: var(--green); }
   .g-kpi .k-val.neg { color: var(--red); }
-  .g-ctrl { padding: 10px 20px 0; display: flex; gap: 16px; align-items: center; flex-wrap: wrap; }
+  .g-ctrl { padding: 10px 20px 0; display: flex; gap: 14px; align-items: center; flex-wrap: wrap; }
+  /* Separa el plazo del resto de los controles de la tarjeta: sin la línea, cinco segmentos
+     seguidos se leen como un solo control largo. */
+  .g-corte { width: 1px; height: 20px; background: var(--border); }
+  .g-par { display: inline-flex; align-items: center; gap: 9px; white-space: nowrap; }
+  .barra-lbl.rango { text-transform: none; letter-spacing: .02em; }
   .g-body { padding: 8px 12px 4px; position: relative; }
   .g-svg { width: 100%; height: auto; display: block; font-family: var(--sans); }
   .g-pie { padding: 2px 20px 14px; font-size: 10px; font-family: var(--mono); color: var(--text-3);
@@ -275,12 +280,6 @@
 </style>
 
 <div class="wrap">
-
-  <div class="barra">
-    <span class="barra-lbl">Plazo</span>
-    <div class="seg" id="seg-plazo"></div>
-    <span class="barra-lbl" id="rango-txt"></span>
-  </div>
 
   <div id="aviso"></div>
   <div id="graficos"><div class="cargando">Cargando series…</div></div>
@@ -314,12 +313,17 @@ const PLAZOS = [
   { id: '1M',  dias: 30 },
   { id: '3M',  dias: 91 },
   { id: '6M',  dias: 182 },
+  { id: 'YTD', dias: 'ytd' },
   { id: '1A',  dias: 365 },
   { id: 'Max', dias: null },
 ];
 
 let DATOS = null;
-let plazo = '1A';
+/* Un plazo POR TARJETA. Con un control global había que elegir el mismo para las cinco, y las
+   cinco no se miran igual: el ITCRM pide historia larga y la tasa real, las últimas semanas. */
+let plazos = { itcrm: '1A', riesgoPais: '1A', reservas: '1A', tamar: '1A', tamarReal: '1A' };
+/* Fecha del dato más fresco de todas las series: de ahí cuelgan los plazos de las cinco. */
+let FIN = 0;
 /* Sobre qué tramo se calculan el promedio y los desvíos del ITCRM. "Ventana visible" es el
    default porque es lo que uno está mirando, pero con 1M seleccionado un desvío sobre 30 ruedas
    no dice nada, y por eso se puede clavar a un período largo sin cambiar el zoom del gráfico. */
@@ -348,6 +352,16 @@ function recortar(pts, desdeMs) {
      flotando en el aire cuando la serie es rala (el riesgo país no cotiza los feriados). */
   return pts.slice(Math.max(0, i - 1));
 }
+/* El YTD arranca el 1 de enero del año del ÚLTIMO dato, no del año de hoy: si la página se abre
+   un 2 de enero y la serie todavía no publicó el primer punto del año, "desde el 1 de enero" del
+   año nuevo sería una ventana vacía. */
+function desdeDe(id, fin) {
+  const p = PLAZOS.find((x) => x.id === id);
+  if (!p || p.dias === null) return null;
+  if (p.dias === 'ytd') return Date.UTC(new Date(fin).getUTCFullYear(), 0, 1);
+  return fin - p.dias * DIA;
+}
+
 function estadistica(pts) {
   const n = pts.length;
   if (!n) return null;
@@ -602,17 +616,18 @@ function montarHover(cuerpo, estado) {
    niveles la diferencia es de dos décimas y crece con la inflación.
 
    QUÉ INFLACIÓN. No hay una respuesta única y por eso el selector ofrece tres, todas sobre el IPC
-   efectivamente publicado, ninguna sobre expectativas:
+   publicado por el INDEC:
 
      · mes  — el IPC de ESE mes anualizado. Es el más fiel al momento y el más ruidoso.
      · 3m   — los tres meses hasta ese mes, anualizados. Es el que suaviza la estacionalidad sin
               arrastrar un régimen viejo, y por eso es el default.
      · ia   — los últimos doce meses. Estable, pero en desinflación pinta un mundo que ya pasó.
 
-   EL TRAMO FINAL VA PUNTEADO. El INDEC publica el IPC de un mes a mitad del siguiente, así que
-   las últimas ruedas no tienen todavía la inflación de SU mes y se deflactan con el último dato
-   conocido. Eso no es el dato definitivo y el gráfico lo dice en vez de dibujarlo igual que el
-   resto. */
+   EL MES QUE FALTA LO PONE EL REM. El INDEC publica el IPC de un mes a mediados del siguiente, así
+   que las últimas tres o cuatro semanas no tienen la inflación de SU mes. Ahí se usa la mediana
+   del REM del BCRA para ese mes, que es lo que el mercado espera, en vez de repetir el último dato
+   conocido —que es asumir que la inflación no se movió—. Esos tramos van PUNTEADOS: son un
+   pronóstico, no un dato, y el gráfico no los dibuja igual que el resto. */
 function serieInflacion(ipcPts, modo) {
   const out = [];
   for (let i = 0; i < ipcPts.length; i++) {
@@ -628,29 +643,46 @@ function serieInflacion(ipcPts, modo) {
       for (let j = i - 11; j <= i; j++) a *= 1 + ipcPts[j][1] / 100;
       anual = (a - 1) * 100;
     }
-    if (anual !== null) out.push([ipcPts[i][0], anual, new Date(ipcPts[i][0]).getUTCFullYear() * 12 +
-                                  new Date(ipcPts[i][0]).getUTCMonth()]);
+    if (anual !== null) out.push([ipcPts[i][2], anual, ipcPts[i][3]]);
   }
   return out;
 }
 
-function tamarReal(tamarPts, ipcPts, modo) {
-  const infl = serieInflacion(ipcPts, modo);
-  if (!infl.length) return { firmes: [], provisorios: [], ultimoMes: null };
-  const porMes = new Map(infl.map((x) => [x[2], x[1]]));
-  const ultimoMes = infl[infl.length - 1][2];
-  const firmes = [], provisorios = [];
+/* El IPC publicado, más los meses que todavía no salieron completados con el REM. Se devuelven
+   como [mesIndex, variación, esPronóstico] para que las tres medidas —mes, tres meses e
+   interanual— puedan encadenar dato y pronóstico sin cortarse en el borde. */
+function ipcConRem(ipcSerie, rem) {
+  const mesDe = (f) => { const d = new Date(ms(f)); return d.getUTCFullYear() * 12 + d.getUTCMonth(); };
+  const out = ipcSerie.f.map((f, i) => [f, ipcSerie.v[i], mesDe(f), false]);
+  const ultimo = out.length ? out[out.length - 1][2] : -Infinity;
+  if (rem) {
+    for (let i = 0; i < rem.f.length; i++) {
+      const m = mesDe(rem.f[i]);
+      if (m > ultimo) out.push([rem.f[i], rem.v[i], m, true]);
+    }
+  }
+  out.sort((a, b) => a[2] - b[2]);
+  return out;
+}
+
+function tamarReal(tamarPts, ipcExt, modo) {
+  const infl = serieInflacion(ipcExt, modo);
+  if (!infl.length) return { firmes: [], punteados: [], corte: null, usados: [] };
+  const porMes = new Map(infl.map((x) => [x[0], x]));
+  const firmes = [], punteados = [], usados = [];
   for (const [t, tea] of tamarPts) {
     const d = new Date(t);
     const mes = d.getUTCFullYear() * 12 + d.getUTCMonth();
-    const propia = porMes.has(mes);
-    const i = propia ? porMes.get(mes) : infl[infl.length - 1][1];
-    const real = ((1 + tea / 100) / (1 + i / 100) - 1) * 100;
-    (propia ? firmes : provisorios).push([t, real]);
+    const fila = porMes.get(mes) || infl[infl.length - 1];
+    const real = ((1 + tea / 100) / (1 + fila[1] / 100) - 1) * 100;
+    /* Punteado si el mes se apoya en el REM, o si ni el REM llega y hubo que estirar el último. */
+    const estimado = fila[2] || !porMes.has(mes);
+    (estimado ? punteados : firmes).push([t, real]);
+    if (estimado && usados.indexOf(mes) < 0) usados.push(mes);
   }
   /* El punteado arranca en el último punto firme para que las dos líneas se toquen. */
-  if (firmes.length && provisorios.length) provisorios.unshift(firmes[firmes.length - 1]);
-  return { firmes, provisorios, ultimoMes: infl[infl.length - 1][0] };
+  if (firmes.length && punteados.length) punteados.unshift(firmes[firmes.length - 1]);
+  return { firmes, punteados, corte: firmes.length ? firmes[firmes.length - 1][0] : null, usados };
 }
 
 /* ── tarjetas ─────────────────────────────────────────────────────────────────────────────── */
@@ -661,16 +693,30 @@ function kpi(lbl, val, clase) {
 function signo(v, dec, suf) {
   return (v > 0 ? '+' : v < 0 ? '-' : '') + fmt(Math.abs(v), dec) + (suf || '');
 }
-function segmento(id, opciones, actual) {
-  return '<div class="seg chico" data-seg="' + id + '">' + opciones.map((o) =>
+/* Etiqueta y control como una sola pieza, para que el wrap de la fila no los separe. */
+function par(lbl, html) {
+  return '<span class="g-par"><span class="barra-lbl">' + lbl + '</span>' + html + '</span>';
+}
+function segmento(id, opciones, actual, attr) {
+  return '<div class="seg chico" data-' + (attr || 'seg') + '="' + id + '">' + opciones.map((o) =>
     '<button type="button" data-v="' + o[0] + '"' + (o[0] === actual ? ' class="on"' : '') + '>' +
     o[1] + '</button>').join('') + '</div>';
+}
+/* Cada tarjeta lleva SU selector de plazo: mirar el ITCRM en Max mientras se mira la TAMAR real
+   en 1M es lo normal, y con un control global había que elegir uno para las cinco. */
+function ctrlPlazo(clave, pts) {
+  const desde = desdeDe(plazos[clave], FIN);
+  const ini = (desde && pts.length > 1 && pts[0][0] < desde) ? pts[1][0] : (pts[0] || [])[0];
+  const rango = pts && pts.length
+    ? fFecha(ini) + '  —  ' + fFecha(pts[pts.length - 1][0]) : '';
+  return par('Plazo', segmento(clave, PLAZOS.map((p) => [p.id, p.id]), plazos[clave], 'plazo')) +
+         '<span class="barra-lbl rango">' + rango + '</span>';
 }
 
 function tarjeta(o) {
   return '<div class="g-card"><div class="g-head"><div><div class="g-tit">' + o.titulo +
          '</div><div class="g-sub">' + o.sub + '</div></div><div class="g-kpis">' + o.kpis +
-         '</div></div>' + (o.ctrl ? '<div class="g-ctrl">' + o.ctrl + '</div>' : '') +
+         '</div></div><div class="g-ctrl">' + o.ctrl + '</div>' +
          '<div class="g-body">' + o.svg + '</div>' +
          (o.leyenda ? '<div class="g-leyenda">' + o.leyenda + '</div>' : '') +
          '<div class="g-pie">' + o.pie + '</div></div>';
@@ -684,37 +730,32 @@ function render() {
   const pts = {};
   for (const k of Object.keys(S)) pts[k] = aPuntos(S[k]);
 
-  /* Un solo corte para las cinco tarjetas: el punto de comparar es mirar el mismo tramo. */
+  /* El "hoy" del que cuelgan todos los plazos: el último dato de la serie más fresca. Usar el de
+     cada serie haría que 1M significara ventanas distintas en cada tarjeta —las reservas salen con
+     dos a cuatro días hábiles de rezago— y dejarían de ser comparables. */
   let fin = 0;
   for (const k of ['itcrm', 'riesgoPais', 'reservas', 'tamar']) {
     if (pts[k] && pts[k].length) fin = Math.max(fin, pts[k][pts[k].length - 1][0]);
   }
-  const dias = (PLAZOS.find((p) => p.id === plazo) || {}).dias;
-  const desde = dias ? fin - dias * DIA : null;
-  const vis = {};
-  for (const k of Object.keys(pts)) vis[k] = recortar(pts[k], desde);
-
-  const rango = [];
-  for (const k of ['itcrm', 'riesgoPais', 'reservas', 'tamar']) {
-    if (vis[k] && vis[k].length) rango.push(vis[k][0][0], vis[k][vis[k].length - 1][0]);
-  }
-  $('#rango-txt').textContent = rango.length
-    ? fFecha(Math.min.apply(null, rango)) + '  —  ' + fFecha(Math.max.apply(null, rango)) : '';
+  FIN = fin;
+  const corte = (clave) => recortar(pts[clave === 'tamarReal' ? 'tamar' : clave],
+                                    desdeDe(plazos[clave], fin));
 
   const cont = $('#graficos');
   const partes = [], montar = [];
 
   /* ═══ 1 · ITCRM ═══ */
-  if (vis.itcrm.length) {
-    const base = ventanaStats === 'vis' ? vis.itcrm
+  const vIt = corte('itcrm');
+  if (vIt.length) {
+    const base = ventanaStats === 'vis' ? vIt
       : ventanaStats === 'todo' ? pts.itcrm
       : ventanaStats === '2003' ? recortar(pts.itcrm, Date.UTC(2003, 0, 1))
       : recortar(pts.itcrm, fin - (ventanaStats === '5a' ? 5 : 10) * 365.25 * DIA);
     const st = estadistica(base);
-    const u = vis.itcrm[vis.itcrm.length - 1], pri = vis.itcrm[0];
+    const u = vIt[vIt.length - 1], pri = vIt[0];
     const z = st.sd ? (u[1] - st.prom) / st.sd : 0;
     const varPct = (u[1] / pri[1] - 1) * 100;
-    const d = dibujar({ series: [{ pts: vis.itcrm, color: PAL.navy }], bandas: st,
+    const d = dibujar({ series: [{ pts: vIt, color: PAL.navy }], bandas: st,
                         log: escalaLog.itcrm, dec: 2, decEje: 1, sufijo: '(17-12-15 = 100)',
                         aria: 'Índice de tipo de cambio real multilateral' });
     partes.push(tarjeta({
@@ -724,11 +765,12 @@ function render() {
       kpis: kpi('Último', fmt(u[1], 2)) +
             kpi('En la ventana', signo(varPct, 2, '%'), varPct > 0 ? 'pos' : varPct < 0 ? 'neg' : '') +
             kpi('Desvíos del promedio', signo(z, 2, ' σ'), Math.abs(z) > 2 ? 'neg' : ''),
-      ctrl: '<span class="barra-lbl">Promedio y desvíos sobre</span>' +
-            segmento('stats', [['vis', 'Ventana visible'], ['5a', '5 años'], ['10a', '10 años'],
-                               ['2003', 'Desde 2003'], ['todo', 'Desde 1997']], ventanaStats) +
-            '<span class="barra-lbl">Escala</span>' +
-            segmento('log-itcrm', [['0', 'Lineal'], ['1', 'Log']], escalaLog.itcrm ? '1' : '0'),
+      ctrl: ctrlPlazo('itcrm', vIt) + '<span class="g-corte"></span>' +
+            par('Promedio y desvíos sobre',
+                segmento('stats', [['vis', 'Ventana visible'], ['5a', '5 años'], ['10a', '10 años'],
+                                   ['2003', 'Desde 2003'], ['todo', 'Desde 1997']], ventanaStats)) +
+            par('Escala',
+                segmento('log-itcrm', [['0', 'Lineal'], ['1', 'Log']], escalaLog.itcrm ? '1' : '0')),
       svg: d.svg,
       leyenda: '<span><i style="border-color:' + PAL.navy + '"></i>ITCRM</span>' +
                '<span><i style="border-color:' + PAL.azul + '"></i>promedio</span>' +
@@ -747,10 +789,11 @@ function render() {
   }
 
   /* ═══ 2 · Riesgo país ═══ */
-  if (vis.riesgoPais.length) {
-    const u = vis.riesgoPais[vis.riesgoPais.length - 1], pri = vis.riesgoPais[0];
+  const vRp = corte('riesgoPais');
+  if (vRp.length) {
+    const u = vRp[vRp.length - 1], pri = vRp[0];
     const dif = u[1] - pri[1];
-    const d = dibujar({ series: [{ pts: vis.riesgoPais, color: PAL.rojo }], log: escalaLog.riesgoPais,
+    const d = dibujar({ series: [{ pts: vRp, color: PAL.rojo }], log: escalaLog.riesgoPais,
                         dec: 0, sufijo: 'puntos básicos', aria: 'Riesgo país EMBI+ Argentina' });
     partes.push(tarjeta({
       titulo: 'Riesgo país · EMBI+ Argentina',
@@ -758,8 +801,9 @@ function render() {
            '22 de enero de 1999.',
       kpis: kpi('Último', fmt(u[1], 0)) +
             kpi('En la ventana', signo(dif, 0, ' pbs'), dif < 0 ? 'pos' : dif > 0 ? 'neg' : ''),
-      ctrl: '<span class="barra-lbl">Escala</span>' +
-            segmento('log-riesgoPais', [['0', 'Lineal'], ['1', 'Log']], escalaLog.riesgoPais ? '1' : '0'),
+      ctrl: ctrlPlazo('riesgoPais', vRp) + '<span class="g-corte"></span>' +
+            par('Escala',
+                segmento('log-riesgoPais', [['0', 'Lineal'], ['1', 'Log']], escalaLog.riesgoPais ? '1' : '0')),
       svg: d.svg,
       pie: 'Fuente: argentinadatos, que republica el EMBI+ de J.P. Morgan; el BCRA no publica esta ' +
            'serie. En Max conviene la escala logarítmica: el pico del default fue 7.222 puntos el 7 de ' +
@@ -770,16 +814,18 @@ function render() {
   }
 
   /* ═══ 3 · Reservas ═══ */
-  if (vis.reservas.length) {
-    const u = vis.reservas[vis.reservas.length - 1], pri = vis.reservas[0];
+  const vRe = corte('reservas');
+  if (vRe.length) {
+    const u = vRe[vRe.length - 1], pri = vRe[0];
     const dif = u[1] - pri[1];
-    const d = dibujar({ series: [{ pts: vis.reservas, color: PAL.azul }], dec: 0,
+    const d = dibujar({ series: [{ pts: vRe, color: PAL.azul }], dec: 0,
                         sufijo: 'millones de USD', aria: 'Reservas internacionales del BCRA' });
     partes.push(tarjeta({
       titulo: 'Reservas internacionales del BCRA',
       sub: 'Stock bruto en millones de dólares. Diario desde el 3 de enero de 1996.',
       kpis: kpi('Último', fmt(u[1] / 1000, 1) + ' MM USD') +
             kpi('En la ventana', signo(dif, 0, ' M'), dif > 0 ? 'pos' : dif < 0 ? 'neg' : ''),
+      ctrl: ctrlPlazo('reservas', vRe),
       svg: d.svg,
       pie: 'BCRA, serie 1. Es el stock BRUTO: incluye el swap con China, los encajes de los ' +
            'depósitos en dólares y los desembolsos de organismos, así que no mide poder de fuego ' +
@@ -790,10 +836,11 @@ function render() {
   }
 
   /* ═══ 4 · TAMAR ═══ */
-  if (vis.tamar.length) {
-    const u = vis.tamar[vis.tamar.length - 1], pri = vis.tamar[0];
+  const vTa = corte('tamar');
+  if (vTa.length) {
+    const u = vTa[vTa.length - 1], pri = vTa[0];
     const dif = u[1] - pri[1];
-    const d = dibujar({ series: [{ pts: vis.tamar, color: PAL.violeta }], dec: 2, sufijo: '% TEA',
+    const d = dibujar({ series: [{ pts: vTa, color: PAL.violeta }], dec: 2, sufijo: '% TEA',
                         aria: 'TAMAR de bancos privados' });
     partes.push(tarjeta({
       titulo: 'TAMAR de bancos privados · tasa nominal',
@@ -802,6 +849,7 @@ function render() {
            'años, no treinta como las de arriba.',
       kpis: kpi('Última', fmt(u[1], 2) + '%') +
             kpi('En la ventana', signo(dif, 2, ' pp'), dif > 0 ? 'pos' : dif < 0 ? 'neg' : ''),
+      ctrl: ctrlPlazo('tamar', vTa),
       svg: d.svg,
       pie: 'BCRA, serie 45 (TAMAR bancos privados, tasa efectiva anual). Es una tasa MAYORISTA: ' +
            'corre por encima de la BADLAR y bastante por encima del plazo fijo minorista.',
@@ -810,36 +858,54 @@ function render() {
   }
 
   /* ═══ 5 · TAMAR real ═══ */
-  if (vis.tamar.length && pts.ipc && pts.ipc.length) {
-    const r = tamarReal(vis.tamar, pts.ipc, medidaInfl);
-    const todos = r.firmes.concat(r.provisorios.slice(r.firmes.length ? 1 : 0));
+  const vTr = corte('tamarReal');
+  if (vTr.length && pts.ipc && pts.ipc.length) {
+    const ipcExt = ipcConRem(S.ipc, DATOS.rem);
+    const r = tamarReal(vTr, ipcExt, medidaInfl);
+    const todos = r.firmes.concat(r.punteados.slice(r.firmes.length ? 1 : 0));
     if (todos.length) {
       const u = todos[todos.length - 1], pri = todos[0];
       const dif = u[1] - pri[1];
       const d = dibujar({
-        series: [{ pts: r.firmes, color: PAL.verde }, { pts: r.provisorios, color: PAL.verde, dash: '5 4' }],
+        series: [{ pts: r.firmes, color: PAL.verde }, { pts: r.punteados, color: PAL.verde, dash: '5 4' }],
         dec: 2, cero: true, sufijo: '% TEA real', aria: 'TAMAR ajustada por inflación' });
       const nombre = { mes: 'el IPC del mes anualizado', '3m': 'el IPC de tres meses anualizado',
                        ia: 'el IPC interanual' }[medidaInfl];
+      /* Qué meses se apoyaron en el REM y con qué número: sin eso el punteado es un misterio. */
+      const rem = DATOS.rem;
+      let detalle = 'Todos los meses de esta ventana tienen su IPC publicado.';
+      if (r.usados.length) {
+        const nom = r.usados.map((m) => {
+          const d2 = new Date(Date.UTC(Math.floor(m / 12), m % 12, 1));
+          const etq = MESES[d2.getUTCMonth()] + ' ' + d2.getUTCFullYear();
+          const i = rem ? rem.f.findIndex((f) => { const d3 = new Date(ms(f));
+            return d3.getUTCFullYear() * 12 + d3.getUTCMonth() === m; }) : -1;
+          return i >= 0 ? etq + ' con ' + fmt(rem.v[i], 2) + '% del REM'
+                        : etq + ', que el REM tampoco proyecta: se estiró el último dato';
+        });
+        detalle = 'Sin IPC publicado todavía: ' + nom.join('; ') +
+                  (rem ? ' (relevamiento del ' + fFecha(ms(rem.ultimoRelevamiento)) + ')' : '') + '.';
+      }
       partes.push(tarjeta({
         titulo: 'TAMAR ajustada por inflación · tasa real',
         sub: 'Cuánto rinde la TAMAR por encima de los precios, con la cuenta de Fisher ' +
              '(1 + tasa) / (1 + inflación) - 1, deflactada por ' + nombre + '.',
         kpis: kpi('Última', fmt(u[1], 2) + '%', u[1] > 0 ? 'pos' : 'neg') +
               kpi('En la ventana', signo(dif, 2, ' pp'), dif > 0 ? 'pos' : dif < 0 ? 'neg' : ''),
-        ctrl: '<span class="barra-lbl">Deflactar con</span>' +
-              segmento('infl', [['mes', 'IPC del mes'], ['3m', 'IPC 3 meses'], ['ia', 'IPC interanual']],
-                       medidaInfl),
+        ctrl: ctrlPlazo('tamarReal', vTr) + '<span class="g-corte"></span>' +
+              par('Deflactar con',
+                  segmento('infl', [['mes', 'IPC del mes'], ['3m', 'IPC 3 meses'],
+                                    ['ia', 'IPC interanual']], medidaInfl)),
         svg: d.svg,
-        leyenda: '<span><i style="border-color:' + PAL.verde + '"></i>con el IPC de su propio mes</span>' +
+        leyenda: '<span><i style="border-color:' + PAL.verde + '"></i>con el IPC publicado</span>' +
                  '<span><i style="border-color:' + PAL.verde + ';border-top-style:dashed"></i>' +
-                 'provisorio: deflactado con el último IPC publicado</span>',
-        pie: 'TAMAR de la serie 45 del BCRA sobre el IPC de la serie 27. El INDEC publica el IPC ' +
-             'de un mes a mediados del siguiente, así que las ruedas posteriores a ' +
-             (r.ultimoMes ? fFecha(r.ultimoMes) : 'el último dato') + ' todavía no tienen la ' +
-             'inflación de SU mes y van punteadas, deflactadas con el último dato conocido. Es ' +
-             'una tasa real EX POST, contra la inflación que efectivamente ocurrió: no es lo ' +
-             'mismo que la real esperada, que sale del REM o del breakeven de los bonos CER.',
+                 'con el IPC esperado por el REM</span>',
+        pie: 'TAMAR de la serie 45 del BCRA sobre el IPC de la serie 27. ' + detalle + ' ' +
+             'El INDEC publica el IPC de un mes a mediados del siguiente, así que el tramo final ' +
+             'se apoya en el pronóstico del REM —la mediana de entre 30 y 40 consultoras— y va ' +
+             'punteado: es lo que el mercado espera, no un dato. Es una tasa real EX POST contra ' +
+             'la inflación efectiva mientras hay dato publicado; no es lo mismo que la real ' +
+             'esperada que sale del breakeven de los bonos CER.',
       }));
       montar.push(d.estado);
     }
@@ -853,26 +919,20 @@ function render() {
   for (const k of ['itcrm', 'riesgoPais', 'reservas', 'tamar', 'ipc']) {
     if (S[k]) f.push(S[k].nombre + ' — ' + S[k].fuente + ', hasta el ' + S[k].hasta);
   }
+  if (DATOS.rem) f.push(DATOS.rem.nombre + ' — ' + DATOS.rem.fuente + ', relevamiento del ' +
+                        DATOS.rem.ultimoRelevamiento);
   $('#fuentes').innerHTML = 'Fuentes y último dato de cada serie: ' + f.join('; ') +
     '. Actualizadas el ' + new Date(DATOS.generado).toLocaleString('es-AR') +
     '. Ninguna se pide en vivo: las arma el job diario y quedan versionadas en el repo.';
 }
 
 /* ── eventos y arranque ───────────────────────────────────────────────────────────────────── */
-$('#seg-plazo').innerHTML = PLAZOS.map((p) =>
-  '<button type="button" data-p="' + p.id + '"' + (p.id === plazo ? ' class="on"' : '') + '>' +
-  p.id + '</button>').join('');
-$('#seg-plazo').addEventListener('click', (ev) => {
-  const b = ev.target.closest('button');
-  if (!b) return;
-  plazo = b.dataset.p;
-  for (const x of $('#seg-plazo').children) x.classList.toggle('on', x === b);
-  render();
-});
 $('#graficos').addEventListener('click', (ev) => {
   const b = ev.target.closest('.seg.chico button');
   if (!b) return;
-  const id = b.parentElement.dataset.seg, v = b.dataset.v;
+  const caja = b.parentElement;
+  if (caja.dataset.plazo) { plazos[caja.dataset.plazo] = b.dataset.v; render(); return; }
+  const id = caja.dataset.seg, v = b.dataset.v;
   if (id === 'stats') ventanaStats = v;
   else if (id === 'infl') medidaInfl = v;
   else if (id.indexOf('log-') === 0) escalaLog[id.slice(4)] = v === '1';
