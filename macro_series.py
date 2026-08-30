@@ -207,6 +207,22 @@ def main():
         if "rem" not in out and viejo.get("rem"):
             out["rem"] = viejo["rem"]
 
+    # SI EL DATO NO CAMBIÓ, NO SE TOCA EL ARCHIVO. El job corre dos veces por día y las series
+    # se mueven una: sin esta comparación, cada corrida dejaba un commit cuya única línea
+    # distinta era la marca de tiempo —unos 700 commits vacíos por año—. Por eso `generado`
+    # significa "cuándo cambió el dato" y no "cuándo corrió el job": lo segundo no le sirve a
+    # nadie, y lo primero es justo lo que se quiere saber cuando una serie se queda quieta.
+    if SALIDA.exists():
+        try:
+            viejo = json.loads(SALIDA.read_text(encoding="utf-8"))
+            sin_fecha = lambda d: {k: v for k, v in d.items() if k != "generado"}  # noqa: E731
+            if sin_fecha(out) == sin_fecha(viejo):
+                print(f"\nsin cambios: {SALIDA.name} queda como estaba "
+                      f"(generado {viejo.get('generado')})")
+                return
+        except Exception:                                      # noqa: BLE001
+            pass                                              # ilegible: se reescribe y listo
+
     SALIDA.write_text(json.dumps(out, ensure_ascii=False, separators=(",", ":")),
                       encoding="utf-8")
     print(f"\n{SALIDA.name}: {SALIDA.stat().st_size / 1024:.0f} KB · {hoy}")

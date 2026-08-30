@@ -55,10 +55,19 @@ jobs:
           API_1816_KEY: ${{ secrets.API_1816_KEY }}
         run: python armar_informe.py
 
+      # Segunda vía para las series macro de la solapa Macro. Su workflow propio ("Series Macro")
+      # corre dos veces por día por cron, pero los crones de este repo llegan tarde o no disparan;
+      # este job, en cambio, lo lanza la tarea de las 17:30 con `gh workflow run`, así que sí corre.
+      # Va con continue-on-error porque el informe del día no depende de esto: si el BCRA está
+      # caído, la rueda se archiva igual.
+      - name: Refrescar series macro
+        continue-on-error: true
+        run: python macro_series.py
+
       - name: Commit y push si hay cambios
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          git add informes/
+          git add informes/ macro_series.json
           git diff --staged --quiet || git commit -m "Datos del informe $(date +'%Y-%m-%d')"
           git push

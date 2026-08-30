@@ -922,8 +922,10 @@ function render() {
   if (DATOS.rem) f.push(DATOS.rem.nombre + ' — ' + DATOS.rem.fuente + ', relevamiento del ' +
                         DATOS.rem.ultimoRelevamiento);
   $('#fuentes').innerHTML = 'Fuentes y último dato de cada serie: ' + f.join('; ') +
-    '. Actualizadas el ' + new Date(DATOS.generado).toLocaleString('es-AR') +
-    '. Ninguna se pide en vivo: las arma el job diario y quedan versionadas en el repo.';
+    '. Último cambio en los datos: ' + new Date(DATOS.generado).toLocaleString('es-AR') +
+    '. Ninguna serie se pide en vivo: las arma un job que corre dos veces por día y las deja ' +
+    'versionadas en el repo. Si esa fecha no se mueve es porque las fuentes no publicaron ' +
+    'nada nuevo, no porque el job haya dejado de correr.';
 }
 
 /* ── eventos y arranque ───────────────────────────────────────────────────────────────────── */
@@ -943,10 +945,27 @@ fetch('macro_series.json?t=' + Date.now())
   .then((r) => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
   .then((d) => {
     DATOS = d;
+    const avisos = [];
     if (d.fallos && d.fallos.length) {
-      $('#aviso').innerHTML = '<div class="aviso malo">La última actualización falló en: ' +
-        d.fallos.join('; ') + '. Esas series muestran el dato anterior.</div>';
+      avisos.push('La última actualización falló en: ' + d.fallos.join('; ') +
+                  '. Esas series muestran el dato anterior.');
     }
+    /* El ITCRM es la vara porque es diario de calendario: si él está atrasado, es el job y no el
+       feriado. Las otras tres se comparan con su propio rezago normal. */
+    const atraso = (k, tope) => {
+      if (!d.series[k]) return null;
+      const dias = Math.floor((Date.now() - ms(d.series[k].hasta)) / DIA);
+      return dias > tope ? d.series[k].nombre + ' (' + dias + ' días)' : null;
+    };
+    const viejas = [atraso('itcrm', 4), atraso('riesgoPais', 5), atraso('reservas', 8),
+                    atraso('tamar', 8)].filter(Boolean);
+    if (viejas.length) {
+      avisos.push('Estas series están atrasadas: ' + viejas.join(', ') +
+                  '. El job que las actualiza puede haber dejado de correr; se puede lanzar a ' +
+                  'mano desde Actions, workflow "Series Macro".');
+    }
+    $('#aviso').innerHTML = avisos.map((a) =>
+      '<div class="aviso malo">' + a + '</div>').join('');
     render();
   })
   .catch((e) => {
