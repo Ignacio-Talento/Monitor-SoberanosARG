@@ -1,0 +1,898 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Macro · Monitor Renta Fija AR</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@300;400;600;700&display=swap" rel="stylesheet"><style>body{font-variant-numeric:tabular-nums;}
+  /* ═══ HEADER DE MARCA ═══════════════════════════════════════════
+     Barra navy a todo el ancho con el logo oficial y la navegación adentro, como balanz.com.
+     Antes eran dos bloques sueltos (barra navy + tab-strip blanco). */
+  .navbar {
+    background: var(--navy); padding: 0 32px; height: 64px;
+    display: flex; align-items: center; justify-content: space-between;
+    margin: 0;
+  }
+  .navbar-brand { display: flex; align-items: center; gap: 18px; }
+  .navbar-logo { height: 26px; width: auto; display: block; }
+  .navbar-sep { width: 1px; height: 22px; background: rgba(255,255,255,.22); }
+  .navbar-title { font-size: 11px; color: rgba(255,255,255,.72); font-family: var(--sans);
+                  letter-spacing: .12em; text-transform: uppercase; font-weight: 600; }
+  .navbar-status { display: flex; align-items: center; gap: 8px; font-size: 11px;
+                   color: rgba(255,255,255,.72); font-family: var(--sans); }
+
+  /* Solapas dentro del header: activo con subrayado cyan, como la nav de la web */
+  .nav-tabs {
+    display: flex; gap: 2px; flex-wrap: wrap; background: var(--navy);
+    border-bottom: none; padding: 0 32px 0;
+    margin: 0 0 24px;
+    box-shadow: var(--sh-card);
+  }
+  .nav-tab {
+    font-size: 12px; font-family: var(--sans); font-weight: 600; letter-spacing: .04em;
+    padding: 12px 16px 11px; border-radius: 0; cursor: pointer; border: 0;
+    border-bottom: 3px solid transparent; color: rgba(255,255,255,.7); background: transparent;
+    transition: color .15s, border-color .15s; text-transform: uppercase;
+    text-decoration: none; display: block; margin: 0;
+  }
+  .nav-tab:hover { color: #fff; background: transparent; border-bottom-color: rgba(255,255,255,.3); }
+  .nav-tab.active { color: #fff; background: transparent; border-bottom-color: var(--cyan); font-weight: 700; }
+
+  /* ═══ BOTONES ═══ La marca usa píldoras; el CTA es cyan, no verde. */
+  .btn { font-size: 12px; font-family: var(--sans); font-weight: 600; border-radius: var(--r-pill);
+         padding: 8px 18px; cursor: pointer; border: 1px solid; transition: background .15s, color .15s;
+         white-space: nowrap; }
+  .btn-green { color: #fff; background: var(--cyan); border-color: var(--cyan); }
+  .btn-green:hover { background: var(--cyan-dark); border-color: var(--cyan-dark); }
+  .btn-green:disabled { opacity: .45; cursor: not-allowed; }
+  .btn-ghost { color: var(--text-2); background: var(--surface); border-color: var(--border); }
+  .btn-ghost:hover { background: var(--row-hover); color: var(--navy); border-color: var(--border-l); }
+
+  /* Controles segmentados (comisión, vistas, moneda): píldora con el activo en navy */
+  .com-lado, .vista-btn { border-radius: var(--r-pill); font-weight: 600; }
+  .com-lado.on, .vista-btn.on { background: var(--navy); border-color: var(--navy); }
+  .com-input, .filtro-input { border-radius: var(--r-input); }
+
+  /* ═══ TÍTULO DE GRUPO ═══ eyebrow cyan en mayúsculas, como los títulos de sección de la web */
+  .grupo-titulo {
+    color: var(--navy) !important; letter-spacing: .1em; font-weight: 700;
+    border-bottom: 2px solid var(--cyan) !important;
+  }
+
+
+
+  /* Alinea el contenido del header con el de .wrap. Se usa 100% (ancho del <body>, que ya
+     excluye la barra de scroll) y NO 100vw, que la incluye y hacía sobresalir la barra. El ancho
+     de referencia es fijo (1850, el de Monitor/ONs) para que el header se vea igual en todas las
+     solapas: las páginas angostas usan .wrap de 1400 y el logo se corría hacia adentro. */
+  .navbar, .nav-tabs {
+    padding-left: max(24px, calc((100% - 1850px) / 2 + 24px)) !important; padding-right: max(24px, calc((100% - 1850px) / 2 + 24px)) !important;
+  }
+
+  /* El skill pide los nombres de sección (eyebrow) en CYAN y MAYÚSCULAS. */
+  .grupo-titulo { color: var(--cyan) !important; }
+  /* Aire entre el header y el contenido, y entre bloques. */
+  .toolbar { margin-bottom: 22px; }
+  .indicadores { border-radius: var(--r-card); box-shadow: var(--sh-card); }
+  .table-wrap { border-radius: var(--r-card); box-shadow: var(--sh-card); }
+</style>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    /* Paleta Balanz. Navy y cyan tomados de balanz.com; el resto sigue balanz-design. */
+    --navy: #0d2055;          /* color dominante: header, texto principal */
+    --navy-deep: #01092d;     /* base de degradados */
+    --navy-soft: #06214e;
+    --navy-light: #17336f;    /* hover sobre navy */
+    --cyan: #00a3e4;          /* acento: eyebrows, CTAs, activo */
+    --cyan-dark: #0089c1;     /* hover del CTA */
+    --cyan-bg: #e6f6fd;       /* recuadros informativos */
+
+    --bg: #f2f4f8;            /* fondo de página */
+    --surface: #ffffff;       /* tarjetas */
+    --card: #f8fafc;          /* encabezados de tabla */
+    --row-hover: #eef4fa;
+    --border: #c8d3e0;
+    --border-l: #a7b2c8;
+
+    --text: #0d2055;
+    --text-2: #3a4a5c;
+    --text-3: #6b7280;        /* label_gray del skill */
+
+    --green: #1b9e5a;         /* semánticos de perfil de riesgo */
+    --green-bg: #dcfce7;
+    --green-border: #86efac;
+    --amber: #e08e16;
+    --red: #c0392b;
+    --blue: #145e81;
+    --purple: #7c3aed;
+    --teal: #0d9488;
+
+    --r-pill: 999px;          /* la marca usa píldoras para los CTA */
+    --r-card: 12px;
+    --r-input: 8px;
+    --sh-card: 0 1px 3px rgba(13,32,85,.08), 0 1px 2px rgba(13,32,85,.04);
+    --sh-raised: 0 4px 16px rgba(13,32,85,.10);
+
+    --mono: 'Open Sans',Arial,system-ui,sans-serif;
+    --sans: 'Open Sans',Arial,system-ui,sans-serif;
+  }
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap');
+  /* Barra de scroll vertical siempre visible: sin esto las páginas cortas (Duales, Caución)
+     son 15px más anchas que las largas y el header se corre al cambiar de solapa. */
+  html { overflow-y: scroll; }
+
+  /* min-width: fit-content -> si una tabla se sale a lo ancho (vista Completa), el body crece
+     con ella y el header, que mide 100% del body, la sigue cubriendo al scrollear. */
+  body { background: var(--bg); color: var(--text); font-family: var(--sans); min-height: 100vh;
+         margin: 0; padding: 0; min-width: fit-content; }
+  .wrap { max-width: 1400px; margin: 0 auto; padding: 0 24px 24px; }
+
+
+
+  .intro { font-size: 12px; color: var(--text-3); font-family: var(--mono); margin-bottom: 20px; line-height: 1.6; }
+
+  .modo-toggle { display: inline-flex; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; margin-bottom: 18px; background: var(--surface); box-shadow: 0 1px 4px rgba(0,0,0,0.06); }
+  .modo-btn { font-size: 11px; font-family: var(--mono); font-weight: 600; letter-spacing: .05em; text-transform: uppercase; padding: 9px 24px; cursor: pointer; border: none; background: transparent; color: var(--text-3); transition: all .15s; }
+  .modo-btn:hover { color: var(--navy); background: var(--row-hover); }
+  .modo-btn.active, .modo-btn.active:hover { background: var(--navy); color: #fff; }
+
+  .layout { display: grid; grid-template-columns: 340px 1fr; gap: 20px; align-items: start; }
+  @media (max-width: 860px) { .layout { grid-template-columns: 1fr; } }
+
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; box-shadow: 0 1px 4px rgba(0,0,0,0.06); }
+  .card-header { background: var(--card); border-bottom: 1px solid var(--border); padding: 12px 18px; }
+  .card-title { font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--text-3); font-family: var(--mono); font-weight: 600; }
+  .card-body { padding: 18px; }
+
+  .field { display: flex; flex-direction: column; gap: 5px; margin-bottom: 14px; }
+  .field:last-child { margin-bottom: 0; }
+  .field label { font-size: 10px; color: var(--text-3); font-family: var(--mono); letter-spacing: .06em; text-transform: uppercase; }
+  .field .hint { font-size: 9px; color: var(--text-3); font-family: var(--mono); }
+  .inp { background: var(--bg); border: 1px solid var(--border-l); border-radius: 6px; color: var(--navy); font-family: var(--mono); font-size: 15px; font-weight: 600; padding: 9px 12px; width: 100%; transition: border-color .15s; }
+  .inp:focus { outline: none; border-color: var(--blue); }
+  input[type=number]::-webkit-inner-spin-button, input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+  input[type=number] { -moz-appearance: textfield; appearance: textfield; }
+
+  .params { margin-top: 6px; }
+  .params-title { font-size: 10px; font-family: var(--mono); color: var(--text-3); letter-spacing: .06em; text-transform: uppercase; padding: 6px 0; }
+  .param-row { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
+  .param-row label { font-size: 10px; color: var(--text-3); font-family: var(--mono); flex: 1; }
+  .inp-sm { background: var(--bg); border: 1px solid var(--border-l); border-radius: 5px; color: var(--text-2); font-family: var(--mono); font-size: 12px; text-align: right; width: 90px; padding: 5px 8px; }
+  .inp-sm:focus { outline: none; border-color: var(--blue); }
+  .inp-sm[readonly] { opacity: .6; cursor: not-allowed; background: var(--card); }
+
+  /* Desglose de resultados */
+  .result-table { width: 100%; border-collapse: collapse; }
+  .result-table td { padding: 10px 18px; font-family: var(--mono); font-size: 13px; border-bottom: 1px solid var(--border); }
+  .result-table tr:last-child td { border-bottom: none; }
+  .result-table .lbl { color: var(--text-2); text-align: left; }
+  .result-table .val { text-align: right; color: var(--text); font-weight: 500; }
+  .result-table .val.neg { color: var(--red); }
+  .result-table .sub { padding-left: 34px; color: var(--text-3); font-size: 12px; }
+  .result-table tr.total td { background: var(--card); font-weight: 700; }
+  .result-table tr.total .lbl { color: var(--navy); text-transform: uppercase; font-size: 11px; letter-spacing: .06em; }
+  .result-table tr.total .val { color: var(--navy); font-size: 15px; }
+  .result-table tr.destacada td { background: #e8edf5; }
+  .result-table tr.destacada .lbl { color: var(--navy); font-weight: 700; text-transform: uppercase; font-size: 11px; letter-spacing: .06em; }
+  .result-table tr.destacada .val { color: var(--navy); font-size: 18px; font-weight: 700; }
+
+  .kpis { display: grid; grid-template-columns: 1fr 1fr; gap: 1px; background: var(--border); border-top: 1px solid var(--border); }
+  .kpi { background: var(--surface); padding: 14px 18px; display: flex; flex-direction: column; gap: 4px; }
+  .kpi .k-lbl { font-size: 10px; color: var(--text-3); font-family: var(--mono); letter-spacing: .06em; text-transform: uppercase; }
+  .kpi .k-val { font-size: 18px; font-weight: 700; font-family: var(--mono); color: var(--navy); }
+  .kpi .k-val.green { color: var(--green); }
+  .kpi .k-val.amber { color: var(--amber); }
+  .kpi .k-val.red { color: var(--red); }
+
+  .nota { font-size: 10px; color: var(--text-3); font-family: var(--mono); line-height: 1.6; margin-top: 14px; padding: 12px 16px; background: var(--card); border-left: 3px solid var(--cyan); border-radius: 0 6px 6px 0; }
+</style>
+</head>
+<body>
+
+<nav class="navbar">
+<div class="navbar-brand">
+  <img class="navbar-logo" alt="Balanz" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAecAAABoCAYAAADLnDjtAAAUUUlEQVR4nO2de7SWVZ3HP8dwgUIgpQh5Q01LE9M0WdioqHlJw7yWSmlamhjY0UabadKmzEwKs7xgarioNE1LzRtqpoVRKqbmtaEcnLEFg2t5G0gcGc/8sc87HA7v5Xne57ufvZ9n/z5rnQWc87zfvc/hvPu392//Lj19fX0YhmEYhhEP64SegGEYhmEYa2LG2TAMwzAiw4yzYRiGYUSGGWfDMAzDiAwzzoZhGIYRGWacDcMwDCMyzDgbhmEYRmQMyfDMpt5noeF/gVeA1wPPo2xGA8PFmi+I9VQMAzYU6PwdeEmgkzLqdWEpsEqsqWYc8DaRVkzvsbFkswXtyPP9KH+OVea/gDdbfbEnQxGSKlcpWQo8BTwN3A/cSf2Mt4//nwOBuzzoFmUucJxAZwnwLoFOqswBThBr/h7YXaypRvlemw/sKdQrguL72hJYXOJ4deB7QG+rL9bdrT0W2BeYAfwcd2LqA34KTAo4LxWHetI93ZOuUQ/Uhhnc+7HHg26s7AFMDD0JI17qbpxbcTSwAGeoZ1LcpROKMzzpHuBJ16g++3rU/pxH7Ri5PfQEjHhJ1TgP5Eyc3//i0BPpgj08ak/1qG1UF18bQt/aMfJO4KTQkzDixIzzaqbjTtKTA88jKyd71jfXttGMgzxqbwOM9KgfI1eEnoARJ2ac1+Y+qnGK/qJn/V2orrvf8MOxJYzRW8IYsfH90BMw4sOMc3OmA/NCT6INI4FtSxhnegljGNWhDLdzbwljxMYMNCmCRo0w49yaA4Dfhp5EC3prNo4RP+vivCm+GQ1sXsI4sXFj6AkYcWHGuT17EKeL27dLu8EWwDtKGsuImxkljvWPJY4VC3sBu4WehBEPZpw7Mx1/+cTdsBXlBs2kFkFrNKfM34MyNwIxcVvoCRjxYMY5GzcRz8+q7FOFGWdjDLBJyWPuWvJ4MbAR8NnQkzDiIBaDUwUuCT2BfqaVPN56uBQXI13KukYZSKqbwitDT8CIAzPO2ZmGC4oJSajawyEWZyMeQuS8HxNgzFi4KPQEjPCYcc7HOYHHD3WaSK2sorGaCYTblPoseBIzX8BSq5LHjHM+zgw8/hEBx/6HgGMb4QjpNekNOHZofhZ6AoZ3Frf7YlkVoC5BF4HZAwzF3YUOx7X+2xx3LzoR191mjGiswQwFxpO9NZqSwwOMOZBe4IHAczDK5/iAY+8XcOzQ7I0LilsYeiIeOBq3llaBXmBnD7pP0OH6oizj/IZQqw9Y2f/xMq7J90NNnjsUOBfYQTg2wJHAd8SaWQgdIBPy1G6EYf/QE8D17/5R6EkE4nZg49CT8MD1oSeQkQ/gxzA3tNtSZ7f2zbj7sqPEuiEWrB7gQwHGHcyhoSdglEroDSGk3YBlDH56ZxudGQ484kl7e2BVp4fqbJwb3AjsKdSbJNTKSiwBWTEs1kZ5xNDXeyfCZ0mEZE7oCSTKk550jweeyfJgCsYZYD66/MERIp08xFLO0Gf/aCMuPhl6AgNItWJYgwtDTyAxfoKLLVIzlxxXNKkYZ4DTQk+gS0YBWwt0VPc8VsEoDRRR2gsEGpC2axvc92817svhOGCqB93ngU/neUFKxnklsEikNUykkwXVwqQq6mCu7fozFOdOLsrFwC0CnU1xpS1TpipBVFVme9zp1gfvy/uClIwz6FpAlpkGoDjB3IKLcn9QoLUdLljCqC8qN/J1wOUirdRPzx+mnJadqbIu8JQn7V2BFXlflJpx/otIR5ka1o6t0dxxX9b/p2qhTP0OsO4oNoS/6/9znkAL0i5I0sC6VvnjMU+6M+gy6js147xcpLNSpNMJVUWyu/v/VOWLmmu7vozt/yjK7AF/v0egtx7Oa5MyY8l5b2lkYjbOpa3mJgo0TErNOK8fegI5UaRQ3Trg72+hSRHYCBgn0DHiQ5UZcM2Av18h0qyDa7tjfmsHrpbMwmhwJHCKB90XKVjVMTXjvJVAo6xTsypt6bJB/1a5tmNJ7zK0KAzg4NiGGwWaACeJdELycYHGLIGG4ezBDZ6031tUIDXjrChG8geBRhZUp4TBd36qoga9Ih0jHnZCsyYM3hCCLq2q6rn2j1L8eukMYLRgLinTgy4GaTB7AS8VFUnJOPegubO6u/MjEg4TaNzR5HOvA88JtNcB3i/QMeJBFUvQzPj8QKRdB9f2ZwQallpVjAdxNkHNlxFlBaVknL8m0injTXGkSOfSFp9XLZQWGFYvPiXQeLjF538s0AbNpjU0qygeEb8fGZonGE2ZCXzQg+59wPkqsVSM83jgbIGO6tTZCZXRa3ZyBl0p0+NEOkZ4VHW0m7m0weXZPy4aow4G+kKKx69YalV+DkKXBTOQFcA+SsEUjPN2wL+LtL4u0mnHOmiaa9zV5msvA8sEYwDsK9IxwqLIbYb2FZYsantNPlrw9eOwDXIexuHacPpgG7VgnY3zSNzd19NCzW8JtVoxTaTTyqXdwFzbxkD2E2g8gjsht0IVjFj1oLAG99K8F30efJWbrCOq8s2DORhYohatm3HeBJezthB4Fc0dWoPpQq12qFKUbu3wdZVxPkikY4RDdfpq5dJusBL4q2isk0U6oTlCoDFToFF37sNP2eELaH19WIievr52G12g/U44K2/iDKaaEcAGwIa4CkK+eAY/FWQGMxpBCD6uItP+GZ5bjuYX9hhcHWXfzEVjSJYA7xLo1IU/ARMEOm/DFbppx5lojElZ78mBKNbCLYHFgz53BcVzuDfAHUi6wdf3FQtfBf7Vg+7DwG4edIHyjHPVWR8XDOabc4GvCHQOA27O8NwsNG7ph4CJAp1OmHHWMwzN7/ZjwM4ZnhsFvCIYD+Dt6EryZsGXEeuh86amE3cBB3b52job58m4U7OaPtxm1Jt9rJtb2wcbU45hBl2gy80Zn1NVC9sNGCLSMspF1ee8k0u7wavAUtGYVe3RPpg+iseaHICmzWed2BA/hhng3Xg+uJpxbs0S3M5cFdXciW3RuJjvzfHsInS/YD7q0xr+UUVp56n5bMGIa3M58FpBjU5xJqnxrCfdT1BCSq0Z5+ZcgnN7lukyUwWC5T0Nq9JbVIu8UR6bAGMEOk+Qr6GDyji/E9hUpBUDBxd8/abAVMVEasAvcb8famYDP/OguxZmnNfkeVxgTIh+xaqi/nmbDKhc2+Oxer9VQ7WhyurSbrAE3ca3TqfnB4D5BTV+ophIxTkDmOJB9xngVA+6TTHjvJrluIIaipaKeZks0rm/i9c8Jhob4AtCLcM/vSKdH3bxmtmdH8lEr0gnFhSley8QaFSV3fDXtStLwKMMM86rGYHrUvI0HsPjW6AKBOt2wbum8yOZMNd2ddgFTeH/p3GpknlRubZ7qFeN6WXA9wpqnIUrwpQaI1m7XamKCcAbnrSbYsZ5bbbD/Qf7SlpvxiEinW7vQlSu7RFoemYb/lFtCPO6tBv8FV0wYq9IJxZ6BRpl1B2Ijac86X6GAB5VM86tmYxzdXebO5gVRfN1KHZX9YBoDlCvO8A6owocuqrAa1WbQmUlwFg4seDrP0JaLV2vw09w4DXoys7mwoxzZ+7ETxeTBqGCcgZzk2QW8HmRjuEPVcnVZyjm6lO5tiFbRbwqcTXwYkGNVFKrTsKlN6n5T+CTHnQzYcY5GzNxTbTVDEF3v13UjaVcKMuoFmZ0j8q7UfTkq2ohCfX02BTdRG0GHKuYSMRMQJcOOpgdPOlmwoxzds5D54JuoArLXyDQaNdiMi8WGBY3qjafikXxRwIN0PWjjomFFH9fqoI9Y2QYri68DyZSvChMIcw45+N6YKxQT7XbL+rSbqAy0EeJdAw9J4h0/g3XZaooSo9NHU+Jxwg0vinQiBGl52Ugp1O8lWdhyjTOyz18lBra3s9vRDobAluItFS7Y6V7qGgjecMPqkp0qjxlhdenQR1d2y9TvIvXP1O/1KqrcCWP1dwOXORBNzdlGedZuDrV6o9huDzHxsdmwOHAlfgrvbktrutTUVQLiTKv7xdCrToulFVnOLo2i1eKdAB+LtLZhXo2YPmSQONagUYsHItLb1LzEhEdKurm1n4BF3V8Ms54b0fxcnjNyFPkvxW9Ag3QubQb/E6ks7dIx9Ch6uL0HLBCpAVaj01p5RVLpmjq28EEDnASsQ3+7tHf60m3K+pmnAfzLLAnLudPyShgUoHXbw+sJ5qLKqCmgXKh/LRQyyiOqvDIpSKdBncLterqsbkWl9pThNsUEwnIEFysgw/2pnjqmpS6G+cG89DfT/xTgdeqFpCHRToDURr7ui6UVWRzYCORlo/UFVUw4hbAO0RasVG0a9UW+MkHLgsf6x3AV+muL4FXUjHO4HoXF/3lHkiRkpuq+xK1S7vBYyKdCbi4ACM8qo3S8/iJ51BGbas8BLHxBK4VYhGqWtbzImAnD7rzga970C1MT19fx/K2ivq3s9BFiRblUXT/ydvjqiTlYR/gXtH4S9He/TXYWqh1FvBtkdZc4DiBzhJcv+6UUNWxBlcXW81QdOUXV+DqvKtR/Ay3BBYXeP0I4L8LzuE84CsD/h3D99WOQ4BbPOiuRHe9KKeOkY2d+BI6F9oB5DfOSlevMufaF6ejM85Gd6i7rCk3bz4Yjpujj01EaJYD5wJnF9D4F+Bb+MtoUbI5fgwzuOCyaEnJrd1AGXzSzaKndK1XgXFUYxNRZ+rq5m1HLJ46H5wj0KhKapWvALBDcNk90ZKicQbnDlYwIefzR4vGrRopGoeYSPH37pTQE/DM4QVfP4X4U6sewF13qLmQCjQFSdU4LxLpbJbz+Trv5tthxjkc0RRVCECRdMfYuYni61jMBupc4EMedB+lIrX/UzXOr4h0RuV4dl1cBaMUWZf4d+l1pRILkSfqnspXJGMEYDz6Zj4KPsyaAWtK1PEX3kjVOIdI70m9z7GdnsMwOfQEAnJk6Al45lnghoIa1ysmImQMcI8n7W2BVZ605aRqnEMUKaj7Lr4TJ4aeQIJ8NvQEIqDo6TJ2FKmFMeErAGwquuvMUkjVOKuK/2dlDPnvp+vI5NATSIzUN4RQf4/NSuDLoSchYh75rgqzciXViU7/f1I1zqrE82UZn7NF0lH3hTImRuAav6TO5NATKIHzgbdCT6IgZ+HqRqhZhGuEVDlSNM77C7UWZ3zOjLOj7i7GmOgNPYGISOFKZUroCRRgd+ACT9o7etL1TorGWWkoH83wzA64aGXDUfcgnVgwL8VqUohYvwNXe7tqjELXpnYwO+Hc/pUkNeM8Fq3r5A8ZnrFT85rYz8M/46lvZ6ZuULZojZlDQ0+gC571pDsNeNyTdimkZpx/Lda7I8MzJ4jHrDqTSO/3rmxsA7Q2M0JPoASeQ9/f3Sc34qe07w3A5R50SyWlRXIO+gCZTgFh+4rHqwuVDNCoECkYoryk4NoGXTta35wKHOFBdwlxFlbJTSpdqeahjwSck+EZ5YJwIvA/Qr28nIoL3FBwBjXY2UaKsgLSLRQvclGEjYDvirTG4JqwLBHpxcoq3LozK/RE2vAB4FJP2rXJUKi7cT4FmO1J+zsZnvmIaKw/A1eLtLrlOWCBSGsbYCTwmkjPWI2yfvsp6JrEdMtMdAGVp+NSdurOhcA3iPOefTjwiCft3YFXPWmXTp2M8yjgPcBeuLaMe3kcaymd+zhPFY7na4ORh9+L9U7DLSAhGEe1mpD8Fngo47NHicZ8ifCGGeAHwHSR1hdJwziDa3hyb+hJNOFJT7qXA3/BeVuqwivAm62+2NPX19dJoOMDCXI4ritMO/4I7Cwab33gdZFWEW5Alwr1MvkjiudSv3KFWZhDtrvEQ9A1pj8Pf80H8rAD2hShHQvoKdbCLcleH6EoDwEfLGmsLN/XENoYowS5Ezio1RdTCghT8SKdDfNQdIZ5EXEYZnCnGBWjcSk/hg6lNyAGbw3oT1qpBIYBHBZ6Akb3mHHOT8udzgCUHahiCpz6lVjPUn607CHSeQ34m0hLgTLe4nihVuz8DVdX2qggZpzz8VNgYYbnlEbnCqGWgjuFWpbyo0OZnuYrkrZblB4bgH3EejHzudATMLrDjHM+js3wzFhgE9F4i4HlIi0V6pP8rmK9VFFuCGPy1gA8KNZLyWPTh/WSryRmnLOTNX9OWdM4thMMwC/FeiktlL4YictUULAC+A+RlhJlvvXBQq0qcBk1SjFKBTPO2TiC7DVglUE5sbm0G8wXah0j1EqV04RaMW4IQX+ar0UVqRxkiZUxIsKMc2eOB36R8dn3o/uZPk+8RTrUC+WBYr3UqGOU9mDUdfFT89gsQLupNjxjxrk9R5OvkLzyDX+ZUEvNtWK91BZKJVvhCvAoeJ3ycnC7IUujmaxMpF5FmLJg7VorhBnn1uwIXJ/zNcoCGeoIVTXKEnz7CbVSQ7mxifXU3EDtsUktknkZcHHoSRjZMOO8Nrfifi55qwjtL5zDC8QfwKHePKRY+UuBMhI31vvmBreK9ZTBm1VBGZ9geMSM82qWAXvjSiB2U6YvpRMM6Btx9Ir1UmCSUOtNXHOT2PmNUGtrXKW61Dgx9ASMzphxdifkKcDGwP0FdJQtKWPLM23GKjo3/8jDzriyp0Z2lKUoY45xGIj6vZHiSfJqOveiNwKTqnF+Ajgb2AB3t3xbQT2lS3YpriNQFVCnelmxhHwom9XH7tJucJ1YL9VgxNRyvStH3Y3zG8DjuIjraThD3NP/5zfQ3evWvfBIK64S66V4B9gtyqYGb+EarFSFh4VaI3ER76mxELgn9CSM1mRJJVD1h/XFG/0fK3EnzmWU77I5B51LVtXyrwyW43KU3y7Se6vD189HHxRUBf7U5HNPontv/lmkUxZHoW2F+PeMz00BhhUca3HB1yv5GLoT9OIMz6wifntSJm3fd1n6ORuGYRiGUSJ1d2sbhmEYRuUw42wYhmEYkWHG2TAMwzAiw4yzYRiGYUSGGWfDMAzDiAwzzoZhGIYRGf8H6oMLbYWQCvsAAAAASUVORK5CYII=">
+  <div class="navbar-sep"></div>
+  <div class="navbar-title">Monitor · Renta Fija AR</div>
+</div>
+</nav>
+
+<div class="nav-tabs">
+  <a class="nav-tab" href="bonos.html">Monitor</a>
+  <a class="nav-tab" href="ons.html">ONs</a>
+  <a class="nav-tab" href="senderoCER.html">Sendero CER</a>
+  <a class="nav-tab" href="senderoDL.html">Sendero DL</a>
+  <a class="nav-tab" href="senderoTAMAR.html">Sendero TAMAR</a>
+  <a class="nav-tab" href="duales.html">Duales</a>
+  <a class="nav-tab" href="globVsBon.html">Glob vs Bon</a>
+  <a class="nav-tab" href="caucionVsLecap.html">Caución vs Lecap</a>
+  <a class="nav-tab" href="sinteticos.html">Sintéticos</a>
+  <a class="nav-tab" href="caucionNeta.html">Caución Neta</a>
+  <a class="nav-tab" href="rotacionBopreal.html">Rotación BOPREAL</a>
+  <a class="nav-tab active" href="macro.html">Macro</a>
+</div>
+
+<style>
+  /* ═══ SOLAPA MACRO ═══
+     Cinco series largas, cada una en su tarjeta. El selector de plazo es UNO y vale para las
+     cinco: la gracia de tenerlas juntas es mirar el mismo tramo de tiempo en todas a la vez. */
+  .barra { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; margin-bottom: 20px; }
+  .seg { display: inline-flex; border: 1px solid var(--border); border-radius: var(--r-pill);
+         overflow: hidden; background: var(--surface); box-shadow: 0 1px 4px rgba(0,0,0,.06); }
+  .seg button { font-size: 11px; font-family: var(--sans); font-weight: 600; letter-spacing: .05em;
+                padding: 8px 18px; cursor: pointer; border: none; background: transparent;
+                color: var(--text-3); transition: background .15s, color .15s; }
+  .seg button:hover { color: var(--navy); background: var(--row-hover); }
+  .seg button.on, .seg button.on:hover { background: var(--navy); color: #fff; }
+  .seg.chico button { padding: 5px 12px; font-size: 10px; letter-spacing: .04em; }
+  .barra-lbl { font-size: 10px; font-family: var(--mono); color: var(--text-3);
+               letter-spacing: .08em; text-transform: uppercase; }
+
+  .g-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-card);
+            box-shadow: var(--sh-card); margin-bottom: 20px; overflow: hidden; }
+  .g-head { padding: 14px 20px 12px; border-bottom: 1px solid var(--border); background: var(--card);
+            display: flex; align-items: flex-start; justify-content: space-between; gap: 24px; }
+  /* El bloque de texto se encoge y el de números no: con un subtítulo largo, si no, los KPIs se
+     caían a un renglón aparte y la tarjeta de TAMAR quedaba distinta de las otras cuatro. */
+  .g-head > div:first-child { flex: 1 1 auto; min-width: 0; }
+  .g-kpis { flex: 0 0 auto; }
+  .g-tit { font-size: 13px; font-weight: 700; color: var(--navy); letter-spacing: .02em; }
+  .g-sub { font-size: 10.5px; font-family: var(--mono); color: var(--text-3); margin-top: 3px;
+           line-height: 1.5; }
+  .g-kpis { display: flex; gap: 26px; align-items: flex-start; }
+  .g-kpi { text-align: right; }
+  .g-kpi .k-lbl { font-size: 9px; font-family: var(--mono); color: var(--text-3);
+                  letter-spacing: .07em; text-transform: uppercase; }
+  .g-kpi .k-val { font-size: 17px; font-weight: 700; font-family: var(--mono); color: var(--navy);
+                  line-height: 1.25; }
+  .g-kpi .k-val.pos { color: var(--green); }
+  .g-kpi .k-val.neg { color: var(--red); }
+  .g-ctrl { padding: 10px 20px 0; display: flex; gap: 16px; align-items: center; flex-wrap: wrap; }
+  .g-body { padding: 8px 12px 4px; position: relative; }
+  .g-svg { width: 100%; height: auto; display: block; font-family: var(--sans); }
+  .g-pie { padding: 2px 20px 14px; font-size: 10px; font-family: var(--mono); color: var(--text-3);
+           line-height: 1.6; }
+  .g-leyenda { display: flex; gap: 16px; flex-wrap: wrap; padding: 0 20px 10px; font-size: 10px;
+               font-family: var(--mono); color: var(--text-2); }
+  .g-leyenda span { display: inline-flex; align-items: center; gap: 6px; }
+  .g-leyenda i { width: 16px; height: 0; border-top-width: 2px; border-top-style: solid;
+                 display: inline-block; }
+
+  /* Tooltip del gráfico: sigue al mouse, no tapa el punto. */
+  .g-tip { position: absolute; pointer-events: none; background: var(--navy); color: #fff;
+           border-radius: 6px; padding: 7px 11px; font-family: var(--mono); font-size: 11px;
+           line-height: 1.55; box-shadow: var(--sh-raised); white-space: nowrap; z-index: 5; }
+  .g-tip b { font-weight: 700; font-size: 12.5px; }
+  .g-tip .t-f { color: rgba(255,255,255,.7); font-size: 10px; letter-spacing: .04em; }
+
+  .aviso { font-size: 11px; font-family: var(--mono); color: var(--text-3); line-height: 1.6;
+           padding: 12px 16px; background: var(--card); border-left: 3px solid var(--cyan);
+           border-radius: 0 6px 6px 0; margin-bottom: 20px; }
+  .aviso.malo { border-left-color: var(--red); color: var(--red); }
+  .cargando { padding: 60px 0; text-align: center; color: var(--text-3); font-family: var(--mono);
+              font-size: 12px; }
+</style>
+
+<div class="wrap">
+
+  <div class="barra">
+    <span class="barra-lbl">Plazo</span>
+    <div class="seg" id="seg-plazo"></div>
+    <span class="barra-lbl" id="rango-txt"></span>
+  </div>
+
+  <div id="aviso"></div>
+  <div id="graficos"><div class="cargando">Cargando series…</div></div>
+
+  <div class="aviso" id="fuentes"></div>
+</div>
+
+<script>
+/* ═══════════════════════════════════════════════════════════════════════════════════════════
+   SOLAPA MACRO — cinco series largas dibujadas en SVG a mano.
+
+   POR QUÉ SVG A MANO Y NO UNA LIBRERÍA. El resto del monitor ya dibuja así (Sendero TAMAR, Glob
+   vs Bon) y no hay ninguna dependencia externa salvo xlsx.js. Sumar una librería de gráficos por
+   cinco series de una variable sería la dependencia más pesada del repo.
+
+   DE DÓNDE SALEN LOS DATOS. De macro_series.json, que arma macro_series.py y commitea el job
+   diario. Ninguna llamada en vivo: son series que se mueven una vez por día y la más larga
+   arranca en 1997.
+
+   LOS PLAZOS SON LOS DEL BCRA —1M, 3M, 6M, 1A, Max— y el selector es uno solo para las cinco
+   tarjetas: la razón de tenerlas juntas es mirar el mismo tramo en todas a la vez.
+   ═════════════════════════════════════════════════════════════════════════════════════════ */
+
+const PAL = {
+  navy: '#0d2055', cyan: '#00a3e4', gris: '#6b7280', borde: '#c8d3e0', suave: '#e6ecf3',
+  verde: '#1b9e5a', rojo: '#c0392b', ambar: '#e08e16', azul: '#145e81', violeta: '#7c3aed',
+};
+const MESES = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+const DIA = 86400000;
+const PLAZOS = [
+  { id: '1M',  dias: 30 },
+  { id: '3M',  dias: 91 },
+  { id: '6M',  dias: 182 },
+  { id: '1A',  dias: 365 },
+  { id: 'Max', dias: null },
+];
+
+let DATOS = null;
+let plazo = '1A';
+/* Sobre qué tramo se calculan el promedio y los desvíos del ITCRM. "Ventana visible" es el
+   default porque es lo que uno está mirando, pero con 1M seleccionado un desvío sobre 30 ruedas
+   no dice nada, y por eso se puede clavar a un período largo sin cambiar el zoom del gráfico. */
+let ventanaStats = 'vis';
+let escalaLog = { itcrm: false, riesgoPais: false };
+let medidaInfl = '3m';
+
+const $ = (s, r) => (r || document).querySelector(s);
+const ms = (f) => Date.parse(f + 'T00:00:00Z');
+const fmt = (v, d) => (v === null || v === undefined || !isFinite(v)) ? '—'
+  : v.toLocaleString('es-AR', { minimumFractionDigits: d, maximumFractionDigits: d });
+const fFecha = (t) => { const d = new Date(t);
+  return d.getUTCDate() + ' ' + MESES[d.getUTCMonth()] + ' ' + d.getUTCFullYear(); };
+
+/* ── serie: dos arrays paralelos del JSON -> [[ms, valor], ...] ──────────────────────────── */
+function aPuntos(s) {
+  const out = new Array(s.f.length);
+  for (let i = 0; i < s.f.length; i++) out[i] = [ms(s.f[i]), s.v[i]];
+  return out;
+}
+function recortar(pts, desdeMs) {
+  if (desdeMs === null) return pts;
+  let i = 0;
+  while (i < pts.length && pts[i][0] < desdeMs) i++;
+  /* Un punto antes del corte para que la línea entre por el borde izquierdo y no arranque
+     flotando en el aire cuando la serie es rala (el riesgo país no cotiza los feriados). */
+  return pts.slice(Math.max(0, i - 1));
+}
+function estadistica(pts) {
+  const n = pts.length;
+  if (!n) return null;
+  let s = 0;
+  for (const p of pts) s += p[1];
+  const prom = s / n;
+  let q = 0;
+  for (const p of pts) q += (p[1] - prom) * (p[1] - prom);
+  /* Desvío muestral (n-1): la ventana es una muestra del período, no la población entera. */
+  const sd = n > 1 ? Math.sqrt(q / (n - 1)) : 0;
+  return { prom, sd, n };
+}
+
+/* ── ticks ────────────────────────────────────────────────────────────────────────────────── */
+function ticksY(min, max, n) {
+  if (!(max > min)) { max = min + 1; }
+  const mag = Math.pow(10, Math.floor(Math.log10((max - min) / n)));
+  const norm = (max - min) / n / mag;
+  const paso = (norm <= 1 ? 1 : norm <= 2 ? 2 : norm <= 2.5 ? 2.5 : norm <= 5 ? 5 : 10) * mag;
+  const out = [];
+  for (let v = Math.ceil(min / paso) * paso; v <= max + paso * 1e-9; v += paso) {
+    out.push(Number(v.toPrecision(12)));
+  }
+  return out;
+}
+function ticksYlog(min, max) {
+  const out = [];
+  for (let e = Math.floor(Math.log10(min)); e <= Math.ceil(Math.log10(max)); e++) {
+    for (const m of [1, 2, 5]) {
+      const v = m * Math.pow(10, e);
+      if (v >= min && v <= max) out.push(v);
+    }
+  }
+  return out.length > 1 ? out : ticksY(min, max, 5);
+}
+function ticksX(t0, t1) {
+  const dias = (t1 - t0) / DIA, out = [];
+  const meter = (d) => { const t = d.getTime(); if (t >= t0 && t <= t1) out.push(t); };
+  if (dias > 2400) {
+    const paso = dias > 9000 ? 5 : dias > 4400 ? 2 : 1;
+    const y0 = Math.ceil(new Date(t0).getUTCFullYear() / paso) * paso;
+    for (let y = y0; ; y += paso) {
+      const d = new Date(Date.UTC(y, 0, 1));
+      if (d.getTime() > t1) break;
+      meter(d);
+    }
+    return { ts: out, fmt: 'anio' };
+  }
+  if (dias > 100) {
+    const paso = dias > 1000 ? 6 : dias > 500 ? 3 : dias > 200 ? 2 : 1;
+    const d0 = new Date(t0);
+    let y = d0.getUTCFullYear(), m = Math.ceil(d0.getUTCMonth() / paso) * paso;
+    for (;;) {
+      if (m > 11) { m -= 12; y++; }
+      const d = new Date(Date.UTC(y, m, 1));
+      if (d.getTime() > t1) break;
+      meter(d);
+      m += paso;
+    }
+    return { ts: out, fmt: 'mes' };
+  }
+  const paso = dias > 60 ? 14 : dias > 20 ? 7 : 3;
+  for (let t = Math.ceil(t0 / DIA) * DIA; t <= t1; t += paso * DIA) out.push(t);
+  return { ts: out, fmt: 'dia' };
+}
+function rotuloX(t, modo) {
+  const d = new Date(t);
+  if (modo === 'anio') return String(d.getUTCFullYear());
+  if (modo === 'mes') return MESES[d.getUTCMonth()] + ' ' + String(d.getUTCFullYear()).slice(2);
+  return d.getUTCDate() + '/' + (d.getUTCMonth() + 1);
+}
+
+/* ── decimado: baja la cantidad de nodos del path sin comerse los picos ───────────────────── */
+function decimar(pts, tope) {
+  if (pts.length <= tope) return pts;
+  const paso = Math.ceil(pts.length / (tope / 2));
+  const out = [pts[0]];
+  for (let i = 0; i < pts.length; i += paso) {
+    let mn = pts[i], mx = pts[i];
+    for (let j = i; j < Math.min(i + paso, pts.length); j++) {
+      if (pts[j][1] < mn[1]) mn = pts[j];
+      if (pts[j][1] > mx[1]) mx = pts[j];
+    }
+    /* Los dos extremos del tramo, en el orden en que ocurrieron: así una mecha para arriba
+       seguida de una para abajo no se dibuja invertida. */
+    const par = mn[0] <= mx[0] ? [mn, mx] : [mx, mn];
+    out.push(par[0]);
+    if (par[1] !== par[0]) out.push(par[1]);
+  }
+  out.push(pts[pts.length - 1]);
+  return out;
+}
+
+/* ── motor de gráfico ─────────────────────────────────────────────────────────────────────── */
+const W = 1000, H = 330, ML = 70, MR = 22, MT = 16, MB = 34;
+const PW = W - ML - MR, PH = H - MT - MB;
+
+function dibujar(cfg) {
+  const todas = cfg.series.filter((s) => s.pts.length);
+  if (!todas.length) return { svg: '<div class="cargando">Sin datos en este plazo.</div>', estado: null };
+
+  let t0 = Infinity, t1 = -Infinity, vmin = Infinity, vmax = -Infinity;
+  for (const s of todas) {
+    for (const p of s.pts) {
+      if (p[0] < t0) t0 = p[0];
+      if (p[0] > t1) t1 = p[0];
+      if (p[1] < vmin) vmin = p[1];
+      if (p[1] > vmax) vmax = p[1];
+    }
+  }
+  if (cfg.bandas) {
+    vmin = Math.min(vmin, cfg.bandas.prom - 2 * cfg.bandas.sd);
+    vmax = Math.max(vmax, cfg.bandas.prom + 2 * cfg.bandas.sd);
+  }
+  if (cfg.cero) { vmin = Math.min(vmin, 0); vmax = Math.max(vmax, 0); }
+  if (t1 === t0) t1 = t0 + DIA;
+
+  /* Con bandas, el margen derecho se ensancha y los rótulos de promedio y desvíos van AHÍ,
+     fuera del área de dibujo. Puestos adentro se pisaban con la serie justo en el borde
+     derecho, que es donde está el último dato y donde uno mira primero. */
+  const mr = cfg.bandas ? 132 : MR;
+  const pw = W - ML - mr;
+  const log = cfg.log && vmin > 0;
+  const pad = (vmax - vmin) * 0.08 || Math.abs(vmax) * 0.05 || 1;
+  let lo = vmin - pad, hi = vmax + pad;
+  if (log) { lo = vmin / 1.15; hi = vmax * 1.15; }
+  else if (!cfg.cero && vmin >= 0 && lo < 0) lo = 0;
+
+  const tick = log ? ticksYlog(lo, hi) : ticksY(lo, hi, 5);
+  if (!log && tick.length) { lo = Math.min(lo, tick[0]); hi = Math.max(hi, tick[tick.length - 1]); }
+
+  const X = (t) => ML + (t - t0) / (t1 - t0) * pw;
+  const Y = log
+    ? (v) => MT + PH - (Math.log10(v) - Math.log10(lo)) / (Math.log10(hi) - Math.log10(lo)) * PH
+    : (v) => MT + PH - (v - lo) / (hi - lo) * PH;
+
+  const decEje = cfg.decEje !== undefined ? cfg.decEje : cfg.dec;
+  let g = '';
+  /* Grilla horizontal y rótulos del eje. */
+  for (const v of tick) {
+    const y = Y(v).toFixed(1);
+    g += '<line x1="' + ML + '" y1="' + y + '" x2="' + (ML + pw) + '" y2="' + y +
+         '" stroke="' + PAL.suave + '" stroke-width="1"/>';
+    g += '<text x="' + (ML - 9) + '" y="' + y + '" text-anchor="end" dominant-baseline="middle" ' +
+         'font-size="11" fill="' + PAL.gris + '">' + fmt(v, decEje) + '</text>';
+  }
+  /* El cero se marca aparte: en la tasa real es la frontera que importa. */
+  if (cfg.cero && lo < 0 && hi > 0) {
+    g += '<line x1="' + ML + '" y1="' + Y(0).toFixed(1) + '" x2="' + (ML + pw) + '" y2="' +
+         Y(0).toFixed(1) + '" stroke="' + PAL.navy + '" stroke-width="1.4"/>';
+  }
+  const tx = ticksX(t0, t1);
+  for (const t of tx.ts) {
+    const x = X(t).toFixed(1);
+    g += '<line x1="' + x + '" y1="' + MT + '" x2="' + x + '" y2="' + (MT + PH) +
+         '" stroke="' + PAL.suave + '" stroke-width="1"/>';
+    g += '<text x="' + x + '" y="' + (MT + PH + 18) + '" text-anchor="middle" font-size="11" fill="' +
+         PAL.gris + '">' + rotuloX(t, tx.fmt) + '</text>';
+  }
+
+  /* Bandas de promedio y desvíos. La de un desvío va rellena; la de dos, sólo líneas: rellenar
+     las dos tapa la serie y deja de leerse cuál es cuál. */
+  if (cfg.bandas) {
+    const b = cfg.bandas, y1a = Y(b.prom + b.sd), y1b = Y(b.prom - b.sd);
+    g += '<rect x="' + ML + '" y="' + Math.min(y1a, y1b).toFixed(1) + '" width="' + pw +
+         '" height="' + Math.abs(y1b - y1a).toFixed(1) + '" fill="' + PAL.cyan + '" opacity=".08"/>';
+    const linea = (v, dash, ancho) =>
+      '<line x1="' + ML + '" y1="' + Y(v).toFixed(1) + '" x2="' + (ML + pw) + '" y2="' + Y(v).toFixed(1) +
+      '" stroke="' + PAL.azul + '" stroke-width="' + ancho + '" stroke-dasharray="' + dash + '" opacity=".85"/>';
+    const rotulo = (v, txt) => {
+      const y = Y(v);
+      if (y < MT + 6 || y > MT + PH - 4) return '';
+      return '<text x="' + (ML + pw + 8) + '" y="' + y.toFixed(1) + '" dominant-baseline="middle" ' +
+             'font-size="10" font-weight="600" fill="' + PAL.azul + '" opacity=".9">' + txt + '</text>';
+    };
+    g += linea(b.prom, '0', 1.6) + rotulo(b.prom, 'promedio ' + fmt(b.prom, cfg.dec));
+    g += linea(b.prom + b.sd, '5 4', 1.1) + rotulo(b.prom + b.sd, '+1 desvío ' + fmt(b.prom + b.sd, cfg.dec));
+    g += linea(b.prom - b.sd, '5 4', 1.1) + rotulo(b.prom - b.sd, '-1 desvío ' + fmt(b.prom - b.sd, cfg.dec));
+    g += linea(b.prom + 2 * b.sd, '2 4', 1.1) + rotulo(b.prom + 2 * b.sd, '+2 desvíos ' + fmt(b.prom + 2 * b.sd, cfg.dec));
+    g += linea(b.prom - 2 * b.sd, '2 4', 1.1) + rotulo(b.prom - 2 * b.sd, '-2 desvíos ' + fmt(b.prom - 2 * b.sd, cfg.dec));
+  }
+
+  /* Las series. */
+  for (const s of todas) {
+    const pts = decimar(s.pts, 1800);
+    let d = '';
+    for (let i = 0; i < pts.length; i++) {
+      d += (i ? 'L' : 'M') + X(pts[i][0]).toFixed(1) + ' ' + Y(pts[i][1]).toFixed(1);
+    }
+    g += '<path d="' + d + '" fill="none" stroke="' + s.color + '" stroke-width="' + (s.ancho || 1.9) +
+         '" stroke-linejoin="round" stroke-linecap="round"' +
+         (s.dash ? ' stroke-dasharray="' + s.dash + '"' : '') + '/>';
+    /* El último dato va marcado: es el número que uno busca primero. */
+    const u = s.pts[s.pts.length - 1];
+    g += '<circle cx="' + X(u[0]).toFixed(1) + '" cy="' + Y(u[1]).toFixed(1) + '" r="3.4" fill="' +
+         s.color + '"/>';
+  }
+
+  g += '<line x1="' + ML + '" y1="' + (MT + PH) + '" x2="' + (ML + pw) + '" y2="' + (MT + PH) +
+       '" stroke="' + PAL.borde + '" stroke-width="1"/>';
+  g += '<g class="g-cursor" style="display:none"><line y1="' + MT + '" y2="' + (MT + PH) +
+       '" stroke="' + PAL.navy + '" stroke-width="1" stroke-dasharray="3 3" opacity=".55"/>' +
+       '<circle r="4.5" fill="#fff" stroke="' + PAL.navy + '" stroke-width="2"/></g>';
+
+  const svg = '<svg viewBox="0 0 ' + W + ' ' + H + '" class="g-svg" role="img" aria-label="' +
+              (cfg.aria || '') + '">' + g + '</svg>';
+  return { svg, estado: { t0, t1, X, Y, pw, cfg, busca: todas[0].pts } };
+}
+
+/* ── hover ────────────────────────────────────────────────────────────────────────────────── */
+function montarHover(cuerpo, estado) {
+  if (!estado) return;
+  const svg = $('svg', cuerpo);
+  const cursor = $('.g-cursor', svg);
+  const tip = document.createElement('div');
+  tip.className = 'g-tip';
+  tip.hidden = true;
+  cuerpo.appendChild(tip);
+
+  const mover = (ev) => {
+    const caja = svg.getBoundingClientRect();
+    const px = (ev.clientX - caja.left) / caja.width * W;
+    if (px < ML - 4 || px > ML + estado.pw + 4) { salir(); return; }
+    const t = estado.t0 + (px - ML) / estado.pw * (estado.t1 - estado.t0);
+    const pts = estado.busca;
+    /* Binaria: con 10.800 puntos del ITCRM, buscar linealmente en cada mousemove se nota. */
+    let lo = 0, hi = pts.length - 1;
+    while (lo < hi) { const m = (lo + hi) >> 1; if (pts[m][0] < t) lo = m + 1; else hi = m; }
+    if (lo > 0 && Math.abs(pts[lo - 1][0] - t) < Math.abs(pts[lo][0] - t)) lo--;
+    const p = pts[lo];
+    const x = estado.X(p[0]), y = estado.Y(p[1]);
+    cursor.style.display = '';
+    const ln = $('line', cursor), ci = $('circle', cursor);
+    ln.setAttribute('x1', x); ln.setAttribute('x2', x);
+    ci.setAttribute('cx', x); ci.setAttribute('cy', y);
+    tip.hidden = false;
+    tip.innerHTML = '<div class="t-f">' + fFecha(p[0]) + '</div><b>' + fmt(p[1], estado.cfg.dec) +
+                    '</b> ' + (estado.cfg.sufijo || '');
+    const izq = px > ML + estado.pw * 0.62;
+    tip.style.left = (x / W * caja.width + (izq ? -tip.offsetWidth - 14 : 14)) + 'px';
+    tip.style.top = Math.max(0, y / H * caja.height - tip.offsetHeight - 8) + 'px';
+  };
+  const salir = () => { cursor.style.display = 'none'; tip.hidden = true; };
+  cuerpo.addEventListener('mousemove', mover);
+  cuerpo.addEventListener('mouseleave', salir);
+}
+
+/* ── TAMAR real ───────────────────────────────────────────────────────────────────────────────
+   La TAMAR es una tasa nominal en pesos; lo que interesa es cuánto rinde por encima de la
+   inflación. La cuenta es de Fisher, no una resta:  real = (1 + TEA) / (1 + inflación) - 1.
+   Restar tasas —28,29 menos 27,3— da 1,0 punto donde la cuenta correcta da 0,8: con estos
+   niveles la diferencia es de dos décimas y crece con la inflación.
+
+   QUÉ INFLACIÓN. No hay una respuesta única y por eso el selector ofrece tres, todas sobre el IPC
+   efectivamente publicado, ninguna sobre expectativas:
+
+     · mes  — el IPC de ESE mes anualizado. Es el más fiel al momento y el más ruidoso.
+     · 3m   — los tres meses hasta ese mes, anualizados. Es el que suaviza la estacionalidad sin
+              arrastrar un régimen viejo, y por eso es el default.
+     · ia   — los últimos doce meses. Estable, pero en desinflación pinta un mundo que ya pasó.
+
+   EL TRAMO FINAL VA PUNTEADO. El INDEC publica el IPC de un mes a mitad del siguiente, así que
+   las últimas ruedas no tienen todavía la inflación de SU mes y se deflactan con el último dato
+   conocido. Eso no es el dato definitivo y el gráfico lo dice en vez de dibujarlo igual que el
+   resto. */
+function serieInflacion(ipcPts, modo) {
+  const out = [];
+  for (let i = 0; i < ipcPts.length; i++) {
+    let anual = null;
+    if (modo === 'mes') {
+      anual = (Math.pow(1 + ipcPts[i][1] / 100, 12) - 1) * 100;
+    } else if (modo === '3m' && i >= 2) {
+      let a = 1;
+      for (let j = i - 2; j <= i; j++) a *= 1 + ipcPts[j][1] / 100;
+      anual = (Math.pow(a, 4) - 1) * 100;
+    } else if (modo === 'ia' && i >= 11) {
+      let a = 1;
+      for (let j = i - 11; j <= i; j++) a *= 1 + ipcPts[j][1] / 100;
+      anual = (a - 1) * 100;
+    }
+    if (anual !== null) out.push([ipcPts[i][0], anual, new Date(ipcPts[i][0]).getUTCFullYear() * 12 +
+                                  new Date(ipcPts[i][0]).getUTCMonth()]);
+  }
+  return out;
+}
+
+function tamarReal(tamarPts, ipcPts, modo) {
+  const infl = serieInflacion(ipcPts, modo);
+  if (!infl.length) return { firmes: [], provisorios: [], ultimoMes: null };
+  const porMes = new Map(infl.map((x) => [x[2], x[1]]));
+  const ultimoMes = infl[infl.length - 1][2];
+  const firmes = [], provisorios = [];
+  for (const [t, tea] of tamarPts) {
+    const d = new Date(t);
+    const mes = d.getUTCFullYear() * 12 + d.getUTCMonth();
+    const propia = porMes.has(mes);
+    const i = propia ? porMes.get(mes) : infl[infl.length - 1][1];
+    const real = ((1 + tea / 100) / (1 + i / 100) - 1) * 100;
+    (propia ? firmes : provisorios).push([t, real]);
+  }
+  /* El punteado arranca en el último punto firme para que las dos líneas se toquen. */
+  if (firmes.length && provisorios.length) provisorios.unshift(firmes[firmes.length - 1]);
+  return { firmes, provisorios, ultimoMes: infl[infl.length - 1][0] };
+}
+
+/* ── tarjetas ─────────────────────────────────────────────────────────────────────────────── */
+function kpi(lbl, val, clase) {
+  return '<div class="g-kpi"><div class="k-lbl">' + lbl + '</div><div class="k-val' +
+         (clase ? ' ' + clase : '') + '">' + val + '</div></div>';
+}
+function signo(v, dec, suf) {
+  return (v > 0 ? '+' : v < 0 ? '-' : '') + fmt(Math.abs(v), dec) + (suf || '');
+}
+function segmento(id, opciones, actual) {
+  return '<div class="seg chico" data-seg="' + id + '">' + opciones.map((o) =>
+    '<button type="button" data-v="' + o[0] + '"' + (o[0] === actual ? ' class="on"' : '') + '>' +
+    o[1] + '</button>').join('') + '</div>';
+}
+
+function tarjeta(o) {
+  return '<div class="g-card"><div class="g-head"><div><div class="g-tit">' + o.titulo +
+         '</div><div class="g-sub">' + o.sub + '</div></div><div class="g-kpis">' + o.kpis +
+         '</div></div>' + (o.ctrl ? '<div class="g-ctrl">' + o.ctrl + '</div>' : '') +
+         '<div class="g-body">' + o.svg + '</div>' +
+         (o.leyenda ? '<div class="g-leyenda">' + o.leyenda + '</div>' : '') +
+         '<div class="g-pie">' + o.pie + '</div></div>';
+}
+
+const VENTANAS = { vis: 'la ventana visible', '5a': 'los últimos 5 años', '10a': 'los últimos 10 años',
+                   '2003': 'el período 2003 en adelante', todo: 'toda la serie desde 1997' };
+
+function render() {
+  const S = DATOS.series;
+  const pts = {};
+  for (const k of Object.keys(S)) pts[k] = aPuntos(S[k]);
+
+  /* Un solo corte para las cinco tarjetas: el punto de comparar es mirar el mismo tramo. */
+  let fin = 0;
+  for (const k of ['itcrm', 'riesgoPais', 'reservas', 'tamar']) {
+    if (pts[k] && pts[k].length) fin = Math.max(fin, pts[k][pts[k].length - 1][0]);
+  }
+  const dias = (PLAZOS.find((p) => p.id === plazo) || {}).dias;
+  const desde = dias ? fin - dias * DIA : null;
+  const vis = {};
+  for (const k of Object.keys(pts)) vis[k] = recortar(pts[k], desde);
+
+  const rango = [];
+  for (const k of ['itcrm', 'riesgoPais', 'reservas', 'tamar']) {
+    if (vis[k] && vis[k].length) rango.push(vis[k][0][0], vis[k][vis[k].length - 1][0]);
+  }
+  $('#rango-txt').textContent = rango.length
+    ? fFecha(Math.min.apply(null, rango)) + '  —  ' + fFecha(Math.max.apply(null, rango)) : '';
+
+  const cont = $('#graficos');
+  const partes = [], montar = [];
+
+  /* ═══ 1 · ITCRM ═══ */
+  if (vis.itcrm.length) {
+    const base = ventanaStats === 'vis' ? vis.itcrm
+      : ventanaStats === 'todo' ? pts.itcrm
+      : ventanaStats === '2003' ? recortar(pts.itcrm, Date.UTC(2003, 0, 1))
+      : recortar(pts.itcrm, fin - (ventanaStats === '5a' ? 5 : 10) * 365.25 * DIA);
+    const st = estadistica(base);
+    const u = vis.itcrm[vis.itcrm.length - 1], pri = vis.itcrm[0];
+    const z = st.sd ? (u[1] - st.prom) / st.sd : 0;
+    const varPct = (u[1] / pri[1] - 1) * 100;
+    const d = dibujar({ series: [{ pts: vis.itcrm, color: PAL.navy }], bandas: st,
+                        log: escalaLog.itcrm, dec: 2, decEje: 1, sufijo: '(17-12-15 = 100)',
+                        aria: 'Índice de tipo de cambio real multilateral' });
+    partes.push(tarjeta({
+      titulo: 'Índice de Tipo de Cambio Real Multilateral (ITCRM)',
+      sub: 'BCRA · base 17-12-2015 = 100 · diario de calendario desde el 1 de enero de 1997. ' +
+           'Más alto es peso más depreciado en términos reales, o sea más competitivo.',
+      kpis: kpi('Último', fmt(u[1], 2)) +
+            kpi('En la ventana', signo(varPct, 2, '%'), varPct > 0 ? 'pos' : varPct < 0 ? 'neg' : '') +
+            kpi('Desvíos del promedio', signo(z, 2, ' σ'), Math.abs(z) > 2 ? 'neg' : ''),
+      ctrl: '<span class="barra-lbl">Promedio y desvíos sobre</span>' +
+            segmento('stats', [['vis', 'Ventana visible'], ['5a', '5 años'], ['10a', '10 años'],
+                               ['2003', 'Desde 2003'], ['todo', 'Desde 1997']], ventanaStats) +
+            '<span class="barra-lbl">Escala</span>' +
+            segmento('log-itcrm', [['0', 'Lineal'], ['1', 'Log']], escalaLog.itcrm ? '1' : '0'),
+      svg: d.svg,
+      leyenda: '<span><i style="border-color:' + PAL.navy + '"></i>ITCRM</span>' +
+               '<span><i style="border-color:' + PAL.azul + '"></i>promedio</span>' +
+               '<span><i style="border-color:' + PAL.azul + ';border-top-style:dashed"></i>±1 desvío</span>' +
+               '<span><i style="border-color:' + PAL.azul + ';border-top-style:dotted"></i>±2 desvíos</span>',
+      pie: 'Promedio ' + fmt(st.prom, 2) + ' y desvío ' + fmt(st.sd, 2) + ' calculados sobre ' +
+           VENTANAS[ventanaStats] + ': ' + st.n.toLocaleString('es-AR') + ' datos entre ' +
+           fFecha(base[0][0]) + ' y ' + fFecha(base[base.length - 1][0]) + '. ' +
+           'La serie es de CALENDARIO, no de ruedas: incluye sábados y domingos porque el BCRA ' +
+           'diariza los índices de precios, así que el promedio pondera los fines de semana igual ' +
+           'que los días hábiles. Un desvío es dispersión histórica, no un nivel de equilibrio: ' +
+           'el promedio de un tramo que incluye la convertibilidad o el cepo no es una referencia ' +
+           'de a cuánto debería estar el tipo de cambio.',
+    }));
+    montar.push(d.estado);
+  }
+
+  /* ═══ 2 · Riesgo país ═══ */
+  if (vis.riesgoPais.length) {
+    const u = vis.riesgoPais[vis.riesgoPais.length - 1], pri = vis.riesgoPais[0];
+    const dif = u[1] - pri[1];
+    const d = dibujar({ series: [{ pts: vis.riesgoPais, color: PAL.rojo }], log: escalaLog.riesgoPais,
+                        dec: 0, sufijo: 'puntos básicos', aria: 'Riesgo país EMBI+ Argentina' });
+    partes.push(tarjeta({
+      titulo: 'Riesgo país · EMBI+ Argentina',
+      sub: 'Sobretasa en puntos básicos contra el Tesoro de los Estados Unidos. Diario desde el ' +
+           '22 de enero de 1999.',
+      kpis: kpi('Último', fmt(u[1], 0)) +
+            kpi('En la ventana', signo(dif, 0, ' pbs'), dif < 0 ? 'pos' : dif > 0 ? 'neg' : ''),
+      ctrl: '<span class="barra-lbl">Escala</span>' +
+            segmento('log-riesgoPais', [['0', 'Lineal'], ['1', 'Log']], escalaLog.riesgoPais ? '1' : '0'),
+      svg: d.svg,
+      pie: 'Fuente: argentinadatos, que republica el EMBI+ de J.P. Morgan; el BCRA no publica esta ' +
+           'serie. En Max conviene la escala logarítmica: el pico del default fue 7.222 puntos el 7 de ' +
+           'agosto de 2002, catorce veces el nivel de hoy, y en lineal esos años aplastan ' +
+           'contra el piso todo lo demás.',
+    }));
+    montar.push(d.estado);
+  }
+
+  /* ═══ 3 · Reservas ═══ */
+  if (vis.reservas.length) {
+    const u = vis.reservas[vis.reservas.length - 1], pri = vis.reservas[0];
+    const dif = u[1] - pri[1];
+    const d = dibujar({ series: [{ pts: vis.reservas, color: PAL.azul }], dec: 0,
+                        sufijo: 'millones de USD', aria: 'Reservas internacionales del BCRA' });
+    partes.push(tarjeta({
+      titulo: 'Reservas internacionales del BCRA',
+      sub: 'Stock bruto en millones de dólares. Diario desde el 3 de enero de 1996.',
+      kpis: kpi('Último', fmt(u[1] / 1000, 1) + ' MM USD') +
+            kpi('En la ventana', signo(dif, 0, ' M'), dif > 0 ? 'pos' : dif < 0 ? 'neg' : ''),
+      svg: d.svg,
+      pie: 'BCRA, serie 1. Es el stock BRUTO: incluye el swap con China, los encajes de los ' +
+           'depósitos en dólares y los desembolsos de organismos, así que no mide poder de fuego ' +
+           'propio. Se publica con dos a cuatro días hábiles de rezago, y por eso su último punto ' +
+           'suele quedar detrás del de las otras series (acá, ' + fFecha(u[0]) + ').',
+    }));
+    montar.push(d.estado);
+  }
+
+  /* ═══ 4 · TAMAR ═══ */
+  if (vis.tamar.length) {
+    const u = vis.tamar[vis.tamar.length - 1], pri = vis.tamar[0];
+    const dif = u[1] - pri[1];
+    const d = dibujar({ series: [{ pts: vis.tamar, color: PAL.violeta }], dec: 2, sufijo: '% TEA',
+                        aria: 'TAMAR de bancos privados' });
+    partes.push(tarjeta({
+      titulo: 'TAMAR de bancos privados · tasa nominal',
+      sub: 'Tasa mayorista de plazos fijos de 30 a 35 días por 1.000 millones de pesos o más, en ' +
+           'TEA. La serie ARRANCA EL 1 DE OCTUBRE DE 2024, cuando el BCRA la creó: su Max son dos ' +
+           'años, no treinta como las de arriba.',
+      kpis: kpi('Última', fmt(u[1], 2) + '%') +
+            kpi('En la ventana', signo(dif, 2, ' pp'), dif > 0 ? 'pos' : dif < 0 ? 'neg' : ''),
+      svg: d.svg,
+      pie: 'BCRA, serie 45 (TAMAR bancos privados, tasa efectiva anual). Es una tasa MAYORISTA: ' +
+           'corre por encima de la BADLAR y bastante por encima del plazo fijo minorista.',
+    }));
+    montar.push(d.estado);
+  }
+
+  /* ═══ 5 · TAMAR real ═══ */
+  if (vis.tamar.length && pts.ipc && pts.ipc.length) {
+    const r = tamarReal(vis.tamar, pts.ipc, medidaInfl);
+    const todos = r.firmes.concat(r.provisorios.slice(r.firmes.length ? 1 : 0));
+    if (todos.length) {
+      const u = todos[todos.length - 1], pri = todos[0];
+      const dif = u[1] - pri[1];
+      const d = dibujar({
+        series: [{ pts: r.firmes, color: PAL.verde }, { pts: r.provisorios, color: PAL.verde, dash: '5 4' }],
+        dec: 2, cero: true, sufijo: '% TEA real', aria: 'TAMAR ajustada por inflación' });
+      const nombre = { mes: 'el IPC del mes anualizado', '3m': 'el IPC de tres meses anualizado',
+                       ia: 'el IPC interanual' }[medidaInfl];
+      partes.push(tarjeta({
+        titulo: 'TAMAR ajustada por inflación · tasa real',
+        sub: 'Cuánto rinde la TAMAR por encima de los precios, con la cuenta de Fisher ' +
+             '(1 + tasa) / (1 + inflación) - 1, deflactada por ' + nombre + '.',
+        kpis: kpi('Última', fmt(u[1], 2) + '%', u[1] > 0 ? 'pos' : 'neg') +
+              kpi('En la ventana', signo(dif, 2, ' pp'), dif > 0 ? 'pos' : dif < 0 ? 'neg' : ''),
+        ctrl: '<span class="barra-lbl">Deflactar con</span>' +
+              segmento('infl', [['mes', 'IPC del mes'], ['3m', 'IPC 3 meses'], ['ia', 'IPC interanual']],
+                       medidaInfl),
+        svg: d.svg,
+        leyenda: '<span><i style="border-color:' + PAL.verde + '"></i>con el IPC de su propio mes</span>' +
+                 '<span><i style="border-color:' + PAL.verde + ';border-top-style:dashed"></i>' +
+                 'provisorio: deflactado con el último IPC publicado</span>',
+        pie: 'TAMAR de la serie 45 del BCRA sobre el IPC de la serie 27. El INDEC publica el IPC ' +
+             'de un mes a mediados del siguiente, así que las ruedas posteriores a ' +
+             (r.ultimoMes ? fFecha(r.ultimoMes) : 'el último dato') + ' todavía no tienen la ' +
+             'inflación de SU mes y van punteadas, deflactadas con el último dato conocido. Es ' +
+             'una tasa real EX POST, contra la inflación que efectivamente ocurrió: no es lo ' +
+             'mismo que la real esperada, que sale del REM o del breakeven de los bonos CER.',
+      }));
+      montar.push(d.estado);
+    }
+  }
+
+  cont.innerHTML = partes.join('');
+  const cuerpos = cont.querySelectorAll('.g-body');
+  montar.forEach((e, i) => montarHover(cuerpos[i], e));
+
+  const f = [];
+  for (const k of ['itcrm', 'riesgoPais', 'reservas', 'tamar', 'ipc']) {
+    if (S[k]) f.push(S[k].nombre + ' — ' + S[k].fuente + ', hasta el ' + S[k].hasta);
+  }
+  $('#fuentes').innerHTML = 'Fuentes y último dato de cada serie: ' + f.join('; ') +
+    '. Actualizadas el ' + new Date(DATOS.generado).toLocaleString('es-AR') +
+    '. Ninguna se pide en vivo: las arma el job diario y quedan versionadas en el repo.';
+}
+
+/* ── eventos y arranque ───────────────────────────────────────────────────────────────────── */
+$('#seg-plazo').innerHTML = PLAZOS.map((p) =>
+  '<button type="button" data-p="' + p.id + '"' + (p.id === plazo ? ' class="on"' : '') + '>' +
+  p.id + '</button>').join('');
+$('#seg-plazo').addEventListener('click', (ev) => {
+  const b = ev.target.closest('button');
+  if (!b) return;
+  plazo = b.dataset.p;
+  for (const x of $('#seg-plazo').children) x.classList.toggle('on', x === b);
+  render();
+});
+$('#graficos').addEventListener('click', (ev) => {
+  const b = ev.target.closest('.seg.chico button');
+  if (!b) return;
+  const id = b.parentElement.dataset.seg, v = b.dataset.v;
+  if (id === 'stats') ventanaStats = v;
+  else if (id === 'infl') medidaInfl = v;
+  else if (id.indexOf('log-') === 0) escalaLog[id.slice(4)] = v === '1';
+  render();
+});
+
+fetch('macro_series.json?t=' + Date.now())
+  .then((r) => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+  .then((d) => {
+    DATOS = d;
+    if (d.fallos && d.fallos.length) {
+      $('#aviso').innerHTML = '<div class="aviso malo">La última actualización falló en: ' +
+        d.fallos.join('; ') + '. Esas series muestran el dato anterior.</div>';
+    }
+    render();
+  })
+  .catch((e) => {
+    $('#graficos').innerHTML = '<div class="aviso malo">No se pudo leer macro_series.json (' +
+      e.message + '). Lo genera macro_series.py; si nunca corrió, el archivo todavía no existe.</div>';
+  });
+</script>
+</body>
+</html>

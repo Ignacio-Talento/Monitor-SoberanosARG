@@ -1,0 +1,65 @@
+# Series macro largas de la solapa Macro: ITCRM, riesgo país, reservas, TAMAR e IPC.
+#
+# NO USA LA KEY DE 1816. Las cinco series son públicas y gratis —BCRA y argentinadatos—, así que
+# este job no toca créditos ni compite con el de precios por el rate limit. Por eso vive aparte y
+# no como un paso más de "Actualizar Históricos": si aquel falla por un 429 de 1816, la solapa
+# Macro no tiene por qué quedarse sin actualizar.
+#
+# DOS CORRIDAS POR DÍA, Y NO ES REDUNDANCIA. El BCRA publica reservas y tasas con dos a cuatro
+# días hábiles de rezago y el ITCRM lo revisa durante el día; además GitHub demora los crones
+# entre 20 y 50 minutos de rutina y a veces directamente no los ejecuta. Volver a correr a la
+# tarde cuesta cinco segundos y garantiza que la página no muestre el dato de anteayer.
+#
+# TODOS LOS DÍAS, no lunes a viernes: el ITCRM es una serie de CALENDARIO —tiene sábados y
+# domingos porque el BCRA diariza los índices de precios— así que el fin de semana también hay
+# puntos nuevos para levantar.
+name: Series Macro
+
+on:
+  schedule:
+    # 10:00 y 19:00 hora Argentina (UTC-3).
+    - cron: '0 13 * * *'
+    - cron: '0 22 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  macro:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repositorio
+        uses: actions/checkout@v4
+
+      - name: Configurar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Instalar dependencias
+        run: pip install requests openpyxl
+
+      # El script no pisa el JSON si NINGUNA serie se pudo bajar, y si falla sólo alguna conserva
+      # el último valor bueno de esa. O sea: una caída del BCRA deja la página con el dato de
+      # ayer, no vacía.
+      - name: Actualizar series macro
+        run: python macro_series.py
+
+      - name: Commitear si cambió
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          if git diff --quiet -- macro_series.json; then
+            echo "sin cambios en macro_series.json"
+            exit 0
+          fi
+          git add macro_series.json
+          git commit -m "Series macro al $(date -u +%Y-%m-%d)"
+          # El repo lo escriben varios jobs; si otro commiteó mientras tanto, rebase y reintento.
+          for i in 1 2 3; do
+            git pull --rebase --autostash origin "${GITHUB_REF_NAME}" && git push && exit 0
+            sleep 5
+          done
+          exit 1
