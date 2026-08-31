@@ -461,10 +461,21 @@ function calcMetricas(inst, precioAlt) {
   if (inst.grupo === 'cer') {
     // CER hoy = historico[hoy - lag hab]
     // CER emision = historico[fecha_emision - lag hab]
-    // Valor teo al venc = 100 * (CER_hoy / CER_emision)
+    // Valor teo al venc = VF pendiente * (CER_hoy / CER_emision)
+    //
+    // EL VF PENDIENTE NO SIEMPRE ES 100. Lo es para un bullet, que es lo que son los TZX/X de la
+    // curva, y por eso el default de la planilla es 100. Pero un bono que ya amortizó parte del
+    // capital vale menos: a TX26 le queda un residual del 20% y un único pago de 20,20 cada 100 VN
+    // originales. Con 100 fijo su valor técnico daba 3.647,96 en vez de 736,89 —cinco veces— y la
+    // TIR real salía en miles por ciento.
+    //
+    // OJO: esto sirve porque a TX26 le queda UN SOLO pago, así que la fórmula de zero coupon de
+    // abajo sigue siendo exacta. Un CER con varios cupones por delante no se arregla con esta
+    // columna: necesita descontar su cronograma, y hoy la rama no lo hace.
     const cerHoy    = getCerConLag(inst.cer_aplicable);
     const cerEmis   = getCerFecha(inst.emision, inst.cer_aplicable);
-    const valorTeo  = (cerHoy && cerEmis) ? 100 * cerHoy / cerEmis : null;
+    const vfPend    = inst.vf_pendiente || 100;
+    const valorTeo  = (cerHoy && cerEmis) ? vfPend * cerHoy / cerEmis : null;
     const paridad   = (precio && valorTeo) ? precio / valorTeo * 100 : null;
     if (!precio || !dias || dias <= 0 || !valorTeo) return { precio, dias, tna: null, tea: null, md: null, paridad };
     const vencDate = parseLocalDate(inst.venc);
@@ -905,6 +916,11 @@ function parsearExcel(buffer) {
           venc:    excelSerialToDate(r['Fecha Vencimineto'] || r['Fecha Vencimiento']),
           cer_aplicable: parseInt(r['CER aplicable']) || 10,
           margen: parseFloat(r['Margen']) || 0,
+          // Valor final pendiente cada 100 VN ORIGINALES. Es 100 para un bullet, que es lo que
+          // son casi todos, y por eso la columna puede faltar. Sirve para los que ya amortizaron
+          // parte del capital: TX26 va por su quinta y última cuota, le queda un residual del 20%
+          // y un solo pago de 20,20 (20 de capital + 1% semestral sobre ese residual).
+          vf_pendiente: parseFloat(r['VF pendiente (c/100 VN)']) || 100,
         });
       });
     }
