@@ -1,0 +1,3722 @@
+{
+ "fecha": "2026-09-01",
+ "ruedaAnterior": "2026-08-31",
+ "tipos": [
+  "diario"
+ ],
+ "generado": "2026-09-01T20:16:27-03:00",
+ "feriadosLeidos": true,
+ "universo": 188,
+ "sinDato": [
+  "S31G6",
+  "M31G6",
+  "D31G6",
+  "D10Y7",
+  "PMM29",
+  "NDT25",
+  "CO32",
+  "ERM33",
+  "PUA36",
+  "BDC36",
+  "BYCVD",
+  "T662D",
+  "YM35D",
+  "IRCFD",
+  "BYCHD",
+  "YM39D",
+  "DNC7D",
+  "TSC3D",
+  "OZC8D",
+  "VSCTD",
+  "PN43D",
+  "PNXCD",
+  "MR45D",
+  "VSCPD"
+ ],
+ "sinDatoPorFamilia": {
+  "LECAPs y tasa fija": [
+   "S31G6"
+  ],
+  "TAMAR": [
+   "M31G6"
+  ],
+  "Dólar linked": [
+   "D31G6",
+   "D10Y7"
+  ],
+  "Subsoberanos": [
+   "PMM29",
+   "NDT25",
+   "CO32",
+   "ERM33",
+   "PUA36",
+   "BDC36"
+  ],
+  "ONs ley local": [
+   "BYCVD",
+   "T662D",
+   "YM35D",
+   "YM39D",
+   "VSCPD"
+  ],
+  "ONs ley NY": [
+   "IRCFD",
+   "BYCHD",
+   "DNC7D",
+   "TSC3D",
+   "OZC8D",
+   "VSCTD",
+   "PN43D",
+   "PNXCD",
+   "MR45D"
+  ]
+ },
+ "onsSinLey": [],
+ "campos": [
+  "precioDirty",
+  "tea",
+  "durationMod",
+  "paridad"
+ ],
+ "resumen": {
+  "LECAPs y tasa fija": {
+   "instrumentos": 13,
+   "conVariacion": 13,
+   "metrica": "TEA",
+   "precio": {
+    "mediana": 0.096,
+    "min": -0.09,
+    "max": 0.245,
+    "n": 13
+   },
+   "tasa": {
+    "mediana": -0.071,
+    "min": -0.611,
+    "max": 0.668,
+    "n": 13
+   },
+   "teaMediana": {
+    "mediana": 27.636,
+    "min": 24.982,
+    "max": 29.801,
+    "n": 13
+   },
+   "mejor": "T15E7",
+   "peor": "TY30P",
+   "convencionDudosa": [],
+   "monedas": {
+    "ars": 13
+   }
+  },
+  "CER": {
+   "instrumentos": 23,
+   "conVariacion": 23,
+   "metrica": "TIR real",
+   "precio": {
+    "mediana": 0.227,
+    "min": -0.328,
+    "max": 1.08,
+    "n": 23
+   },
+   "tasa": {
+    "mediana": -0.145,
+    "min": -1.391,
+    "max": 0.977,
+    "n": 23
+   },
+   "teaMediana": {
+    "mediana": 7.682,
+    "min": 0,
+    "max": 10.4,
+    "n": 23
+   },
+   "mejor": "TZXY7",
+   "peor": "TZXA7",
+   "convencionDudosa": [
+    "X30S6"
+   ],
+   "monedas": {
+    "ars": 23
+   }
+  },
+  "TAMAR": {
+   "instrumentos": 5,
+   "conVariacion": 5,
+   "metrica": "TEA",
+   "precio": {
+    "mediana": 0.124,
+    "min": -0.046,
+    "max": 0.651,
+    "n": 5
+   },
+   "tasa": {
+    "mediana": -0.303,
+    "min": -0.936,
+    "max": -0.055,
+    "n": 5
+   },
+   "teaMediana": {
+    "mediana": 32.465,
+    "min": 30.88,
+    "max": 40.069,
+    "n": 5
+   },
+   "mejor": "TMG27",
+   "peor": "TMF28",
+   "convencionDudosa": [],
+   "monedas": {
+    "ars": 5
+   }
+  },
+  "Dólar linked": {
+   "instrumentos": 7,
+   "conVariacion": 7,
+   "metrica": "TIR",
+   "precio": {
+    "mediana": 0.033,
+    "min": -0.201,
+    "max": 0.333,
+    "n": 7
+   },
+   "tasa": {
+    "mediana": 0.261,
+    "min": -0.154,
+    "max": 2.51,
+    "n": 7
+   },
+   "teaMediana": {
+    "mediana": 5.583,
+    "min": 2.846,
+    "max": 10.889,
+    "n": 7
+   },
+   "mejor": "TZV27",
+   "peor": "D15E7",
+   "convencionDudosa": [],
+   "monedas": {
+    "ars": 7
+   }
+  },
+  "Bonares": {
+   "instrumentos": 9,
+   "conVariacion": 9,
+   "metrica": "TIR",
+   "precio": {
+    "mediana": 0.147,
+    "min": -0.132,
+    "max": 0.377,
+    "n": 9
+   },
+   "tasa": {
+    "mediana": -0.089,
+    "min": -0.244,
+    "max": 0.047,
+    "n": 9
+   },
+   "teaMediana": {
+    "mediana": 9.919,
+    "min": 4.136,
+    "max": 10.566,
+    "n": 9
+   },
+   "mejor": "AO29D",
+   "peor": "AL35D",
+   "convencionDudosa": [],
+   "monedas": {
+    "mep": 9
+   }
+  },
+  "Globales": {
+   "instrumentos": 6,
+   "conVariacion": 6,
+   "metrica": "TIR",
+   "precio": {
+    "mediana": 0.426,
+    "min": -0.391,
+    "max": 0.63,
+    "n": 6
+   },
+   "tasa": {
+    "mediana": -0.083,
+    "min": -0.33,
+    "max": 0.291,
+    "n": 6
+   },
+   "teaMediana": {
+    "mediana": 10.02,
+    "min": 8.395,
+    "max": 10.238,
+    "n": 6
+   },
+   "mejor": "GD30D",
+   "peor": "GD29D",
+   "convencionDudosa": [],
+   "monedas": {
+    "ccl": 6
+   }
+  },
+  "BOPREALes": {
+   "instrumentos": 6,
+   "conVariacion": 6,
+   "metrica": "TIR",
+   "precio": {
+    "mediana": -0.024,
+    "min": -0.338,
+    "max": 0.759,
+    "n": 6
+   },
+   "tasa": {
+    "mediana": 0.037,
+    "min": -0.379,
+    "max": 0.402,
+    "n": 6
+   },
+   "teaMediana": {
+    "mediana": 3.274,
+    "min": 2.936,
+    "max": 7.23,
+    "n": 6
+   },
+   "mejor": "BPB8D",
+   "peor": "BPA7D",
+   "convencionDudosa": [],
+   "monedas": {
+    "mep": 6
+   }
+  },
+  "Duales": {
+   "instrumentos": 7,
+   "conVariacion": 7,
+   "metrica": "TEA",
+   "precio": {
+    "mediana": 0.376,
+    "min": 0.03,
+    "max": 0.428,
+    "n": 7
+   },
+   "tasa": {
+    "mediana": -0.23,
+    "min": -0.513,
+    "max": 1.088,
+    "n": 7
+   },
+   "teaMediana": {
+    "mediana": 37.469,
+    "min": 5.524,
+    "max": 40.876,
+    "n": 7
+   },
+   "mejor": "TMVE8",
+   "peor": "TTS26",
+   "convencionDudosa": [
+    "TXMJ8",
+    "TXMJ9"
+   ],
+   "monedas": {
+    "ars": 7
+   }
+  },
+  "ONs ley local": {
+   "instrumentos": 56,
+   "conVariacion": 55,
+   "metrica": "TIR",
+   "precio": {
+    "mediana": -0.048,
+    "min": -1.111,
+    "max": 2.794,
+    "n": 55
+   },
+   "tasa": {
+    "mediana": 0.037,
+    "min": -0.999,
+    "max": 0.977,
+    "n": 55
+   },
+   "teaMediana": {
+    "mediana": 5.824,
+    "min": -0.436,
+    "max": 24.267,
+    "n": 56
+   },
+   "mejor": "MR44D",
+   "peor": "OLC7D",
+   "convencionDudosa": [
+    "MR44D",
+    "RC2CD"
+   ],
+   "monedas": {
+    "mep": 51,
+    "ccl": 5
+   }
+  },
+  "ONs ley NY": {
+   "instrumentos": 27,
+   "conVariacion": 23,
+   "metrica": "TIR",
+   "precio": {
+    "mediana": -0.047,
+    "min": -1.961,
+    "max": 1.02,
+    "n": 23
+   },
+   "tasa": {
+    "mediana": 0.013,
+    "min": -0.215,
+    "max": 0.409,
+    "n": 23
+   },
+   "teaMediana": {
+    "mediana": 7.532,
+    "min": 6.762,
+    "max": 16.804,
+    "n": 27
+   },
+   "mejor": "GN49D",
+   "peor": "LQC1D",
+   "convencionDudosa": [],
+   "monedas": {
+    "ccl": 27
+   }
+  },
+  "Subsoberanos": {
+   "instrumentos": 5,
+   "conVariacion": 4,
+   "metrica": "TIR",
+   "precio": {
+    "mediana": 0.015,
+    "min": -0.301,
+    "max": 0.091,
+    "n": 4
+   },
+   "tasa": {
+    "mediana": 0.003,
+    "min": -0.013,
+    "max": 0.063,
+    "n": 4
+   },
+   "teaMediana": {
+    "mediana": 9.015,
+    "min": 7.74,
+    "max": 11.975,
+    "n": 5
+   },
+   "mejor": "CO35",
+   "peor": "NDG34",
+   "convencionDudosa": [],
+   "monedas": {
+    "ccl": 5
+   }
+  }
+ },
+ "instrumentos": [
+  {
+   "ticker": "S30S6",
+   "familia": "LECAPs y tasa fija",
+   "moneda": "ars",
+   "precio": 115.455,
+   "tea": 26.221,
+   "durationMod": 0.069,
+   "paridad": 100.547,
+   "varPrecio": 0.022,
+   "varTasa": 0.668,
+   "varParidad": -0.062,
+   "conAyer": true
+  },
+  {
+   "ticker": "S30O6",
+   "familia": "LECAPs y tasa fija",
+   "moneda": "ars",
+   "precio": 130.29,
+   "tea": 26.671,
+   "durationMod": 0.142,
+   "paridad": 101.117,
+   "varPrecio": 0.041,
+   "varTasa": 0.189,
+   "varParidad": -0.044,
+   "conAyer": true
+  },
+  {
+   "ticker": "S30N6",
+   "familia": "LECAPs y tasa fija",
+   "moneda": "ars",
+   "precio": 122.265,
+   "tea": 28.152,
+   "durationMod": 0.216,
+   "paridad": 100.624,
+   "varPrecio": 0.119,
+   "varTasa": -0.264,
+   "varParidad": 0.043,
+   "conAyer": true
+  },
+  {
+   "ticker": "T15E7",
+   "familia": "LECAPs y tasa fija",
+   "moneda": "ars",
+   "precio": 147.3,
+   "tea": 27.404,
+   "durationMod": 0.328,
+   "paridad": 100.039,
+   "varPrecio": 0.245,
+   "varTasa": -0.611,
+   "varParidad": 0.177,
+   "conAyer": true
+  },
+  {
+   "ticker": "T30A7",
+   "familia": "LECAPs y tasa fija",
+   "moneda": "ars",
+   "precio": 133.05,
+   "tea": 29.05,
+   "durationMod": 0.577,
+   "paridad": 103.259,
+   "varPrecio": 0.211,
+   "varTasa": -0.275,
+   "varParidad": 0.131,
+   "conAyer": true
+  },
+  {
+   "ticker": "T31Y7",
+   "familia": "LECAPs y tasa fija",
+   "moneda": "ars",
+   "precio": 124.99,
+   "tea": 29.645,
+   "durationMod": 0.649,
+   "paridad": 102.009,
+   "varPrecio": 0.112,
+   "varTasa": -0.071,
+   "varParidad": 0.034,
+   "conAyer": true
+  },
+  {
+   "ticker": "T30J7",
+   "familia": "LECAPs y tasa fija",
+   "moneda": "ars",
+   "precio": 126.4,
+   "tea": 29.102,
+   "durationMod": 0.722,
+   "paridad": 104.33,
+   "varPrecio": 0.0,
+   "varTasa": 0.109,
+   "varParidad": -0.089,
+   "conAyer": true
+  },
+  {
+   "ticker": "S15S6",
+   "familia": "LECAPs y tasa fija",
+   "moneda": "ars",
+   "precio": 106.331,
+   "tea": 26.005,
+   "durationMod": 0.032,
+   "paridad": 100.03,
+   "varPrecio": 0.056,
+   "varTasa": 0.226,
+   "varParidad": -0.009,
+   "conAyer": true
+  },
+  {
+   "ticker": "S13N6",
+   "familia": "LECAPs y tasa fija",
+   "moneda": "ars",
+   "precio": 104.498,
+   "tea": 27.636,
+   "durationMod": 0.175,
+   "paridad": 100.105,
+   "varPrecio": 0.103,
+   "varTasa": -0.233,
+   "varParidad": 0.034,
+   "conAyer": true
+  },
+  {
+   "ticker": "S16O6",
+   "familia": "LECAPs y tasa fija",
+   "moneda": "ars",
+   "precio": 102.34,
+   "tea": 26.435,
+   "durationMod": 0.108,
+   "paridad": 100.149,
+   "varPrecio": 0.059,
+   "varTasa": 0.058,
+   "varParidad": -0.009,
+   "conAyer": true
+  },
+  {
+   "ticker": "S29E7",
+   "familia": "LECAPs y tasa fija",
+   "moneda": "ars",
+   "precio": 100.90999999999998,
+   "tea": 28.214,
+   "durationMod": 0.361,
+   "paridad": 100.76,
+   "varPrecio": 0.209,
+   "varTasa": -0.438,
+   "varParidad": 0.135,
+   "conAyer": true
+  },
+  {
+   "ticker": "TO26",
+   "familia": "LECAPs y tasa fija",
+   "moneda": "ars",
+   "precio": 104.69999999999999,
+   "tea": 24.982,
+   "durationMod": 0.115,
+   "paridad": 98.949,
+   "varPrecio": 0.096,
+   "varTasa": -0.328,
+   "varParidad": 0.054,
+   "conAyer": true
+  },
+  {
+   "ticker": "TY30P",
+   "familia": "LECAPs y tasa fija",
+   "moneda": "ars",
+   "precio": 111.00000000000001,
+   "tea": 29.801,
+   "durationMod": 2.076,
+   "paridad": 103.218,
+   "varPrecio": -0.09,
+   "varTasa": 0.088,
+   "varParidad": -0.172,
+   "conAyer": true
+  },
+  {
+   "ticker": "TZXO6",
+   "familia": "CER",
+   "moneda": "ars",
+   "precio": 171.15,
+   "tea": 2.564,
+   "durationMod": 0.157,
+   "paridad": 99.598,
+   "varPrecio": 0.146,
+   "varTasa": -0.478,
+   "varParidad": 0.082,
+   "conAyer": true
+  },
+  {
+   "ticker": "TZXD6",
+   "familia": "CER",
+   "moneda": "ars",
+   "precio": 300,
+   "tea": 5.255,
+   "durationMod": 0.278,
+   "paridad": 98.551,
+   "varPrecio": 0.067,
+   "varTasa": 0.048,
+   "varParidad": 0.001,
+   "conAyer": true
+  },
+  {
+   "ticker": "TZXM7",
+   "familia": "CER",
+   "moneda": "ars",
+   "precio": 220.9,
+   "tea": 5.943,
+   "durationMod": 0.559,
+   "paridad": 96.733,
+   "varPrecio": 0.227,
+   "varTasa": -0.266,
+   "varParidad": 0.156,
+   "conAyer": true
+  },
+  {
+   "ticker": "TZXA7",
+   "familia": "CER",
+   "moneda": "ars",
+   "precio": 121.7,
+   "tea": 6.149,
+   "durationMod": 0.638,
+   "paridad": 96.152,
+   "varPrecio": -0.328,
+   "varTasa": 0.666,
+   "varParidad": -0.385,
+   "conAyer": true
+  },
+  {
+   "ticker": "TZX27",
+   "familia": "CER",
+   "moneda": "ars",
+   "precio": 391.7,
+   "tea": 6.24,
+   "durationMod": 0.8,
+   "paridad": 95.131,
+   "varPrecio": 0.526,
+   "varTasa": -0.57,
+   "varParidad": 0.436,
+   "conAyer": true
+  },
+  {
+   "ticker": "TZXS7",
+   "familia": "CER",
+   "moneda": "ars",
+   "precio": 105.65,
+   "tea": 7.416,
+   "durationMod": 1.038,
+   "paridad": 92.586,
+   "varPrecio": 0.332,
+   "varTasa": -0.25,
+   "varParidad": 0.25,
+   "conAyer": true
+  },
+  {
+   "ticker": "TZXD7",
+   "familia": "CER",
+   "moneda": "ars",
+   "precio": 274,
+   "tea": 8.536,
+   "durationMod": 1.232,
+   "paridad": 90.01,
+   "varPrecio": 0.256,
+   "varTasa": -0.141,
+   "varParidad": 0.171,
+   "conAyer": true
+  },
+  {
+   "ticker": "TZXM8",
+   "familia": "CER",
+   "moneda": "ars",
+   "precio": 98.6,
+   "tea": 9.498,
+   "durationMod": 1.505,
+   "paridad": 86.658,
+   "varPrecio": 0.102,
+   "varTasa": -0.004,
+   "varParidad": 0.027,
+   "conAyer": true
+  },
+  {
+   "ticker": "TZX28",
+   "familia": "CER",
+   "moneda": "ars",
+   "precio": 347.3,
+   "tea": 9.763,
+   "durationMod": 1.739,
+   "paridad": 84.347,
+   "varPrecio": 0.202,
+   "varTasa": -0.066,
+   "varParidad": 0.115,
+   "conAyer": true
+  },
+  {
+   "ticker": "TZXS8",
+   "familia": "CER",
+   "moneda": "ars",
+   "precio": 94.29,
+   "tea": 9.622,
+   "durationMod": 1.977,
+   "paridad": 82.631,
+   "varPrecio": 0.042,
+   "varTasa": 0.023,
+   "varParidad": -0.016,
+   "conAyer": true
+  },
+  {
+   "ticker": "TZXM9",
+   "familia": "CER",
+   "moneda": "ars",
+   "precio": 89.89,
+   "tea": 9.605,
+   "durationMod": 2.444,
+   "paridad": 79.003,
+   "varPrecio": 0.436,
+   "varTasa": -0.145,
+   "varParidad": 0.287,
+   "conAyer": true
+  },
+  {
+   "ticker": "TZXO7",
+   "familia": "CER",
+   "moneda": "ars",
+   "precio": 95.7,
+   "tea": 7.682,
+   "durationMod": 1.113,
+   "paridad": 91.799,
+   "varPrecio": 0.314,
+   "varTasa": -0.211,
+   "varParidad": 0.226,
+   "conAyer": true
+  },
+  {
+   "ticker": "TZXD8",
+   "familia": "CER",
+   "moneda": "ars",
+   "precio": 84.4,
+   "tea": 9.673,
+   "durationMod": 2.176,
+   "paridad": 80.959,
+   "varPrecio": 0.012,
+   "varTasa": 0.039,
+   "varParidad": -0.045,
+   "conAyer": true
+  },
+  {
+   "ticker": "TZXY7",
+   "familia": "CER",
+   "moneda": "ars",
+   "precio": 121.65000000000002,
+   "tea": 3.816,
+   "durationMod": 0.729,
+   "paridad": 97.258,
+   "varPrecio": 1.08,
+   "varTasa": -1.391,
+   "varParidad": 0.97,
+   "conAyer": true
+  },
+  {
+   "ticker": "X30N6",
+   "familia": "CER",
+   "moneda": "ars",
+   "precio": 123.699,
+   "tea": 4.658,
+   "durationMod": 0.238,
+   "paridad": 98.896,
+   "varPrecio": 0.161,
+   "varTasa": -0.325,
+   "varParidad": 0.088,
+   "conAyer": true
+  },
+  {
+   "ticker": "X30S6",
+   "familia": "CER",
+   "moneda": "ars",
+   "precio": 115.40000000000002,
+   "tea": 0,
+   "durationMod": 0.077,
+   "paridad": 100.0,
+   "varPrecio": -0.009,
+   "varTasa": 0.977,
+   "varParidad": -0.078,
+   "conAyer": true
+  },
+  {
+   "ticker": "X29E7",
+   "familia": "CER",
+   "moneda": "ars",
+   "precio": 98.99,
+   "tea": 5.532,
+   "durationMod": 0.397,
+   "paridad": 97.826,
+   "varPrecio": 0.243,
+   "varTasa": -0.409,
+   "varParidad": 0.17,
+   "conAyer": true
+  },
+  {
+   "ticker": "TX28",
+   "familia": "CER",
+   "moneda": "ars",
+   "precio": 1709,
+   "tea": 9.208,
+   "durationMod": 1.083,
+   "paridad": 92.734,
+   "varPrecio": 0.323,
+   "varTasa": -0.223,
+   "varParidad": 0.231,
+   "conAyer": true
+  },
+  {
+   "ticker": "TX31",
+   "familia": "CER",
+   "moneda": "ars",
+   "precio": 1440,
+   "tea": 10.4,
+   "durationMod": 2.576,
+   "paridad": 81.354,
+   "varPrecio": 0.139,
+   "varTasa": -0.018,
+   "varParidad": 0.053,
+   "conAyer": true
+  },
+  {
+   "ticker": "DICP",
+   "familia": "CER",
+   "moneda": "ars",
+   "precio": 48195,
+   "tea": 10.001,
+   "durationMod": 3.032,
+   "paridad": 88.349,
+   "varPrecio": 0.626,
+   "varTasa": -0.184,
+   "varParidad": 0.477,
+   "conAyer": true
+  },
+  {
+   "ticker": "PARP",
+   "familia": "CER",
+   "moneda": "ars",
+   "precio": 34700,
+   "tea": 10.027,
+   "durationMod": 6.143,
+   "paridad": 60.741,
+   "varPrecio": 0.318,
+   "varTasa": -0.038,
+   "varParidad": 0.149,
+   "conAyer": true
+  },
+  {
+   "ticker": "CUAP",
+   "familia": "CER",
+   "moneda": "ars",
+   "precio": 42645,
+   "tea": 9.448,
+   "durationMod": 9.525,
+   "paridad": 53.853,
+   "varPrecio": 0.153,
+   "varTasa": -0.007,
+   "varParidad": 0.041,
+   "conAyer": true
+  },
+  {
+   "ticker": "TX26",
+   "familia": "CER",
+   "moneda": "ars",
+   "precio": 734.5,
+   "tea": 3.569,
+   "durationMod": 0.183,
+   "paridad": 99.716,
+   "varPrecio": 0.232,
+   "varTasa": -0.853,
+   "varParidad": 0.159,
+   "conAyer": true
+  },
+  {
+   "ticker": "TMF27",
+   "familia": "TAMAR",
+   "moneda": "ars",
+   "precio": 121.30000000000001,
+   "tea": 30.88,
+   "durationMod": 0.424,
+   "paridad": 102.018,
+   "varPrecio": 0.124,
+   "varTasa": -0.303,
+   "varParidad": 0.04,
+   "conAyer": true
+  },
+  {
+   "ticker": "TMG27",
+   "familia": "TAMAR",
+   "moneda": "ars",
+   "precio": 115.99999999999999,
+   "tea": 32.284,
+   "durationMod": 0.856,
+   "paridad": 102.706,
+   "varPrecio": 0.651,
+   "varTasa": -0.936,
+   "varParidad": 0.577,
+   "conAyer": true
+  },
+  {
+   "ticker": "TMF28",
+   "familia": "TAMAR",
+   "moneda": "ars",
+   "precio": 107.74999999999999,
+   "tea": 39.388,
+   "durationMod": 1.22,
+   "paridad": 96.841,
+   "varPrecio": -0.046,
+   "varTasa": -0.055,
+   "varParidad": -0.129,
+   "conAyer": true
+  },
+  {
+   "ticker": "TMG28",
+   "familia": "TAMAR",
+   "moneda": "ars",
+   "precio": 105.60000000000001,
+   "tea": 40.069,
+   "durationMod": 1.61,
+   "paridad": 95.583,
+   "varPrecio": 0.38,
+   "varTasa": -0.387,
+   "varParidad": 0.278,
+   "conAyer": true
+  },
+  {
+   "ticker": "TML27",
+   "familia": "TAMAR",
+   "moneda": "ars",
+   "precio": 106.89999999999999,
+   "tea": 32.465,
+   "durationMod": 0.782,
+   "paridad": 101.83,
+   "varPrecio": 0.047,
+   "varTasa": -0.13,
+   "varParidad": -0.037,
+   "conAyer": true
+  },
+  {
+   "ticker": "D30S6",
+   "familia": "Dólar linked",
+   "moneda": "ars",
+   "precio": 150400,
+   "tea": 7.623,
+   "durationMod": 0.074,
+   "paridad": 99.438,
+   "varPrecio": 0.033,
+   "varTasa": 2.51,
+   "varParidad": -0.167,
+   "conAyer": true
+  },
+  {
+   "ticker": "TZV27",
+   "familia": "Dólar linked",
+   "moneda": "ars",
+   "precio": 147790,
+   "tea": 2.846,
+   "durationMod": 0.813,
+   "paridad": 97.712,
+   "varPrecio": 0.333,
+   "varTasa": -0.154,
+   "varParidad": 0.128,
+   "conAyer": true
+  },
+  {
+   "ticker": "TZV28",
+   "familia": "Dólar linked",
+   "moneda": "ars",
+   "precio": 125509.99999999999,
+   "tea": 10.748,
+   "durationMod": 1.73,
+   "paridad": 82.982,
+   "varPrecio": -0.072,
+   "varTasa": 0.182,
+   "varParidad": -0.226,
+   "conAyer": true
+  },
+  {
+   "ticker": "D31M7",
+   "familia": "Dólar linked",
+   "moneda": "ars",
+   "precio": 147500,
+   "tea": 4.46,
+   "durationMod": 0.563,
+   "paridad": 97.521,
+   "varPrecio": 0.068,
+   "varTasa": 0.261,
+   "varParidad": -0.13,
+   "conAyer": true
+  },
+  {
+   "ticker": "TZVD8",
+   "familia": "Dólar linked",
+   "moneda": "ars",
+   "precio": 119400,
+   "tea": 10.889,
+   "durationMod": 2.162,
+   "paridad": 78.942,
+   "varPrecio": 0.193,
+   "varTasa": 0.017,
+   "varParidad": -0.006,
+   "conAyer": true
+  },
+  {
+   "ticker": "D15E7",
+   "familia": "Dólar linked",
+   "moneda": "ars",
+   "precio": 148700,
+   "tea": 4.704,
+   "durationMod": 0.361,
+   "paridad": 98.314,
+   "varPrecio": -0.201,
+   "varTasa": 1.159,
+   "varParidad": -0.396,
+   "conAyer": true
+  },
+  {
+   "ticker": "D30O6",
+   "familia": "Dólar linked",
+   "moneda": "ars",
+   "precio": 149950,
+   "tea": 5.583,
+   "durationMod": 0.155,
+   "paridad": 99.14,
+   "varPrecio": -0.067,
+   "varTasa": 1.827,
+   "varParidad": -0.265,
+   "conAyer": true
+  },
+  {
+   "ticker": "AO27D",
+   "familia": "Bonares",
+   "moneda": "mep",
+   "precio": 102.25,
+   "tea": 4.136,
+   "durationMod": 1.116,
+   "paridad": 102.216,
+   "varPrecio": 0.147,
+   "varTasa": -0.126,
+   "varParidad": 0.133,
+   "conAyer": true
+  },
+  {
+   "ticker": "AO28D",
+   "familia": "Bonares",
+   "moneda": "mep",
+   "precio": 94.83,
+   "tea": 9.003,
+   "durationMod": 2.015,
+   "paridad": 94.798,
+   "varPrecio": 0.19,
+   "varTasa": -0.089,
+   "varParidad": 0.164,
+   "conAyer": true
+  },
+  {
+   "ticker": "AL29D",
+   "familia": "Bonares",
+   "moneda": "mep",
+   "precio": 54.14,
+   "tea": 7.943,
+   "durationMod": 1.486,
+   "paridad": 90.101,
+   "varPrecio": 0.371,
+   "varTasa": -0.244,
+   "varParidad": 0.33,
+   "conAyer": true
+  },
+  {
+   "ticker": "AN29D",
+   "familia": "Bonares",
+   "moneda": "mep",
+   "precio": 92.36,
+   "tea": 10.155,
+   "durationMod": 2.775,
+   "paridad": 90.851,
+   "varPrecio": -0.097,
+   "varTasa": 0.047,
+   "varParidad": -0.105,
+   "conAyer": true
+  },
+  {
+   "ticker": "AL30D",
+   "familia": "Bonares",
+   "moneda": "mep",
+   "precio": 55.64,
+   "tea": 8.649,
+   "durationMod": 1.909,
+   "paridad": 86.842,
+   "varPrecio": 0.325,
+   "varTasa": -0.164,
+   "varParidad": 0.279,
+   "conAyer": true
+  },
+  {
+   "ticker": "AL35D",
+   "familia": "Bonares",
+   "moneda": "mep",
+   "precio": 75.9,
+   "tea": 10.318,
+   "durationMod": 5.196,
+   "paridad": 75.442,
+   "varPrecio": -0.132,
+   "varTasa": 0.032,
+   "varParidad": -0.108,
+   "conAyer": true
+  },
+  {
+   "ticker": "AE38D",
+   "familia": "Bonares",
+   "moneda": "mep",
+   "precio": 78.54,
+   "tea": 10.566,
+   "durationMod": 4.4,
+   "paridad": 77.966,
+   "varPrecio": 0.127,
+   "varTasa": -0.024,
+   "varParidad": 0.089,
+   "conAyer": true
+  },
+  {
+   "ticker": "AL41D",
+   "familia": "Bonares",
+   "moneda": "mep",
+   "precio": 70.35,
+   "tea": 10.444,
+   "durationMod": 5.61,
+   "paridad": 69.989,
+   "varPrecio": -0.028,
+   "varTasa": 0.01,
+   "varParidad": -0.027,
+   "conAyer": true
+  },
+  {
+   "ticker": "AO29D",
+   "familia": "Bonares",
+   "moneda": "mep",
+   "precio": 90.54000000000002,
+   "tea": 9.919,
+   "durationMod": 2.848,
+   "paridad": 90.51,
+   "varPrecio": 0.377,
+   "varTasa": -0.134,
+   "varParidad": 0.325,
+   "conAyer": true
+  },
+  {
+   "ticker": "GD29D",
+   "familia": "Globales",
+   "moneda": "ccl",
+   "precio": 53.56,
+   "tea": 8.701,
+   "durationMod": 1.476,
+   "paridad": 89.135,
+   "varPrecio": -0.391,
+   "varTasa": 0.291,
+   "varParidad": -0.352,
+   "conAyer": true,
+   "enMep": {
+    "precio": 56.000000000000014,
+    "tea": 5.619,
+    "paridad": 93.196
+   }
+  },
+  {
+   "ticker": "GD30D",
+   "familia": "Globales",
+   "moneda": "ccl",
+   "precio": 55.89999999999999,
+   "tea": 8.395,
+   "durationMod": 1.914,
+   "paridad": 87.247,
+   "varPrecio": 0.63,
+   "varTasa": -0.33,
+   "varParidad": 0.544,
+   "conAyer": true,
+   "enMep": {
+    "precio": 57.94000000000001,
+    "tea": 6.474,
+    "paridad": 90.431
+   }
+  },
+  {
+   "ticker": "GD35D",
+   "familia": "Globales",
+   "moneda": "ccl",
+   "precio": 76.55,
+   "tea": 10.146,
+   "durationMod": 5.207,
+   "paridad": 76.088,
+   "varPrecio": 0.341,
+   "varTasa": -0.063,
+   "varParidad": 0.25,
+   "conAyer": true,
+   "enMep": {
+    "precio": 79.6,
+    "tea": 9.364,
+    "paridad": 79.12
+   }
+  },
+  {
+   "ticker": "GD38D",
+   "familia": "Globales",
+   "moneda": "ccl",
+   "precio": 80.51,
+   "tea": 9.979,
+   "durationMod": 4.459,
+   "paridad": 79.922,
+   "varPrecio": 0.512,
+   "varTasa": -0.114,
+   "varParidad": 0.396,
+   "conAyer": true,
+   "enMep": {
+    "precio": 83.5,
+    "tea": 9.131,
+    "paridad": 82.89
+   }
+  },
+  {
+   "ticker": "GD41D",
+   "familia": "Globales",
+   "moneda": "ccl",
+   "precio": 71.13,
+   "tea": 10.238,
+   "durationMod": 5.641,
+   "paridad": 70.765,
+   "varPrecio": 0.58,
+   "varTasa": -0.103,
+   "varParidad": 0.401,
+   "conAyer": true,
+   "enMep": {
+    "precio": 73.93,
+    "tea": 9.527,
+    "paridad": 73.551
+   }
+  },
+  {
+   "ticker": "GD46D",
+   "familia": "Globales",
+   "moneda": "ccl",
+   "precio": 65.37,
+   "tea": 10.06,
+   "durationMod": 6.053,
+   "paridad": 71.473,
+   "varPrecio": 0.307,
+   "varTasa": -0.049,
+   "varParidad": 0.211,
+   "conAyer": true,
+   "enMep": {
+    "precio": 68.09,
+    "tea": 9.364,
+    "paridad": 74.447
+   }
+  },
+  {
+   "ticker": "BPC7D",
+   "familia": "BOPREALes",
+   "moneda": "mep",
+   "precio": 103.49999999999999,
+   "tea": 2.992,
+   "durationMod": 0.875,
+   "paridad": 101.775,
+   "varPrecio": 0.0,
+   "varTasa": 0.009,
+   "varParidad": -0.014,
+   "conAyer": true
+  },
+  {
+   "ticker": "BPD7D",
+   "familia": "BOPREALes",
+   "moneda": "mep",
+   "precio": 103.54999999999997,
+   "tea": 2.936,
+   "durationMod": 0.876,
+   "paridad": 101.825,
+   "varPrecio": -0.048,
+   "varTasa": 0.065,
+   "varParidad": -0.063,
+   "conAyer": true
+  },
+  {
+   "ticker": "BPA8D",
+   "familia": "BOPREALes",
+   "moneda": "mep",
+   "precio": 92.97000000000001,
+   "tea": 7.192,
+   "durationMod": 2.016,
+   "paridad": 92.034,
+   "varPrecio": 0.595,
+   "varTasa": -0.295,
+   "varParidad": 0.537,
+   "conAyer": true
+  },
+  {
+   "ticker": "BPB8D",
+   "familia": "BOPREALes",
+   "moneda": "mep",
+   "precio": 92.9,
+   "tea": 7.23,
+   "durationMod": 2.016,
+   "paridad": 91.965,
+   "varPrecio": 0.759,
+   "varTasa": -0.379,
+   "varParidad": 0.685,
+   "conAyer": true
+  },
+  {
+   "ticker": "BPA7D",
+   "familia": "BOPREALes",
+   "moneda": "mep",
+   "precio": 103.19999999999999,
+   "tea": 3.33,
+   "durationMod": 0.874,
+   "paridad": 101.48,
+   "varPrecio": -0.338,
+   "varTasa": 0.402,
+   "varParidad": -0.358,
+   "conAyer": true
+  },
+  {
+   "ticker": "BPB7D",
+   "familia": "BOPREALes",
+   "moneda": "mep",
+   "precio": 103.30000000000001,
+   "tea": 3.217,
+   "durationMod": 0.874,
+   "paridad": 101.579,
+   "varPrecio": -0.241,
+   "varTasa": 0.29,
+   "varParidad": -0.26,
+   "conAyer": true
+  },
+  {
+   "ticker": "TXMJ8",
+   "familia": "Duales",
+   "moneda": "ars",
+   "precio": 98.65,
+   "tea": 5.524,
+   "durationMod": 1.777,
+   "paridad": 90.641,
+   "varPrecio": 0.407,
+   "varTasa": -0.187,
+   "varParidad": 0.307,
+   "conAyer": true,
+   "patas": {
+    "CER": {
+     "tea": 5.524,
+     "durationMod": 1.777,
+     "conDatos": true
+    },
+    "TAMAR": {
+     "tea": 38.533,
+     "durationMod": 1.494,
+     "conDatos": true
+    }
+   }
+  },
+  {
+   "ticker": "TXMJ9",
+   "familia": "Duales",
+   "moneda": "ars",
+   "precio": 91.85,
+   "tea": 6.78,
+   "durationMod": 2.726,
+   "paridad": 83.087,
+   "varPrecio": 0.328,
+   "varTasa": -0.091,
+   "varParidad": 0.216,
+   "conAyer": true,
+   "patas": {
+    "CER": {
+     "tea": 6.78,
+     "durationMod": 2.726,
+     "conDatos": true
+    },
+    "TAMAR": {
+     "tea": 40.176,
+     "durationMod": 2.202,
+     "conDatos": true
+    }
+   }
+  },
+  {
+   "ticker": "TTS26",
+   "familia": "Duales",
+   "moneda": "ars",
+   "precio": 168.8,
+   "tea": 27.213,
+   "durationMod": 0.032,
+   "paridad": 100.259,
+   "varPrecio": 0.03,
+   "varTasa": 1.088,
+   "varParidad": -0.027,
+   "conAyer": true,
+   "patas": {
+    "TAMAR": {
+     "tea": 27.213,
+     "durationMod": 0.032,
+     "conDatos": true
+    }
+   }
+  },
+  {
+   "ticker": "TXMD8",
+   "familia": "Duales",
+   "moneda": "ars",
+   "precio": 92.75,
+   "tea": 39.722,
+   "durationMod": 1.828,
+   "paridad": 87.609,
+   "varPrecio": 0.379,
+   "varTasa": -0.361,
+   "varParidad": 0.263,
+   "conAyer": true,
+   "patas": {
+    "CER": {
+     "tea": 5.923,
+     "durationMod": 2.219,
+     "conDatos": true
+    },
+    "TAMAR": {
+     "tea": 39.722,
+     "durationMod": 1.828,
+     "conDatos": true
+    }
+   }
+  },
+  {
+   "ticker": "TXMD9",
+   "familia": "Duales",
+   "moneda": "ars",
+   "precio": 85.52,
+   "tea": 40.744,
+   "durationMod": 2.497,
+   "paridad": 80.78,
+   "varPrecio": 0.376,
+   "varTasa": -0.309,
+   "varParidad": 0.24,
+   "conAyer": true,
+   "patas": {
+    "CER": {
+     "tea": 6.7,
+     "durationMod": 3.17,
+     "conDatos": true
+    },
+    "TAMAR": {
+     "tea": 40.744,
+     "durationMod": 2.497,
+     "conDatos": true
+    }
+   }
+  },
+  {
+   "ticker": "TXMJ0",
+   "familia": "Duales",
+   "moneda": "ars",
+   "precio": 82.35,
+   "tea": 40.876,
+   "durationMod": 2.823,
+   "paridad": 77.785,
+   "varPrecio": 0.207,
+   "varTasa": -0.23,
+   "varParidad": 0.101,
+   "conAyer": true,
+   "patas": {
+    "CER": {
+     "tea": 6.776,
+     "durationMod": 3.685,
+     "conDatos": true
+    },
+    "TAMAR": {
+     "tea": 40.876,
+     "durationMod": 2.823,
+     "conDatos": true
+    }
+   }
+  },
+  {
+   "ticker": "TMVE8",
+   "familia": "Duales",
+   "moneda": "ars",
+   "precio": 138490,
+   "tea": 37.469,
+   "durationMod": 1.177,
+   "paridad": 90.427,
+   "varPrecio": 0.428,
+   "varTasa": -0.513,
+   "varParidad": 0.324,
+   "conAyer": true,
+   "patas": {
+    "TAMAR": {
+     "tea": 37.469,
+     "durationMod": 1.177,
+     "conDatos": true
+    },
+    "LINKED": {
+     "tea": 6.433,
+     "durationMod": 1.369,
+     "conDatos": true
+    }
+   }
+  },
+  {
+   "ticker": "RUCED",
+   "familia": "ONs ley local",
+   "moneda": "mep",
+   "precio": 100.55000000000001,
+   "tea": 7.867,
+   "durationMod": 0.98,
+   "paridad": 99.852,
+   "varPrecio": -0.887,
+   "varTasa": 0.977,
+   "varParidad": -0.914,
+   "conAyer": true
+  },
+  {
+   "ticker": "PQCSD",
+   "familia": "ONs ley local",
+   "moneda": "mep",
+   "precio": 101.05,
+   "tea": 7.956,
+   "durationMod": 3.687,
+   "paridad": 100.697,
+   "varPrecio": -0.443,
+   "varTasa": 0.131,
+   "varParidad": -0.471,
+   "conAyer": true
+  },
+  {
+   "ticker": "TLCPD",
+   "familia": "ONs ley NY",
+   "moneda": "ccl",
+   "precio": 109.25000000000001,
+   "tea": 7.987,
+   "durationMod": 4.638,
+   "paridad": 106.674,
+   "varPrecio": -0.091,
+   "varTasa": 0.025,
+   "varParidad": -0.124,
+   "conAyer": true,
+   "enMep": {
+    "precio": 113.75,
+    "tea": 7.09,
+    "paridad": 111.067
+   }
+  },
+  {
+   "ticker": "GN49D",
+   "familia": "ONs ley NY",
+   "moneda": "ccl",
+   "precio": 104,
+   "tea": 7.458,
+   "durationMod": 4.811,
+   "paridad": 102.023,
+   "varPrecio": 1.02,
+   "varTasa": -0.215,
+   "varParidad": 1.009,
+   "conAyer": true,
+   "enMep": {
+    "precio": 107.85,
+    "tea": 6.68,
+    "paridad": 105.8
+   }
+  },
+  {
+   "ticker": "NDG34",
+   "familia": "Subsoberanos",
+   "moneda": "ccl",
+   "precio": 99.3,
+   "tea": 7.74,
+   "durationMod": 5.33,
+   "paridad": 98.655,
+   "varPrecio": -0.301,
+   "varTasa": 0.063,
+   "varParidad": -0.318,
+   "conAyer": true,
+   "enMep": {
+    "precio": 103.25,
+    "tea": 6.986,
+    "paridad": 102.58
+   }
+  },
+  {
+   "ticker": "SFD34",
+   "familia": "Subsoberanos",
+   "moneda": "ccl",
+   "precio": 101.55000000000001,
+   "tea": 8.309,
+   "durationMod": 5.02,
+   "paridad": 99.732,
+   "varPrecio": 0.0,
+   "varTasa": 0.005,
+   "varParidad": -0.022,
+   "conAyer": true,
+   "enMep": {
+    "precio": 105.69999999999997,
+    "tea": 7.485,
+    "paridad": 103.808
+   }
+  },
+  {
+   "ticker": "CO35",
+   "familia": "Subsoberanos",
+   "moneda": "ccl",
+   "precio": 99.44000000000001,
+   "tea": 9.015,
+   "durationMod": 5.346,
+   "paridad": 98.756,
+   "varPrecio": 0.091,
+   "varTasa": -0.013,
+   "varParidad": 0.066,
+   "conAyer": true,
+   "enMep": {
+    "precio": 103.10000000000001,
+    "tea": 8.314,
+    "paridad": 102.391
+   }
+  },
+  {
+   "ticker": "BA37D",
+   "familia": "Subsoberanos",
+   "moneda": "ccl",
+   "precio": 68.8,
+   "tea": 11.952,
+   "durationMod": 4.216,
+   "paridad": 79.948,
+   "varPrecio": 0.029,
+   "varTasa": 0.0,
+   "varParidad": 0.009,
+   "conAyer": true,
+   "enMep": {
+    "precio": 71.54,
+    "tea": 10.984,
+    "paridad": 83.132
+   }
+  },
+  {
+   "ticker": "BB37D",
+   "familia": "Subsoberanos",
+   "moneda": "ccl",
+   "precio": 73.5,
+   "tea": 11.975,
+   "durationMod": 5.069,
+   "paridad": 73.488,
+   "varPrecio": null,
+   "varTasa": null,
+   "varParidad": null,
+   "conAyer": false,
+   "enMep": {
+    "precio": 76,
+    "tea": 11.282,
+    "paridad": 75.988
+   }
+  },
+  {
+   "ticker": "RC2CD",
+   "familia": "ONs ley local",
+   "moneda": "mep",
+   "precio": 103,
+   "tea": -0.436,
+   "durationMod": 0.093,
+   "paridad": 100.578,
+   "varPrecio": 0.0,
+   "varTasa": -0.012,
+   "varParidad": -0.016,
+   "conAyer": true
+  },
+  {
+   "ticker": "DNC3D",
+   "familia": "ONs ley local",
+   "moneda": "mep",
+   "precio": 104.3,
+   "tea": 2.849,
+   "durationMod": 0.224,
+   "paridad": 101.507,
+   "varPrecio": 0.048,
+   "varTasa": -0.18,
+   "varParidad": 0.022,
+   "conAyer": true
+  },
+  {
+   "ticker": "STCFD",
+   "familia": "ONs ley local",
+   "moneda": "mep",
+   "precio": 102.8,
+   "tea": 2.909,
+   "durationMod": 0.455,
+   "paridad": 102.453,
+   "varPrecio": null,
+   "varTasa": null,
+   "varParidad": null,
+   "conAyer": false
+  },
+  {
+   "ticker": "YM37D",
+   "familia": "ONs ley local",
+   "moneda": "mep",
+   "precio": 102.49999999999999,
+   "tea": 4.044,
+   "durationMod": 0.658,
+   "paridad": 101.991,
+   "varPrecio": 0.343,
+   "varTasa": -0.518,
+   "varParidad": 0.329,
+   "conAyer": true
+  },
+  {
+   "ticker": "YFCMD",
+   "familia": "ONs ley local",
+   "moneda": "mep",
+   "precio": 102.1,
+   "tea": 3.9,
+   "durationMod": 0.694,
+   "paridad": 101.879,
+   "varPrecio": -0.196,
+   "varTasa": 0.304,
+   "varParidad": -0.218,
+   "conAyer": true
+  },
+  {
+   "ticker": "HJCID",
+   "familia": "ONs ley local",
+   "moneda": "mep",
+   "precio": 104.1,
+   "tea": 4.605,
+   "durationMod": 0.698,
+   "paridad": 102.045,
+   "varPrecio": 0.483,
+   "varTasa": -0.687,
+   "varParidad": 0.47,
+   "conAyer": true
+  },
+  {
+   "ticker": "WBS3D",
+   "familia": "ONs ley local",
+   "moneda": "mep",
+   "precio": 101.49999999999999,
+   "tea": 5.56,
+   "durationMod": 0.808,
+   "paridad": 100.443,
+   "varPrecio": 0.099,
+   "varTasa": -0.108,
+   "varParidad": 0.083,
+   "conAyer": true
+  },
+  {
+   "ticker": "PFC2D",
+   "familia": "ONs ley local",
+   "moneda": "mep",
+   "precio": 102.99999999999999,
+   "tea": 4.896,
+   "durationMod": 0.826,
+   "paridad": 101.987,
+   "varPrecio": -0.29,
+   "varTasa": 0.375,
+   "varParidad": -0.317,
+   "conAyer": true
+  },
+  {
+   "ticker": "YM38D",
+   "familia": "ONs ley local",
+   "moneda": "mep",
+   "precio": 103.45000000000002,
+   "tea": 4.575,
+   "durationMod": 0.849,
+   "paridad": 102.565,
+   "varPrecio": 0.0,
+   "varTasa": 0.015,
+   "varParidad": -0.021,
+   "conAyer": true
+  },
+  {
+   "ticker": "LOC5D",
+   "familia": "ONs ley local",
+   "moneda": "mep",
+   "precio": 103.49999999999999,
+   "tea": 5.021,
+   "durationMod": 0.856,
+   "paridad": 102.6,
+   "varPrecio": -0.048,
+   "varTasa": 0.074,
+   "varParidad": -0.072,
+   "conAyer": true
+  },
+  {
+   "ticker": "PN38D",
+   "familia": "ONs ley local",
+   "moneda": "ccl",
+   "precio": 102.64999999999999,
+   "tea": 4.064,
+   "durationMod": 0.906,
+   "paridad": 102.249,
+   "varPrecio": 0.588,
+   "varTasa": -0.648,
+   "varParidad": 0.58,
+   "conAyer": true,
+   "enMep": {
+    "precio": 106.20000000000002,
+    "tea": 0.306,
+    "paridad": 105.786
+   }
+  },
+  {
+   "ticker": "OZC3D",
+   "familia": "ONs ley local",
+   "moneda": "mep",
+   "precio": 103.3,
+   "tea": 7.082,
+   "durationMod": 1.145,
+   "paridad": 101.171,
+   "varPrecio": -0.386,
+   "varTasa": 0.365,
+   "varParidad": -0.414,
+   "conAyer": true
+  },
+  {
+   "ticker": "CS52D",
+   "familia": "ONs ley local",
+   "moneda": "mep",
+   "precio": 100.49999999999999,
+   "tea": 5.509,
+   "durationMod": 1.557,
+   "paridad": 98.891,
+   "varPrecio": 0.05,
+   "varTasa": -0.023,
+   "varParidad": 0.037,
+   "conAyer": true
+  },
+  {
+   "ticker": "MIC6D",
+   "familia": "ONs ley local",
+   "moneda": "mep",
+   "precio": 101,
+   "tea": 7.657,
+   "durationMod": 1.611,
+   "paridad": 100.889,
+   "varPrecio": 0.099,
+   "varTasa": -0.052,
+   "varParidad": 0.078,
+   "conAyer": true
+  },
+  {
+   "ticker": "CICAD",
+   "familia": "ONs ley local",
+   "moneda": "mep",
+   "precio": 104.60000000000001,
+   "tea": 6.502,
+   "durationMod": 1.596,
+   "paridad": 102.555,
+   "varPrecio": 1.504,
+   "varTasa": -0.957,
+   "varParidad": 1.498,
+   "conAyer": true
+  },
+  {
+   "ticker": "OLC5D",
+   "familia": "ONs ley local",
+   "moneda": "mep",
+   "precio": 106.85,
+   "tea": 4.925,
+   "durationMod": 1.631,
+   "paridad": 104.989,
+   "varPrecio": 0.802,
+   "varTasa": -0.494,
+   "varParidad": 0.813,
+   "conAyer": true
+  },
+  {
+   "ticker": "CS48D",
+   "familia": "ONs ley local",
+   "moneda": "mep",
+   "precio": 105.05000000000001,
+   "tea": 5.838,
+   "durationMod": 1.699,
+   "paridad": 103.844,
+   "varPrecio": -0.19,
+   "varTasa": 0.124,
+   "varParidad": -0.22,
+   "conAyer": true
+  },
+  {
+   "ticker": "DNC5D",
+   "familia": "ONs ley local",
+   "moneda": "mep",
+   "precio": 105.69999999999999,
+   "tea": 6.818,
+   "durationMod": 1.744,
+   "paridad": 104.935,
+   "varPrecio": 0.237,
+   "varTasa": -0.13,
+   "varParidad": 0.221,
+   "conAyer": true
+  },
+  {
+   "ticker": "MGCQD",
+   "familia": "ONs ley local",
+   "moneda": "ccl",
+   "precio": 103,
+   "tea": 5.963,
+   "durationMod": 1.778,
+   "paridad": 102.451,
+   "varPrecio": 0.39,
+   "varTasa": -0.216,
+   "varParidad": 0.378,
+   "conAyer": true,
+   "enMep": {
+    "precio": 107.4,
+    "tea": 3.57,
+    "paridad": 106.827
+   }
+  },
+  {
+   "ticker": "YMCYD",
+   "familia": "ONs ley local",
+   "moneda": "mep",
+   "precio": 103.60000000000001,
+   "tea": 5.269,
+   "durationMod": 1.945,
+   "paridad": 102.613,
+   "varPrecio": -0.145,
+   "varTasa": 0.085,
+   "varParidad": -0.167,
+   "conAyer": true
+  },
+  {
+   "ticker": "CS47D",
+   "familia": "ONs ley local",
+   "moneda": "mep",
+   "precio": 104.80000000000001,
+   "tea": 5.759,
+   "durationMod": 1.988,
+   "paridad": 102.635,
+   "varPrecio": 0.383,
+   "varTasa": -0.19,
+   "varParidad": 0.373,
+   "conAyer": true
+  },
+  {
+   "ticker": "HJCLD",
+   "familia": "ONs ley local",
+   "moneda": "mep",
+   "precio": 101.29999999999998,
+   "tea": 6.713,
+   "durationMod": 2.055,
+   "paridad": 99.772,
+   "varPrecio": -0.393,
+   "varTasa": 0.207,
+   "varParidad": -0.412,
+   "conAyer": true
+  },
+  {
+   "ticker": "LUC5D",
+   "familia": "ONs ley local",
+   "moneda": "mep",
+   "precio": 101.29999999999998,
+   "tea": 7.625,
+   "durationMod": 2.22,
+   "paridad": 101.145,
+   "varPrecio": -0.686,
+   "varTasa": 0.33,
+   "varParidad": -0.721,
+   "conAyer": true
+  },
+  {
+   "ticker": "PLC6D",
+   "familia": "ONs ley local",
+   "moneda": "mep",
+   "precio": 105.5,
+   "tea": 5.622,
+   "durationMod": 2.211,
+   "paridad": 102.1,
+   "varPrecio": -0.047,
+   "varTasa": 0.029,
+   "varParidad": -0.066,
+   "conAyer": true
+  },
+  {
+   "ticker": "YM42D",
+   "familia": "ONs ley local",
+   "moneda": "mep",
+   "precio": 105.2,
+   "tea": 5.584,
+   "durationMod": 2.238,
+   "paridad": 103.376,
+   "varPrecio": -0.142,
+   "varTasa": 0.072,
+   "varParidad": -0.167,
+   "conAyer": true
+  },
+  {
+   "ticker": "TLCUD",
+   "familia": "ONs ley local",
+   "moneda": "mep",
+   "precio": 104.95000000000002,
+   "tea": 5.832,
+   "durationMod": 2.219,
+   "paridad": 101.673,
+   "varPrecio": -0.521,
+   "varTasa": 0.249,
+   "varParidad": -0.55,
+   "conAyer": true
+  },
+  {
+   "ticker": "MCC1D",
+   "familia": "ONs ley local",
+   "moneda": "mep",
+   "precio": 106.89999999999999,
+   "tea": 6.658,
+   "durationMod": 2.188,
+   "paridad": 102.977,
+   "varPrecio": 0.802,
+   "varTasa": -0.369,
+   "varParidad": 0.798,
+   "conAyer": true
+  },
+  {
+   "ticker": "MGCTD",
+   "familia": "ONs ley local",
+   "moneda": "mep",
+   "precio": 102.4,
+   "tea": 5.526,
+   "durationMod": 2.329,
+   "paridad": 100.082,
+   "varPrecio": -0.146,
+   "varTasa": 0.071,
+   "varParidad": -0.161,
+   "conAyer": true
+  },
+  {
+   "ticker": "CACDD",
+   "familia": "ONs ley local",
+   "moneda": "mep",
+   "precio": 103.64999999999999,
+   "tea": 7.724,
+   "durationMod": 2.387,
+   "paridad": 101.584,
+   "varPrecio": -0.193,
+   "varTasa": 0.093,
+   "varParidad": -0.219,
+   "conAyer": true
+  },
+  {
+   "ticker": "OLC6D",
+   "familia": "ONs ley local",
+   "moneda": "mep",
+   "precio": 106,
+   "tea": 5.919,
+   "durationMod": 2.436,
+   "paridad": 104.096,
+   "varPrecio": 0.189,
+   "varTasa": -0.073,
+   "varParidad": 0.175,
+   "conAyer": true
+  },
+  {
+   "ticker": "YMCID",
+   "familia": "ONs ley NY",
+   "moneda": "ccl",
+   "precio": 89.95000000000002,
+   "tea": 6.762,
+   "durationMod": 1.427,
+   "paridad": 103.34,
+   "varPrecio": 0.089,
+   "varTasa": -0.051,
+   "varParidad": 0.066,
+   "conAyer": true,
+   "enMep": {
+    "precio": 93.58,
+    "tea": 3.953,
+    "paridad": 107.51
+   }
+  },
+  {
+   "ticker": "DNCBD",
+   "familia": "ONs ley local",
+   "moneda": "ccl",
+   "precio": 95.65000000000002,
+   "tea": 10.042,
+   "durationMod": 2.448,
+   "paridad": 94.466,
+   "varPrecio": -0.829,
+   "varTasa": 0.367,
+   "varParidad": -0.809,
+   "conAyer": true,
+   "enMep": {
+    "precio": 99.26,
+    "tea": 8.467,
+    "paridad": 98.031
+   }
+  },
+  {
+   "ticker": "VSCZD",
+   "familia": "ONs ley local",
+   "moneda": "mep",
+   "precio": 99.55,
+   "tea": 5.492,
+   "durationMod": 2.622,
+   "paridad": 98.9,
+   "varPrecio": -0.29,
+   "varTasa": 0.119,
+   "varParidad": -0.302,
+   "conAyer": true
+  },
+  {
+   "ticker": "NPCED",
+   "familia": "ONs ley local",
+   "moneda": "mep",
+   "precio": 99.7,
+   "tea": 5.907,
+   "durationMod": 2.63,
+   "paridad": 99.147,
+   "varPrecio": -0.25,
+   "varTasa": 0.104,
+   "varParidad": -0.264,
+   "conAyer": true
+  },
+  {
+   "ticker": "NPCCD",
+   "familia": "ONs ley local",
+   "moneda": "ccl",
+   "precio": 103,
+   "tea": 7.055,
+   "durationMod": 2.624,
+   "paridad": 102.82,
+   "varPrecio": -0.914,
+   "varTasa": 0.368,
+   "varParidad": -0.971,
+   "conAyer": true,
+   "enMep": {
+    "precio": 106.69999999999999,
+    "tea": 5.674,
+    "paridad": 106.513
+   }
+  },
+  {
+   "ticker": "PN41D",
+   "familia": "ONs ley local",
+   "moneda": "mep",
+   "precio": 106.14999999999999,
+   "tea": 5.36,
+   "durationMod": 2.666,
+   "paridad": 106.019,
+   "varPrecio": 0.094,
+   "varTasa": -0.031,
+   "varParidad": 0.078,
+   "conAyer": true
+  },
+  {
+   "ticker": "PN35D",
+   "familia": "ONs ley local",
+   "moneda": "mep",
+   "precio": 107.74999999999997,
+   "tea": 5.389,
+   "durationMod": 2.674,
+   "paridad": 104.562,
+   "varPrecio": 0.046,
+   "varTasa": -0.012,
+   "varParidad": 0.029,
+   "conAyer": true
+  },
+  {
+   "ticker": "PFC3D",
+   "familia": "ONs ley local",
+   "moneda": "mep",
+   "precio": 102,
+   "tea": 5.773,
+   "durationMod": 2.825,
+   "paridad": 100.154,
+   "varPrecio": 0.246,
+   "varTasa": -0.084,
+   "varParidad": 0.23,
+   "conAyer": true
+  },
+  {
+   "ticker": "PLC2D",
+   "familia": "ONs ley local",
+   "moneda": "mep",
+   "precio": 107.95000000000002,
+   "tea": 5.841,
+   "durationMod": 2.922,
+   "paridad": 105.184,
+   "varPrecio": 0.465,
+   "varTasa": -0.158,
+   "varParidad": 0.466,
+   "conAyer": true
+  },
+  {
+   "ticker": "OLC7D",
+   "familia": "ONs ley local",
+   "moneda": "mep",
+   "precio": 102.34999999999998,
+   "tea": 6.296,
+   "durationMod": 3.061,
+   "paridad": 102.157,
+   "varPrecio": -1.111,
+   "varTasa": 0.381,
+   "varParidad": -1.167,
+   "conAyer": true
+  },
+  {
+   "ticker": "YM43D",
+   "familia": "ONs ley local",
+   "moneda": "mep",
+   "precio": 101,
+   "tea": 5.934,
+   "durationMod": 3.166,
+   "paridad": 98.899,
+   "varPrecio": -0.247,
+   "varTasa": 0.085,
+   "varParidad": -0.259,
+   "conAyer": true
+  },
+  {
+   "ticker": "NPCDD",
+   "familia": "ONs ley local",
+   "moneda": "mep",
+   "precio": 101.9,
+   "tea": 6.136,
+   "durationMod": 3.178,
+   "paridad": 99.848,
+   "varPrecio": -0.098,
+   "varTasa": 0.037,
+   "varParidad": -0.114,
+   "conAyer": true
+  },
+  {
+   "ticker": "MCC3D",
+   "familia": "ONs ley local",
+   "moneda": "mep",
+   "precio": 101.94999999999999,
+   "tea": 7.753,
+   "durationMod": 3.104,
+   "paridad": 99.617,
+   "varPrecio": -0.827,
+   "varTasa": 0.284,
+   "varParidad": -0.851,
+   "conAyer": true
+  },
+  {
+   "ticker": "TLCWD",
+   "familia": "ONs ley local",
+   "moneda": "mep",
+   "precio": 103.34999999999998,
+   "tea": 5.815,
+   "durationMod": 3.251,
+   "paridad": 101.679,
+   "varPrecio": 0.145,
+   "varTasa": -0.041,
+   "varParidad": 0.13,
+   "conAyer": true
+  },
+  {
+   "ticker": "TTCDD",
+   "familia": "ONs ley NY",
+   "moneda": "ccl",
+   "precio": 104.69999999999999,
+   "tea": 7.122,
+   "durationMod": 3.454,
+   "paridad": 102.126,
+   "varPrecio": 0.143,
+   "varTasa": -0.037,
+   "varParidad": 0.125,
+   "conAyer": true,
+   "enMep": {
+    "precio": 109.04999999999998,
+    "tea": 5.912,
+    "paridad": 106.369
+   }
+  },
+  {
+   "ticker": "CP38D",
+   "familia": "ONs ley NY",
+   "moneda": "ccl",
+   "precio": 106,
+   "tea": 11.285,
+   "durationMod": 3.193,
+   "paridad": 102.812,
+   "varPrecio": -0.047,
+   "varTasa": 0.025,
+   "varParidad": -0.081,
+   "conAyer": true,
+   "enMep": {
+    "precio": 110.25,
+    "tea": 9.998,
+    "paridad": 106.934
+   }
+  },
+  {
+   "ticker": "RUCDD",
+   "familia": "ONs ley NY",
+   "moneda": "ccl",
+   "precio": 103.85,
+   "tea": 9.463,
+   "durationMod": 2.998,
+   "paridad": 101.459,
+   "varPrecio": 0.0,
+   "varTasa": 0.009,
+   "varParidad": -0.027,
+   "conAyer": true,
+   "enMep": {
+    "precio": 107.89999999999998,
+    "tea": 8.14,
+    "paridad": 105.416
+   }
+  },
+  {
+   "ticker": "BACHD",
+   "familia": "ONs ley NY",
+   "moneda": "ccl",
+   "precio": 103.60000000000002,
+   "tea": 7.358,
+   "durationMod": 3.653,
+   "paridad": 102.823,
+   "varPrecio": 0.193,
+   "varTasa": -0.049,
+   "varParidad": 0.176,
+   "conAyer": true,
+   "enMep": {
+    "precio": 108.25,
+    "tea": 6.122,
+    "paridad": 107.438
+   }
+  },
+  {
+   "ticker": "PLC5D",
+   "familia": "ONs ley NY",
+   "moneda": "ccl",
+   "precio": 105.85,
+   "tea": 7.358,
+   "durationMod": 3.799,
+   "paridad": 103.422,
+   "varPrecio": -0.094,
+   "varTasa": 0.031,
+   "varParidad": -0.121,
+   "conAyer": true,
+   "enMep": {
+    "precio": 110.2,
+    "tea": 6.268,
+    "paridad": 107.673
+   }
+  },
+  {
+   "ticker": "TLCMD",
+   "familia": "ONs ley NY",
+   "moneda": "ccl",
+   "precio": 108.65,
+   "tea": 7.371,
+   "durationMod": 3.201,
+   "paridad": 107.403,
+   "varPrecio": null,
+   "varTasa": null,
+   "varParidad": null,
+   "conAyer": false,
+   "enMep": {
+    "precio": 112.99999999999999,
+    "tea": 6.111,
+    "paridad": 111.703
+   }
+  },
+  {
+   "ticker": "MGCMD",
+   "familia": "ONs ley NY",
+   "moneda": "ccl",
+   "precio": 108.05,
+   "tea": 7.049,
+   "durationMod": 3.971,
+   "paridad": 104.096,
+   "varPrecio": null,
+   "varTasa": null,
+   "varParidad": null,
+   "conAyer": false,
+   "enMep": {
+    "precio": 112.25,
+    "tea": 6.063,
+    "paridad": 108.142
+   }
+  },
+  {
+   "ticker": "YMCXD",
+   "familia": "ONs ley NY",
+   "moneda": "ccl",
+   "precio": 109.3,
+   "tea": 7.491,
+   "durationMod": 3.499,
+   "paridad": 104.938,
+   "varPrecio": -0.319,
+   "varTasa": 0.1,
+   "varParidad": -0.361,
+   "conAyer": true,
+   "enMep": {
+    "precio": 113.90000000000002,
+    "tea": 6.281,
+    "paridad": 109.355
+   }
+  },
+  {
+   "ticker": "VSCRD",
+   "familia": "ONs ley local",
+   "moneda": "ccl",
+   "precio": 105.24999999999999,
+   "tea": 7.138,
+   "durationMod": 3.379,
+   "paridad": 102.146,
+   "varPrecio": -0.426,
+   "varTasa": 0.136,
+   "varParidad": -0.458,
+   "conAyer": true,
+   "enMep": {
+    "precio": 110.15000000000002,
+    "tea": 5.758,
+    "paridad": 106.901
+   }
+  },
+  {
+   "ticker": "PN36D",
+   "familia": "ONs ley local",
+   "moneda": "mep",
+   "precio": 109.30000000000001,
+   "tea": 5.737,
+   "durationMod": 4.247,
+   "paridad": 106.921,
+   "varPrecio": -0.274,
+   "varTasa": 0.07,
+   "varParidad": -0.314,
+   "conAyer": true
+  },
+  {
+   "ticker": "PLC4D",
+   "familia": "ONs ley NY",
+   "moneda": "ccl",
+   "precio": 106.65,
+   "tea": 7.659,
+   "durationMod": 4.433,
+   "paridad": 104.383,
+   "varPrecio": -0.234,
+   "varTasa": 0.059,
+   "varParidad": -0.269,
+   "conAyer": true,
+   "enMep": {
+    "precio": 111,
+    "tea": 6.73,
+    "paridad": 108.64
+   }
+  },
+  {
+   "ticker": "YFCJD",
+   "familia": "ONs ley NY",
+   "moneda": "ccl",
+   "precio": 106.1,
+   "tea": 7.254,
+   "durationMod": 4.058,
+   "paridad": 103.035,
+   "varPrecio": 0.0,
+   "varTasa": 0.005,
+   "varParidad": -0.022,
+   "conAyer": true,
+   "enMep": {
+    "precio": 110.00000000000003,
+    "tea": 6.339,
+    "paridad": 106.822
+   }
+  },
+  {
+   "ticker": "DNCAD",
+   "familia": "ONs ley NY",
+   "moneda": "ccl",
+   "precio": 101.8,
+   "tea": 10.081,
+   "durationMod": 4.131,
+   "paridad": 98.574,
+   "varPrecio": 0.098,
+   "varTasa": -0.018,
+   "varParidad": 0.072,
+   "conAyer": true,
+   "enMep": {
+    "precio": 105.34999999999998,
+    "tea": 9.217,
+    "paridad": 102.012
+   }
+  },
+  {
+   "ticker": "VSCVD",
+   "familia": "ONs ley NY",
+   "moneda": "ccl",
+   "precio": 108.1,
+   "tea": 7.296,
+   "durationMod": 4.471,
+   "paridad": 106.047,
+   "varPrecio": -0.231,
+   "varTasa": 0.058,
+   "varParidad": -0.27,
+   "conAyer": true,
+   "enMep": {
+    "precio": 112.5,
+    "tea": 6.379,
+    "paridad": 110.363
+   }
+  },
+  {
+   "ticker": "YMCJD",
+   "familia": "ONs ley NY",
+   "moneda": "ccl",
+   "precio": 102.45,
+   "tea": 7.233,
+   "durationMod": 4.392,
+   "paridad": 99.509,
+   "varPrecio": -0.534,
+   "varTasa": 0.131,
+   "varParidad": -0.553,
+   "conAyer": true,
+   "enMep": {
+    "precio": 106.69999999999999,
+    "tea": 6.282,
+    "paridad": 103.637
+   }
+  },
+  {
+   "ticker": "YM34D",
+   "familia": "ONs ley NY",
+   "moneda": "ccl",
+   "precio": 105.30000000000001,
+   "tea": 7.532,
+   "durationMod": 4.936,
+   "paridad": 104.225,
+   "varPrecio": -0.142,
+   "varTasa": 0.034,
+   "varParidad": -0.172,
+   "conAyer": true,
+   "enMep": {
+    "precio": 109.3,
+    "tea": 6.755,
+    "paridad": 108.184
+   }
+  },
+  {
+   "ticker": "LQC1D",
+   "familia": "ONs ley NY",
+   "moneda": "ccl",
+   "precio": 99.99999999999999,
+   "tea": 8.84,
+   "durationMod": 5.085,
+   "paridad": 99.204,
+   "varPrecio": -1.961,
+   "varTasa": 0.409,
+   "varParidad": -2.008,
+   "conAyer": true,
+   "enMep": {
+    "precio": 104,
+    "tea": 8.041,
+    "paridad": 103.172
+   }
+  },
+  {
+   "ticker": "MGCOD",
+   "familia": "ONs ley NY",
+   "moneda": "ccl",
+   "precio": 105.14999999999999,
+   "tea": 7.429,
+   "durationMod": 5.973,
+   "paridad": 103.43,
+   "varPrecio": -0.0,
+   "varTasa": 0.003,
+   "varParidad": -0.022,
+   "conAyer": true,
+   "enMep": {
+    "precio": 109.44999999999999,
+    "tea": 6.739,
+    "paridad": 107.66
+   }
+  },
+  {
+   "ticker": "MR46D",
+   "familia": "ONs ley NY",
+   "moneda": "ccl",
+   "precio": 76.97,
+   "tea": 16.804,
+   "durationMod": 3.192,
+   "paridad": 75.6,
+   "varPrecio": null,
+   "varTasa": null,
+   "varParidad": null,
+   "conAyer": false,
+   "enMep": {
+    "precio": 81.6,
+    "tea": 14.867,
+    "paridad": 80.147
+   }
+  },
+  {
+   "ticker": "IRCPD",
+   "familia": "ONs ley NY",
+   "moneda": "ccl",
+   "precio": 105.8,
+   "tea": 7.709,
+   "durationMod": 5.455,
+   "paridad": 102.343,
+   "varPrecio": -0.047,
+   "varTasa": 0.013,
+   "varParidad": -0.07,
+   "conAyer": true,
+   "enMep": {
+    "precio": 110.4,
+    "tea": 6.906,
+    "paridad": 106.793
+   }
+  },
+  {
+   "ticker": "TSC4D",
+   "familia": "ONs ley NY",
+   "moneda": "ccl",
+   "precio": 104.49999999999999,
+   "tea": 7.53,
+   "durationMod": 6.413,
+   "paridad": 102.255,
+   "varPrecio": -0.286,
+   "varTasa": 0.05,
+   "varParidad": -0.315,
+   "conAyer": true,
+   "enMep": {
+    "precio": 109.00000000000001,
+    "tea": 6.854,
+    "paridad": 106.658
+   }
+  },
+  {
+   "ticker": "TLCTD",
+   "familia": "ONs ley NY",
+   "moneda": "ccl",
+   "precio": 104.95,
+   "tea": 8.016,
+   "durationMod": 6.164,
+   "paridad": 103.919,
+   "varPrecio": -0.0,
+   "varTasa": 0.004,
+   "varParidad": -0.024,
+   "conAyer": true,
+   "enMep": {
+    "precio": 109.45,
+    "tea": 7.314,
+    "paridad": 108.375
+   }
+  },
+  {
+   "ticker": "EAC4D",
+   "familia": "ONs ley NY",
+   "moneda": "ccl",
+   "precio": 100.04999999999998,
+   "tea": 10.343,
+   "durationMod": 5.656,
+   "paridad": 98.032,
+   "varPrecio": 0.251,
+   "varTasa": -0.041,
+   "varParidad": 0.219,
+   "conAyer": true,
+   "enMep": {
+    "precio": 105,
+    "tea": 9.455,
+    "paridad": 102.882
+   }
+  },
+  {
+   "ticker": "MR44D",
+   "familia": "ONs ley local",
+   "moneda": "mep",
+   "precio": 24.28,
+   "tea": 24.267,
+   "durationMod": 5.965,
+   "paridad": 24.05,
+   "varPrecio": 2.794,
+   "varTasa": -0.506,
+   "varParidad": 0.652,
+   "conAyer": true
+  },
+  {
+   "ticker": "PLC7D",
+   "familia": "ONs ley NY",
+   "moneda": "ccl",
+   "precio": 100.9,
+   "tea": 7.738,
+   "durationMod": 6.882,
+   "paridad": 99.605,
+   "varPrecio": 0.05,
+   "varTasa": -0.004,
+   "varParidad": 0.029,
+   "conAyer": true,
+   "enMep": {
+    "precio": 104.75000000000001,
+    "tea": 7.177,
+    "paridad": 103.405
+   }
+  },
+  {
+   "ticker": "MGCRD",
+   "familia": "ONs ley NY",
+   "moneda": "ccl",
+   "precio": 103.25,
+   "tea": 7.761,
+   "durationMod": 7.263,
+   "paridad": 100.904,
+   "varPrecio": null,
+   "varTasa": null,
+   "varParidad": null,
+   "conAyer": false,
+   "enMep": {
+    "precio": 107.45,
+    "tea": 7.195,
+    "paridad": 105.009
+   }
+  },
+  {
+   "ticker": "VSCXD",
+   "familia": "ONs ley NY",
+   "moneda": "ccl",
+   "precio": 105.5,
+   "tea": 7.685,
+   "durationMod": 6.937,
+   "paridad": 102.278,
+   "varPrecio": -0.472,
+   "varTasa": 0.074,
+   "varParidad": -0.507,
+   "conAyer": true,
+   "enMep": {
+    "precio": 109.85000000000001,
+    "tea": 7.086,
+    "paridad": 106.495
+   }
+  },
+  {
+   "ticker": "AEC3D",
+   "familia": "ONs ley local",
+   "moneda": "mep",
+   "precio": 100,
+   "tea": 6.846,
+   "durationMod": 1.779,
+   "paridad": 99.524,
+   "varPrecio": -0.448,
+   "varTasa": 0.271,
+   "varParidad": -0.465,
+   "conAyer": true
+  },
+  {
+   "ticker": "TTC9D",
+   "familia": "ONs ley local",
+   "moneda": "mep",
+   "precio": 105.90000000000002,
+   "tea": 5.659,
+   "durationMod": 2.748,
+   "paridad": 103.377,
+   "varPrecio": -0.329,
+   "varTasa": 0.129,
+   "varParidad": -0.361,
+   "conAyer": true
+  },
+  {
+   "ticker": "CP40D",
+   "familia": "ONs ley local",
+   "moneda": "mep",
+   "precio": 104.25,
+   "tea": 8.306,
+   "durationMod": 1.374,
+   "paridad": 101.994,
+   "varPrecio": 0.289,
+   "varTasa": -0.206,
+   "varParidad": 0.268,
+   "conAyer": true
+  },
+  {
+   "ticker": "PLC3D",
+   "familia": "ONs ley local",
+   "moneda": "mep",
+   "precio": 103.7,
+   "tea": 5.401,
+   "durationMod": 1.548,
+   "paridad": 103.004,
+   "varPrecio": -0.144,
+   "varTasa": 0.105,
+   "varParidad": -0.169,
+   "conAyer": true
+  },
+  {
+   "ticker": "HJCKD",
+   "familia": "ONs ley local",
+   "moneda": "mep",
+   "precio": 104.49999999999999,
+   "tea": 6.24,
+   "durationMod": 2.133,
+   "paridad": 103.446,
+   "varPrecio": 1.407,
+   "varTasa": -0.669,
+   "varParidad": 1.414,
+   "conAyer": true
+  },
+  {
+   "ticker": "YM41D",
+   "familia": "ONs ley local",
+   "moneda": "mep",
+   "precio": 101.64999999999999,
+   "tea": 3.947,
+   "durationMod": 0.344,
+   "paridad": 100.723,
+   "varPrecio": 0.346,
+   "varTasa": -0.999,
+   "varParidad": 0.33,
+   "conAyer": true
+  },
+  {
+   "ticker": "EMC1D",
+   "familia": "ONs ley local",
+   "moneda": "mep",
+   "precio": 102.60000000000001,
+   "tea": 5.875,
+   "durationMod": 0.797,
+   "paridad": 101.35,
+   "varPrecio": -0.195,
+   "varTasa": 0.27,
+   "varParidad": -0.218,
+   "conAyer": true
+  },
+  {
+   "ticker": "VSCYD",
+   "familia": "ONs ley local",
+   "moneda": "mep",
+   "precio": 102.05,
+   "tea": 2.605,
+   "durationMod": 1.331,
+   "paridad": 101.549,
+   "varPrecio": 0.147,
+   "varTasa": -0.106,
+   "varParidad": 0.139,
+   "conAyer": true
+  }
+ ],
+ "macro": {
+  "fecha": "2026-09-01",
+  "series": {
+   "tamarTEA": {
+    "nombre": "TAMAR bancos privados",
+    "unidad": "% TEA",
+    "id": 45,
+    "fecha": "2026-08-31",
+    "valor": 27.67,
+    "clase": "stock",
+    "rezagoDias": 1,
+    "previo": {
+     "fecha": "2026-08-28",
+     "valor": 27.59
+    },
+    "variacion": 0.08,
+    "ventana": [
+     {
+      "fecha": "2026-08-31",
+      "valor": 27.67
+     },
+     {
+      "fecha": "2026-08-28",
+      "valor": 27.59
+     },
+     {
+      "fecha": "2026-08-27",
+      "valor": 28.29
+     },
+     {
+      "fecha": "2026-08-26",
+      "valor": 28.21
+     },
+     {
+      "fecha": "2026-08-25",
+      "valor": 28.37
+     },
+     {
+      "fecha": "2026-08-24",
+      "valor": 28.13
+     },
+     {
+      "fecha": "2026-08-21",
+      "valor": 28.45
+     },
+     {
+      "fecha": "2026-08-20",
+      "valor": 29.95
+     },
+     {
+      "fecha": "2026-08-19",
+      "valor": 28.29
+     },
+     {
+      "fecha": "2026-08-18",
+      "valor": 27.43
+     },
+     {
+      "fecha": "2026-08-14",
+      "valor": 27.51
+     },
+     {
+      "fecha": "2026-08-13",
+      "valor": 27.04
+     },
+     {
+      "fecha": "2026-08-12",
+      "valor": 25.8
+     },
+     {
+      "fecha": "2026-08-11",
+      "valor": 26.65
+     },
+     {
+      "fecha": "2026-08-10",
+      "valor": 25.96
+     }
+    ]
+   },
+   "tamarTNA": {
+    "nombre": "TAMAR bancos privados",
+    "unidad": "% TNA",
+    "id": 44,
+    "fecha": "2026-08-31",
+    "valor": 24.6875,
+    "clase": "stock",
+    "rezagoDias": 1,
+    "previo": {
+     "fecha": "2026-08-28",
+     "valor": 24.625
+    },
+    "variacion": 0.0625,
+    "ventana": [
+     {
+      "fecha": "2026-08-31",
+      "valor": 24.6875
+     },
+     {
+      "fecha": "2026-08-28",
+      "valor": 24.625
+     },
+     {
+      "fecha": "2026-08-27",
+      "valor": 25.1875
+     },
+     {
+      "fecha": "2026-08-26",
+      "valor": 25.125
+     },
+     {
+      "fecha": "2026-08-25",
+      "valor": 25.25
+     },
+     {
+      "fecha": "2026-08-24",
+      "valor": 25.0625
+     },
+     {
+      "fecha": "2026-08-21",
+      "valor": 25.3125
+     },
+     {
+      "fecha": "2026-08-20",
+      "valor": 26.5
+     },
+     {
+      "fecha": "2026-08-19",
+      "valor": 25.1875
+     },
+     {
+      "fecha": "2026-08-18",
+      "valor": 24.5
+     },
+     {
+      "fecha": "2026-08-14",
+      "valor": 24.5625
+     },
+     {
+      "fecha": "2026-08-13",
+      "valor": 24.1875
+     },
+     {
+      "fecha": "2026-08-12",
+      "valor": 23.1875
+     },
+     {
+      "fecha": "2026-08-11",
+      "valor": 23.875
+     },
+     {
+      "fecha": "2026-08-10",
+      "valor": 23.3125
+     }
+    ]
+   },
+   "badlarTEA": {
+    "nombre": "BADLAR bancos privados",
+    "unidad": "% TEA",
+    "id": 35,
+    "fecha": "2026-08-31",
+    "valor": 25.57,
+    "clase": "stock",
+    "rezagoDias": 1,
+    "previo": {
+     "fecha": "2026-08-28",
+     "valor": 25.8
+    },
+    "variacion": -0.23,
+    "ventana": [
+     {
+      "fecha": "2026-08-31",
+      "valor": 25.57
+     },
+     {
+      "fecha": "2026-08-28",
+      "valor": 25.8
+     },
+     {
+      "fecha": "2026-08-27",
+      "valor": 26.73
+     },
+     {
+      "fecha": "2026-08-26",
+      "valor": 25.8
+     },
+     {
+      "fecha": "2026-08-25",
+      "valor": 27.28
+     },
+     {
+      "fecha": "2026-08-24",
+      "valor": 26.34
+     },
+     {
+      "fecha": "2026-08-21",
+      "valor": 26.96
+     },
+     {
+      "fecha": "2026-08-20",
+      "valor": 27.2
+     },
+     {
+      "fecha": "2026-08-19",
+      "valor": 25.57
+     },
+     {
+      "fecha": "2026-08-18",
+      "valor": 24.65
+     },
+     {
+      "fecha": "2026-08-14",
+      "valor": 25.96
+     },
+     {
+      "fecha": "2026-08-13",
+      "valor": 25.03
+     },
+     {
+      "fecha": "2026-08-12",
+      "valor": 23.13
+     },
+     {
+      "fecha": "2026-08-11",
+      "valor": 25.34
+     },
+     {
+      "fecha": "2026-08-10",
+      "valor": 23.89
+     }
+    ]
+   },
+   "pasesTerceros": {
+    "nombre": "Pases entre terceros a 1 día",
+    "unidad": "% TNA",
+    "id": 150,
+    "fecha": "2026-08-31",
+    "valor": 20.89,
+    "clase": "stock",
+    "rezagoDias": 1,
+    "previo": {
+     "fecha": "2026-08-28",
+     "valor": 20.84
+    },
+    "variacion": 0.05,
+    "ventana": [
+     {
+      "fecha": "2026-08-31",
+      "valor": 20.89
+     },
+     {
+      "fecha": "2026-08-28",
+      "valor": 20.84
+     },
+     {
+      "fecha": "2026-08-27",
+      "valor": 21.06
+     },
+     {
+      "fecha": "2026-08-26",
+      "valor": 21.54
+     },
+     {
+      "fecha": "2026-08-25",
+      "valor": 22.04
+     },
+     {
+      "fecha": "2026-08-24",
+      "valor": 23.12
+     },
+     {
+      "fecha": "2026-08-21",
+      "valor": 24.0
+     },
+     {
+      "fecha": "2026-08-20",
+      "valor": 26.47
+     },
+     {
+      "fecha": "2026-08-19",
+      "valor": 28.36
+     },
+     {
+      "fecha": "2026-08-18",
+      "valor": 25.9
+     },
+     {
+      "fecha": "2026-08-14",
+      "valor": 25.11
+     },
+     {
+      "fecha": "2026-08-13",
+      "valor": 23.13
+     },
+     {
+      "fecha": "2026-08-12",
+      "valor": 22.92
+     },
+     {
+      "fecha": "2026-08-11",
+      "valor": 23.0
+     },
+     {
+      "fecha": "2026-08-10",
+      "valor": 22.38
+     }
+    ]
+   },
+   "volPases": {
+    "nombre": "Volumen de pases entre terceros a 1 día",
+    "unidad": "millones ARS",
+    "id": 151,
+    "fecha": "2026-08-31",
+    "valor": 2170941.0,
+    "clase": "flujo",
+    "rezagoDias": 1,
+    "previo": {
+     "fecha": "2026-08-28",
+     "valor": 2182590.0
+    },
+    "variacion": -11649.0,
+    "ventana": [
+     {
+      "fecha": "2026-08-31",
+      "valor": 2170941.0
+     },
+     {
+      "fecha": "2026-08-28",
+      "valor": 2182590.0
+     },
+     {
+      "fecha": "2026-08-27",
+      "valor": 3145372.0
+     },
+     {
+      "fecha": "2026-08-26",
+      "valor": 3448560.0
+     },
+     {
+      "fecha": "2026-08-25",
+      "valor": 3595786.0
+     },
+     {
+      "fecha": "2026-08-24",
+      "valor": 3446888.0
+     },
+     {
+      "fecha": "2026-08-21",
+      "valor": 3128519.0
+     },
+     {
+      "fecha": "2026-08-20",
+      "valor": 3716967.0
+     },
+     {
+      "fecha": "2026-08-19",
+      "valor": 3071212.0
+     },
+     {
+      "fecha": "2026-08-18",
+      "valor": 2091707.0
+     },
+     {
+      "fecha": "2026-08-14",
+      "valor": 2886618.0
+     },
+     {
+      "fecha": "2026-08-13",
+      "valor": 3217676.0
+     },
+     {
+      "fecha": "2026-08-12",
+      "valor": 2861354.0
+     },
+     {
+      "fecha": "2026-08-11",
+      "valor": 2521325.0
+     },
+     {
+      "fecha": "2026-08-10",
+      "valor": 2307870.0
+     }
+    ]
+   },
+   "baibar": {
+    "nombre": "BAIBAR · préstamos entre bancos privados",
+    "unidad": "% TNA",
+    "id": 146,
+    "fecha": "2026-08-31",
+    "valor": 20.85,
+    "clase": "stock",
+    "rezagoDias": 1,
+    "previo": {
+     "fecha": "2026-08-28",
+     "valor": 21.08
+    },
+    "variacion": -0.23,
+    "ventana": [
+     {
+      "fecha": "2026-08-31",
+      "valor": 20.85
+     },
+     {
+      "fecha": "2026-08-28",
+      "valor": 21.08
+     },
+     {
+      "fecha": "2026-08-27",
+      "valor": 21.2
+     },
+     {
+      "fecha": "2026-08-26",
+      "valor": 21.27
+     },
+     {
+      "fecha": "2026-08-25",
+      "valor": 22.69
+     },
+     {
+      "fecha": "2026-08-24",
+      "valor": 23.67
+     },
+     {
+      "fecha": "2026-08-21",
+      "valor": 23.99
+     },
+     {
+      "fecha": "2026-08-20",
+      "valor": 26.21
+     },
+     {
+      "fecha": "2026-08-19",
+      "valor": 27.88
+     },
+     {
+      "fecha": "2026-08-18",
+      "valor": 25.79
+     },
+     {
+      "fecha": "2026-08-14",
+      "valor": 24.35
+     },
+     {
+      "fecha": "2026-08-13",
+      "valor": 22.83
+     },
+     {
+      "fecha": "2026-08-12",
+      "valor": 22.28
+     },
+     {
+      "fecha": "2026-08-11",
+      "valor": 22.36
+     },
+     {
+      "fecha": "2026-08-10",
+      "valor": 21.65
+     }
+    ]
+   },
+   "interbancario": {
+    "nombre": "Préstamos entre entidades financieras locales",
+    "unidad": "% TNA",
+    "id": 148,
+    "fecha": "2026-08-31",
+    "valor": 21.18,
+    "clase": "stock",
+    "rezagoDias": 1,
+    "previo": {
+     "fecha": "2026-08-28",
+     "valor": 21.13
+    },
+    "variacion": 0.05,
+    "ventana": [
+     {
+      "fecha": "2026-08-31",
+      "valor": 21.18
+     },
+     {
+      "fecha": "2026-08-28",
+      "valor": 21.13
+     },
+     {
+      "fecha": "2026-08-27",
+      "valor": 21.47
+     },
+     {
+      "fecha": "2026-08-26",
+      "valor": 21.82
+     },
+     {
+      "fecha": "2026-08-25",
+      "valor": 23.24
+     },
+     {
+      "fecha": "2026-08-24",
+      "valor": 23.66
+     },
+     {
+      "fecha": "2026-08-21",
+      "valor": 24.07
+     },
+     {
+      "fecha": "2026-08-20",
+      "valor": 26.67
+     },
+     {
+      "fecha": "2026-08-19",
+      "valor": 27.87
+     },
+     {
+      "fecha": "2026-08-18",
+      "valor": 25.32
+     },
+     {
+      "fecha": "2026-08-14",
+      "valor": 24.56
+     },
+     {
+      "fecha": "2026-08-13",
+      "valor": 22.99
+     },
+     {
+      "fecha": "2026-08-12",
+      "valor": 22.47
+     },
+     {
+      "fecha": "2026-08-11",
+      "valor": 22.86
+     },
+     {
+      "fecha": "2026-08-10",
+      "valor": 22.32
+     }
+    ]
+   },
+   "plazoFijo30": {
+    "nombre": "Plazo fijo a 30 días",
+    "unidad": "% TNA",
+    "id": 1207,
+    "fecha": "2026-08-31",
+    "valor": 21.37,
+    "clase": "stock",
+    "rezagoDias": 1,
+    "previo": {
+     "fecha": "2026-08-28",
+     "valor": 21.93
+    },
+    "variacion": -0.56,
+    "ventana": [
+     {
+      "fecha": "2026-08-31",
+      "valor": 21.37
+     },
+     {
+      "fecha": "2026-08-28",
+      "valor": 21.93
+     },
+     {
+      "fecha": "2026-08-27",
+      "valor": 22.06
+     },
+     {
+      "fecha": "2026-08-26",
+      "valor": 21.07
+     },
+     {
+      "fecha": "2026-08-25",
+      "valor": 22.8
+     },
+     {
+      "fecha": "2026-08-24",
+      "valor": 21.99
+     },
+     {
+      "fecha": "2026-08-21",
+      "valor": 22.3
+     },
+     {
+      "fecha": "2026-08-20",
+      "valor": 21.08
+     },
+     {
+      "fecha": "2026-08-19",
+      "valor": 21.43
+     },
+     {
+      "fecha": "2026-08-18",
+      "valor": 20.93
+     },
+     {
+      "fecha": "2026-08-14",
+      "valor": 21.69
+     },
+     {
+      "fecha": "2026-08-13",
+      "valor": 20.42
+     },
+     {
+      "fecha": "2026-08-12",
+      "valor": 20.04
+     },
+     {
+      "fecha": "2026-08-11",
+      "valor": 21.39
+     },
+     {
+      "fecha": "2026-08-10",
+      "valor": 20.67
+     }
+    ]
+   },
+   "comprasMLC": {
+    "nombre": "Compra de divisas · variación de reservas",
+    "unidad": "millones USD",
+    "id": 78,
+    "fecha": "2026-08-27",
+    "valor": 93.5,
+    "clase": "flujo",
+    "rezagoDias": 5,
+    "previo": {
+     "fecha": "2026-08-26",
+     "valor": 61.5
+    },
+    "variacion": 32.0,
+    "ventana": [
+     {
+      "fecha": "2026-08-27",
+      "valor": 93.5
+     },
+     {
+      "fecha": "2026-08-26",
+      "valor": 61.5
+     },
+     {
+      "fecha": "2026-08-25",
+      "valor": 8.7
+     },
+     {
+      "fecha": "2026-08-24",
+      "valor": 11.5
+     },
+     {
+      "fecha": "2026-08-21",
+      "valor": 23.0
+     },
+     {
+      "fecha": "2026-08-20",
+      "valor": 89.0
+     },
+     {
+      "fecha": "2026-08-19",
+      "valor": 15.0
+     },
+     {
+      "fecha": "2026-08-18",
+      "valor": 10.0
+     },
+     {
+      "fecha": "2026-08-14",
+      "valor": 80.0
+     },
+     {
+      "fecha": "2026-08-13",
+      "valor": 56.0
+     },
+     {
+      "fecha": "2026-08-12",
+      "valor": 12.0
+     },
+     {
+      "fecha": "2026-08-11",
+      "valor": 57.0
+     },
+     {
+      "fecha": "2026-08-10",
+      "valor": 13.5
+     },
+     {
+      "fecha": "2026-08-07",
+      "valor": 16.0
+     },
+     {
+      "fecha": "2026-08-06",
+      "valor": 41.0
+     }
+    ]
+   },
+   "efectoMonetario": {
+    "nombre": "Efecto monetario de compras netas al sector privado",
+    "unidad": "millones ARS",
+    "id": 47,
+    "fecha": "2026-08-27",
+    "valor": 141475.75,
+    "clase": "flujo",
+    "rezagoDias": 5,
+    "previo": {
+     "fecha": "2026-08-26",
+     "valor": 93088.5
+    },
+    "variacion": 48387.25,
+    "ventana": [
+     {
+      "fecha": "2026-08-27",
+      "valor": 141475.75
+     },
+     {
+      "fecha": "2026-08-26",
+      "valor": 93088.5
+     },
+     {
+      "fecha": "2026-08-25",
+      "valor": 13141.35
+     },
+     {
+      "fecha": "2026-08-24",
+      "valor": 17365.0
+     },
+     {
+      "fecha": "2026-08-21",
+      "valor": 34431.0
+     },
+     {
+      "fecha": "2026-08-20",
+      "valor": 133248.5
+     },
+     {
+      "fecha": "2026-08-19",
+      "valor": 22455.0
+     },
+     {
+      "fecha": "2026-08-18",
+      "valor": 14925.0
+     },
+     {
+      "fecha": "2026-08-14",
+      "valor": 119227.5
+     },
+     {
+      "fecha": "2026-08-13",
+      "valor": 83552.0
+     },
+     {
+      "fecha": "2026-08-12",
+      "valor": 17898.0
+     },
+     {
+      "fecha": "2026-08-11",
+      "valor": 85068.5
+     },
+     {
+      "fecha": "2026-08-10",
+      "valor": 20223.0
+     },
+     {
+      "fecha": "2026-08-07",
+      "valor": 23976.0
+     },
+     {
+      "fecha": "2026-08-06",
+      "valor": 61419.5
+     }
+    ]
+   },
+   "reservas": {
+    "nombre": "Reservas internacionales",
+    "unidad": "millones USD",
+    "id": 1,
+    "fecha": "2026-08-28",
+    "valor": 49793.0,
+    "clase": "stock",
+    "rezagoDias": 4,
+    "previo": {
+     "fecha": "2026-08-27",
+     "valor": 50861.0
+    },
+    "variacion": -1068.0,
+    "ventana": [
+     {
+      "fecha": "2026-08-28",
+      "valor": 49793.0
+     },
+     {
+      "fecha": "2026-08-27",
+      "valor": 50861.0
+     },
+     {
+      "fecha": "2026-08-26",
+      "valor": 50784.0
+     },
+     {
+      "fecha": "2026-08-25",
+      "valor": 50913.0
+     },
+     {
+      "fecha": "2026-08-24",
+      "valor": 50776.0
+     },
+     {
+      "fecha": "2026-08-21",
+      "valor": 50660.0
+     },
+     {
+      "fecha": "2026-08-20",
+      "valor": 50344.0
+     },
+     {
+      "fecha": "2026-08-19",
+      "valor": 50006.0
+     },
+     {
+      "fecha": "2026-08-18",
+      "valor": 49593.0
+     },
+     {
+      "fecha": "2026-08-14",
+      "valor": 49505.0
+     },
+     {
+      "fecha": "2026-08-13",
+      "valor": 49543.0
+     },
+     {
+      "fecha": "2026-08-12",
+      "valor": 49628.0
+     },
+     {
+      "fecha": "2026-08-11",
+      "valor": 49586.0
+     },
+     {
+      "fecha": "2026-08-10",
+      "valor": 49564.0
+     },
+     {
+      "fecha": "2026-08-07",
+      "valor": 49457.0
+     }
+    ]
+   }
+  },
+  "fallos": [],
+  "sslSinVerificar": false,
+  "referencias": {},
+  "inflacion": {
+   "mensuales": [
+    {
+     "fecha": "2026-07-31",
+     "valor": 2.1
+    },
+    {
+     "fecha": "2026-06-30",
+     "valor": 1.9
+    },
+    {
+     "fecha": "2026-05-31",
+     "valor": 2.1
+    }
+   ],
+   "anualizada3m": 27.321771542394302,
+   "interanual": 33.8,
+   "fecha": "2026-07-31"
+  },
+  "riesgoPais": {
+   "valor": 512.0,
+   "fecha": "2026-08-28",
+   "rezagoDias": 4,
+   "fuente": "EMBI+ Argentina vía argentinadatos.com",
+   "previo": {
+    "fecha": "2026-08-27",
+    "valor": 509.0
+   },
+   "variacion": 3.0
+  },
+  "caucion": {
+   "disponible": true,
+   "tasa": 20.89,
+   "fecha": "2026-08-31",
+   "rezagoDias": 1,
+   "fuente": "BCRA serie 150 · pases entre terceros a 1 día",
+   "esCaucionBursatil": false
+  }
+ },
+ "referencias": {}
+}
