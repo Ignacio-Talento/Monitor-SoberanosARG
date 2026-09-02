@@ -534,7 +534,7 @@ def _orden_contrato(sym):
     return (2000 + int(mes[3:]), MESES_A3[mes[:3]])
 
 
-def curva_futuros(salida, ruta_spreads="spreads_sinteticos.json"):
+def curva_futuros(salida, ruta_spreads="spreads_sinteticos.json", hasta=None):
     """Precio de los futuros de dólar y devaluación acumulada contra el mayorista.
 
     DOS EJES, UNA SOLA CURVA. La devaluación acumulada es (F/S − 1)·100: una función lineal del
@@ -542,13 +542,19 @@ def curva_futuros(salida, ruta_spreads="spreads_sinteticos.json"):
     dos veces el mismo dato. Va como eje derecho de la misma curva, que es lo que el eje secundario
     resuelve bien: el mismo punto se lee en pesos a la izquierda y en porcentaje a la derecha.
 
-    El ajuste es SIEMPRE de la rueda anterior. A3 lo publica después del clearing, varias horas
-    después del cierre, así que a las 17:30 el del día todavía no existe. El spot que se usa es el
-    mayorista de esa misma rueda: mezclar el futuro de ayer con el spot de hoy metería el movimiento
-    del día en el numerador y no en el denominador.
+    Se toma la última rueda EN O ANTES de `hasta`, que es la fecha del informe. En la corrida de
+    las 17:30 eso da la rueda ANTERIOR: A3 publica el ajuste después del clearing, varias horas
+    después del cierre, así que el del día todavía no existe. Al reconstruir un informe viejo, en
+    cambio, el ajuste de ese día ya está y se usa ese —si no, un informe del 31/08 saldría con los
+    futuros del 01/09—.
+
+    El spot que se usa es el mayorista de esa MISMA rueda: mezclar el futuro de un día con el spot
+    de otro metería el movimiento cambiario en el numerador y no en el denominador.
     """
     d = json.loads(Path(ruta_spreads).read_text(encoding="utf-8"))
     ruedas = sorted(k for k in d if not k.startswith("_"))
+    if hasta:
+        ruedas = [r for r in ruedas if r <= hasta]
     if not ruedas:
         return None
     ult = ruedas[-1]
@@ -653,7 +659,7 @@ def generar(ruta_json, dir_salida="curvas"):
         ("tamar", lambda p: curva_tamar(instr, p, d_tam, tamar_spot, falta(d, "TAMAR"))),
         ("dl", lambda p: curva_dl(instr, p, falta(d, "Dólar linked"))),
         ("subsoberanos", lambda p: curva_subsoberanos(instr, p, falta(d, "Subsoberanos"))),
-        ("futuros", lambda p: curva_futuros(p)),
+        ("futuros", lambda p: curva_futuros(p, hasta=d["fecha"])),
     ]:
         ruta = out / f"{nombre}.png"
         try:
