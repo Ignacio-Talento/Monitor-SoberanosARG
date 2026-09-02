@@ -4,6 +4,9 @@
     "BPO28": "bopreal: misma emision (24/06/2025) y mismo vencimiento (31/10/2028) que BPA8D y BPB8D, que ya se siguen. Otra especie del mismo bono, sin volumen. Ademas 1816 no expone el cronograma de cupones y amortizaciones que esta familia necesita",
     "X31L6": "LECER: el modelo CER del monitor no lo representa (su base CER no es emision-10 habiles, o tiene spread sobre CER)",
     "DN1AO": "es el bono que ya se sigue como DNCAD: misma Clase 10 de Edenor (USD 550 M, Luxemburgo), mismo vencimiento 28/04/2033. Otra especie, casi seguro la reapertura de agosto de 2026. 1816 no le asigno ISIN, asi que el auto-add la tomaba como ley local y mostraba la escala nacional del emisor cuando DNCAD muestra la internacional: el mismo riesgo dos veces y con dos notas distintas",
-    "BPO27": "bopreal: misma emision (05/01/2024) y mismo vencimiento (31/10/2027) que BPA7D, BPB7D, BPC7D y BPD7D, que ya se siguen. Es otra especie del mismo bono, sin volumen. Sumarla duplicaria el mismo credito en la mediana de la familia y agregaria un ticker que nunca opera a la lista de sin dato"
+    "BPO27": "bopreal: misma emision (05/01/2024) y mismo vencimiento (31/10/2027) que BPA7D, BPB7D, BPC7D y BPD7D, que ya se siguen. Es otra especie del mismo bono, sin volumen. Sumarla duplicaria el mismo credito en la mediana de la familia y agregaria un ticker que nunca opera a la lista de sin dato",
+    "DIP0": "CER: mismo vencimiento (31/12/2033) y misma emision del canje 2005 que DICP, que ya se sigue. Otra especie del mismo Discount en pesos; su volumen es marginal. Sumarla contaria el mismo credito dos veces en la mediana de la familia",
+    "PAP0": "CER: mismo vencimiento (31/12/2038) y misma emision del canje 2005 que PARP, que ya se sigue. Otra especie del mismo Par en pesos, sin volumen",
+    "PAY0": "globales: es el Par en dolares del canje 2005 (31/12/2038). A diferencia de DIP0 y PAP0 SI es un bono distinto de los que se siguen, pero no comparte curva con los Globales del canje 2020 (GD29 a GD46) y no opera: volumen cero. Si algun dia cruza volumen, vale reconsiderarlo"
   }
 }

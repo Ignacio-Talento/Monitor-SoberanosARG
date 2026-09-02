@@ -17,7 +17,9 @@ USO
     python revisar_universo.py --bajas    # sólo vencidos, sin tocar 1816
 """
 
+import json
 import sys
+from pathlib import Path
 from datetime import date, datetime, timedelta
 
 try:
@@ -104,6 +106,20 @@ def leer_monitor():
                     venc = anterior
             universo[t] = (hoja, venc)
     return universo
+
+
+def leer_ignorados():
+    """Tickers que ya se decidio NO dar de alta, con su razon, en detector_ignorar.json.
+
+    Es el mismo archivo que consume el detector del navegador: vive en el repo justamente para que
+    la decision valga en todos lados y no solo en el localStorage de quien apreto "ignorar".
+    """
+    ruta = Path(__file__).parent / "detector_ignorar.json"
+    try:
+        return set(json.loads(ruta.read_text(encoding="utf-8")).get("ignorar") or {})
+    except Exception as e:                                        # noqa: BLE001
+        print(f"AVISO: no se pudo leer detector_ignorar.json ({e})", file=sys.stderr)
+        return set()
 
 
 def volumenes(cli, tickers):
@@ -201,6 +217,9 @@ def main(argv):
         if it["t1816"]:
             conocidos.add(it["t1816"])
 
+    ignorados = leer_ignorados()
+    vistos_ignorados = []
+
     nuevos = {}
     for curva, grupo in CURVAS.items():
         try:
@@ -215,6 +234,10 @@ def main(argv):
                 continue
             if t in conocidos or t in nuevos:
                 continue
+            if t in ignorados:
+                if t not in vistos_ignorados:
+                    vistos_ignorados.append(t)
+                continue
             venc = a_fecha(it.get("fechaVencimiento"))
             if venc and venc <= hoy:               # ya vencido: no es un alta
                 continue
@@ -222,6 +245,10 @@ def main(argv):
                          "emision": a_fecha(it.get("fechaEmision")),
                          "emisor": it.get("emisorNombre"), "isin": it.get("isinCode"),
                          "moneda": it.get("monedaDenom")}
+
+    if vistos_ignorados:
+        print(f"\n(se saltean {len(vistos_ignorados)} de detector_ignorar.json: "
+              f"{', '.join(sorted(vistos_ignorados))} — la razon de cada uno esta en ese archivo)")
 
     falta_sob = {t: v for t, v in nuevos.items() if v["grupo"] in EXHAUSTIVAS}
     falta_otro = {t: v for t, v in nuevos.items() if v["grupo"] not in EXHAUSTIVAS}
