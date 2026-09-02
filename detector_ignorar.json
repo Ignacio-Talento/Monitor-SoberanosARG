@@ -1,9 +1,9 @@
 {
   "_nota": "Tickers que el detector de altas NO debe proponer. Vive en el repo => vale para todos los usuarios y dispositivos. El boton 'ignorar' del banner agrega solo en el navegador local (localStorage); para que valga para todos, agregalo aca.",
   "ignorar": {
-    "TTD26": "dual: falta el TEM de su pata tasa fija (1816 no expone ese dato contractual)",
-    "BPO28": "bopreal: falta el cronograma de cupones/amortizaciones (1816 no tiene endpoint de flujos)",
+    "BPO28": "bopreal: misma emision (24/06/2025) y mismo vencimiento (31/10/2028) que BPA8D y BPB8D, que ya se siguen. Otra especie del mismo bono, sin volumen. Ademas 1816 no expone el cronograma de cupones y amortizaciones que esta familia necesita",
     "X31L6": "LECER: el modelo CER del monitor no lo representa (su base CER no es emision-10 habiles, o tiene spread sobre CER)",
-    "DN1AO": "es el bono que ya se sigue como DNCAD: misma Clase 10 de Edenor (USD 550 M, Luxemburgo), mismo vencimiento 28/04/2033. Otra especie, casi seguro la reapertura de agosto de 2026. 1816 no le asigno ISIN, asi que el auto-add la tomaba como ley local y mostraba la escala nacional del emisor cuando DNCAD muestra la internacional: el mismo riesgo dos veces y con dos notas distintas"
+    "DN1AO": "es el bono que ya se sigue como DNCAD: misma Clase 10 de Edenor (USD 550 M, Luxemburgo), mismo vencimiento 28/04/2033. Otra especie, casi seguro la reapertura de agosto de 2026. 1816 no le asigno ISIN, asi que el auto-add la tomaba como ley local y mostraba la escala nacional del emisor cuando DNCAD muestra la internacional: el mismo riesgo dos veces y con dos notas distintas",
+    "BPO27": "bopreal: misma emision (05/01/2024) y mismo vencimiento (31/10/2027) que BPA7D, BPB7D, BPC7D y BPD7D, que ya se siguen. Es otra especie del mismo bono, sin volumen. Sumarla duplicaria el mismo credito en la mediana de la familia y agregaria un ticker que nunca opera a la lista de sin dato"
   }
 }
