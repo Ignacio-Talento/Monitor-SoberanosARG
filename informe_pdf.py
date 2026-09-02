@@ -368,6 +368,22 @@ def construir(ruta_json, dir_curvas, textos, salida):
         "forman un spread, porque parte de la diferencia es canje. Por eso las comparaciones entre "
         "legislaciones que siguen están todas llevadas a MEP.", P_CHICO))
 
+    # Sin esto el lector ve precio y tasa subiendo juntos y lo toma por un error de dato. En la
+    # columna del DÍA lo sería; en la del período, no: el devengamiento se come la relación
+    # inversa. Va sólo cuando hay cierre de período, porque en un diario la regla sí vale.
+    if periodo:
+        # KeepTogether: si no entra al pie de la tabla se va entera a la pagina siguiente. Sin eso
+        # se partia a mitad de frase en el salto de pagina.
+        E.append(KeepTogether([Spacer(1, 3), Paragraph(
+            f"<b>En {'el mes' if periodo == 'mensual' else 'la semana'} es normal que suban el "
+            "precio Y la tasa a la vez, y no es un error de dato.</b> En una rueda el "
+            "devengamiento es despreciable y por eso, si la tasa sube, el precio baja. En un "
+            "período largo no: un bono en pesos al 28% de tasa efectiva anual gana cerca de 2% de "
+            "precio en un mes sin que su tasa se mueva, los ajustables por CER suman la inflación "
+            "del período y los dólar linked la devaluación. Y en las familias a tasa FLOTANTE "
+            "—TAMAR y duales— la relación es directa incluso en el día, porque cuando sube la tasa "
+            "proyectada sube también el pago final.", P_CHICO)]))
+
     E.append(PageBreak())
     E.append(Paragraph("La curva de pesos", H2))
     for t in textos["pesos"]:
