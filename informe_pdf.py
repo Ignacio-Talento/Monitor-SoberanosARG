@@ -185,10 +185,12 @@ def tabla_familias(resumen, ancho, periodo="semanal", rotulo="En la semana"):
     return t
 
 
-def tabla_macro(macro, ancho, periodo="semanal", rotulo="Semana"):
+def tabla_macro(macro, ancho, periodo=None, rotulo=""):
     S = macro["series"]
     rp = macro["riesgoPais"]
-    filas = [["Serie", "Valor", "", "Día", rotulo, "Al día"]]
+    # Sin cierre de periodo la columna no se arma: en un diario salia entera de guiones.
+    per = bool(periodo)
+    filas = [["Serie", "Valor", "", "Día"] + ([rotulo] if per else []) + ["Al día"]]
     estilos = []
 
     def agregar(etiqueta, r, unidad, dec=2, monto=False):
@@ -212,14 +214,15 @@ def tabla_macro(macro, ancho, periodo="semanal", rotulo="Semana"):
             estilos.append(("TEXTCOLOR", (4, i), (4, i), _color_num(vw)))
         if var is not None:
             estilos.append(("TEXTCOLOR", (3, i), (3, i), _color_num(var)))
-        filas.append([etiqueta, val, unidad, cd, cs, f"{r['fecha'][8:10]}/{r['fecha'][5:7]}"])
+        filas.append([etiqueta, val, unidad, cd] + ([cs] if per else [])
+                     + [f"{r['fecha'][8:10]}/{r['fecha'][5:7]}"])
 
     # El riesgo país mejora cuando BAJA: el color se invierte a mano respecto del resto.
     i = len(filas)
     w = rp.get(periodo) or {}
-    filas.append(["Riesgo país · EMBI+", f"{rp['valor']:.0f}", "bps", num(rp["variacion"], 0, True),
-                  num(w.get("variacion"), 0, True) if w else "—",
-                  f"{rp['fecha'][8:10]}/{rp['fecha'][5:7]}"])
+    filas.append(["Riesgo país · EMBI+", f"{rp['valor']:.0f}", "bps", num(rp["variacion"], 0, True)]
+                 + ([num(w.get("variacion"), 0, True) if w else "—"] if per else [])
+                 + [f"{rp['fecha'][8:10]}/{rp['fecha'][5:7]}"])
     estilos.append(("TEXTCOLOR", (3, i), (3, i), VERDE if rp["variacion"] < 0 else ROJO))
     if w:
         estilos.append(("TEXTCOLOR", (4, i), (4, i),
@@ -236,7 +239,9 @@ def tabla_macro(macro, ancho, periodo="semanal", rotulo="Semana"):
         if cl in S:
             agregar(et, S[cl], un, **kw)
 
-    anchos = [w * ancho for w in (.35, .13, .09, .13, .17, .13)]
+    rel = (.35, .13, .09, .13, .17, .13) if per else (.42, .15, .11, .17, .15)
+    ultima = 5 if per else 4
+    anchos = [w * ancho for w in rel]
     t = Table(filas, colWidths=anchos, repeatRows=1)
     t.setStyle(TableStyle([
         ("FONT", (0, 0), (-1, 0), SEMI, 8.8),
@@ -246,7 +251,7 @@ def tabla_macro(macro, ancho, periodo="semanal", rotulo="Semana"):
         ("FONT", (1, 1), (1, -1), SEMI, 9.6),
         ("ALIGN", (1, 0), (-1, -1), "CENTER"),
         ("TEXTCOLOR", (2, 1), (2, -1), GRIS),
-        ("TEXTCOLOR", (5, 1), (5, -1), GRIS),
+        ("TEXTCOLOR", (ultima, 1), (ultima, -1), GRIS),
         ("LINEAFTER", (3, 0), (3, -1), .5, SUAVE),
         ("TOPPADDING", (0, 0), (-1, -1), 5),
         ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
@@ -423,7 +428,7 @@ def construir(ruta_json, dir_curvas, textos, salida):
                 "Provinciales y municipales en CCL, ordenados por duration.", ANCHO)
 
     E.append(KeepTogether([Paragraph("Dinero, tasas y macro", H2),
-                           tabla_macro(d["macro"], ANCHO, periodo or "semanal",
+                           tabla_macro(d["macro"], ANCHO, periodo,
                                        "Mes" if periodo == "mensual" else "Semana")]))
     E.append(Spacer(1, 4))
     E.append(Paragraph(
@@ -438,11 +443,15 @@ def construir(ruta_json, dir_curvas, textos, salida):
     for t in textos["macro"]:
         E.append(Paragraph(t, P))
 
-    E.append(PageBreak())
-    E.append(Paragraph(f"Cierre {'mensual' if periodo == 'mensual' else 'semanal'}", H2))
-    # El bloque acepta las dos claves: `cierre` para lo nuevo y `semanal` por lo ya escrito.
-    for t in (textos.get("cierre") or textos.get("semanal") or []):
-        E.append(Paragraph(t, P))
+    # La seccion de cierre existe SOLO si la rueda cierra periodo. En un reporte diario, `periodo`
+    # es None y antes se imprimia igual un titulo "Cierre semanal" sin nada debajo: el bloque nunca
+    # habia corrido para un diario porque el PDF nacio un viernes.
+    cierre = textos.get("cierre") or textos.get("semanal") or []
+    if periodo and cierre:
+        E.append(PageBreak())
+        E.append(Paragraph(f"Cierre {'mensual' if periodo == 'mensual' else 'semanal'}", H2))
+        for t in cierre:
+            E.append(Paragraph(t, P))
 
     E.append(Spacer(1, 8))
     E.append(Paragraph(textos["fuentes"], P_CHICO))
