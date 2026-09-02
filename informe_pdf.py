@@ -132,20 +132,30 @@ def periodo_de(tipos):
     return None, "", ""
 
 
-def tabla_familias(resumen, ancho, periodo="semanal", rotulo="En la semana"):
+def tabla_familias(resumen, ancho, periodo="semanal", rotulo="En la semana", columnas="ambas"):
     """Variaciones por familia. Sin la columna de conteo por moneda: al lector externo le importa
-    en qué moneda se lee la TIR, no cuántos instrumentos hay de cada punta."""
-    grupo = ["", "", "En el día", "", rotulo, "", "", ""]
-    cab = ["Familia", "N", "Precio", "Tasa (pp)", "Precio", "Tasa (pp)", "Nivel", "Mon."]
-    filas = [grupo, cab]
-    estilos = [("SPAN", (2, 0), (3, 0)), ("SPAN", (4, 0), (5, 0)),
-               ("FONT", (0, 0), (-1, 0), SEMI, 8),
-               ("TEXTCOLOR", (0, 0), (-1, 0), GRIS),
-               ("ALIGN", (2, 0), (5, 0), "CENTER"),
-               ("BOTTOMPADDING", (0, 0), (-1, 0), 1),
-               ("FONT", (0, 1), (-1, 1), SEMI, 8.8),
-               ("TEXTCOLOR", (0, 1), (-1, 1), GRIS),
-               ("LINEBELOW", (0, 1), (-1, 1), .8, BORDE)]
+    en qué moneda se lee la TIR, no cuántos instrumentos hay de cada punta.
+
+    `columnas` elige la ventana: "dia", "periodo" o "ambas". Con una sola ventana desaparece la
+    fila de encabezado agrupador, que sin dos bloques que separar no dice nada.
+    """
+    dos = columnas == "ambas"
+    filas, estilos = [], []
+    if dos:
+        filas.append(["", "", "En el día", "", rotulo, "", "", ""])
+        estilos += [("SPAN", (2, 0), (3, 0)), ("SPAN", (4, 0), (5, 0)),
+                    ("FONT", (0, 0), (-1, 0), SEMI, 8),
+                    ("TEXTCOLOR", (0, 0), (-1, 0), GRIS),
+                    ("ALIGN", (2, 0), (5, 0), "CENTER"),
+                    ("BOTTOMPADDING", (0, 0), (-1, 0), 1)]
+        cab = ["Familia", "N", "Precio", "Tasa (pp)", "Precio", "Tasa (pp)", "Nivel", "Mon."]
+    else:
+        cab = ["Familia", "N", "Precio", "Tasa (pp)", "Nivel", "Mon."]
+    c0 = 1 if dos else 0                      # fila del encabezado de columnas
+    filas.append(cab)
+    estilos += [("FONT", (0, c0), (-1, c0), SEMI, 8.8),
+                ("TEXTCOLOR", (0, c0), (-1, c0), GRIS),
+                ("LINEBELOW", (0, c0), (-1, c0), .8, BORDE)]
     for fam in ORDEN:
         r = resumen.get(fam)
         if not r:
@@ -156,41 +166,61 @@ def tabla_familias(resumen, ancho, periodo="semanal", rotulo="En la semana"):
         monedas = list(r.get("monedas", {}))
         mon = "/".join(m.upper() for m in monedas) if monedas else "—"
         i = len(filas)
-        filas.append([fam, str(r["instrumentos"]),
-                      num(r["precio"]["mediana"], 2, True) + "%",
-                      num(r["tasa"]["mediana"], 2, True),
-                      (num(sp, 2, True) + "%") if sp is not None else "—",
-                      num(st, 2, True) if st is not None else "—",
-                      f'{num(r["teaMediana"]["mediana"])}%  {r["metrica"]}', mon])
-        for col, val in ((2, r["precio"]["mediana"]), (3, r["tasa"]["mediana"]),
-                         (4, sp), (5, st)):
+        nivel = f'{num(r["teaMediana"]["mediana"])}%  {r["metrica"]}'
+        if dos:
+            # N es la del día: la tabla muestra las dos ventanas y la del día es la de referencia.
+            filas.append([fam, str(r["instrumentos"]),
+                          num(r["precio"]["mediana"], 2, True) + "%",
+                          num(r["tasa"]["mediana"], 2, True),
+                          (num(sp, 2, True) + "%") if sp is not None else "—",
+                          num(st, 2, True) if st is not None else "—", nivel, mon])
+            pares = ((2, r["precio"]["mediana"]), (3, r["tasa"]["mediana"]), (4, sp), (5, st))
+        elif columnas == "periodo":
+            # N es la del PERÍODO: cuántos tenían dato en las DOS puntas. La mediana del mes se
+            # calculó sobre esos, no sobre los que operaron hoy, y con paneles ilíquidos la
+            # diferencia es grande (4 de 11 subsoberanos en agosto de 2026).
+            npe = (sem.get("precio") or {}).get("n")
+            filas.append([fam, str(npe) if npe is not None else "—",
+                          (num(sp, 2, True) + "%") if sp is not None else "—",
+                          num(st, 2, True) if st is not None else "—", nivel, mon])
+            pares = ((2, sp), (3, st))
+        else:
+            filas.append([fam, str(r["instrumentos"]),
+                          num(r["precio"]["mediana"], 2, True) + "%",
+                          num(r["tasa"]["mediana"], 2, True), nivel, mon])
+            pares = ((2, r["precio"]["mediana"]), (3, r["tasa"]["mediana"]))
+        for col, val in pares:
             if val is not None:
                 estilos.append(("TEXTCOLOR", (col, i), (col, i), _color_num(val)))
 
-    anchos = [w * ancho for w in (.28, .05, .105, .095, .105, .095, .19, .08)]
-    t = Table(filas, colWidths=anchos, repeatRows=2)
+    rel = ((.28, .05, .105, .095, .105, .095, .19, .08) if dos
+           else (.32, .06, .13, .12, .23, .10))
+    anchos = [w * ancho for w in rel]
+    t = Table(filas, colWidths=anchos, repeatRows=2 if dos else 1)
     t.setStyle(TableStyle([
-        ("FONT", (0, 2), (-1, -1), REG, 9.6),
-        ("ALIGN", (1, 1), (-1, -1), "CENTER"),
+        ("FONT", (0, c0 + 1), (-1, -1), REG, 9.6),
+        ("ALIGN", (1, c0), (-1, -1), "CENTER"),
         ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-        ("LINEAFTER", (3, 1), (3, -1), .5, SUAVE),
-        ("LINEAFTER", (5, 1), (5, -1), .5, SUAVE),
-        ("TEXTCOLOR", (1, 2), (1, -1), GRIS),
+        ("TEXTCOLOR", (1, c0 + 1), (1, -1), GRIS),
         ("TOPPADDING", (0, 0), (-1, -1), 5),
         ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
         ("LEFTPADDING", (0, 0), (-1, -1), 3),
         ("RIGHTPADDING", (0, 0), (-1, -1), 3),
 
-    ] + estilos))
+    ] + ([("LINEAFTER", (3, c0), (3, -1), .5, SUAVE),
+          ("LINEAFTER", (5, c0), (5, -1), .5, SUAVE)] if dos else [])
+      + estilos))
     return t
 
 
-def tabla_macro(macro, ancho, periodo=None, rotulo=""):
+def tabla_macro(macro, ancho, periodo=None, rotulo="", con_dia=True):
     S = macro["series"]
     rp = macro["riesgoPais"]
-    # Sin cierre de periodo la columna no se arma: en un diario salia entera de guiones.
+    # Sin cierre de periodo la columna no se arma: en un diario salia entera de guiones. Y en un
+    # informe de SOLO periodo se cae la del dia, por el mismo motivo por el que se separaron.
     per = bool(periodo)
-    filas = [["Serie", "Valor", "", "Día"] + ([rotulo] if per else []) + ["Al día"]]
+    filas = [["Serie", "Valor", ""] + (["Día"] if con_dia else [])
+             + ([rotulo] if per else []) + ["Al día"]]
     estilos = []
 
     def agregar(etiqueta, r, unidad, dec=2, monto=False):
@@ -207,25 +237,31 @@ def tabla_macro(macro, ancho, periodo=None, rotulo=""):
             a = w["acumulado"]
             cs = ((miles(a, 1) if abs(a) >= 1000 else num(a, 1, True))
                   + f"  ·{w['ruedas']}r")
-            estilos.append(("TEXTCOLOR", (4, i), (4, i), _color_num(a)))
+            estilos.append(("TEXTCOLOR", (3 + int(con_dia), i),
+                            (3 + int(con_dia), i), _color_num(a)))
         else:
             vw = w["variacion"]
             cs = (miles(vw, 1) if abs(vw) >= 1000 else num(vw, 1 if monto else dec, True))
-            estilos.append(("TEXTCOLOR", (4, i), (4, i), _color_num(vw)))
-        if var is not None:
+            estilos.append(("TEXTCOLOR", (3 + int(con_dia), i),
+                            (3 + int(con_dia), i), _color_num(vw)))
+        if var is not None and con_dia:
             estilos.append(("TEXTCOLOR", (3, i), (3, i), _color_num(var)))
-        filas.append([etiqueta, val, unidad, cd] + ([cs] if per else [])
+        filas.append([etiqueta, val, unidad] + ([cd] if con_dia else [])
+                     + ([cs] if per else [])
                      + [f"{r['fecha'][8:10]}/{r['fecha'][5:7]}"])
 
     # El riesgo país mejora cuando BAJA: el color se invierte a mano respecto del resto.
     i = len(filas)
     w = rp.get(periodo) or {}
-    filas.append(["Riesgo país · EMBI+", f"{rp['valor']:.0f}", "bps", num(rp["variacion"], 0, True)]
+    filas.append(["Riesgo país · EMBI+", f"{rp['valor']:.0f}", "bps"]
+                 + ([num(rp["variacion"], 0, True)] if con_dia else [])
                  + ([num(w.get("variacion"), 0, True) if w else "—"] if per else [])
                  + [f"{rp['fecha'][8:10]}/{rp['fecha'][5:7]}"])
-    estilos.append(("TEXTCOLOR", (3, i), (3, i), VERDE if rp["variacion"] < 0 else ROJO))
+    if con_dia:
+        estilos.append(("TEXTCOLOR", (3, i), (3, i),
+                        VERDE if rp["variacion"] < 0 else ROJO))
     if w:
-        estilos.append(("TEXTCOLOR", (4, i), (4, i),
+        estilos.append(("TEXTCOLOR", (3 + int(con_dia), i), (3 + int(con_dia), i),
                         VERDE if w.get("variacion", 0) < 0 else ROJO))
 
     for et, cl, un, kw in [("TAMAR bancos privados", "tamarTEA", "TEA", {}),
@@ -239,8 +275,11 @@ def tabla_macro(macro, ancho, periodo=None, rotulo=""):
         if cl in S:
             agregar(et, S[cl], un, **kw)
 
-    rel = (.35, .13, .09, .13, .17, .13) if per else (.42, .15, .11, .17, .15)
-    ultima = 5 if per else 4
+    ncols = 4 + int(con_dia) + int(per)
+    base = {6: (.35, .13, .09, .13, .17, .13), 5: (.42, .15, .11, .17, .15),
+            4: (.48, .17, .12, .23)}
+    rel = base[ncols]
+    ultima = ncols - 1
     anchos = [w * ancho for w in rel]
     t = Table(filas, colWidths=anchos, repeatRows=1)
     t.setStyle(TableStyle([
@@ -252,7 +291,7 @@ def tabla_macro(macro, ancho, periodo=None, rotulo=""):
         ("ALIGN", (1, 0), (-1, -1), "CENTER"),
         ("TEXTCOLOR", (2, 1), (2, -1), GRIS),
         ("TEXTCOLOR", (ultima, 1), (ultima, -1), GRIS),
-        ("LINEAFTER", (3, 0), (3, -1), .5, SUAVE),
+        ("LINEAFTER", (2 + int(con_dia), 0), (2 + int(con_dia), -1), .5, SUAVE),
         ("TOPPADDING", (0, 0), (-1, -1), 5),
         ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
         ("LEFTPADDING", (0, 0), (-1, -1), 3),
@@ -288,7 +327,17 @@ def figura(ruta, pie, ancho):
     return [KeepTogether([img, Paragraph(pie, PIE_FIG)])]
 
 
-def construir(ruta_json, dir_curvas, textos, salida):
+def construir(ruta_json, dir_curvas, textos, salida, modo="auto"):
+    """`modo` decide QUÉ VENTANA muestra el informe.
+
+      · "diario"  — sólo la variación del día. Es lo que sale todos los días.
+      · "periodo" — sólo la del cierre semanal o mensual. Es un entregable APARTE, del mismo día.
+      · "auto"    — el comportamiento viejo: las dos ventanas juntas si la rueda cierra período.
+
+    Mezclarlas en un solo informe se lee mal —hay que recordar de qué ventana habla cada frase— y
+    encima invita a aplicarle a la columna del período la regla de signos que sólo vale para la del
+    día. Por eso el día que cierra período se arman dos.
+    """
     d = json.loads(Path(ruta_json).read_text(encoding="utf-8"))
     fecha = d["fecha"]
     dir_curvas = Path(dir_curvas)
@@ -296,11 +345,17 @@ def construir(ruta_json, dir_curvas, textos, salida):
     MARGEN = 16 * mm
     ANCHO = A4[0] - 2 * MARGEN
 
-    # El mismo campo que decide si hay cierre semanal o mensual nombra el reporte.
+    # El MODO nombra el reporte, no `tipos`: el mismo JSON produce un PDF que dice "Reporte
+    # diario" y otro que dice "Reporte mensual".
     tipos = d.get("tipos") or []
-    clase = ("Reporte mensual" if "mensual" in tipos else
-             "Reporte semanal" if "semanal" in tipos else "Reporte diario")
     periodo, rotulo, nombre = periodo_de(tipos)
+    if modo == "periodo" and not periodo:
+        raise ValueError(f"modo='periodo' pero la rueda del {fecha} no cierra período: {tipos}")
+    if modo == "diario":
+        periodo, rotulo, nombre = None, "", ""
+    columnas = "periodo" if modo == "periodo" else ("ambas" if periodo else "dia")
+    clase = ("Reporte mensual" if periodo == "mensual" else
+             "Reporte semanal" if periodo == "semanal" else "Reporte diario")
 
     def portada(canvas, doc):
         canvas.saveState()
@@ -355,7 +410,8 @@ def construir(ruta_json, dir_curvas, textos, salida):
     E.append(Spacer(1, 4))
 
     E.append(Paragraph("Variaciones por familia", H2))
-    E.append(tabla_familias(d["resumen"], ANCHO, periodo or "semanal", rotulo or "Período"))
+    E.append(tabla_familias(d["resumen"], ANCHO, periodo or "semanal",
+                            rotulo or "Período", columnas))
     E.append(Spacer(1, 4))
     ref = d.get("referencias", {}).get(periodo) if periodo else None
     nota_ref = (f"{nombre} se mide contra el cierre del {ref[8:10]}/{ref[5:7]}. " if ref else "")
@@ -445,7 +501,8 @@ def construir(ruta_json, dir_curvas, textos, salida):
 
     E.append(KeepTogether([Paragraph("Dinero, tasas y macro", H2),
                            tabla_macro(d["macro"], ANCHO, periodo,
-                                       "Mes" if periodo == "mensual" else "Semana")]))
+                                       "Mes" if periodo == "mensual" else "Semana",
+                                       con_dia=(modo != "periodo"))]))
     E.append(Spacer(1, 4))
     E.append(Paragraph(
         "<b>Las series no son todas del mismo día</b>, por eso la columna «Al día»: el BCRA publica "

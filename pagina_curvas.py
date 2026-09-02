@@ -70,12 +70,16 @@ def escribir(dir_salida, hechos, fecha):
         aviso = ('<p class="aviso">Sin datos suficientes en esta rueda para: '
                  + ", ".join(faltan) + ".</p>")
 
-    # Si el PDF del día ya está al lado, la página lo ofrece: es la versión que se comparte.
-    pdf = next((f.name for f in sorted(Path(dir_salida).glob("cierre-*.pdf"))), None)
+    # Los PDF del día, si ya están al lado: son las versiones que se comparten. Pueden ser DOS,
+    # porque la rueda que cierra semana o mes deja el diario y el de cierre por separado.
+    ROTULOS = {"mensual": "Cierre mensual", "semanal": "Cierre semanal"}
     bloque_pdf = ""
-    if pdf:
-        bloque_pdf = (f'<p class="pdf"><a href="{pdf}">Descargar el informe completo en PDF</a>'
-                      f'<span> · mismo contenido, en ocho páginas</span></p>')
+    for f in sorted(Path(dir_salida).glob("cierre-*.pdf")):
+        # cierre-AAAA-MM-DD.pdf es el diario; cierre-mensual-AAAA-MM-DD.pdf, el de período.
+        clase = next((r for k, r in ROTULOS.items() if f.name.startswith(f"cierre-{k}-")),
+                     "Informe del día")
+        bloque_pdf += (f'<p class="pdf"><a href="{f.name}">{clase} · descargar el PDF</a>'
+                       f'<span> · mismo contenido, listo para reenviar</span></p>')
 
     html = f"""<!doctype html>
 <html lang="es">
