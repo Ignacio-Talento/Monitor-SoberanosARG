@@ -47,9 +47,10 @@ from openpyxl import load_workbook
 
 from actualizar_historicos import (INSTRUMENTOS_FILE, cliente_1816, hoy_art,
                                     leer_tickers)
-from macro_informe import datos_macro
+from macro_informe import _agregar_periodos, datos_macro
 
 DIR_INFORMES = Path("informes")
+SERIES_MERCADO = Path(__file__).resolve().parent / "series_mercado.json"
 
 # Campos que se le piden a 1816. Son los mismos cuatro que pide el monitor para los instrumentos
 # sin cronograma cargado (CAMPOS_IND en functions/api/precios.js), así que el informe y la pantalla
@@ -321,6 +322,58 @@ def resumir(valores):
             "max": round(max(v), 3), "n": len(v)}
 
 
+def datos_mercado(referencias):
+    """Margen sobre TAMAR de los Duales y rendimiento de los Bonares AO27/AO28 contra cable.
+
+    NO SE PIDE A 1816 ACÁ. Las dos series ya las bajó series_mercado.py, que corre antes en el
+    mismo job y guarda la historia completa en series_mercado.json; pedirlas de nuevo sería pagar
+    créditos por lo que está en disco y, peor, dejar dos números distintos circulando —el del
+    informe y el del gráfico— cuando el mercado se movió entre una llamada y la otra.
+
+    Se informa `hasta` de cada bloque justamente por eso: si series_mercado.py falló, este bloque
+    trae el cierre de ayer, y el PDF tiene que poder decirlo en vez de presentarlo como el del día.
+    """
+    out = {"disponible": False, "bloques": {}}
+    if not SERIES_MERCADO.exists():
+        out["motivo"] = "series_mercado.json no existe todavía; lo genera series_mercado.py"
+        return out
+    try:
+        d = json.loads(SERIES_MERCADO.read_text(encoding="utf-8"))
+    except Exception as e:                                        # noqa: BLE001
+        out["motivo"] = f"series_mercado.json ilegible: {e}"
+        return out
+
+    for clave in ("margenTamar", "bonares"):
+        bq = d.get(clave) or {}
+        if not bq.get("f"):
+            continue
+        series = {}
+        for tk, vals in (bq.get("series") or {}).items():
+            # Un None es una rueda sin operar, no un cero: se saltea, y por eso la "rueda anterior"
+            # de un bono ilíquido puede no ser la de ayer. La fecha va siempre al lado del número.
+            filas = [(f, v) for f, v in zip(bq["f"], vals) if v is not None]
+            if not filas:
+                continue
+            filas.sort(reverse=True)
+            f, v = filas[0]
+            reg = {"fecha": f, "valor": v}
+            if len(filas) > 1:
+                reg["previo"] = {"fecha": filas[1][0], "valor": filas[1][1]}
+                reg["variacion"] = round(v - filas[1][1], 4)
+            _agregar_periodos(reg, filas, v, referencias)
+            series[tk] = reg
+        if series:
+            out["bloques"][clave] = {
+                "nombre": bq.get("nombre"), "unidad": bq.get("unidad"),
+                "fuente": bq.get("fuente"), "hasta": bq.get("hasta"), "series": series}
+
+    out["disponible"] = bool(out["bloques"])
+    out["generado"] = d.get("generado")
+    if d.get("fallos"):
+        out["fallos"] = d["fallos"]
+    return out
+
+
 def main():
     cli = cliente_1816()
     if cli is None:
@@ -552,6 +605,14 @@ def main():
         print("  fallos macro:", "; ".join(macro["fallos"]))
     print(f"  {len(macro['series'])} series del BCRA · caución 1816: {macro['caucion']}")
 
+    refs_fechas = {t: r["fecha"] for t, r in refs.items()}
+    mercado = datos_mercado(refs_fechas)
+    if mercado["disponible"]:
+        bqs = ", ".join(f"{k} al {v['hasta']}" for k, v in mercado["bloques"].items())
+        print(f"  series de mercado: {bqs}")
+    else:
+        print(f"  sin series de mercado: {mercado.get('motivo', 'bloques vacíos')}")
+
     salida = {
         "fecha": hoy.isoformat(),
         "ruedaAnterior": ayer.isoformat(),
@@ -572,9 +633,12 @@ def main():
         "resumen": resumen,
         "instrumentos": instrumentos,
         "macro": macro,
+        # Margen sobre TAMAR de los Duales y Bonares AO27/AO28 con su forward. Salen del archivo
+        # que dejó series_mercado.py en este mismo job, no de una llamada nueva a 1816.
+        "mercado": mercado,
         # Fechas contra las que se midió cada cierre, para que el informe pueda nombrarlas en vez
         # de decir "la semana pasada".
-        "referencias": {t: r["fecha"] for t, r in refs.items()},
+        "referencias": refs_fechas,
     }
 
     DIR_INFORMES.mkdir(exist_ok=True)

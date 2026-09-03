@@ -23,6 +23,14 @@ DE DÓNDE SALE CADA UNA, que es lo menos obvio:
 
   · Reservas (serie 1) y TAMAR de bancos privados en TEA (serie 45) — API del BCRA.
 
+  · Repo a 1 día entre bancos (serie 150, "pases entre terceros a 1 día") — API del BCRA. Es la
+    tasa a la que los bancos se prestan Pesos contra títulos ENTRE SÍ: "entre terceros" significa
+    justamente que excluye las operaciones contra el BCRA, que van en las series 162 a 165. Esa
+    distinción es la que la vuelve interesante —muestra dónde queda la tasa overnight del mercado
+    cuando el Central inyecta o absorbe— y es la misma que grafica 1816 en su semanal.
+
+    Va con un día de rezago: el BCRA la publica a la mañana siguiente. Arranca en 2008.
+
   · IPC mensual (serie 27) — API del BCRA. Va crudo, sin anualizar: la TAMAR real se calcula en el
     browser para que el selector de qué inflación usar no obligue a volver a bajar nada.
 
@@ -161,6 +169,8 @@ def main():
          "BCRA · serie 45", 4, lambda: serie_larga(45, "2024-01-01")),
         ("ipc", "IPC nivel general · variación mensual", "% mensual",
          "BCRA/INDEC · serie 27", 2, lambda: serie_larga(27)),
+        ("repo", "Repo a 1 día entre bancos", "% TNA",
+         "BCRA · serie 150 (pases entre terceros)", 2, lambda: serie_larga(150)),
     ]
     try:
         filas = rem_ipc()

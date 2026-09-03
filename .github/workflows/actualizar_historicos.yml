@@ -56,10 +56,20 @@ jobs:
           API_1816_KEY: ${{ secrets.API_1816_KEY }}
         run: python actualizar_series_globvsbon.py
 
+      # Margen sobre TAMAR de los Duales y rendimiento de los Bonares AO27/AO28 contra cable.
+      # Van acá y no en el job de Series Macro porque necesitan la key de 1816; aquel corre dos
+      # veces por día justamente porque sus fuentes son públicas y gratis.
+      # Mismo continue-on-error que el paso anterior y por el mismo motivo.
+      - name: Series de mercado (Duales y Bonares)
+        continue-on-error: true
+        env:
+          API_1816_KEY: ${{ secrets.API_1816_KEY }}
+        run: python series_mercado.py
+
       - name: Commit y push si hay cambios
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          git add historicos.xlsx series_globvsbon.xlsx
+          git add historicos.xlsx series_globvsbon.xlsx series_mercado.json
           git diff --staged --quiet || git commit -m "Actualizar historicos $(date +'%Y-%m-%d')"
           git push

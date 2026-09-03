@@ -270,6 +270,11 @@
            line-height: 1.55; box-shadow: var(--sh-raised); white-space: nowrap; z-index: 5; }
   .g-tip b { font-weight: 700; font-size: 12.5px; }
   .g-tip .t-f { color: rgba(255,255,255,.7); font-size: 10px; letter-spacing: .04em; }
+  /* Una fila por serie cuando el gráfico tiene varias. El color va como cuadradito y no como
+     línea: con cinco filas apiladas una línea de 16px se lee peor que un bloque. */
+  .g-tip .t-s { display: flex; align-items: center; gap: 7px; }
+  .g-tip .t-s i { width: 8px; height: 8px; border-radius: 2px; flex: 0 0 auto; }
+  .g-tip .t-s b { margin-left: auto; padding-left: 14px; }
 
   .aviso { font-size: 11px; font-family: var(--mono); color: var(--text-3); line-height: 1.6;
            padding: 12px 16px; background: var(--card); border-left: 3px solid var(--cyan);
@@ -319,16 +324,20 @@ const PLAZOS = [
 ];
 
 let DATOS = null;
+/* series_mercado.json, que es otro archivo y otro job: estas dos series necesitan la key de 1816
+   y por eso no viven en macro_series.json. Si falla, las otras cinco tarjetas se dibujan igual. */
+let MERCADO = null;
 /* Un plazo POR TARJETA. Con un control global había que elegir el mismo para las cinco, y las
    cinco no se miran igual: el ITCRM pide historia larga y la tasa real, las últimas semanas. */
-let plazos = { itcrm: '1A', riesgoPais: '1A', reservas: '1A', tamar: '1A', tamarReal: '1A' };
+let plazos = { itcrm: '1A', riesgoPais: '1A', reservas: '1A', tamar: '1A', tamarReal: '1A',
+               repo: '1A', margenTamar: 'Max' };
 /* Fecha del dato más fresco de todas las series: de ahí cuelgan los plazos de las cinco. */
 let FIN = 0;
 /* Sobre qué tramo se calculan el promedio y los desvíos del ITCRM. "Ventana visible" es el
    default porque es lo que uno está mirando, pero con 1M seleccionado un desvío sobre 30 ruedas
    no dice nada, y por eso se puede clavar a un período largo sin cambiar el zoom del gráfico. */
 let ventanaStats = 'vis';
-let escalaLog = { itcrm: false, riesgoPais: false };
+let escalaLog = { itcrm: false, riesgoPais: false, repo: false };
 let medidaInfl = '3m';
 
 const $ = (s, r) => (r || document).querySelector(s);
@@ -342,6 +351,16 @@ const fFecha = (t) => { const d = new Date(t);
 function aPuntos(s) {
   const out = new Array(s.f.length);
   for (let i = 0; i < s.f.length; i++) out[i] = [ms(s.f[i]), s.v[i]];
+  return out;
+}
+/* series_mercado.json guarda un eje de fechas compartido y una lista por ticker con huecos en
+   null. Acá se pasa al mismo formato de pares que usa todo el resto, salteando los huecos: un
+   null es un día que ese bono no operó, no un cero. */
+function puntosDe(bloque, tk) {
+  const v = (bloque.series || {})[tk] || [], out = [];
+  for (let i = 0; i < bloque.f.length; i++) {
+    if (v[i] !== null && v[i] !== undefined) out.push([ms(bloque.f[i]), v[i]]);
+  }
   return out;
 }
 function recortar(pts, desdeMs) {
@@ -568,10 +587,39 @@ function dibujar(cfg) {
 
   const svg = '<svg viewBox="0 0 ' + W + ' ' + H + '" class="g-svg" role="img" aria-label="' +
               (cfg.aria || '') + '">' + g + '</svg>';
-  return { svg, estado: { t0, t1, X, Y, pw, cfg, busca: todas[0].pts } };
+  /* El cursor se engancha a la serie con MÁS puntos, no a la primera: con cinco Duales que
+     arrancan en fechas distintas, snapear a la más corta deja media ventana sin tooltip. */
+  let busca = todas[0].pts;
+  for (const s2 of todas) if (s2.pts.length > busca.length) busca = s2.pts;
+  return { svg, estado: { t0, t1, X, Y, pw, cfg, busca, todas } };
 }
 
 /* ── hover ────────────────────────────────────────────────────────────────────────────────── */
+/* Con una sola serie el tooltip muestra el número y listo. Con varias hace falta decir CUÁL es
+   cada una: un valor suelto sobre cinco líneas superpuestas no dice nada. Se activa pasando
+   `etiquetas` en la config, con un nombre por serie y en el mismo orden. */
+function cuerpoTip(estado, p) {
+  const cfg = estado.cfg;
+  if (!cfg.etiquetas) return '<b>' + fmt(p[1], cfg.dec) + '</b> ' + (cfg.sufijo || '');
+  const filas = [];
+  for (let i = 0; i < estado.todas.length; i++) {
+    const v = valorEn(estado.todas[i].pts, p[0]);
+    if (v === null) continue;
+    filas.push('<div class="t-s"><i style="background:' + estado.todas[i].color + '"></i>' +
+               cfg.etiquetas[i] + '<b>' + fmt(v, cfg.dec) + '</b></div>');
+  }
+  return filas.length ? filas.join('') : '<b>sin datos</b>';
+}
+/* El valor de una serie en la fecha del cursor, o null si ese día no operó. La tolerancia de dos
+   días evita que un feriado borre la fila del tooltip, pero no tanta como para mostrar el precio
+   de la semana pasada como si fuera el de hoy. */
+function valorEn(pts, t) {
+  if (!pts.length) return null;
+  let lo = 0, hi = pts.length - 1;
+  while (lo < hi) { const m = (lo + hi) >> 1; if (pts[m][0] < t) lo = m + 1; else hi = m; }
+  if (lo > 0 && Math.abs(pts[lo - 1][0] - t) < Math.abs(pts[lo][0] - t)) lo--;
+  return Math.abs(pts[lo][0] - t) <= 2 * DIA ? pts[lo][1] : null;
+}
 function montarHover(cuerpo, estado) {
   if (!estado) return;
   const svg = $('svg', cuerpo);
@@ -597,9 +645,10 @@ function montarHover(cuerpo, estado) {
     const ln = $('line', cursor), ci = $('circle', cursor);
     ln.setAttribute('x1', x); ln.setAttribute('x2', x);
     ci.setAttribute('cx', x); ci.setAttribute('cy', y);
+    /* Con varias series el puntito sobre UNA de ellas confunde: queda sólo la línea vertical. */
+    ci.style.display = estado.cfg.etiquetas ? 'none' : '';
     tip.hidden = false;
-    tip.innerHTML = '<div class="t-f">' + fFecha(p[0]) + '</div><b>' + fmt(p[1], estado.cfg.dec) +
-                    '</b> ' + (estado.cfg.sufijo || '');
+    tip.innerHTML = '<div class="t-f">' + fFecha(p[0]) + '</div>' + cuerpoTip(estado, p);
     const izq = px > ML + estado.pw * 0.62;
     tip.style.left = (x / W * caja.width + (izq ? -tip.offsetWidth - 14 : 14)) + 'px';
     tip.style.top = Math.max(0, y / H * caja.height - tip.offsetHeight - 8) + 'px';
@@ -911,16 +960,93 @@ function render() {
     }
   }
 
+  /* ═══ 6 · Repo a 1 día entre bancos ═══ */
+  const vRepo = corte('repo');
+  if (vRepo.length) {
+    const u = vRepo[vRepo.length - 1], pri = vRepo[0];
+    const dif = u[1] - pri[1];
+    const d = dibujar({ series: [{ pts: vRepo, color: PAL.ambar }], log: escalaLog.repo,
+                        dec: 2, sufijo: '% TNA', aria: 'Tasa de repo a 1 día entre bancos' });
+    partes.push(tarjeta({
+      titulo: 'Repo a 1 día entre bancos',
+      sub: 'Tasa a la que los bancos se prestan pesos contra títulos ENTRE SÍ, sin el BCRA del ' +
+           'otro lado. Es la tasa overnight del mercado de dinero: la primera que se mueve cuando ' +
+           'el Central inyecta o absorbe. Diaria desde el 2 de enero de 2008.',
+      kpis: kpi('Última', fmt(u[1], 2) + '%') +
+            kpi('En la ventana', signo(dif, 2, ' pp'), dif > 0 ? 'neg' : dif < 0 ? 'pos' : ''),
+      ctrl: ctrlPlazo('repo', vRepo) + '<span class="g-corte"></span>' +
+            par('Escala',
+                segmento('log-repo', [['0', 'Lineal'], ['1', 'Log']], escalaLog.repo ? '1' : '0')),
+      svg: d.svg,
+      pie: 'BCRA, serie 150: "tasa de interés por operaciones de pases entre terceros a 1 día". ' +
+           '"Entre terceros" es la parte que importa: EXCLUYE los pases contra el BCRA, que van ' +
+           'en las series 162 a 165. Por eso muestra dónde queda la tasa del mercado y no dónde ' +
+           'la puso el Central. Se publica con un día hábil de rezago. En Max conviene la escala ' +
+           'logarítmica: 2018 y 2023 llegaron a tres dígitos y en lineal aplastan todo lo demás.',
+    }));
+    montar.push(d.estado);
+  }
+
+  /* ═══ 7 · Margen sobre TAMAR de los Duales CER/TAMAR ═══ */
+  const bqD = MERCADO && MERCADO.margenTamar;
+  if (bqD && bqD.f && bqD.f.length) {
+    const COL = [PAL.navy, PAL.cyan, PAL.verde, PAL.ambar, PAL.violeta];
+    const tksD = Object.keys(bqD.series || {});
+    const desdeD = desdeDe(plazos.margenTamar, FIN);
+    const ssD = tksD.map((tk, i) => ({ tk, pts: recortar(puntosDe(bqD, tk), desdeD),
+                                       color: COL[i % COL.length] }))
+                    .filter((x) => x.pts.length);
+    if (ssD.length) {
+      const ults = ssD.map((x) => x.pts[x.pts.length - 1][1]);
+      const difs = ssD.map((x) => x.pts[x.pts.length - 1][1] - x.pts[0][1]);
+      const prom = difs.reduce((a, b) => a + b, 0) / difs.length;
+      const d = dibujar({ series: ssD, dec: 2, sufijo: '% sobre TAMAR',
+                          etiquetas: ssD.map((x) => x.tk),
+                          aria: 'Margen sobre TAMAR de los Duales CER/TAMAR' });
+      /* El eje de la tarjeta cuelga del último dato de las series macro, pero estas son de
+         mercado: si el job de precios no corrió, conviene que se vea acá y no en el pie. */
+      const ejeD = ssD.reduce((m, x) => Math.max(m, x.pts[x.pts.length - 1][0]), 0);
+      partes.push(tarjeta({
+        titulo: 'Margen sobre TAMAR de los Duales CER/TAMAR',
+        sub: 'Cuántos puntos por encima de la TAMAR paga cada dual, en TNA con convención 32/365. ' +
+             'Más alto es bono más barato: el mercado pide más tasa para prestarle al Tesoro a ese ' +
+             'plazo. Serie diaria desde la emisión de cada uno.',
+        kpis: kpi('Rango hoy', fmt(Math.min.apply(null, ults), 2) + '% – ' +
+                               fmt(Math.max.apply(null, ults), 2) + '%') +
+              kpi('En la ventana', signo(prom, 2, ' pp'), prom > 0 ? 'neg' : prom < 0 ? 'pos' : ''),
+        ctrl: par('Plazo', segmento('margenTamar', PLAZOS.map((x) => [x.id, x.id]),
+                                    plazos.margenTamar, 'plazo')) +
+              '<span class="barra-lbl rango">' + fFecha(ssD[0].pts[0][0]) + '  —  ' +
+              fFecha(ejeD) + '</span>',
+        svg: d.svg,
+        leyenda: ssD.map((x) => '<span><i style="border-color:' + x.color + '"></i>' + x.tk +
+                                '</span>').join(''),
+        pie: 'Fuente: 1816. Un dual CER/TAMAR paga al vencimiento lo que haya rendido más entre el ' +
+             'CER y la TAMAR capitalizada, así que tiene dos valuaciones posibles y este margen es ' +
+             'el de la pata TAMAR —el ticker "@TAMAR" de 1816—, se esté pagando esa pata o no. La ' +
+             'convención es 32/365, la misma que publica 1816: en 180/360 el mismo bono el mismo ' +
+             'día da unos dos puntos más y los dos números no son comparables. Sirve para leer el ' +
+             'primario: mientras los duales largos sigan pidiendo cerca de 10 puntos sobre TAMAR, ' +
+             'es difícil que el Tesoro consiga colocar plazo.',
+      }));
+      montar.push(d.estado);
+    }
+  }
+
   cont.innerHTML = partes.join('');
   const cuerpos = cont.querySelectorAll('.g-body');
   montar.forEach((e, i) => montarHover(cuerpos[i], e));
 
   const f = [];
-  for (const k of ['itcrm', 'riesgoPais', 'reservas', 'tamar', 'ipc']) {
+  for (const k of ['itcrm', 'riesgoPais', 'reservas', 'tamar', 'ipc', 'repo']) {
     if (S[k]) f.push(S[k].nombre + ' — ' + S[k].fuente + ', hasta el ' + S[k].hasta);
   }
   if (DATOS.rem) f.push(DATOS.rem.nombre + ' — ' + DATOS.rem.fuente + ', relevamiento del ' +
                         DATOS.rem.ultimoRelevamiento);
+  if (MERCADO && MERCADO.margenTamar && MERCADO.margenTamar.hasta) {
+    f.push(MERCADO.margenTamar.nombre + ' — ' + MERCADO.margenTamar.fuente + ', hasta el ' +
+           MERCADO.margenTamar.hasta);
+  }
   $('#fuentes').innerHTML = 'Fuentes y último dato de cada serie: ' + f.join('; ') +
     '. Último cambio en los datos: ' + new Date(DATOS.generado).toLocaleString('es-AR') +
     '. Ninguna serie se pide en vivo: las arma un job que corre dos veces por día y las deja ' +
@@ -941,10 +1067,20 @@ $('#graficos').addEventListener('click', (ev) => {
   render();
 });
 
-fetch('macro_series.json?t=' + Date.now())
-  .then((r) => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
-  .then((d) => {
+/* DOS ARCHIVOS, DOS JOBS, DOS CRITERIOS DE FALLA. macro_series.json es obligatorio: sin él no
+   hay nada que dibujar y la página muestra el error. series_mercado.json es opcional —necesita la
+   key de 1816 y lo escribe el job de precios—: si falta, las cinco tarjetas públicas se dibujan
+   igual y sólo queda sin la de los Duales, que es mejor que una pantalla en blanco. */
+Promise.all([
+  fetch('macro_series.json?t=' + Date.now())
+    .then((r) => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); }),
+  fetch('series_mercado.json?t=' + Date.now())
+    .then((r) => (r.ok ? r.json() : null)).catch(() => null),
+])
+  .then((res) => {
+    const d = res[0];
     DATOS = d;
+    MERCADO = res[1];
     const avisos = [];
     if (d.fallos && d.fallos.length) {
       avisos.push('La última actualización falló en: ' + d.fallos.join('; ') +
@@ -958,11 +1094,25 @@ fetch('macro_series.json?t=' + Date.now())
       return dias > tope ? d.series[k].nombre + ' (' + dias + ' días)' : null;
     };
     const viejas = [atraso('itcrm', 4), atraso('riesgoPais', 5), atraso('reservas', 8),
-                    atraso('tamar', 8)].filter(Boolean);
+                    atraso('tamar', 8), atraso('repo', 5)].filter(Boolean);
     if (viejas.length) {
       avisos.push('Estas series están atrasadas: ' + viejas.join(', ') +
                   '. El job que las actualiza puede haber dejado de correr; se puede lanzar a ' +
                   'mano desde Actions, workflow "Series Macro".');
+    }
+    /* Las series de mercado se avisan aparte porque las escribe OTRO job: si están viejas, el
+       que hay que mirar es el diario de precios y no el de Series Macro. */
+    const M = MERCADO, bqM = M && M.margenTamar;
+    if (!M) {
+      avisos.push('No se pudo leer series_mercado.json, así que falta la tarjeta del margen sobre ' +
+                  'TAMAR de los Duales. Lo genera series_mercado.py dentro del job diario de precios.');
+    } else if (M.fallos && M.fallos.length) {
+      avisos.push('Las series de mercado fallaron en: ' + M.fallos.join('; ') +
+                  '. Muestran el dato anterior.');
+    } else if (bqM && bqM.hasta && Math.floor((Date.now() - ms(bqM.hasta)) / DIA) > 5) {
+      avisos.push('El margen sobre TAMAR de los Duales está atrasado (' +
+                  Math.floor((Date.now() - ms(bqM.hasta)) / DIA) + ' días). Lo actualiza el job ' +
+                  'diario de precios, no el de Series Macro.');
     }
     $('#aviso').innerHTML = avisos.map((a) =>
       '<div class="aviso malo">' + a + '</div>').join('');

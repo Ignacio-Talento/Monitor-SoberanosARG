@@ -213,6 +213,70 @@ def tabla_familias(resumen, ancho, periodo="semanal", rotulo="En la semana", col
     return t
 
 
+def tabla_mercado(bloque, ancho, periodo=None, rotulo="", con_dia=True, etiquetas=None):
+    """Una fila por serie de un bloque de series_mercado.json, con la misma forma que la tabla
+    macro: valor, variación del día, variación del período y la fecha del dato.
+
+    LA FECHA POR FILA NO ES DECORACIÓN. Estos son bonos, no series del BCRA: un dual ilíquido puede
+    no haber operado hoy, y entonces su "último" es el de ayer y su "variación del día" compara dos
+    ruedas que no son consecutivas. La columna «Al día» es lo que permite ver eso en vez de leer un
+    cero como si el margen no se hubiera movido.
+    """
+    per = bool(periodo)
+    filas = [["Serie", "Valor", ""] + (["Día"] if con_dia else [])
+             + ([rotulo] if per else []) + ["Al día"]]
+    estilos = []
+    for tk, r in (bloque.get("series") or {}).items():
+        i = len(filas)
+        var = r.get("variacion")
+        w = r.get(periodo) or {}
+        if var is not None and con_dia:
+            estilos.append(("TEXTCOLOR", (3, i), (3, i), _color_num(var)))
+        if w:
+            estilos.append(("TEXTCOLOR", (3 + int(con_dia), i), (3 + int(con_dia), i),
+                            _color_num(w.get("variacion"))))
+        filas.append([(etiquetas or {}).get(tk, tk), num(r["valor"], 2), "%"]
+                     + ([num(var, 2, True)] if con_dia else [])
+                     + ([num(w.get("variacion"), 2, True) if w else "—"] if per else [])
+                     + [f"{r['fecha'][8:10]}/{r['fecha'][5:7]}"])
+
+    ncols = 4 + int(con_dia) + int(per)
+    base = {6: (.35, .13, .09, .13, .17, .13), 5: (.42, .15, .11, .17, .15),
+            4: (.48, .17, .12, .23)}
+    t = Table(filas, colWidths=[w * ancho for w in base[ncols]], repeatRows=1)
+    t.setStyle(TableStyle([
+        ("FONT", (0, 0), (-1, 0), SEMI, 8.8),
+        ("TEXTCOLOR", (0, 0), (-1, 0), GRIS),
+        ("LINEBELOW", (0, 0), (-1, 0), .8, BORDE),
+        ("FONT", (0, 1), (-1, -1), REG, 9.6),
+        ("FONT", (1, 1), (1, -1), SEMI, 9.6),
+        ("ALIGN", (1, 0), (-1, -1), "CENTER"),
+        ("TEXTCOLOR", (2, 1), (2, -1), GRIS),
+        ("TEXTCOLOR", (ncols - 1, 1), (ncols - 1, -1), GRIS),
+        ("LINEAFTER", (2 + int(con_dia), 0), (2 + int(con_dia), -1), .5, SUAVE),
+        ("TOPPADDING", (0, 0), (-1, -1), 5),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
+        ("LEFTPADDING", (0, 0), (-1, -1), 3),
+        ("ALIGN", (0, 0), (0, -1), "LEFT"),
+    ] + estilos))
+    return t
+
+
+def _bloque_mercado(d, clave):
+    """El bloque pedido de series_mercado.json, o None si el informe salió sin él."""
+    m = d.get("mercado") or {}
+    return (m.get("bloques") or {}).get(clave) if m.get("disponible") else None
+
+
+def _nota_atraso(bloque, d):
+    """Aviso cuando el bloque no llega al día del informe. Silencio si está al día."""
+    if not bloque or not bloque.get("hasta") or bloque["hasta"] >= d["fecha"]:
+        return ""
+    return (f" <b>Ojo: el último dato es del {bloque['hasta'][8:10]}/{bloque['hasta'][5:7]}, "
+            f"no del día del informe</b>, así que la columna del día compara contra una rueda más "
+            f"vieja.")
+
+
 def tabla_macro(macro, ancho, periodo=None, rotulo="", con_dia=True):
     S = macro["series"]
     rp = macro["riesgoPais"]
@@ -465,6 +529,27 @@ def construir(ruta_json, dir_curvas, textos, salida, modo="auto"):
                 "Curva TAMAR, con la pata TAMAR de los duales y la TAMAR spot de bancos privados.",
                 ANCHO)
 
+    # El margen sobre TAMAR va acá, pegado a la curva TAMAR, y no en el bloque macro: es un spread
+    # de crédito y plazo del Tesoro, no una tasa de política. Es además el número que dice si el
+    # Tesoro va a poder colocar plazo en la próxima licitación.
+    bq_dua = _bloque_mercado(d, "margenTamar")
+    if bq_dua:
+        E.append(KeepTogether([
+            Paragraph("Margen sobre TAMAR de los duales", H2),
+            tabla_mercado(bq_dua, ANCHO, periodo, "Mes" if periodo == "mensual" else "Semana",
+                          con_dia=(modo != "periodo"))]))
+        E.append(Spacer(1, 4))
+        for t in textos.get("duales") or []:
+            E.append(Paragraph(t, P))
+        E.append(Paragraph(
+            "Un dual CER/TAMAR paga al vencimiento lo que haya rendido más entre el CER y la TAMAR "
+            "capitalizada, así que tiene dos valuaciones posibles; este margen es siempre el de la "
+            "<b>pata TAMAR</b>, se esté pagando esa pata o no, porque es el que se compara contra "
+            "la tasa de fondeo. <b>Más alto es bono más barato</b>: el mercado pide más spread para "
+            "prestarle al Tesoro a ese plazo. La convención es TNA 32/365 —la misma que publica "
+            "1816—; en 180/360 el mismo bono el mismo día da unos dos puntos más y los dos números "
+            "no son comparables." + _nota_atraso(bq_dua, d), P_CHICO))
+
     E.append(Paragraph("Soberanos en dólares", H2))
     for t in textos["dolares"]:
         E.append(Paragraph(t, P))
@@ -475,6 +560,30 @@ def construir(ruta_json, dir_curvas, textos, salida, modo="auto"):
     E += figura(dir_curvas / "globales_bonares.png",
                 "Curva soberana en dólares por legislación, con las dos patas en la misma moneda.",
                 ANCHO)
+
+    # El forward de los Bonares cortos va con la curva en dólares y antes del canje: el canje es
+    # justamente la razón por la que este rendimiento se mide contra cable y no contra MEP.
+    bq_bon = _bloque_mercado(d, "bonares")
+    if bq_bon:
+        E.append(KeepTogether([
+            Paragraph("Bonares cortos y el forward de la elección", H2),
+            tabla_mercado(bq_bon, ANCHO, periodo, "Mes" if periodo == "mensual" else "Semana",
+                          con_dia=(modo != "periodo"),
+                          etiquetas={"AO27": "AO27 · vence oct-2027",
+                                     "AO28": "AO28 · vence oct-2028",
+                                     "forward": "Forward 1Y1Y implícito"})]))
+        E.append(Spacer(1, 4))
+        for t in textos.get("bonares") or []:
+            E.append(Paragraph(t, P))
+        E.append(Paragraph(
+            "Rendimientos <b>contra cable</b>, no contra MEP: medido contra MEP el número se mueve "
+            "con el canje CCL/MEP, que cambia por razones ajenas al riesgo del bono. Los dos vencen "
+            "el mismo mes con un año de diferencia, así que entre ellos queda un forward 1Y1Y "
+            "limpio: <b>a qué tasa está descontando el mercado que va a rendir un bono argentino en "
+            "dólares durante el año posterior a la elección de octubre de 2027</b>, que es cuando "
+            "vence el AO27. Sale de las TIR de los dos bonos y no de una curva cero bootstrapeada, "
+            "y ambos amortizan y pagan renta: sirve para el nivel y sobre todo para el movimiento, "
+            "no para discutir décimas." + _nota_atraso(bq_bon, d), P_CHICO))
 
     # El canje va JUNTO al hard dollar y no en el bloque macro: es lo que hace que comparar un
     # Global contra un Bonar exija llevarlos a la misma punta, así que se lee al lado de esa tabla.

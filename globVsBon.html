@@ -353,6 +353,34 @@
     <div id="fx-estado" style="font-size:12px;color:var(--text-3);font-family:var(--mono);font-style:italic;padding:12px 0;"></div>
   </div>
 
+  <div class="panel">
+    <div class="panel-title">Bonares AO27 y AO28 · rendimiento y forward</div>
+    <div class="comentario">
+      El tramo corto de la curva de Bonares, contra <strong>Cable</strong>. Va contra cable y no
+      contra MEP a propósito: el rendimiento medido contra MEP se mueve con el canje CCL/MEP, que
+      cambia por razones que no tienen nada que ver con el riesgo del bono.<br><br>
+      Los dos vencen el mismo mes con un año de diferencia —29 de octubre de 2027 y 31 de octubre
+      de 2028—, así que entre ellos queda un <strong>forward 1Y1Y</strong> limpio: la tasa a la que
+      el mercado está descontando que va a rendir un bono argentino en dólares a un año, arrancando
+      justo cuando vence el AO27. Y el AO27 vence a días de la <strong>elección 2027</strong>, de
+      modo que ese forward es la lectura más directa de qué le está poniendo el mercado al año
+      posterior a la elección.<br><br>
+      El forward sale de las TIR de los dos bonos, no de una curva cero bootstrapeada, y los dos
+      amortizan y pagan renta: es una aproximación buena para el nivel y muy buena para el
+      movimiento, no para discutir décimas.
+    </div>
+    <div class="hc-barra">
+      <div class="hc-periodos" id="bon-periodos"></div>
+      <div class="hc-fechas">
+        <label>Desde <input type="date" id="bon-desde" onchange="onFecha('bonares')"></label>
+        <label>Hasta <input type="date" id="bon-hasta" onchange="onFecha('bonares')"></label>
+      </div>
+    </div>
+    <div class="hc-ley" id="bon-ley"></div>
+    <div class="gb-wrap" id="graf-bonares"></div>
+    <div id="bon-estado" style="font-size:12px;color:var(--text-3);font-family:var(--mono);font-style:italic;padding:12px 0;"></div>
+  </div>
+
   <!-- RESPALDO -->
   <div class="panel">
     <div class="panel-title">Respaldo de las series</div>
@@ -698,7 +726,20 @@ const CTRL = {
            ley: 'tir-ley', ocultos: new Set() },
   fx:    { periodo: '1Y', botones: 'fx-periodos',  desde: 'fx-desde',  hasta: 'fx-hasta',
            ley: 'fx-ley',  ocultos: new Set() },
+  bonares: { periodo: '1Y', botones: 'bon-periodos', desde: 'bon-desde', hasta: 'bon-hasta',
+             ley: 'bon-ley', ocultos: new Set() },
 };
+// Las tres líneas del gráfico de Bonares. El forward va aparte y con otro color porque no es un
+// bono: es una cuenta sobre los otros dos, y mezclarlo visualmente con ellos invita a leerlo como
+// si fuera un instrumento que se puede comprar.
+const SERIES_BONARES = [
+  { key: 'AO27', lbl: 'AO27 · vence oct-2027', color: '#002060' },
+  { key: 'AO28', lbl: 'AO28 · vence oct-2028', color: '#00a3e4' },
+  { key: 'forward', lbl: 'Forward 1Y1Y implícito', color: '#1b9e5a', dash: '5 4' },
+];
+// Lo escribe series_mercado.py dentro del job diario. Si falta, esta solapa pierde SÓLO este
+// gráfico: todo lo demás sale del localStorage del Monitor y del respaldo en Excel.
+let MERCADO_JSON = null;
 // Bono testigo del spread CCL/MEP. Va uno solo, AL30: es el más operado del mercado en los dos
 // segmentos —1.432 ruedas en MEP contra 1.238 de GD30— así que es el que menos huecos deja.
 // GD30 estuvo un tiempo como control cruzado y se sacó: al ser menos líquido metía dientes de
@@ -916,7 +957,8 @@ function rangoPeriodo(k) {
   return { desde: dateToStr(d), hasta };
 }
 
-const redibujar = k => ({ canje: renderGraficoCanje, tir: renderGraficoTIR, fx: renderGraficoFX }[k])();
+const redibujar = k => ({ canje: renderGraficoCanje, tir: renderGraficoTIR, fx: renderGraficoFX,
+                          bonares: renderGraficoBonares }[k])();
 
 function setPeriodo(k, p) {
   CTRL[k].periodo = p;
@@ -947,7 +989,9 @@ function renderLeyenda(k) {
       `Índice Dólar BYMA · cierre diario</span>`;
     return;
   }
-  const items = k === 'fx'
+  const items = k === 'bonares'
+    ? SERIES_BONARES.map(x => ({ key: x.key, color: x.color, lbl: x.lbl }))
+    : k === 'fx'
     ? BENCH_FX.map(b => ({ key: b.ticker, color: b.color, lbl: b.ticker }))
     : PARES_CANJE.map(p => ({ key: p.bonar, color: p.color,
         lbl: k === 'tir' ? `${p.bonar} − ${p.global}` : `${p.global} / ${p.bonar}` }));
@@ -1175,6 +1219,45 @@ function renderGraficoTIR() {
   })), 'TIR BONAR − TIR GLOBAL (pp)', b => togglePar('tir', b));
 }
 
+function renderGraficoBonares() {
+  const est = document.getElementById('bon-estado');
+  const bq = MERCADO_JSON && MERCADO_JSON.bonares;
+  if (!bq || !bq.f || !bq.f.length) {
+    document.getElementById('graf-bonares').innerHTML = '';
+    if (est) {
+      est.textContent = MERCADO_JSON === null
+        ? 'Cargando series_mercado.json…'
+        : 'No se pudo leer series_mercado.json. Lo genera series_mercado.py dentro del job diario ' +
+          'de precios; si nunca corrió, el archivo todavía no existe.';
+    }
+    return;
+  }
+  const { desde, hasta } = rangoActivo('bonares');
+  const series = SERIES_BONARES.filter(x => !CTRL.bonares.ocultos.has(x.key)).map(x => {
+    const v = bq.series[x.key] || [], pts = [];
+    // Un null es una rueda en la que ese bono no operó, no un cero: se saltea y la línea une los
+    // dos días vecinos, que es lo que hacen el resto de los gráficos de esta solapa.
+    for (let i = 0; i < bq.f.length; i++) {
+      if (v[i] !== null && v[i] !== undefined && bq.f[i] >= desde && bq.f[i] <= hasta) {
+        pts.push({ f: bq.f[i], y: v[i] });
+      }
+    }
+    return { key: x.key, label: x.lbl, color: x.color, dash: x.dash, pts };
+  });
+  dibujarSerieTiempo('graf-bonares', series, 'TNA contra cable (%)', t => togglePar('bonares', t));
+  if (est) {
+    const ult = {};
+    for (const x of SERIES_BONARES) {
+      const v = (bq.series[x.key] || []).filter(y => y !== null && y !== undefined);
+      if (v.length) ult[x.key] = v[v.length - 1];
+    }
+    est.textContent = 'Fuente: ' + bq.fuente + ', hasta el ' + bq.hasta + '. Último cierre: ' +
+      SERIES_BONARES.filter(x => ult[x.key] !== undefined)
+        .map(x => x.key + ' ' + ult[x.key].toFixed(2).replace('.', ',') + '%').join(' · ') +
+      '. El forward se recalcula de las TIR de los dos bonos y del plazo a cada vencimiento.';
+  }
+}
+
 // ── INIT ─────────────────────────────────────────────────────
 // Se calcula con el motor antes de dibujar la tabla y el spread. Los gráficos históricos no
 // dependen de esto: salen de las series de 1816 y del respaldo en Excel, así que se lanzan igual.
@@ -1183,7 +1266,11 @@ cargarDatosMotor().then(() => {
   renderGrafico(datos);
   renderSpread(datos);
 });
-for (const k of ['canje', 'tir', 'fx']) { setPeriodo(k, '1Y'); renderLeyenda(k); }
+for (const k of ['canje', 'tir', 'fx', 'bonares']) { setPeriodo(k, '1Y'); renderLeyenda(k); }
+// Un archivo aparte y un job aparte: si no está, el resto de la solapa funciona igual.
+fetch('series_mercado.json?t=' + Date.now())
+  .then(r => (r.ok ? r.json() : false)).catch(() => false)
+  .then(m => { MERCADO_JSON = m || false; renderGraficoBonares(); });
 cargarSeriesCanje();
 </script>
 

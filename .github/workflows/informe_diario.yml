@@ -50,6 +50,17 @@ jobs:
 
       # El script se planta solo si el día no es hábil (feriado que Actions igual dispara) y sale
       # sin escribir nada.
+      # ANTES de armar el informe, no después: armar_informe.py LEE series_mercado.json para el
+      # margen sobre TAMAR de los duales y el forward de los Bonares. Si corriera después, el
+      # informe del día saldría con el cierre de ayer en esas dos tablas.
+      # continue-on-error porque el informe tiene que salir igual sin ellas: el script deja el
+      # archivo anterior y armar_informe.py avisa en el PDF que el dato no es del día.
+      - name: Series de mercado (Duales y Bonares)
+        continue-on-error: true
+        env:
+          API_1816_KEY: ${{ secrets.API_1816_KEY }}
+        run: python series_mercado.py
+
       - name: Extraer datos de la rueda
         env:
           API_1816_KEY: ${{ secrets.API_1816_KEY }}
@@ -68,6 +79,6 @@ jobs:
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          git add informes/ macro_series.json
+          git add informes/ macro_series.json series_mercado.json
           git diff --staged --quiet || git commit -m "Datos del informe $(date +'%Y-%m-%d')"
           git push
