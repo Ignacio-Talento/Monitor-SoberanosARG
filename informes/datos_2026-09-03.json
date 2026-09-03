@@ -4,9 +4,9 @@
  "tipos": [
   "diario"
  ],
- "generado": "2026-09-03T18:03:40-03:00",
+ "generado": "2026-09-03T20:15:07-03:00",
  "feriadosLeidos": true,
- "universo": 188,
+ "universo": 193,
  "sinDato": [
   "D10Y7",
   "D15E7",
@@ -22,7 +22,8 @@
   "MR46D",
   "VSCTD",
   "MR45D",
-  "VSCPD"
+  "VSCPD",
+  "TTCAD"
  ],
  "sinDatoPorFamilia": {
   "Dólar linked": [
@@ -46,7 +47,8 @@
    "LQC1D",
    "MR46D",
    "VSCTD",
-   "MR45D"
+   "MR45D",
+   "TTCAD"
   ]
  },
  "onsSinLey": [],
@@ -296,26 +298,26 @@
    }
   },
   "ONs ley local": {
-   "instrumentos": 60,
-   "conVariacion": 60,
+   "instrumentos": 64,
+   "conVariacion": 64,
    "metrica": "TIR",
    "precio": {
-    "mediana": 0.097,
+    "mediana": 0.12,
     "min": -1.161,
     "max": 1.72,
-    "n": 60
+    "n": 64
    },
    "tasa": {
-    "mediana": -0.053,
-    "min": -0.897,
+    "mediana": -0.058,
+    "min": -1.104,
     "max": 0.539,
-    "n": 60
+    "n": 64
    },
    "teaMediana": {
-    "mediana": 5.768,
+    "mediana": 5.709,
     "min": -1.559,
     "max": 24.384,
-    "n": 60
+    "n": 64
    },
    "mejor": "CIC8D",
    "peor": "TLCWD",
@@ -325,7 +327,7 @@
     "YM41D"
    ],
    "monedas": {
-    "mep": 54,
+    "mep": 58,
     "ccl": 6
    }
   },
@@ -2967,6 +2969,58 @@
    "varPrecio": -0.288,
    "varTasa": 0.294,
    "varParidad": -0.31,
+   "conAyer": true
+  },
+  {
+   "ticker": "TTC8D",
+   "familia": "ONs ley local",
+   "moneda": "mep",
+   "precio": 103.25,
+   "tea": 3.738,
+   "durationMod": 1.084,
+   "paridad": 101.403,
+   "varPrecio": 0.34,
+   "varTasa": -0.309,
+   "varParidad": 0.33,
+   "conAyer": true
+  },
+  {
+   "ticker": "CS53D",
+   "familia": "ONs ley local",
+   "moneda": "mep",
+   "precio": 102.85,
+   "tea": 6.121,
+   "durationMod": 3.166,
+   "paridad": 100.661,
+   "varPrecio": 0.439,
+   "varTasa": -0.137,
+   "varParidad": 0.424,
+   "conAyer": true
+  },
+  {
+   "ticker": "TLCQD",
+   "familia": "ONs ley local",
+   "moneda": "mep",
+   "precio": 104.90000000000003,
+   "tea": 3.114,
+   "durationMod": 0.792,
+   "paridad": 103.538,
+   "varPrecio": 0.865,
+   "varTasa": -1.104,
+   "varParidad": 0.867,
+   "conAyer": true
+  },
+  {
+   "ticker": "GN47D",
+   "familia": "ONs ley local",
+   "moneda": "mep",
+   "precio": 104,
+   "tea": 5.206,
+   "durationMod": 1.931,
+   "paridad": 101.66,
+   "varPrecio": 1.02,
+   "varTasa": -0.532,
+   "varParidad": 1.01,
    "conAyer": true
   }
  ],
