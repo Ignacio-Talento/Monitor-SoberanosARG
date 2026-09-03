@@ -476,6 +476,14 @@ def construir(ruta_json, dir_curvas, textos, salida, modo="auto"):
                 "Curva soberana en dólares por legislación, con las dos patas en la misma moneda.",
                 ANCHO)
 
+    # El canje va JUNTO al hard dollar y no en el bloque macro: es lo que hace que comparar un
+    # Global contra un Bonar exija llevarlos a la misma punta, así que se lee al lado de esa tabla.
+    # Opcional para no romper llamadas viejas; el skill lo pide en los tres tipos de informe.
+    if textos.get("canje"):
+        E.append(Paragraph("Canje CCL/MEP", H2))
+        for t in textos["canje"]:
+            E.append(Paragraph(t, P))
+
     E.append(Paragraph("BOPREALes y la rotación a Bonares", H2))
     for t in textos["bopreal"]:
         E.append(Paragraph(t, P))
