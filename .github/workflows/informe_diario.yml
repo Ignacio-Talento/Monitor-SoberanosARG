@@ -27,6 +27,16 @@ on:
     #
     # A las 18:10 el mercado hace más de una hora que cerró y 1816 tiene la rueda completa.
     - cron: '10 21 * * 1-5'
+    # SEGUNDO INTENTO, 19:40 ART. No es redundancia: un cron de este repo directamente NO EJECUTA
+    # cada tanto, y con uno solo eso deja la rueda sin archivar. Pasó el 03/09/2026 —no disparó
+    # ninguno de los tres workflows del día— y el 04/09, cuando este cron no corrió y la rueda se
+    # archivó recién a mano. El job de precios ya usa este mismo patrón de dos horarios y esa vez
+    # funcionó: falló el primero y entró el segundo, con una hora de atraso.
+    #
+    # Vuelve a pedir los mismos datos y reescribe el mismo archivo, así que correr dos veces no
+    # rompe nada: cuesta ~1.500 créditos sobre 100.000 diarios y el paso de commit no hace nada si
+    # el contenido no cambió.
+    - cron: '40 22 * * 1-5'
   workflow_dispatch:
 
 permissions:
