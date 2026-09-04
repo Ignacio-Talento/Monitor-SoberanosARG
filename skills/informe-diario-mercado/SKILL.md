@@ -7,6 +7,45 @@ Armar y ENVIAR POR MAIL el informe diario de renta fija argentina, con los datos
 
 El mail sale a las 17:30, media hora después del cierre del mercado.
 
+═══════════════════════════════════════════════════════════════════
+PASO 0 · QUÉ HORA ES, Y QUÉ RUEDA CORRESPONDE
+═══════════════════════════════════════════════════════════════════
+
+EMPEZÁ POR ACÁ SIEMPRE. Esta tarea NO siempre corre a las 17:30: las tareas programadas se ejecutan
+sólo con la app abierta, y si estaba cerrada a esa hora la corrida queda pendiente y se dispara al
+próximo arranque —que puede ser al otro día y con el mercado abierto—. Sin este paso el resultado
+es que no sale ningún informe, ni el de hoy ni el que se perdió.
+
+Pasó el 04/09/2026: la corrida del jueves 03 se ejecutó el viernes 04 a las 13:37, con la rueda
+abierta. No produjo nada y se perdieron DOS reportes, el del jueves y el del viernes.
+
+    py -c "from datetime import datetime,timezone,timedelta; print((datetime.now(timezone.utc)-timedelta(hours=3)).strftime('%Y-%m-%d %H:%M %A'))"
+
+**SI SON LAS 17:00 ART O MÁS TARDE, y es día hábil:** camino normal. Seguí al PASO 1.
+
+**SI ES ANTES DE LAS 17:00 ART, o es fin de semana o feriado:** el mercado no cerró y NO hay que
+armar un informe de la rueda de hoy —saldría con precios intradía presentados como cierre, que es
+peor que no mandarlo—. Pero tampoco te vayas sin hacer nada, que es el error que costó los dos
+reportes:
+
+  1. Fijate cuál fue la última rueda hábil cerrada y si su informe se envió. Los datos de cada
+     rueda quedan en `informes/datos_AAAA-MM-DD.json` del repo; los PDF, en
+     `informes/curvas/AAAA-MM-DD/`. Si falta la carpeta de curvas con su PDF, ese informe NO salió.
+  2. SI FALTA ALGUNO, armalo y mandalo ahora. Los datos de una rueda cerrada están completos, así
+     que el informe es igual de bueno; lo único que cambia es que llega tarde. Decilo en el mail,
+     en una línea arriba de todo: de qué rueda es y por qué llega ahora.
+  3. Revisá hacia atrás hasta encontrar una rueda con su informe hecho, no sólo la última: si la
+     app estuvo cerrada varios días, puede faltar más de uno. Si falta más de uno, mandá el de cada
+     rueda por separado —no un resumen— porque el valor está en la comparación día contra día.
+  4. Si no falta ninguno, no mandes nada y decilo en el chat en una línea.
+
+**SI HOY ES DÍA HÁBIL Y TODAVÍA NO SON LAS 17:00**, además de lo anterior avisá en el chat que el
+informe de hoy sigue pendiente y a qué hora corresponde.
+
+LA PROSA ES EL PRODUCTO. El usuario fue explícito: sin el análisis del día el reporte no le
+interesa. Nunca degrades el informe a "tablas y links" para poder mandarlo igual, ni desde acá ni
+desde ningún automatismo: si no se puede escribir el análisis, es mejor avisar que falta.
+
 El usuario (Ignacio) autorizó explícitamente el envío directo a su casilla: ignaciotalento@gmail.com. No hace falta volver a pedirle permiso para mandarlo. Trabaja en research de renta fija, así que el registro es el de un informe interno de mesa: técnico, sin explicar qué es una TIR.
 
 ═══════════════════════════════════════════════════════════════════
