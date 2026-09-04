@@ -52,9 +52,48 @@ SKILL = (r"C:\Users\Usuario\AppData\Roaming\Claude\local-agent-mode-sessions\ski
 if Path(SKILL).exists():
     sys.path.insert(0, SKILL)
 
+# ── LA TIPOGRAFÍA VIVE EN EL REPO ────────────────────────────────────────────────────────────
+# Open Sans va versionada en assets/fonts/ y se registra ACÁ, antes de cualquier otra cosa, en vez
+# de depender de que esté instalada en el sistema o de que exista el skill de marca.
+#
+# POR QUÉ. El skill de balanz-design sólo existe en la máquina del usuario. En el runner de GitHub
+# no está, así que las curvas salían en DejaVu —el default de matplotlib— sin que nada lo avisara:
+# el script imprimía "Open Sans registrada: True" porque eso reflejaba que el IMPORT anduvo, no que
+# la fuente se hubiera encontrado. Un fallback de tipografía es silencioso por diseño.
+#
+# La licencia lo permite: Open Sans es SIL OFL 1.1 y se puede redistribuir (ver assets/fonts/OFL.txt).
+def _registrar_open_sans():
+    """-> True si la fuente quedó disponible para matplotlib."""
+    from matplotlib import font_manager
+    dir_fuentes = Path(__file__).resolve().parent / "assets" / "fonts"
+    for ttf in sorted(dir_fuentes.glob("OpenSans-*.ttf")):
+        try:
+            font_manager.fontManager.addfont(str(ttf))
+        except Exception:                                         # noqa: BLE001
+            pass
+    try:
+        # fallback_to_default=False es lo que hace útil el chequeo: sin eso matplotlib devuelve
+        # DejaVu y la comprobación pasa siempre.
+        font_manager.findfont(font_manager.FontProperties(family="Open Sans"),
+                              fallback_to_default=False)
+        return True
+    except Exception:                                             # noqa: BLE001
+        return False
+
+
+FUENTE = _registrar_open_sans()
+if FUENTE:
+    matplotlib.rcParams["font.family"] = "Open Sans"
+else:
+    print("AVISO: no se pudo registrar Open Sans; las curvas salen con la fuente por defecto")
+
 try:
     from balanz_style import COLORS, apply_balanz_mpl, balanz_figure
     apply_balanz_mpl()
+    # apply_balanz_mpl() vuelve a fijar la familia; se reafirma la del repo para que el resultado
+    # no dependa de qué fuentes tenga instaladas la máquina donde corre.
+    if FUENTE:
+        matplotlib.rcParams["font.family"] = "Open Sans"
     BRAND = True
 except Exception as e:                                            # noqa: BLE001
     print(f"AVISO: sin balanz_style ({e}); se usan los colores de marca a mano")
@@ -682,5 +721,5 @@ def generar(ruta_json, dir_salida="curvas"):
 
 
 if __name__ == "__main__":
-    print(f"Open Sans registrada: {BRAND}")
+    print(f"Open Sans: {'del repo' if FUENTE else 'NO DISPONIBLE'} · estilo de marca: {BRAND}")
     generar(sys.argv[1] if len(sys.argv) > 1 else "inf_tmp.json")

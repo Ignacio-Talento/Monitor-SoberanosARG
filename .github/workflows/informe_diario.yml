@@ -55,8 +55,11 @@ jobs:
         with:
           python-version: '3.11'
 
+      # matplotlib y adjustText son para las curvas. Open Sans NO se instala: va versionada en
+      # assets/fonts/ y curvas_informe.py la registra sola, justamente para que el runner dibuje
+      # con la misma tipografía que la máquina del usuario.
       - name: Instalar dependencias
-        run: pip install requests openpyxl
+        run: pip install requests openpyxl matplotlib adjustText
 
       # El script se planta solo si el día no es hábil (feriado que Actions igual dispara) y sale
       # sin escribir nada.
@@ -81,6 +84,22 @@ jobs:
       # este job, en cambio, lo lanza la tarea de las 17:30 con `gh workflow run`, así que sí corre.
       # Va con continue-on-error porque el informe del día no depende de esto: si el BCRA está
       # caído, la rueda se archiva igual.
+      # Las curvas de la rueda, publicadas en informes/curvas/AAAA-MM-DD/ con su índice.
+      #
+      # POR QUÉ ACÁ Y NO SÓLO EN LA MÁQUINA DEL USUARIO. El informe lo arma una tarea programada que
+      # sólo corre con la app abierta; si está apagada a las 17:30 no sale el informe y hasta ahora
+      # tampoco quedaban las curvas, así que el link del archivo histórico de esa rueda daba 404
+      # para siempre. El dato se archivaba pero los gráficos no. Ahora sí.
+      #
+      # NO PISA EL PDF: la página índice lista los cierre-*.pdf que encuentre, y el PDF lo agrega
+      # después la máquina del usuario porque necesita la prosa del día. El orden no importa.
+      #
+      # continue-on-error porque las curvas son el extra: si matplotlib falla, el dato de la rueda
+      # —que es lo que no se puede recuperar después— ya quedó guardado en el paso anterior.
+      - name: Publicar las curvas de la rueda
+        continue-on-error: true
+        run: python publicar_curvas.py
+
       - name: Refrescar series macro
         continue-on-error: true
         run: python macro_series.py
