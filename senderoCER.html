@@ -491,13 +491,15 @@ function getCER(fecha) {
   while (fechaActual <= fechaTarget) {
     const mesKey = mesInflacionParaCER(fechaActual);
     let inflMes = inflInputs[mesKey];
-    // Fuera de la ventana mensual (años 2+): usar el dato anual de ese año / 12
-    // para obtener una tasa mensual, y seguir compounding día a día igual.
+    // Fuera de la ventana mensual (años 2+): pasar el dato ANUAL de ese año a mensual y seguir
+    // compounding día a día igual. Se compone, no se divide por 12: dividir sobreestima, porque
+    // 21% anual da 1,75% mensual que compuesto vuelve 23,1% y no 21%. Mismo criterio que el
+    // tramo de meses 7-12 y que sinteticos.html.
     if (inflMes === undefined || inflMes === null) {
       const anio = mesKey.split('-')[0];
       const inflAnual = inflInputs[`anio-${anio}`];
       if (inflAnual !== undefined && inflAnual !== null) {
-        inflMes = inflAnual / 12;
+        inflMes = (Math.pow(1 + inflAnual / 100, 1 / 12) - 1) * 100;
       }
     }
     if (inflMes !== undefined && inflMes !== null) {
@@ -603,14 +605,25 @@ function renderInflInputs() {
     .sort(([a],[b]) => a.localeCompare(b))
     .slice(0, 6);
 
-  const sumaREM6 = remMeses.reduce((s, [,v]) => s + (v||0), 0);
+  const nREM = remMeses.length;
   const rem12 = inflInputs['12m'] || 24.2;
 
   // ── Meses 7-12: derivados del REM 12m ────────────────────
-  const inflMeses712 = (rem12 - sumaREM6) / 6;
+  // Se calibran CONTRA EL RESIDUO del acumulado a doce meses, no restando porcentajes. El REM
+  // publica seis meses y un acumulado a doce (var. % i.a.), así que los seis que faltan son
+  // exactamente lo que le falta al acumulado para llegar ahí, compuesto.
+  // La resta que había antes —(REM12 − suma de los seis) / 6— es una aproximación que a estos
+  // niveles se va 0,30 pp por mes: con el REM de agosto-26 daba 1,80% mensual contra el 1,50%
+  // que sale del residuo, y sobre seis meses son ~1,8% de CER de más en todo el tramo largo.
+  // Mismo cálculo que sinteticos.html, que ya lo hacía así.
+  const acumREM = remMeses.reduce((a, [,v]) => a * (1 + (v||0) / 100), 1);
+  const resto = (1 + rem12 / 100) / acumREM;
+  const inflMeses712 = (nREM > 0 && nREM < 12 && resto > 0)
+    ? (Math.pow(resto, 1 / (12 - nREM)) - 1) * 100
+    : (Math.pow(1 + rem12 / 100, 1 / 12) - 1) * 100;
 
-  // Guardar meses 7-12 en inflInputs
-  for (let i = 6; i < 12; i++) {
+  // Guardar los meses derivados en inflInputs
+  for (let i = nREM; i < 12; i++) {
     const d = new Date(baseAnio, baseMes + i, 1);
     const key = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
     if (!inflInputs[key]) inflInputs[key] = parseFloat(inflMeses712.toFixed(2));
@@ -651,9 +664,9 @@ function renderInflInputs() {
   }
 
   // Sección meses 7-12 (derivados)
-  html += `<div style="grid-column:1/-1;font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--text-3);font-family:var(--mono);padding:12px 0 4px;border-bottom:1px solid var(--border);margin-bottom:4px">Meses 7-12 · derivado de REM 12m (${inflMeses712.toFixed(2)}% mensual)</div>`;
+  html += `<div style="grid-column:1/-1;font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--text-3);font-family:var(--mono);padding:12px 0 4px;border-bottom:1px solid var(--border);margin-bottom:4px">Meses ${nREM+1}-12 · derivado de REM 12m (${inflMeses712.toFixed(2)}% mensual)</div>`;
 
-  for (let i = 6; i < 12; i++) {
+  for (let i = nREM; i < 12; i++) {
     const d = new Date(baseAnio, baseMes + i, 1);
     const key = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
     const mesNombre = `${MESES_ES[d.getMonth()]} ${d.getFullYear()}`;
