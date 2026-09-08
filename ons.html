@@ -2611,12 +2611,20 @@ const RATINGS = {
   "Loma Negra": { nac: {r:"AAA(arg)", a:"FIX SCR", p:"Estable", f:"2026-05-04"}, glob: null },
   "Luz de Tres Picos": { nac: {r:"AA(arg)", a:"FIX SCR", p:"Estable", f:"2026-05-08"}, glob: null },
   // MSU S.A. (el agro, no MSU Energy ni MSU Green Energy): es el emisor de MSSFD y tambien
-  // el de RUCED, que hasta ahora se resolvia por el override de ticker de mas abajo porque
-  // 1816 lo devuelve mal. Con MSSFD el emisor "MSU" ya llega bien desde 1816, asi que la nota
-  // va aca. NOTA SIN REVALIDAR: es la del override de RUCED (FIX SCR, 05-05-2026).
-  "MSU": { nac: {r:"A+(arg)", a:"FIX SCR", p:"Estable", f:"2026-05-05"}, glob: null },
-  // BPBA (Banco Provincia de Buenos Aires, PVC5D) queda SIN nota cargada a proposito: no se
-  // verifico ninguna. La celda muestra "—" hasta que se cargue.
+  // el de RUCED, que se resuelve por el override de ticker de mas abajo porque 1816 lo
+  // devuelve como "MSU Energy". Con MSSFD el emisor "MSU" ya llega bien desde 1816.
+  // Verificado en FIX SCR el 08-09-2026: emisor de largo plazo A+(arg) Estable, CONFIRMADA el
+  // 03-09-2026 (mas nueva que el 05-05-2026 que tenia el override). La ON Clase XIV, que es
+  // justamente MSSFD, tiene esa misma nota desde que se le asigno el 12-07-2024.
+  // Sin nota internacional; no hace falta, la ON es ley local y va por la escala nacional.
+  "MSU": { nac: {r:"A+(arg)", a:"FIX SCR", p:"Estable", f:"2026-09-03"}, glob: null },
+  // BPBA = Banco de la Provincia de Buenos Aires. La nota que se muestra es la de CORTO
+  // PLAZO porque es la que FIX le asigno al instrumento: el 29-05-2026 califico los Titulos
+  // de Deuda Clase V —que son PVC5D, a 12 meses— en A1+(arg). Mismo criterio que B. ICBC.
+  // OJO SI SE SUMA OTRA ON DE BPBA MAS LARGA: esa iria por la escala de largo plazo, que
+  // para el banco es AA(arg) Estable (confirmada tambien el 29-05-2026), y entonces esta
+  // clave tendria que pasar a override por ticker.
+  "BPBA": { nac: {r:"A1+(arg)", a:"FIX SCR", p:"—", f:"2026-05-29"}, glob: null },
   "MSU Energy": { nac: {r:"AA-(arg)", a:"FIX SCR", p:"Estable", f:"2026-05-08"}, glob: {r:"B-", a:"Fitch", p:"Estable", f:""} },
   "MSU Green Energy": { nac: {r:"AA-(arg)", a:"FIX SCR", p:"Estable", f:"2026-07-07"}, glob: {r:"B-", a:"Fitch", p:"Estable", f:""} },
   "Mastellone": { nac: {r:"A.ar", a:"Moody's Local AR", p:"Positiva", f:"2026-06-12"}, glob: null },
@@ -2637,8 +2645,10 @@ const RATINGS = {
   "YPF Luz": { nac: {r:"AAA(arg)", a:"FIX SCR", p:"Estable", f:"2026-05-06"}, glob: {r:"B", a:"S&P", p:"Estable", f:"2026-06-11"} },
 };
 // Override por ticker: RUCED lo emite MSU S.A., no MSU Energy S.A. (notas distintas).
+// Sigue haciendo falta aunque MSU ya este en RATINGS: 1816 devuelve "MSU Energy" como emisor
+// de RUCEO. La nota se refresco el 08-09-2026 contra FIX (confirmacion del 03-09-2026).
 const RATING_TICKER = {
-  "RUCED": { nac: {r:"A+(arg)", a:"FIX SCR", p:"Estable", f:"2026-05-05"}, glob: null },
+  "RUCED": { nac: {r:"A+(arg)", a:"FIX SCR", p:"Estable", f:"2026-09-03"}, glob: null },
   // LQC1D lo co-emiten PCR y Luz de Tres Picos, así que 1816 devuelve el emisor como "PCR - Luz
   // de Tres Picos" y no matchea ninguna clave de RATINGS. Los dos están cargados por separado con
   // su nota nacional, pero ninguno tiene internacional, y esta ON es ley NY: va por la escala
