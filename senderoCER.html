@@ -558,9 +558,14 @@ async function cargarREM() {
     let primero = true;
 
     headers.forEach((mes, i) => {
-      if (!mes || mes === '12 Meses') return;
+      if (!mes) return;
       const val = parseFloat(String(valores[i] || '').replace(',', '.'));
       if (isNaN(val)) return;
+
+      // El acumulado a 12 meses NO es un mes: es lo que alimenta los meses 7-12 y los años
+      // siguientes (ver renderInflGrid). Sin esta línea la columna del REM se perdía y el
+      // cálculo caía al default de 24,2% cableado, ignorando el archivo.
+      if (mes === '12 Meses') { inflInputs['12m'] = val; return; }
 
       const mesIdx = MESES_ES.findIndex(m => mes.startsWith(m));
       if (mesIdx === -1) return;
