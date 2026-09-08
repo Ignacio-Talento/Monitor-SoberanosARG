@@ -82,6 +82,10 @@
   .graf-titulo { font-size: 11px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase;
                  color: var(--cyan); margin-bottom: 2px; }
   .graf-sub { font-size: 11px; color: var(--text-3); margin-bottom: 12px; }
+  .filtros-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-card);
+                  box-shadow: var(--sh-card); padding: 12px 18px; margin-bottom: 12px; }
+  .filtros-card .go-filtros { margin-bottom: 0; }
+  .go-cuenta { font-size: 11px; color: var(--text-3); font-family: var(--mono); margin-left: auto; }
   .go-filtros { display: flex; gap: 14px; align-items: center; flex-wrap: wrap; margin-bottom: 14px; }
   /* Sólo los rótulos de la fila, no cualquier <label> anidado: los del panel de checkboxes también
      son <label> y heredaban el uppercase y el gris de acá. */
@@ -508,6 +512,23 @@
     <button id="btn-ny" onclick="setLey('ny')" class="moneda-btn">Ley Extranjera (NY)</button>
   </div>
 
+  <!-- FILTROS: recortan la tabla Y el gráfico de más abajo, por eso viven acá arriba y no
+       dentro de la tarjeta del gráfico como cuando eran sólo de la curva. -->
+  <div class="filtros-card">
+    <div class="go-filtros">
+      <div class="go-f">Emisor <div class="ms" id="ms-emisor"></div></div>
+      <div class="go-f">Industria <div class="ms" id="ms-industria"></div></div>
+      <div class="go-f">Rating <div class="ms" id="ms-rating"></div></div>
+      <div class="go-f">Divisa <div class="ms" id="ms-divisa"></div></div>
+      <label>Vencimiento
+        <input type="date" id="f-desde" onchange="onFiltroONs('desde', this.value)" title="Vence desde">
+        <input type="date" id="f-hasta" onchange="onFiltroONs('hasta', this.value)" title="Vence hasta">
+      </label>
+      <span class="go-cuenta" id="f-cuenta"></span>
+      <button class="btn btn-ghost go-limpiar" onclick="limpiarFiltrosONs()">Limpiar filtros</button>
+    </div>
+  </div>
+
   <!-- TABLAS POR TIPO DE BONO (una por grupo, header propio ordenable) -->
   <div class="table-wrap">
     <div id="tabla-cont">
@@ -518,18 +539,7 @@
   <!-- GRÁFICO TIR vs DURATION de la ley activa, con filtros -->
   <div class="graf-card">
     <div class="graf-titulo" id="graf-ons-titulo">TIR vs Duration</div>
-    <div class="graf-sub"><span id="graf-ons-cuenta"></span> · la curva se reajusta a los filtros. Pasá el puntero por un punto para ver el detalle.</div>
-    <div class="go-filtros">
-      <div class="go-f">Emisor <div class="ms" id="ms-emisor"></div></div>
-      <div class="go-f">Industria <div class="ms" id="ms-industria"></div></div>
-      <div class="go-f">Rating <div class="ms" id="ms-rating"></div></div>
-      <div class="go-f">Divisa <div class="ms" id="ms-divisa"></div></div>
-      <label>Vencimiento
-        <input type="date" id="f-desde" onchange="onFiltroONs('desde', this.value)" title="Vence desde">
-        <input type="date" id="f-hasta" onchange="onFiltroONs('hasta', this.value)" title="Vence hasta">
-      </label>
-      <button class="btn btn-ghost go-limpiar" onclick="limpiarFiltrosONs()">Limpiar filtros</button>
-    </div>
+    <div class="graf-sub"><span id="graf-ons-cuenta"></span> · la curva se reajusta a los filtros de arriba, los mismos que recortan la tabla. Pasá el puntero por un punto para ver el detalle.</div>
     <div class="go-wrap" id="graf-ons"></div>
   </div>
 
@@ -1634,15 +1644,25 @@ function coincideFiltro(val, filtro){
   return String(val).toLowerCase().includes(filtro.toLowerCase());
 }
 function pasaFiltro(fila){
+  // Los filtros de arriba (emisor, industria, rating, divisa, vencimiento) y los de columna se
+  // aplican juntos: una fila tiene que pasar los dos.
+  if (!pasaCatONs(categoriasONs(fila.inst), fila.inst.venc)) return false;
   for (const c of COLS) { const f = colFilters[c.k]; if (f && !coincideFiltro(filtroValor(c, fila), f)) return false; }
   return true;
 }
 function onFiltro(k, v){ colFilters[k] = v; aplicarFiltros(); }
 function aplicarFiltros(){
+  let vistas = 0, total = 0;
   document.querySelectorAll('table.tabla-grupo tbody tr').forEach(tr => {
     const fila = _filasPorTk[tr.dataset.tk];
-    tr.style.display = (fila && pasaFiltro(fila)) ? '' : 'none';
+    const pasa = !!fila && pasaFiltro(fila);
+    tr.style.display = pasa ? '' : 'none';
+    total++; if (pasa) vistas++;
   });
+  // Con las filas escondidas y los filtros arriba de todo, sin este cartel no hay forma de saber
+  // que la tabla está recortada: se ve una lista más corta y nada más.
+  const c = document.getElementById('f-cuenta');
+  if (c) c.textContent = vistas === total ? '' : `${vistas} de ${total} en la tabla`;
 }
 
 // ── RESIZE de columnas (drag en el borde derecho del header) ──
@@ -2946,15 +2966,39 @@ let filtrosONs = { emisor:[], industria:[], rating:[], divisa:[], desde:'', hast
 // Un campo por dropdown. `n` es el plural que se muestra cuando hay más de uno elegido, y
 // `buscar` prende el buscador: con ~45 emisores y ~30 industrias hace falta, con 8 ratings no.
 const MS_CAMPOS = {
-  emisor:    { id:'ms-emisor',    todos:'Todos los emisores',   n:'emisores',   buscar:true,
-               valor: p => p.emisor },
-  industria: { id:'ms-industria', todos:'Todas las industrias', n:'industrias', buscar:true,
-               valor: p => p.industria },
-  rating:    { id:'ms-rating',    todos:'Todos los ratings',    n:'ratings',    buscar:false,
-               valor: p => p.rating || '—' },
-  divisa:    { id:'ms-divisa',    todos:'MEP y CCL',            n:'divisas',    buscar:false,
-               valor: p => p.divisa },
+  emisor:    { id:'ms-emisor',    todos:'Todos los emisores',   n:'emisores',   buscar:true  },
+  industria: { id:'ms-industria', todos:'Todas las industrias', n:'industrias', buscar:true  },
+  rating:    { id:'ms-rating',    todos:'Todos los ratings',    n:'ratings',    buscar:false },
+  divisa:    { id:'ms-divisa',    todos:'MEP y CCL',            n:'divisas',    buscar:false },
 };
+
+// Los valores por los que se filtra, sacados del instrumento. Una sola función para el gráfico y
+// para la tabla: si estuviera duplicada, un cambio de criterio —por ejemplo el bucket "—" donde
+// caen los que no tienen nota— rompería uno de los dos en silencio.
+function categoriasONs(inst) {
+  const r = ratingDe(inst);
+  return { emisor: emisorDe(inst) || '—', industria: industriaDe(inst) || '—',
+           rating: (r && r.r) ? r.r : '—', divisa: inst.divisa || '—' };
+}
+
+// La tabla incluye instrumentos SIN precio, que no llegan a ser un punto del gráfico, así que el
+// filtro se evalúa sobre las categorías y el vencimiento y no sobre el punto.
+function pasaCatONs(cat, venc) {
+  const f = filtrosONs;
+  // Dentro de un campo los valores elegidos SUMAN (YPF o Pampa); entre campos se CRUZAN
+  // (YPF o Pampa, y además AAA, y además CCL).
+  for (const campo of Object.keys(MS_CAMPOS)) {
+    if (f[campo].length && !f[campo].includes(cat[campo])) return false;
+  }
+  // Fechas en ISO (YYYY-MM-DD): la comparación de strings ya ordena bien, sin parsear.
+  if (f.desde && (venc || '') < f.desde) return false;
+  if (f.hasta && (venc || '') > f.hasta) return false;
+  return true;
+}
+
+// Los filtros recortan el gráfico Y la tabla, así que se pasa siempre por acá: no puede quedar un
+// camino que actualice uno solo de los dos.
+function refiltrarONs() { renderGraficoONs(); aplicarFiltros(); }
 let msAbierto  = null;  // campo con el panel desplegado, o null
 let msBusqueda = {};    // campo -> texto tipeado en su buscador
 let msOpciones = {};    // campo -> valores disponibles en la ley activa
@@ -2985,29 +3029,34 @@ function puntosONs() {
     out.push({ x:+mdUnif.toFixed(3), y:+m.tea.toFixed(3), tk:inst.ticker, nombre:inst.nombre||'',
                emisor:emisorDe(inst)||'—', industria:industriaDe(inst)||'—',
                rating:r?r.r:null, agencia:r?r.a:null, divisa:inst.divisa||'—',
+               cat:categoriasONs(inst),
                venc:inst.venc, anio:(inst.venc||'').slice(0,4), precio:m.precio });
   }
   return out;
 }
 
-function aplicaFiltros(p) {
-  const f = filtrosONs;
-  // Dentro de un campo los valores elegidos SUMAN (YPF o Pampa); entre campos se CRUZAN
-  // (YPF o Pampa, y además AAA, y además CCL).
-  for (const [campo, cfg] of Object.entries(MS_CAMPOS)) {
-    if (f[campo].length && !f[campo].includes(cfg.valor(p))) return false;
+function aplicaFiltros(p) { return pasaCatONs(p.cat, p.venc); }
+
+// Las opciones salen del universo de la TABLA —ley activa y no vencidos—, que es un
+// SUPERCONJUNTO del gráfico: en la tabla también están los que hoy no tienen precio y por eso no
+// llegan a ser un punto. Si se armaran con los puntos, un emisor cuyas ONs no operaron hoy
+// desaparecería de la lista y no habría forma de filtrar por él aunque sus filas estén ahí.
+function universoFiltrosONs() {
+  const out = [];
+  for (const inst of instrumentos) {
+    if (monedaDeGrupo(inst.grupo) !== monedaActiva) continue;
+    const d = diasAlVenc(inst.venc);
+    if (d !== null && d <= 0) continue;
+    out.push({ cat: categoriasONs(inst), venc: inst.venc });
   }
-  // Fechas en ISO (YYYY-MM-DD): la comparación de strings ya ordena bien, sin parsear.
-  if (f.desde && (p.venc || '') < f.desde) return false;
-  if (f.hasta && (p.venc || '') > f.hasta) return false;
-  return true;
+  return out;
 }
 
-// Los selectores se arman con el universo de la ley activa, así no ofrecen opciones vacías.
-function pintarFiltrosONs(todos) {
+function pintarFiltrosONs() {
+  const todos = universoFiltrosONs();
   const uniq = (arr) => [...new Set(arr.filter(Boolean))].sort();
-  for (const [campo, cfg] of Object.entries(MS_CAMPOS)) {
-    msOpciones[campo] = uniq(todos.map(cfg.valor));
+  for (const campo of Object.keys(MS_CAMPOS)) {
+    msOpciones[campo] = uniq(todos.map(p => p.cat[campo]));
     // Al cambiar de ley cambia el universo. Una selección que ya no existe se descarta, en vez de
     // quedar filtrando en silencio contra un valor que el usuario no ve en ninguna lista.
     filtrosONs[campo] = filtrosONs[campo].filter(v => msOpciones[campo].includes(v));
@@ -3100,7 +3149,7 @@ function msToggle(campo, v) {
   const sel = filtrosONs[campo];
   const i = sel.indexOf(v);
   if (i >= 0) sel.splice(i, 1); else sel.push(v);
-  renderGraficoONs();
+  refiltrarONs();
 }
 
 // "Todos" tilda lo que se está VIENDO, no el universo entero: con el buscador activo es la forma
@@ -3109,9 +3158,9 @@ function msTodos(campo) {
   const q = (msBusqueda[campo] || '').trim().toLowerCase();
   const visibles = (msOpciones[campo] || []).filter(v => !q || v.toLowerCase().includes(q));
   filtrosONs[campo] = [...new Set([...filtrosONs[campo], ...visibles])];
-  renderGraficoONs();
+  refiltrarONs();
 }
-function msNinguno(campo) { filtrosONs[campo] = []; renderGraficoONs(); }
+function msNinguno(campo) { filtrosONs[campo] = []; refiltrarONs(); }
 
 function msCerrar() {
   if (msAbierto === null) return;
@@ -3124,11 +3173,11 @@ document.addEventListener('click', msCerrar);
 document.addEventListener('keydown', (e) => { if (e.key === 'Escape') msCerrar(); });
 
 // Sigue en uso para los dos <input type="date">, que son de valor único.
-function onFiltroONs(campo, valor) { filtrosONs[campo] = valor; renderGraficoONs(); }
+function onFiltroONs(campo, valor) { filtrosONs[campo] = valor; refiltrarONs(); }
 function limpiarFiltrosONs() {
   filtrosONs = { emisor:[], industria:[], rating:[], divisa:[], desde:'', hasta:'' };
   msAbierto = null; msBusqueda = {};
-  renderGraficoONs();
+  refiltrarONs();
 }
 
 function renderGraficoONs() {
@@ -3140,7 +3189,7 @@ function renderGraficoONs() {
                                         : 'TIR vs Duration · ONs ley local';
 
   const todos = puntosONs();
-  pintarFiltrosONs(todos);
+  pintarFiltrosONs();
   const pts = todos.filter(aplicaFiltros);
 
   const cuenta = document.getElementById('graf-ons-cuenta');
