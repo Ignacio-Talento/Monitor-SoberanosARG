@@ -3225,12 +3225,19 @@ const GO_PALETA = ['#0d2055','#00a3e4','#e08e16','#1b9e5a','#7c3aed','#145e81','
 const GO_OTROS = '#a7b2c8';   // gris para el resto cuando hay más categorías que colores
 let colorONs = 'auto';
 
-// Campo por el que se pinta. En "automático" es el primero que tenga MÁS DE UNA opción elegida:
-// si se filtró por dos ratings, lo que se quiere distinguir son los ratings. Con un solo valor
-// elegido no hace falta color, porque todos los puntos son de esa categoría.
+// Orden de prioridad del modo "automático": si hay más de un campo con varias opciones elegidas,
+// gana el primero de esta lista. El rating va antes que el emisor porque es la comparación que
+// más se hace: filtrar dos notas y querer ver cuál es cuál. No es el orden de MS_CAMPOS, que
+// manda en la fila de filtros y responde a otra cosa (ahí el emisor va primero porque es por
+// donde se empieza a filtrar).
+const GO_PRIORIDAD_COLOR = ['rating', 'emisor', 'industria', 'divisa'];
+
+// Campo por el que se pinta. En "automático" es el de mayor prioridad que tenga MÁS DE UNA opción
+// elegida. Con un solo valor elegido no hace falta color, porque todos los puntos son de esa
+// categoría.
 function campoColorONs() {
   if (colorONs !== 'auto') return colorONs;
-  for (const campo of Object.keys(MS_CAMPOS)) if (selON(campo).length > 1) return campo;
+  for (const campo of GO_PRIORIDAD_COLOR) if (selON(campo).length > 1) return campo;
   return '';
 }
 
