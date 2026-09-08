@@ -144,6 +144,18 @@
   .go-local { fill: var(--navy); }
   .go-ny    { fill: var(--cyan); }
   .go-out   { fill: var(--red); }
+  /* Con color por categoría el rojo ya no puede significar "outlier" —sería un color más de la
+     paleta—, así que se marca con un aro sobre el color que le toca. */
+  .go-aro   { stroke: var(--red); stroke-width: 2; }
+  .go-leyenda { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px;
+                padding: 10px 2px 2px; font-size: 11px; color: var(--text-2); }
+  .go-ley-tit { font-size: 10px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase;
+                color: var(--text-3); }
+  .go-ley-it { display: inline-flex; align-items: center; gap: 5px; }
+  .go-ley-it i { width: 10px; height: 10px; border-radius: 50%; display: inline-block; flex: none; }
+  .go-ley-it b { color: var(--text-3); font-weight: 600; }
+  .go-ley-aro { background: transparent; border: 2px solid var(--red); box-sizing: border-box; }
+  .go-ley-nota { color: var(--text-3); }
   .go-curva { fill: none; stroke-width: 2.5; opacity: .85; }
   .go-curva.go-local { stroke: var(--navy); }
   .go-curva.go-ny    { stroke: var(--cyan); }
@@ -524,6 +536,14 @@
         <input type="date" id="f-desde" onchange="onFiltroONs('desde', this.value)" title="Vence desde">
         <input type="date" id="f-hasta" onchange="onFiltroONs('hasta', this.value)" title="Vence hasta">
       </label>
+      <label>Color <select id="f-color" onchange="onColorONs(this.value)">
+        <option value="auto">Automático</option>
+        <option value="emisor">Emisor</option>
+        <option value="industria">Industria</option>
+        <option value="rating">Rating</option>
+        <option value="divisa">Divisa</option>
+        <option value="">Ninguno</option>
+      </select></label>
       <span class="go-cuenta" id="f-cuenta"></span>
       <button class="btn btn-ghost go-limpiar" onclick="limpiarFiltrosONs()">Limpiar filtros</button>
     </div>
@@ -3198,6 +3218,40 @@ function limpiarFiltrosONs() {
   refiltrarONs();
 }
 
+// ── Color de los puntos por categoría ─────────────────────────
+// Paleta categórica: arranca por los dos colores de marca y sigue por los semánticos. Están
+// elegidos para distinguirse ENTRE SÍ, no para ordenar — acá las categorías no tienen orden.
+const GO_PALETA = ['#0d2055','#00a3e4','#e08e16','#1b9e5a','#7c3aed','#145e81','#c0392b','#0d9488','#8b5cf6'];
+const GO_OTROS = '#a7b2c8';   // gris para el resto cuando hay más categorías que colores
+let colorONs = 'auto';
+
+// Campo por el que se pinta. En "automático" es el primero que tenga MÁS DE UNA opción elegida:
+// si se filtró por dos ratings, lo que se quiere distinguir son los ratings. Con un solo valor
+// elegido no hace falta color, porque todos los puntos son de esa categoría.
+function campoColorONs() {
+  if (colorONs !== 'auto') return colorONs;
+  for (const campo of Object.keys(MS_CAMPOS)) if (selON(campo).length > 1) return campo;
+  return '';
+}
+
+// Mapa valor -> color sobre los puntos que se están dibujando. Con más categorías que colores se
+// pintan las que más instrumentos tienen y el resto cae en un gris "otros": repetir colores sería
+// peor que agrupar, porque dos puntos del mismo color dejarían de querer decir lo mismo.
+function coloresONs(pts, campo) {
+  if (!campo) return null;
+  const cuenta = {};
+  for (const p of pts) { const v = p.cat[campo]; cuenta[v] = (cuenta[v] || 0) + 1; }
+  const todas = Object.keys(cuenta).sort();
+  const pintadas = todas.length <= GO_PALETA.length ? todas
+    : todas.slice().sort((a, b) => cuenta[b] - cuenta[a] || a.localeCompare(b))
+           .slice(0, GO_PALETA.length).sort();
+  const mapa = {};
+  pintadas.forEach((v, i) => { mapa[v] = GO_PALETA[i]; });
+  return { mapa, orden: pintadas, cuenta, otros: todas.length - pintadas.length };
+}
+
+function onColorONs(v) { colorONs = v; renderGraficoONs(); }   // no toca la tabla: es sólo la curva
+
 function renderGraficoONs() {
   const cont = document.getElementById('graf-ons');
   if (!cont) return;
@@ -3261,21 +3315,37 @@ function renderGraficoONs() {
     g+=`<path d="${d}" class="go-curva ${cls}"/>`;
   }
 
+  const campoCol = campoColorONs();
+  const col = coloresONs(pts, campoCol);
+  const colorDe = (p) => col ? (col.mapa[p.cat[campoCol]] || GO_OTROS) : null;
+
   const marca=(p,out)=>{
     const cx=px(p.x).toFixed(1), cy=py(p.y).toFixed(1);
+    const c = colorDe(p);
     return `<g class="go-pt" data-tk="${p.tk}" data-nom="${p.nombre}" data-emi="${p.emisor}"`
          + ` data-ind="${p.industria}" data-rat="${p.rating?p.rating+(p.agencia?' ('+p.agencia+')':''):'—'}"`
          + ` data-div="${p.divisa}" data-venc="${fmtDate(p.venc)}" data-md="${p.x.toFixed(2)}" data-tir="${p.y.toFixed(2)}"`
          + ` data-pr="${p.precio!=null?(+p.precio).toFixed(2):'—'}" data-out="${out?1:''}">`
          + `<circle cx="${cx}" cy="${cy}" r="13" fill="transparent"/>`
-         + `<circle cx="${cx}" cy="${cy}" r="${out?5.5:4.5}" class="${out?'go-out':cls}"/>`
+         + `<circle cx="${cx}" cy="${cy}" r="${out?5.5:4.5}"`
+         + ` class="${c ? (out?'go-aro':'') : (out?'go-out':cls)}"${c?` style="fill:${c}"`:''}/>`
          + `<text x="${cx}" y="${(+cy-10).toFixed(1)}" class="go-lbl" text-anchor="middle" data-cx="${cx}" data-cy="${cy}">${p.tk}</text>`
          + `</g>`;
   };
   for(const p of normales) g+=marca(p,false);
   for(const p of outliers) g+=marca(p,true);
 
-  cont.innerHTML=`<svg viewBox="0 0 ${W} ${H}" class="go-svg" role="img" aria-label="TIR contra duration">${g}</svg><div class="go-tip" id="go-tip" hidden></div>`;
+  let leyenda = '';
+  if (col && col.orden.length) {
+    const rotulo = { emisor:'emisor', industria:'industria', rating:'rating', divisa:'divisa' }[campoCol];
+    leyenda = `<div class="go-leyenda"><span class="go-ley-tit">Color por ${rotulo}</span>`
+      + col.orden.map(v => `<span class="go-ley-it"><i style="background:${col.mapa[v]}"></i>`
+          + `${msEsc(v)} <b>${col.cuenta[v]}</b></span>`).join('')
+      + (col.otros ? `<span class="go-ley-it"><i style="background:${GO_OTROS}"></i>otros <b>${col.otros}</b></span>` : '')
+      + (outliers.length ? `<span class="go-ley-it go-ley-nota"><i class="go-ley-aro"></i>lejos de la curva</span>` : '')
+      + `</div>`;
+  }
+  cont.innerHTML=`<svg viewBox="0 0 ${W} ${H}" class="go-svg" role="img" aria-label="TIR contra duration">${g}</svg>${leyenda}<div class="go-tip" id="go-tip" hidden></div>`;
 
   // Etiquetas: se recolocan midiendo el ancho REAL con getBBox y, si no hay lugar, se omiten
   // (con 40 ONs apiladas es preferible perder un rótulo antes que superponerlos; el tooltip cubre).
