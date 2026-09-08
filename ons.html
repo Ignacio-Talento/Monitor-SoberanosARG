@@ -2534,9 +2534,11 @@ const INDUSTRIA = {
   'Telecom Argentina':'Telecomunicaciones',
   'B. Galicia':'Banco', 'B. Macro':'Banco', 'B. Mariva':'Banco', 'BBVA Argentina':'Banco',
   'Banco Supervielle':'Banco', 'Banco Comafi':'Banco', 'Banco de Valores':'Banco', 'Banco Provincia':'Banco',
+  'BPBA':'Banco',   // asi lo nombra 1816 al Banco Provincia de Buenos Aires (PVC5D)
   'Tarjeta Naranja':'Finanzas', 'Mercado Pago':'Fintech', 'Scania Credit':'Financiera',
   'Arcor':'Alimentos', 'Mastellone':'Alimentos', 'Ledesma':'Agroindustria', 'San Miguel':'Agro',
   'Cresud':'Agropecuario', 'Profertil':'Agro (fertilizantes)', 'Inv. Juramento':'Agroindustria',
+  'MSU':'Agro',
   'IRSA':'Real Estate', 'Irsa Prop':'Real Estate',
   'John Deere':'Maquinaria', 'CNH':'Maquinaria', 'Mirgor':'Electrónica',
   'Loma Negra':'Materiales (cemento)', 'Aluar':'Aluminio', 'Sidersa':'Siderurgia', 'Minera Exar':'Minería',
@@ -2608,6 +2610,13 @@ const RATINGS = {
   "John Deere": { nac: {r:"AA(arg)", a:"FIX SCR", p:"Estable", f:"2026-05-28"}, glob: null },
   "Loma Negra": { nac: {r:"AAA(arg)", a:"FIX SCR", p:"Estable", f:"2026-05-04"}, glob: null },
   "Luz de Tres Picos": { nac: {r:"AA(arg)", a:"FIX SCR", p:"Estable", f:"2026-05-08"}, glob: null },
+  // MSU S.A. (el agro, no MSU Energy ni MSU Green Energy): es el emisor de MSSFD y tambien
+  // el de RUCED, que hasta ahora se resolvia por el override de ticker de mas abajo porque
+  // 1816 lo devuelve mal. Con MSSFD el emisor "MSU" ya llega bien desde 1816, asi que la nota
+  // va aca. NOTA SIN REVALIDAR: es la del override de RUCED (FIX SCR, 05-05-2026).
+  "MSU": { nac: {r:"A+(arg)", a:"FIX SCR", p:"Estable", f:"2026-05-05"}, glob: null },
+  // BPBA (Banco Provincia de Buenos Aires, PVC5D) queda SIN nota cargada a proposito: no se
+  // verifico ninguna. La celda muestra "—" hasta que se cargue.
   "MSU Energy": { nac: {r:"AA-(arg)", a:"FIX SCR", p:"Estable", f:"2026-05-08"}, glob: {r:"B-", a:"Fitch", p:"Estable", f:""} },
   "MSU Green Energy": { nac: {r:"AA-(arg)", a:"FIX SCR", p:"Estable", f:"2026-07-07"}, glob: {r:"B-", a:"Fitch", p:"Estable", f:""} },
   "Mastellone": { nac: {r:"A.ar", a:"Moody's Local AR", p:"Positiva", f:"2026-06-12"}, glob: null },
