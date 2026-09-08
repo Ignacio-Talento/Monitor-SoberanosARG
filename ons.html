@@ -2961,7 +2961,18 @@ function outliersONs(pts, fn) {
 
 // Los cuatro filtros categóricos son de MULTI-selección: guardan un array de valores elegidos.
 // Array vacío = sin filtrar, que es lo mismo que "todos" y ahorra distinguir los dos casos.
-let filtrosONs = { emisor:[], industria:[], rating:[], divisa:[], desde:'', hasta:'' };
+//
+// Y se recuerdan POR LEY. Los emisores de ley local casi no se pisan con los de NY, así que cada
+// solapa guarda los suyos: ir a mirar algo del otro lado y volver no obliga a rearmar la selección.
+// Como se leen siempre a través de selON(), que resuelve contra monedaActiva, cambiar de ley no
+// necesita ningún hook: setLey() cambia la moneda, re-renderiza, y sale la selección que
+// corresponde.
+const msVacio = () => ({ emisor:[], industria:[], rating:[], divisa:[] });
+let filtrosCat = { local: msVacio(), ny: msVacio() };
+const selON = (campo) => filtrosCat[monedaActiva][campo];
+// El rango de vencimiento NO va por ley: no depende de la legislación, y ya venía sobreviviendo
+// al cambio de solapa.
+let filtrosFecha = { desde:'', hasta:'' };
 
 // Un campo por dropdown. `n` es el plural que se muestra cuando hay más de uno elegido, y
 // `buscar` prende el buscador: con ~45 emisores y ~30 industrias hace falta, con 8 ratings no.
@@ -2984,15 +2995,15 @@ function categoriasONs(inst) {
 // La tabla incluye instrumentos SIN precio, que no llegan a ser un punto del gráfico, así que el
 // filtro se evalúa sobre las categorías y el vencimiento y no sobre el punto.
 function pasaCatONs(cat, venc) {
-  const f = filtrosONs;
   // Dentro de un campo los valores elegidos SUMAN (YPF o Pampa); entre campos se CRUZAN
   // (YPF o Pampa, y además AAA, y además CCL).
   for (const campo of Object.keys(MS_CAMPOS)) {
-    if (f[campo].length && !f[campo].includes(cat[campo])) return false;
+    const sel = selON(campo);
+    if (sel.length && !sel.includes(cat[campo])) return false;
   }
   // Fechas en ISO (YYYY-MM-DD): la comparación de strings ya ordena bien, sin parsear.
-  if (f.desde && (venc || '') < f.desde) return false;
-  if (f.hasta && (venc || '') > f.hasta) return false;
+  if (filtrosFecha.desde && (venc || '') < filtrosFecha.desde) return false;
+  if (filtrosFecha.hasta && (venc || '') > filtrosFecha.hasta) return false;
   return true;
 }
 
@@ -3057,15 +3068,17 @@ function pintarFiltrosONs() {
   const uniq = (arr) => [...new Set(arr.filter(Boolean))].sort();
   for (const campo of Object.keys(MS_CAMPOS)) {
     msOpciones[campo] = uniq(todos.map(p => p.cat[campo]));
-    // Al cambiar de ley cambia el universo. Una selección que ya no existe se descarta, en vez de
-    // quedar filtrando en silencio contra un valor que el usuario no ve en ninguna lista.
-    filtrosONs[campo] = filtrosONs[campo].filter(v => msOpciones[campo].includes(v));
+    // Se poda contra el universo de la ley activa. Ya no se lleva puestas las selecciones de la
+    // otra ley —esas viven aparte—, pero sigue haciendo falta: si un bono vence, su emisor puede
+    // desaparecer del universo y quedaría filtrando en silencio contra algo que no está en ninguna
+    // lista.
+    filtrosCat[monedaActiva][campo] = selON(campo).filter(v => msOpciones[campo].includes(v));
     pintarMS(campo);
   }
   // Los de vencimiento son <input type="date">: se acota el rango elegible al primer y último
   // vencimiento que hay en la ley activa, para no ofrecer fechas donde no hay nada.
   const vencs = uniq(todos.map(p=>p.venc));
-  for (const [id, val] of [['f-desde', filtrosONs.desde], ['f-hasta', filtrosONs.hasta]]) {
+  for (const [id, val] of [['f-desde', filtrosFecha.desde], ['f-hasta', filtrosFecha.hasta]]) {
     const el = document.getElementById(id);
     if (!el) continue;
     if (vencs.length) { el.min = vencs[0]; el.max = vencs[vencs.length-1]; }
@@ -3075,7 +3088,7 @@ function pintarFiltrosONs() {
 
 // ── Dropdowns de multi-selección ───────────────────────────────
 function msRotulo(campo) {
-  const cfg = MS_CAMPOS[campo], sel = filtrosONs[campo];
+  const cfg = MS_CAMPOS[campo], sel = selON(campo);
   return !sel.length ? cfg.todos : sel.length === 1 ? sel[0] : `${sel.length} ${cfg.n}`;
 }
 
@@ -3085,7 +3098,7 @@ function msBotonHTML(campo) {
 
 function msLista(campo) {
   const q = (msBusqueda[campo] || '').trim().toLowerCase();
-  const sel = filtrosONs[campo];
+  const sel = selON(campo);
   const ops = (msOpciones[campo] || []).filter(v => !q || v.toLowerCase().includes(q));
   if (!ops.length) return '<div class="ms-vacio">Sin coincidencias</div>';
   return ops.map(v => `<label class="ms-op"><input type="checkbox" value="${msEsc(v)}"` +
@@ -3097,7 +3110,7 @@ function pintarMS(campo) {
   const cont = document.getElementById(MS_CAMPOS[campo].id);
   if (!cont) return;
   const abierto = msAbierto === campo;
-  const sel = filtrosONs[campo];
+  const sel = selON(campo);
   // Con el panel ya desplegado y armado se SINCRONIZA en vez de rearmarlo: rehacer el innerHTML
   // en cada tilde perdería el foco del buscador y la posición del scroll de la lista.
   if (abierto && cont.querySelector('.ms-panel')) {
@@ -3146,7 +3159,7 @@ function msBuscar(campo, v) {
 }
 
 function msToggle(campo, v) {
-  const sel = filtrosONs[campo];
+  const sel = selON(campo);
   const i = sel.indexOf(v);
   if (i >= 0) sel.splice(i, 1); else sel.push(v);
   refiltrarONs();
@@ -3157,10 +3170,10 @@ function msToggle(campo, v) {
 function msTodos(campo) {
   const q = (msBusqueda[campo] || '').trim().toLowerCase();
   const visibles = (msOpciones[campo] || []).filter(v => !q || v.toLowerCase().includes(q));
-  filtrosONs[campo] = [...new Set([...filtrosONs[campo], ...visibles])];
+  filtrosCat[monedaActiva][campo] = [...new Set([...selON(campo), ...visibles])];
   refiltrarONs();
 }
-function msNinguno(campo) { filtrosONs[campo] = []; refiltrarONs(); }
+function msNinguno(campo) { filtrosCat[monedaActiva][campo] = []; refiltrarONs(); }
 
 function msCerrar() {
   if (msAbierto === null) return;
@@ -3172,10 +3185,15 @@ function msCerrar() {
 document.addEventListener('click', msCerrar);
 document.addEventListener('keydown', (e) => { if (e.key === 'Escape') msCerrar(); });
 
-// Sigue en uso para los dos <input type="date">, que son de valor único.
-function onFiltroONs(campo, valor) { filtrosONs[campo] = valor; refiltrarONs(); }
+// Sigue en uso para los dos <input type="date">, que son de valor único y compartidos.
+function onFiltroONs(campo, valor) { filtrosFecha[campo] = valor; refiltrarONs(); }
+
+// Limpia la ley que se está mirando, no las dos: la otra guarda lo suyo, que es justamente el
+// punto de recordarlas por separado. Las fechas sí se limpian para ambas porque son una sola.
+// Si al volver a la otra solapa quedó algo puesto, el cartel "N de M en la tabla" lo canta.
 function limpiarFiltrosONs() {
-  filtrosONs = { emisor:[], industria:[], rating:[], divisa:[], desde:'', hasta:'' };
+  filtrosCat[monedaActiva] = msVacio();
+  filtrosFecha = { desde:'', hasta:'' };
   msAbierto = null; msBusqueda = {};
   refiltrarONs();
 }
