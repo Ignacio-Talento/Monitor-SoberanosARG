@@ -384,6 +384,158 @@ def tabla_macro(macro, ancho, periodo=None, rotulo="", con_dia=True):
     return t
 
 
+CELDA_REF = ParagraphStyle("celref", parent=CELDA, alignment=1, leading=11.5)
+
+
+def tabla_sinteticos(sint, lado, ancho):
+    """Una de las dos tablas de la solapa Sintéticos, fila por contrato.
+
+    `lado` es "pesos" (LECAP contra sintético en pesos) o "dolar" (sintético dólar linked contra el
+    bono DL). Debajo de la tasa de referencia van, chicos, los dos instrumentos entre los que se
+    interpoló: el vencimiento del futuro casi nunca coincide con el de un bono. Los contratos que no
+    operaron en la rueda van en gris y rotulados: su precio es de antes.
+    """
+    pesos = lado == "pesos"
+    filas = [["Contrato", "Días", "LECAP TEA" if pesos else "Bono DL TIR",
+              "Sintético $ TEA" if pesos else "Sintético DL TIR",
+              "Spread bruto", "Spread neto", "Qué paga más"]]
+    estilos = []
+    for r in sint.get("filas") or []:
+        i = len(filas)
+        d = r.get(lado)
+        tk = r["contrato"].replace("DLR/", "")
+        ctr = Paragraph(tk + ('<br/><font size="7" color="#6B7280">sin operar</font>'
+                              if r.get("sinOperar") else ""), CELDA)
+        if not d:
+            filas.append([ctr, str(r["dias"]), "sin curva en ese plazo", "", "", "", ""])
+            estilos.append(("SPAN", (2, i), (6, i)))
+            estilos.append(("TEXTCOLOR", (2, i), (2, i), GRIS))
+            continue
+        ref = (r.get("lecap") if pesos else r.get("dl")) or {}
+        entre = "–".join(ref.get("entre") or [])
+        filas.append([ctr, str(r["dias"]),
+                      Paragraph(f'{num(d["ref"])}%<br/><font size="7" color="#6B7280">{entre}</font>',
+                                CELDA_REF),
+                      f'{num(d["sint"])}%', num(d["spread"], 2, True), num(d["neto"], 2, True),
+                      d["gana"]])
+        estilos += [("TEXTCOLOR", (4, i), (4, i), _color_num(d["spread"])),
+                    ("TEXTCOLOR", (5, i), (5, i), _color_num(d["neto"])),
+                    ("FONT", (5, i), (5, i), SEMI, 9.6)]
+        if r.get("sinOperar"):
+            estilos.append(("TEXTCOLOR", (1, i), (3, i), GRIS))
+    t = Table(filas, colWidths=[w * ancho for w in (.12, .08, .17, .16, .13, .13, .21)],
+              repeatRows=1)
+    t.setStyle(TableStyle([
+        ("FONT", (0, 0), (-1, 0), SEMI, 8.8),
+        ("TEXTCOLOR", (0, 0), (-1, 0), GRIS),
+        ("LINEBELOW", (0, 0), (-1, 0), .8, BORDE),
+        ("FONT", (0, 1), (-1, -1), REG, 9.6),
+        ("ALIGN", (1, 0), (5, -1), "CENTER"),
+        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+        ("LINEAFTER", (3, 0), (3, -1), .5, SUAVE),
+        ("TOPPADDING", (0, 0), (-1, -1), 4),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+        ("LEFTPADDING", (0, 0), (-1, -1), 3),
+    ] + estilos))
+    return t
+
+
+def tabla_plazo_constante(sint, ancho, periodo=None, rotulo="", con_dia=True):
+    """Spread BRUTO en pesos —LECAP menos sintético— interpolado a plazo fijo, contra su historia.
+
+    Es la vista comparable en el tiempo: un contrato puntual se acorta todos los días y su spread
+    anualizado cambia sólo por eso. Sin color: que el spread sea positivo o negativo no es bueno ni
+    malo, dice de qué lado está el rendimiento.
+    """
+    pc = sint.get("plazoConstante") or {}
+    per = bool(periodo)
+    filas = [["Plazo", "Hoy"] + (["Día"] if con_dia else []) + ([rotulo] if per else [])
+             + ["Mediana del año", "Mínimo del año", "Máximo del año"]]
+
+    def fdm(f):
+        return f"{f[8:10]}/{f[5:7]}"
+
+    for pl in ("30", "60", "90", "180"):
+        r = pc.get(pl)
+        if not r:
+            continue
+        a, w, y = r.get("anterior") or {}, r.get(periodo) or {}, r.get("anio") or {}
+        filas.append([f"{pl} días", num(r["hoy"]["pesos"], 2, True)]
+                     + ([num(a.get("variacionPesos"), 2, True) if a else "—"] if con_dia else [])
+                     + ([num(w.get("variacionPesos"), 2, True) if w else "—"] if per else [])
+                     + [num(y.get("mediana"), 2, True) if y else "—",
+                        f'{num(y["min"]["pesos"], 2, True)} · {fdm(y["min"]["fecha"])}' if y else "—",
+                        f'{num(y["max"]["pesos"], 2, True)} · {fdm(y["max"]["fecha"])}' if y else "—"])
+    n = len(filas[0])
+    rel = {7: (.11, .12, .12, .13, .17, .175, .175), 6: (.12, .13, .14, .19, .21, .21),
+           5: (.14, .15, .21, .25, .25)}[n]
+    t = Table(filas, colWidths=[w * ancho for w in rel], repeatRows=1)
+    t.setStyle(TableStyle([
+        ("FONT", (0, 0), (-1, 0), SEMI, 8.8),
+        ("TEXTCOLOR", (0, 0), (-1, 0), GRIS),
+        ("LINEBELOW", (0, 0), (-1, 0), .8, BORDE),
+        ("FONT", (0, 1), (-1, -1), REG, 9.6),
+        ("FONT", (1, 1), (1, -1), SEMI, 9.6),
+        ("ALIGN", (1, 0), (-1, -1), "CENTER"),
+        ("TEXTCOLOR", (n - 3, 1), (-1, -1), GRIS),
+        ("LINEAFTER", (n - 4, 0), (n - 4, -1), .5, SUAVE),
+        ("TOPPADDING", (0, 0), (-1, -1), 5),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
+        ("LEFTPADDING", (0, 0), (-1, -1), 3),
+    ]))
+    return t
+
+
+def seccion_sinteticos(d, textos, ancho, periodo, rotulo, con_dia):
+    """La sección entera: prosa, las dos tablas de la solapa, el plazo constante y la nota."""
+    sint = d.get("sinteticos") or {}
+    if not sint.get("disponible"):
+        return []
+    E = [Paragraph("Sintéticos contra instrumentos directos", H2)]
+    for t in textos.get("sinteticos") or []:
+        E.append(Paragraph(t, P))
+    tc = sint["tc"]
+    rf = sint.get("ruedaFuturos") or ""
+    E.append(KeepTogether([
+        Paragraph("<b>En pesos:</b> LECAP contra sintético en pesos (comprar el bono dólar linked y "
+                  "vender el futuro). Spread = LECAP − sintético; positivo, rinde más la LECAP.",
+                  P_CHICO),
+        tabla_sinteticos(sint, "pesos", ancho)]))
+    E.append(Spacer(1, 8))
+    E.append(KeepTogether([
+        Paragraph("<b>En dólares:</b> sintético dólar linked (comprar la LECAP y comprar el futuro) "
+                  "contra el bono dólar linked. Spread = sintético − bono; positivo, rinde más el "
+                  "sintético.", P_CHICO),
+        tabla_sinteticos(sint, "dolar", ancho)]))
+    E.append(Spacer(1, 8))
+    if sint.get("plazoConstante"):
+        per_txt = {"semanal": "Semana", "mensual": "Mes"}.get(periodo, rotulo)
+        E.append(KeepTogether([
+            Paragraph("<b>A plazo constante:</b> el spread bruto en pesos interpolado entre "
+                      "contratos a 30, 60, 90 y 180 días, en puntos porcentuales, contra lo que va "
+                      "del año.", P_CHICO),
+            tabla_plazo_constante(sint, ancho, periodo, per_txt, con_dia)]))
+        E.append(Spacer(1, 4))
+    modo = ("último precio operado de la rueda del "
+            f"{rf[8:10]}/{rf[5:7]}" if sint.get("modoFuturos") == "intradia"
+            else f"precio de ajuste de la rueda del {rf[8:10]}/{rf[5:7]}, no el de hoy")
+    c = sint.get("comisiones") or {}
+    E.append(Paragraph(
+        f"Futuros de A3 Mercados: {modo}. Devaluación implícita de cada contrato contra el A3500 "
+        f"del {tc['fecha'][8:10]}/{tc['fecha'][5:7]} ({num(tc['valor'], 2)}), anualizada. La tasa "
+        "de la LECAP y la del dólar linked se <b>interpolan</b> linealmente al vencimiento de cada "
+        "futuro entre los dos bonos que lo rodean —los que figuran debajo de la tasa—, porque los "
+        "vencimientos casi nunca coinciden; fuera del tramo con bonos no se extrapola. Días desde "
+        f"la liquidación en T+1. El <b>neto</b> descuenta aranceles de {num(c.get('lecap'), 1)}% "
+        f"en la LECAP, {num(c.get('dl'), 1)}% en el dólar linked y {num(c.get('fut'), 1)}% en el "
+        "futuro, anualizados al plazo de cada contrato: por eso en los plazos cortos el neto puede "
+        "dar vuelta el signo del bruto. Quedan afuera los contratos a menos de "
+        f"{sint.get('diasMinimos', 10)} días. Un contrato <b>sin operar</b> lleva el precio de su "
+        "último ajuste. El histórico del año se calcula con el precio de ajuste de cada rueda, así "
+        "que la variación del día tiene algo de ruido de método.", P_CHICO))
+    return E
+
+
 def tabla_simple(filas, anchos_rel, ancho, centrar=()):
     t = Table(filas, colWidths=[w * ancho for w in anchos_rel], repeatRows=1)
     est = [("FONT", (0, 0), (-1, 0), SEMI, 8.8),
@@ -629,6 +781,10 @@ def construir(ruta_json, dir_curvas, textos, salida, modo="auto"):
     E += figura(dir_curvas / "futuros.png",
                 "Precio de cada contrato y, en el eje derecho, la devaluación acumulada que "
                 "implica. Los círculos huecos son contratos de volumen fino.", ANCHO)
+
+    # Pegado a los futuros: es la misma curva de devaluación, usada para comparar cada instrumento
+    # directo contra su sintético. Va en los tres tipos de informe.
+    E += seccion_sinteticos(d, textos, ANCHO, periodo, rotulo, con_dia=(modo != "periodo"))
 
     E.append(Paragraph("Subsoberanos", H2))
     for t in textos["subsoberanos"]:

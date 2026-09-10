@@ -573,7 +573,7 @@ def _orden_contrato(sym):
     return (2000 + int(mes[3:]), MESES_A3[mes[:3]])
 
 
-def curva_futuros(salida, ruta_spreads="spreads_sinteticos.json", hasta=None):
+def curva_futuros(salida, ruta_spreads="spreads_sinteticos.json", hasta=None, del_dia=None):
     """Precio de los futuros de dólar y devaluación acumulada contra el mayorista.
 
     DOS EJES, UNA SOLA CURVA. La devaluación acumulada es (F/S − 1)·100: una función lineal del
@@ -589,6 +589,11 @@ def curva_futuros(salida, ruta_spreads="spreads_sinteticos.json", hasta=None):
 
     El spot que se usa es el mayorista de esa MISMA rueda: mezclar el futuro de un día con el spot
     de otro metería el movimiento cambiario en el numerador y no en el denominador.
+
+    `del_dia` es el bloque `sinteticos` del JSON del informe. Si trae una rueda de futuros MÁS
+    NUEVA que la del archivo —el último operado de hoy, sacado de tick-prices—, se usa esa: las
+    tablas de sintéticos del informe se calculan con esos precios, y el gráfico de al lado no puede
+    mostrar los de ayer.
     """
     d = json.loads(Path(ruta_spreads).read_text(encoding="utf-8"))
     ruedas = sorted(k for k in d if not k.startswith("_"))
@@ -600,6 +605,15 @@ def curva_futuros(salida, ruta_spreads="spreads_sinteticos.json", hasta=None):
     fut = d[ult].get("fut") or {}
     vol = d[ult].get("vol") or {}
     spot = d[ult].get("tc")
+    rotulo = f"ajuste del {ult[8:10]}/{ult[5:7]}"
+    dd = del_dia or {}
+    rf = dd.get("ruedaFuturos")
+    if dd.get("disponible") and dd.get("futuros") and rf and rf > ult and (dd.get("tc") or {}).get("valor"):
+        fut = {k: v["precio"] for k, v in dd["futuros"].items() if v.get("precio")}
+        vol = {k: v.get("volumen") or 0 for k, v in dd["futuros"].items()}
+        spot = dd["tc"]["valor"]
+        rotulo = (f"último operado del {rf[8:10]}/{rf[5:7]}" if dd.get("modoFuturos") == "intradia"
+                  else f"ajuste del {rf[8:10]}/{rf[5:7]}")
     if not fut or not spot:
         return None
 
@@ -638,7 +652,7 @@ def curva_futuros(salida, ruta_spreads="spreads_sinteticos.json", hasta=None):
         ax.annotate(f"{dev:+.1f}%".replace(".", ","), (x, y), textcoords="offset points",
                     xytext=(0, -19), ha="center", fontsize=TAM_ROTULO - 1.5, color=GRIS)
 
-    ax.set_title(f"Futuros de dólar · ajuste del {ult[8:10]}/{ult[5:7]}",
+    ax.set_title(f"Futuros de dólar · {rotulo}",
                  color=NAVY, fontweight="bold", fontsize=TAM_TITULO, pad=14)
     ax.set_xlabel("Vencimiento del contrato", color=GRIS, fontsize=TAM_EJE)
     ax.set_ylabel("Precio del futuro (ARS)", color=GRIS, fontsize=TAM_EJE)
@@ -698,7 +712,7 @@ def generar(ruta_json, dir_salida="curvas"):
         ("tamar", lambda p: curva_tamar(instr, p, d_tam, tamar_spot, falta(d, "TAMAR"))),
         ("dl", lambda p: curva_dl(instr, p, falta(d, "Dólar linked"))),
         ("subsoberanos", lambda p: curva_subsoberanos(instr, p, falta(d, "Subsoberanos"))),
-        ("futuros", lambda p: curva_futuros(p, hasta=d["fecha"])),
+        ("futuros", lambda p: curva_futuros(p, hasta=d["fecha"], del_dia=d.get("sinteticos"))),
     ]:
         ruta = out / f"{nombre}.png"
         try:

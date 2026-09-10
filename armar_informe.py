@@ -517,6 +517,424 @@ def datos_embig(referencias, anio):
     return out
 
 
+# ── SINTÉTICOS ───────────────────────────────────────────────────────────────────────────────────
+# La misma comparación que la solapa Sintéticos, con las mismas fórmulas y los mismos supuestos:
+# LECAP contra sintético en pesos (bono DL + venta de futuro) y bono DL contra sintético dólar linked
+# (LECAP + compra de futuro). Es una SEGUNDA implementación de filasSinteticos() de sinteticos.html,
+# que es justo lo que actualizar_spreads.py evita a propósito; acá no hay otra salida, porque el
+# informe se arma en el runner y la solapa vive detrás de Cloudflare Access. Para que no diverjan
+# en silencio, los contratos se leen del propio HTML y cada supuesto lleva al lado el nombre de la
+# función de la solapa que replica. Si se toca una, se toca la otra.
+
+SINTETICOS_HTML = Path(__file__).resolve().parent / "sinteticos.html"
+SPREADS_SINTETICOS = Path(__file__).resolve().parent / "spreads_sinteticos.json"
+CEM_API = "https://apicem.matbarofex.com.ar/api/v2"
+CABECERAS_CEM = {"User-Agent": "Mozilla/5.0", "Accept": "application/json",
+                 "Referer": "https://cem.matbarofex.com.ar/"}
+# `comisiones` de la solapa: aranceles por defecto de la tabla del back-office (grupos "NO REG").
+COMISIONES_SINT = {"lecap": 0.5, "dl": 0.5, "fut": 0.2}
+# Menos de 10 días no entra, igual que en la solapa: anualizar sobre tan poco plazo convierte
+# cualquier diferencia chica en decenas de puntos.
+DIAS_MIN_SINT = 10
+# PLAZOS_FIJOS de la solapa: el spread interpolado a plazo constante, que es lo único comparable
+# en el tiempo —un contrato puntual se acorta todos los días—.
+PLAZOS_SINT = (30, 60, 90, 180)
+MES_FUT = {"ENE": 1, "FEB": 2, "MAR": 3, "ABR": 4, "MAY": 5, "JUN": 6,
+           "JUL": 7, "AGO": 8, "SEP": 9, "OCT": 10, "NOV": 11, "DIC": 12}
+
+
+def contratos_solapa():
+    """FUTUROS_TICKERS de sinteticos.html, leídos del archivo para que las tablas sean las mismas."""
+    import re
+    try:
+        s = SINTETICOS_HTML.read_text(encoding="utf-8")
+        m = re.search(r"const FUTUROS_TICKERS = \[(.*?)\];", s, re.S)
+        tks = re.findall(r"'(DLR/[A-Z]{3}\d{2})'", m.group(1)) if m else []
+        if tks:
+            return tks
+    except OSError:
+        pass
+    print("AVISO: no se pudieron leer los contratos de sinteticos.html; se usan los de respaldo")
+    return ["DLR/SEP26", "DLR/OCT26", "DLR/NOV26", "DLR/DIC26", "DLR/ENE27", "DLR/FEB27",
+            "DLR/MAR27", "DLR/ABR27"]
+
+
+def venc_contrato(tk):
+    """vencContrato() de monitor-core.js: el último día CALENDARIO del mes del contrato."""
+    m, a = MES_FUT.get(tk[4:7]), tk[7:9]
+    if not m or not a.isdigit():
+        return None
+    y = 2000 + int(a)
+    return (date(y + (m == 12), m % 12 + 1, 1) - timedelta(days=1))
+
+
+def _ticker_cem(symbol):
+    """DLR092026 -> DLR/SEP26; None para opciones y cualquier otra cosa."""
+    if not symbol or " " in symbol or not symbol.startswith("DLR"):
+        return None
+    r = symbol[3:]
+    if len(r) != 6 or not r.isdigit() or not 1 <= int(r[:2]) <= 12:
+        return None
+    mes = [k for k, v in MES_FUT.items() if v == int(r[:2])][0]
+    return f"DLR/{mes}{int(r[2:]) % 100:02d}"
+
+
+def futuros_a3(hoy):
+    """Foto de los futuros de la rueda, como /api/futuros de la solapa.
+
+    Primero tick-prices —operación por operación—, que da el ÚLTIMO OPERADO del día con su hora y
+    el volumen de la rueda: a las 17:30 el mercado de A3 cerró a las 15:00, así que es el cierre
+    operado de hoy. Si tick-prices falla —se cae seguido con 424 "Execution Timeout Expired"—, el
+    ajuste de closing-prices, que a esa hora es el de la rueda ANTERIOR. `modo` dice cuál salió.
+    """
+    ini = datetime(hoy.year, hoy.month, hoy.day, 3, 0, 0, tzinfo=timezone.utc)   # 00:00 ART
+    fin = ini + timedelta(days=1, seconds=-1)
+    iso = lambda d: d.strftime("%Y-%m-%dT%H:%M:%S.000Z")
+    filas, aviso = [], None
+    try:
+        pagina = 1
+        while pagina <= 10:
+            r = requests.get(CEM_API + "/tick-prices", headers=CABECERAS_CEM, timeout=45, params={
+                "product": "DLR", "from": iso(ini), "to": iso(fin),
+                "pageSize": 5000, "page": pagina})
+            r.raise_for_status()
+            lote = r.json().get("data") or []
+            filas += lote
+            if len(lote) < 5000:
+                break
+            pagina += 1
+    except Exception as e:                                        # noqa: BLE001
+        aviso, filas = f"tick-prices: {e}", []
+
+    previo = {}
+    try:
+        r = requests.get(CEM_API + "/closing-prices", headers=CABECERAS_CEM, timeout=45, params={
+            "product": "DLR", "type": "FUT", "from": (hoy - timedelta(days=7)).isoformat(),
+            "to": hoy.isoformat(), "pageSize": 300, "sort": "dateTime", "sortDir": "DESC"})
+        r.raise_for_status()
+        for x in r.json().get("data") or []:
+            tk = _ticker_cem(x.get("symbol"))
+            if tk and tk not in previo and (x.get("settlement") or x.get("close")):
+                previo[tk] = {"ajuste": float(x.get("settlement") or x.get("close")),
+                              "volumen": int(x.get("volume") or 0),
+                              "fecha": str(x.get("dateTime"))[:10]}
+    except Exception as e:                                        # noqa: BLE001
+        aviso = (aviso + " · " if aviso else "") + f"closing-prices: {e}"
+
+    agg = {}
+    for x in filas:
+        tk = _ticker_cem(x.get("symbol"))
+        if not tk:
+            continue
+        a = agg.setdefault(tk, {"volumen": 0, "operaciones": 0, "ultimo": None, "precio": None})
+        a["volumen"] += float(x.get("volume") or 0)
+        a["operaciones"] += 1
+        if not a["ultimo"] or x["dateTime"] > a["ultimo"]:
+            a["ultimo"], a["precio"] = x["dateTime"], float(x["price"])
+
+    out = {}
+    if agg:
+        modo, rueda = "intradia", hoy.isoformat()
+        for tk in set(agg) | set(previo):
+            a, p = agg.get(tk), previo.get(tk)
+            if a:
+                h = datetime.fromisoformat(a["ultimo"].replace("Z", "+00:00")).astimezone(ART)
+                out[tk] = {"precio": a["precio"], "volumen": round(a["volumen"]),
+                           "operaciones": a["operaciones"], "ultimaOperacion": h.strftime("%H:%M")}
+            else:
+                # Existe pero no operó hoy: la solapa lo muestra con el ajuste previo y volumen 0,
+                # atenuado y con «sin operar». Acá igual.
+                out[tk] = {"precio": p["ajuste"], "volumen": 0, "operaciones": 0,
+                           "ultimaOperacion": None, "ajusteDel": p["fecha"]}
+    else:
+        modo = "ajuste"
+        rueda = max((p["fecha"] for p in previo.values()), default=None)
+        for tk, p in previo.items():
+            if p["fecha"] == rueda:
+                out[tk] = {"precio": p["ajuste"], "volumen": p["volumen"], "operaciones": None,
+                           "ultimaOperacion": None, "ajusteDel": p["fecha"]}
+    return out, modo, rueda, aviso
+
+
+def tc_mayorista(hoy):
+    """-> (fecha, A3500) del último dato en o antes de hoy: bcraData.usdHoy de la solapa."""
+    try:
+        r = requests.get("https://indicadoresbcra.granda-fra.workers.dev/", timeout=40, params={
+            "serie": "usd", "desde": (hoy - timedelta(days=15)).isoformat(),
+            "hasta": hoy.isoformat()})
+        det = (r.json().get("results") or [{}])[0].get("detalle") or []
+        pts = sorted((d["fecha"], float(d["valor"])) for d in det
+                     if d.get("fecha") and d.get("valor") and d["fecha"] <= hoy.isoformat())
+        return pts[-1] if pts else (None, None)
+    except Exception as e:                                        # noqa: BLE001
+        print(f"AVISO: sin A3500 ({e})")
+        return None, None
+
+
+def vencimientos_excel(hojas=("LECAPS", "USD Linked")):
+    """{ticker: date} de la columna de vencimiento de esas hojas, que es de donde lo lee la solapa.
+
+    La columna se llama distinto en cada hoja —"Fecha Vencimiento" y "Fecha Vencimineto", con la
+    errata— así que se busca por las dos, igual que el motor.
+    """
+    wb = load_workbook(INSTRUMENTOS_FILE, data_only=True)
+    out = {}
+    for h in hojas:
+        if h not in wb.sheetnames:
+            continue
+        filas = list(wb[h].iter_rows(values_only=True))
+        cab = next((i for i, f in enumerate(filas) if f and str(f[0]).strip() == "Ticker"), None)
+        if cab is None:
+            continue
+        nombres = [str(c).strip() if c else "" for c in filas[cab]]
+        col = next((nombres.index(n) for n in ("Fecha Vencimiento", "Fecha Vencimineto")
+                    if n in nombres), None)
+        if col is None:
+            continue
+        for f in filas[cab + 1:]:
+            if f and f[0] and str(f[0]).strip() != "Ticker" and isinstance(f[col], datetime):
+                out[str(f[0]).strip()] = f[col].date()
+    return out
+
+
+def interpolar_curva(curva, dias):
+    """interpolar() de la solapa: lineal en días y SIN extrapolar —fuera de rango, None—."""
+    if not curva or dias < curva[0]["dias"] or dias > curva[-1]["dias"]:
+        return None
+    for a, b in zip(curva, curva[1:]):
+        if a["dias"] <= dias <= b["dias"]:
+            if a["dias"] == b["dias"]:
+                return {"tasa": a["tasa"], "entre": [a["ticker"], b["ticker"]]}
+            w = (dias - a["dias"]) / (b["dias"] - a["dias"])
+            return {"tasa": a["tasa"] + w * (b["tasa"] - a["tasa"]),
+                    "entre": [a["ticker"], b["ticker"]]}
+    return None
+
+
+def con_factor(tasa, k, dias):
+    """conFactor() de la solapa: costo sobre el capital aplicado a una tasa ya anualizada."""
+    if dias <= 0 or k == 1:
+        return tasa
+    return ((1 + tasa / 100) * k ** (365 / dias) - 1) * 100
+
+
+def _k_compra(c):
+    return 1 / (1 + c / 100)
+
+
+def _k_venta(c):
+    return 1 - c / 100
+
+
+def _k_compra_fut(c):
+    """Comprar un futuro: se paga F(1+c) y la devaluación SUBE. El sentido es el inverso que en un
+    bono, cuya tasa va con 1/P; en la solapa estuvo como 1/(1+c) hasta el 10/09/2026."""
+    return 1 + c / 100
+
+
+def fila_sintetico(tk, precio, dias, tc, c_lecap, c_dl):
+    """Una fila de filasSinteticos(): bruto y neto de los dos lados. None si no hay devaluación."""
+    dev = (pow(precio / tc, 365 / dias) - 1) * 100
+    iL, iD = interpolar_curva(c_lecap, dias), interpolar_curva(c_dl, dias)
+    fila = {"devTEA": dev, "lecap": iL, "dl": iD, "pesos": None, "dolar": None}
+    if iL and iD:
+        c = COMISIONES_SINT
+        lecap_n = con_factor(iL["tasa"], _k_compra(c["lecap"]), dias)
+        dl_n = con_factor(iD["tasa"], _k_compra(c["dl"]), dias)
+        # en pesos: comprar DL + VENDER futuro, contra la LECAP. Positivo = gana la LECAP.
+        bruto = ((1 + iD["tasa"] / 100) * (1 + dev / 100) - 1) * 100
+        dev_v = con_factor(dev, _k_venta(c["fut"]), dias)
+        neto_s = ((1 + dl_n / 100) * (1 + dev_v / 100) - 1) * 100
+        fila["pesos"] = {"ref": iL["tasa"], "sint": bruto, "spread": iL["tasa"] - bruto,
+                         "neto": lecap_n - neto_s,
+                         "gana": "LECAP directa" if lecap_n - neto_s >= 0 else "Sintético en pesos"}
+        # dólar linked: comprar LECAP + COMPRAR futuro, contra el bono DL. Positivo = gana el sintético.
+        bruto = ((1 + iL["tasa"] / 100) / (1 + dev / 100) - 1) * 100
+        dev_c = con_factor(dev, _k_compra_fut(c["fut"]), dias)
+        neto_s = ((1 + lecap_n / 100) / (1 + dev_c / 100) - 1) * 100
+        fila["dolar"] = {"ref": iD["tasa"], "sint": bruto, "spread": bruto - iD["tasa"],
+                         "neto": neto_s - dl_n,
+                         "gana": "Sintético DL" if neto_s - dl_n >= 0 else "Bono DL directo"}
+    return fila
+
+
+def _curva_de_tasas(tasas, venc, ref):
+    """curvaDesdeTasas() de la solapa: {ticker: tasa} -> [{dias, tasa, ticker}] ordenada."""
+    pts = []
+    for tk, t in tasas.items():
+        v = venc.get(tk)
+        if v and t is not None:
+            dias = (v - ref).days
+            if dias > 0:
+                pts.append({"dias": dias, "tasa": t, "ticker": tk})
+    return sorted(pts, key=lambda p: p["dias"])
+
+
+def spread_plazo(rueda, fecha, plazo, venc):
+    """spreadPlazoConstante() de la solapa: spread BRUTO interpolado entre contratos a `plazo` días.
+
+    Como en spreadHistorico(), la fecha de la rueda hace de liquidación y los contratos de menos
+    de 10 días no entran. Sin extrapolar.
+    """
+    ref = date.fromisoformat(fecha)
+    tc = rueda.get("tc")
+    if not tc:
+        return None
+    cL = _curva_de_tasas(rueda.get("lecap") or {}, venc, ref)
+    cD = _curva_de_tasas(rueda.get("dl") or {}, venc, ref)
+    pts = []
+    for tk, p in (rueda.get("fut") or {}).items():
+        v = venc_contrato(tk)
+        if not v or not p:
+            continue
+        dias = (v - ref).days
+        if dias < DIAS_MIN_SINT:
+            continue
+        dev = (pow(p / tc, 365 / dias) - 1) * 100
+        iL, iD = interpolar_curva(cL, dias), interpolar_curva(cD, dias)
+        if not iL or not iD:
+            continue
+        sp = iL["tasa"] - ((1 + iD["tasa"] / 100) * (1 + dev / 100) - 1) * 100
+        sd = ((1 + iL["tasa"] / 100) / (1 + dev / 100) - 1) * 100 - iD["tasa"]
+        pts.append((dias, sp, sd, tk))
+    pts.sort()
+    if len(pts) < 2 or not pts[0][0] <= plazo <= pts[-1][0]:
+        return None
+    for a, b in zip(pts, pts[1:]):
+        if a[0] <= plazo <= b[0]:
+            w = 0 if b[0] == a[0] else (plazo - a[0]) / (b[0] - a[0])
+            return {"pesos": a[1] + w * (b[1] - a[1]), "dolar": a[2] + w * (b[2] - a[2]),
+                    "entre": [a[3], b[3]]}
+    return None
+
+
+def datos_sinteticos(items, datos, hoy, fer, ayer, referencias):
+    """Las dos tablas de la solapa Sintéticos para la rueda de hoy, más el spread a plazo constante
+    contra su historia de spreads_sinteticos.json.
+
+    TABLAS: una fila por contrato de la solapa, con la tasa LECAP y la del DL interpoladas al
+    vencimiento del futuro sobre las curvas de HOY de 1816 —las mismas tasas del resto del
+    informe—, la devaluación implícita del futuro contra el A3500 y los spreads bruto y neto de
+    aranceles. Días desde la liquidación T+1, como en la solapa.
+
+    PLAZO CONSTANTE: el spread bruto interpolado a 30/60/90/180 días, que es lo que se puede
+    comparar entre ruedas. El de hoy sale de los mismos insumos que las tablas; el histórico, del
+    archivo, que usa el AJUSTE de cada rueda y no el último operado —diferencia chica, pero es la
+    razón por la que la variación del día trae algo de ruido de método—.
+    """
+    out = {"disponible": False, "comisiones": COMISIONES_SINT, "diasMinimos": DIAS_MIN_SINT}
+    fut, modo, rueda_fut, aviso = futuros_a3(hoy)
+    f_tc, tc = tc_mayorista(hoy)
+    if not fut or not tc:
+        out["motivo"] = f"sin futuros ({aviso})" if not fut else "sin A3500"
+        return out
+
+    venc = vencimientos_excel()
+    liq = proxima_habil(hoy, fer)
+    tasas = {"LECAPS": {}, "USD Linked": {}}
+    for it in items:
+        if it.get("hoja") in tasas and it.get("t1816"):
+            h = datos.get(it["t1816"], {}).get(hoy.isoformat()) or {}
+            if h.get("tea") is not None:
+                tasas[it["hoja"]][it["eco"]] = pct(h["tea"])
+    c_lecap = _curva_de_tasas(tasas["LECAPS"], venc, liq)
+    c_dl = _curva_de_tasas(tasas["USD Linked"], venc, liq)
+
+    filas, cortos, sin_dato = [], [], []
+    for tk in contratos_solapa():
+        v = venc_contrato(tk)
+        if not v or v <= hoy:
+            continue
+        f = fut.get(tk)
+        if not f or not f.get("precio"):
+            sin_dato.append(tk)
+            continue
+        dias = (v - liq).days
+        if dias < DIAS_MIN_SINT:
+            cortos.append(tk)
+            continue
+        fila = {"contrato": tk, "venc": v.isoformat(), "dias": dias, "precio": f["precio"],
+                "volumen": f.get("volumen"), "ultimaOperacion": f.get("ultimaOperacion"),
+                "sinOperar": not f.get("volumen")}
+        fila.update(fila_sintetico(tk, f["precio"], dias, tc, c_lecap, c_dl))
+        filas.append(fila)
+
+    def red(x):
+        if isinstance(x, float):
+            return round(x, 3)
+        if isinstance(x, dict):
+            return {k: red(v) for k, v in x.items()}
+        if isinstance(x, list):
+            return [red(v) for v in x]
+        return x
+
+    # ── plazo constante, hoy contra la historia ──
+    try:
+        hist = json.loads(SPREADS_SINTETICOS.read_text(encoding="utf-8"))
+    except Exception as e:                                        # noqa: BLE001
+        hist = {}
+        print(f"AVISO: sin spreads_sinteticos.json ({e})")
+    venc_h = {k: date.fromisoformat(v) for k, v in (hist.get("_venc") or {}).items()}
+    venc_h.update(venc)
+    # Para hoy, TODOS los contratos que devolvió A3 y no sólo los de la solapa: el archivo
+    # histórico guarda todos, y la interpolación a plazo fijo tiene que ver el mismo abanico.
+    rueda_hoy = {"tc": tc, "fut": {k: v["precio"] for k, v in fut.items()},
+                 "lecap": tasas["LECAPS"], "dl": tasas["USD Linked"]}
+    ruedas = sorted(k for k in hist if not k.startswith("_") and k < hoy.isoformat())
+    del_anio = [r for r in ruedas if r >= f"{hoy.year}-01-01"]
+    plazos = {}
+    for pl in PLAZOS_SINT:
+        h = spread_plazo(rueda_hoy, hoy.isoformat(), pl, venc_h)
+        if not h:
+            continue
+        reg = {"hoy": h}
+        serie = [(r, spread_plazo(hist[r], r, pl, venc_h)) for r in del_anio]
+        serie = [(r, s) for r, s in serie if s]
+        previas = [(r, s) for r, s in serie if r <= ayer.isoformat()]
+        if previas:
+            r, s = previas[-1]
+            reg["anterior"] = {"fecha": r, "pesos": s["pesos"], "dolar": s["dolar"],
+                               "variacionPesos": h["pesos"] - s["pesos"]}
+        for tipo, fref in (referencias or {}).items():
+            antes = [(r, s) for r, s in serie if r <= fref]
+            if antes:
+                r, s = antes[-1]
+                reg[tipo] = {"fecha": r, "pesos": s["pesos"], "dolar": s["dolar"],
+                             "variacionPesos": h["pesos"] - s["pesos"]}
+        if serie:
+            vals = [s["pesos"] for _, s in serie]
+            rmin = min(serie, key=lambda x: x[1]["pesos"])
+            rmax = max(serie, key=lambda x: x[1]["pesos"])
+            reg["anio"] = {"ruedas": len(serie), "desde": serie[0][0],
+                           "mediana": median(vals),
+                           "min": {"fecha": rmin[0], "pesos": rmin[1]["pesos"]},
+                           "max": {"fecha": rmax[0], "pesos": rmax[1]["pesos"]},
+                           # qué fracción de las ruedas del año tuvo un spread MENOR que el de hoy
+                           "percentilHoy": sum(v < h["pesos"] for v in vals) / len(vals)}
+        plazos[str(pl)] = reg
+
+    out.update({
+        "disponible": bool(filas),
+        "fuenteFuturos": ("A3 Mercados · último operado de la rueda (tick-prices)"
+                          if modo == "intradia" else
+                          "A3 Mercados · precio de AJUSTE de la rueda anterior (tick-prices no respondió)"),
+        "modoFuturos": modo,
+        "ruedaFuturos": rueda_fut,
+        "avisoFuturos": aviso,
+        "tc": {"fecha": f_tc, "valor": tc},
+        "liquidacion": liq.isoformat(),
+        "curvas": {"lecap": [p["ticker"] for p in c_lecap], "dl": [p["ticker"] for p in c_dl]},
+        "filas": red(filas),
+        "excluidosPorPlazo": cortos,
+        "sinPrecio": sin_dato,
+        "futuros": {k: {"precio": v["precio"], "volumen": v.get("volumen")}
+                    for k, v in sorted(fut.items(), key=lambda x: venc_contrato(x[0]) or date.max)
+                    if (venc_contrato(k) or hoy) > hoy},
+        "plazoConstante": red(plazos),
+    })
+    return out
+
+
 def main():
     cli = cliente_1816()
     if cli is None:
@@ -770,6 +1188,21 @@ def main():
     else:
         print(f"  sin series de mercado: {mercado.get('motivo', 'bloques vacíos')}")
 
+    # Sintéticos contra instrumentos directos: las dos tablas de la solapa. Si A3 o el BCRA no
+    # responden, el informe sale igual sin el bloque y lo dice.
+    print("Sintéticos: futuros de A3 y A3500...")
+    try:
+        sinteticos = datos_sinteticos(items, datos, hoy, fer, ayer, refs_fechas)
+    except Exception as e:                                        # noqa: BLE001
+        sinteticos = {"disponible": False, "motivo": f"error armando el bloque: {e}"}
+    if sinteticos["disponible"]:
+        p90 = (sinteticos["plazoConstante"].get("90") or {}).get("hoy") or {}
+        print(f"  {len(sinteticos['filas'])} contratos · futuros {sinteticos['modoFuturos']} "
+              f"del {sinteticos['ruedaFuturos']} · A3500 {sinteticos['tc']['valor']} del "
+              f"{sinteticos['tc']['fecha']} · spread a 90 días {p90.get('pesos')}")
+    else:
+        print(f"  sin sintéticos: {sinteticos.get('motivo')}")
+
     salida = {
         "fecha": hoy.isoformat(),
         "ruedaAnterior": ayer.isoformat(),
@@ -793,6 +1226,9 @@ def main():
         # Margen sobre TAMAR de los Duales y Bonares AO27/AO28 con su forward. Salen del archivo
         # que dejó series_mercado.py en este mismo job, no de una llamada nueva a 1816.
         "mercado": mercado,
+        # Las dos tablas de la solapa Sintéticos —LECAP contra sintético en pesos, bono DL contra
+        # sintético dólar linked— y el spread a plazo constante contra su historia del año.
+        "sinteticos": sinteticos,
         # Fechas contra las que se midió cada cierre, para que el informe pueda nombrarlas en vez
         # de decir "la semana pasada".
         "referencias": refs_fechas,

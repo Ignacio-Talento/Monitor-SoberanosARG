@@ -100,15 +100,46 @@ TRES COSAS QUE HAY QUE SABER PARA NO DECIR MACANAS:
     NO los promedies con el resto ni saques conclusiones de ellos. Si son relevantes, mencionalos
     como dato a verificar, no como hallazgo.
 
+EL BLOQUE `sinteticos` DEL JSON son las dos tablas de la solapa Sintéticos, ya calculadas en el
+runner con las MISMAS fórmulas que la solapa (verificado el 10/09/2026 corriendo el JavaScript de
+la página contra el Python con los mismos insumos: coinciden al tercer decimal). No lo recalcules:
+  · `filas`: una por contrato de la solapa (DLR/SEP26 … DLR/ABR27), con `dias` desde la
+    liquidación T+1, `precio`, `volumen`, `ultimaOperacion`, `sinOperar`, `devTEA` (devaluación
+    implícita anualizada contra el A3500), `lecap` y `dl` ({tasa, entre:[bono, bono]}: la tasa
+    interpolada al vencimiento del futuro y los dos bonos entre los que se interpoló), y los dos
+    lados:
+      `pesos`  {ref: LECAP TEA, sint: sintético $ TEA, spread, neto, gana} — spread = LECAP − sint.
+      `dolar`  {ref: bono DL TIR, sint: sintético DL TIR, spread, neto, gana} — spread = sint − bono.
+    Positivo en los dos casos quiere decir lo mismo: la LECAP rinde más que el sintético en pesos, y
+    el sintético DL (que es LECAP + futuro) rinde más que el bono DL. `gana` es el veredicto NETO.
+    `pesos` o `dolar` en null = sin curva en ese plazo (no se extrapola).
+  · `neto` descuenta aranceles de 0,5% LECAP, 0,5% DL y 0,2% futuro (`comisiones`), anualizados
+    al plazo de cada contrato. En los contratos cortos eso pesa MUCHO —0,2% a 20 días son 3,7 pp
+    anualizados— y el neto puede dar vuelta el signo del bruto. Leé los dos.
+  · `plazoConstante`: el spread BRUTO en pesos interpolado entre contratos a 30/60/90/180 días, que
+    es lo único comparable entre ruedas (un contrato se acorta todos los días). Trae `hoy`,
+    `anterior` (la última rueda del histórico, con `variacionPesos`), `semanal`/`mensual` cuando hay
+    cierre, y `anio` con mediana, mínimo, máximo y `percentilHoy` (qué fracción de las ruedas del
+    año tuvo un spread menor que hoy). El histórico usa el AJUSTE de cada rueda y el de hoy el último
+    operado: la variación del día trae algo de ruido de método; no la leas con dos decimales de
+    precisión.
+  · `modoFuturos` / `ruedaFuturos` / `tc`: de dónde salieron los futuros y el spot. "intradia" es el
+    último operado de HOY (tick-prices de A3; el mercado de futuros cierra a las 15:00, así que a las
+    17:30 es el cierre operado). "ajuste" quiere decir que tick-prices no respondió y se usó el ajuste
+    de la rueda ANTERIOR: en ese caso decilo en el texto, porque las tablas mezclan futuros de ayer
+    con bonos de hoy. Si `disponible` es false, `motivo` dice por qué; la sección se omite y se
+    avisa en el pie.
+
 Datos complementarios que SÍ podés conseguir vos:
-  · Futuros de dólar: API pública de A3, sin credenciales.
+  · Futuros de dólar: ya vienen en `sinteticos.futuros` (último operado de hoy). Si hiciera falta
+    otra rueda, API pública de A3, sin credenciales:
     https://apicem.matbarofex.com.ar/api/v2/closing-prices?product=DLR&type=FUT&from=...&to=...
     (formato de fecha AAAA-MM-DD; el campo `settlement` es el ajuste, `volume` el volumen).
-    Ojo: el endpoint tick-prices se cae seguido con 424 "Execution Timeout Expired"; closing-prices
-    es el confiable, pero publica el ajuste recién de madrugada, así que a las 20:00 el último
-    disponible es el de AYER.
+    closing-prices publica el ajuste recién de madrugada, así que a las 20:00 el último disponible
+    es el de AYER; tick-prices tiene las operaciones del día pero se cae seguido con 424.
   · Histórico del spread de sintéticos: el archivo spreads_sinteticos.json del repo, que llega
-    hasta la rueda anterior (su job corre a las 6 de la mañana).
+    hasta la rueda anterior (su job corre a las 6 de la mañana). El resumen del año ya viene en
+    `sinteticos.plazoConstante`.
 
 NO intentes leer las solapas del monitor en el navegador: están detrás de Cloudflare Access y sin
 sesión devuelven 302. Todo el análisis sale de los datos de arriba.
@@ -431,20 +462,38 @@ todo derivable del JSON:
     Describí el diferencial y de dónde sale —distinto emisor, BCRA contra Tesoro, y distinta
     estructura: la serie 7 cotiza arriba de la par y el Bonar largo con descuento—. NO recomiendes
     rotar ni digas qué conviene comprar: el informe describe el mercado, no aconseja.
-  · Dólar linked contra los futuros de A3: va todos los días, con dos cuentas.
-    (1) SINTÉTICO. Para cada bono DL, devaluación anualizada del futuro a su misma duration
-    —interpolando entre contratos— compuesta con su TIR: (1 + deval)(1 + TIR) − 1. Eso se compara
-    contra la curva de tasa fija interpolada a la misma duration. La diferencia dice si la cobertura
-    está cara o barata contra tasa fija. Dejá afuera los bonos de menos de un mes: el contrato con
-    el que habría que compararlos vence en días y su tasa anualizada no significa nada.
-    (2) DEVALUACIÓN CONTRA INFLACIÓN. La implícita de los futuros sube con el plazo y la breakeven
-    de CER baja; decí dónde se cruzan y cuánta depreciación real se paga a un año.
-    OJO CON LA FECHA DEL AJUSTE: A3 lo publica después del clearing, así que a las 17:30 el del día
-    NO está y hay que usar el de la rueda anterior —y decirlo—. Si el informe se rehace más tarde y
-    el ajuste ya salió, rehacé también la curva de futuros para que todo sea del mismo día.
-  · Sintéticos: el spread de hoy contra su historia (spreads_sinteticos.json). Para juzgar si está
-    caro usá SÓLO lo que va del año: el archivo arranca en 2024 con el cepo puesto y esos meses son
-    otro régimen cambiario, no otro nivel de este mercado.
+  · Dólar linked contra los futuros de A3: la curva DL y la DEVALUACIÓN CONTRA INFLACIÓN. La
+    implícita de los futuros sube con el plazo y la breakeven de CER baja; decí dónde se cruzan y
+    cuánta depreciación real se paga a un año. Los futuros son los de `sinteticos.futuros`, del
+    mismo día que los bonos; el gráfico de futuros ya los usa.
+  · SINTÉTICOS CONTRA INSTRUMENTOS DIRECTOS: va en LOS TRES informes —diario, semanal y mensual—,
+    con las DOS tablas en el mail y en el PDF. El usuario lo pidió explícitamente el 10/09/2026
+    porque los informes no lo mencionaban. Sale del bloque `sinteticos` (ver PASO 1); no lo armes
+    a mano con otra fórmula —antes esta sección interpolaba los futuros a la duration de cada bono
+    DL, que es otra cuenta y no coincidía con la solapa—.
+    QUÉ DECIR, en un párrafo o dos:
+      (1) De qué lado está el rendimiento en cada tramo, en NETO. Con los datos del 09/09/2026:
+          «en pesos la LECAP rinde más que el sintético en toda la curva, entre +0,3 y +3,1 pp
+          neto; en dólares el bono DL gana en el corto (SEP26 −5,5 pp neto) y el sintético del
+          DIC26 al FEB27». Nombrá el contrato y el spread; no alcanza con «hay oportunidades».
+      (2) Dónde el neto da vuelta el signo del bruto, y por qué: el arancel anualizado en plazos
+          cortos. Un bruto de −2,6 pp a 20 días que neto da +1,8 no es un sintético que conviene.
+      (3) El nivel contra su historia con `plazoConstante["90"]`: hoy contra la mediana y el rango
+          del año y el `percentilHoy` («el spread a 90 días está en +1,1 pp, arriba de la mediana
+          del año de −1,1 y en el percentil 78»). Para juzgar si está caro usá SÓLO lo que va del
+          año: el archivo arranca en 2024 con el cepo puesto y esos meses son otro régimen
+          cambiario, no otro nivel de este mercado.
+      (4) En el semanal y el mensual, la variación del período a plazo constante
+          (`plazoConstante[plazo].semanal/.mensual.variacionPesos`), contra la fecha que trae.
+    CUIDADOS:
+      · Un contrato `sinOperar` o de volumen fino (menos de 1.000) tiene precio indicativo: si el
+        spread más ancho de la tabla sale de ahí, decilo antes de destacarlo. El 27/08/2026 el
+        spread más ancho de la tabla era de DLR/ABR27, que no había operado.
+      · Mirá `lecap.entre` y `dl.entre`: cuando dos contratos se interpolan contra los mismos dos
+        bonos, sus spreads no son independientes, y un bono con precio viejo en los extremos del
+        tramo mueve todas esas filas juntas.
+      · Es comparación de valor relativo con aranceles estándar, no una recomendación: el informe
+        dice qué rinde más, no qué comprar.
   · ONs: ley local contra ley NY, y si alguna se despegó de su curva. Mismo cuidado que con los
     soberanos: las de ley NY están en CCL y las locales casi todas en MEP, así que para compararlas
     hay que usar `enMep` de las NY. Sin eso, la diferencia de TIR que veas es en buena parte el
@@ -484,6 +533,10 @@ período, el script pide además la última rueda hábil del período anterior y
     informe («contra el viernes 21/08») en vez de decir «la semana pasada».
   · `resumen[familia].semanal` y `.mensual` — con `precio` y `tasa`, misma estructura que la diaria.
   · Por instrumento, `varPrecio_semanal`, `varTasa_semanal` y sus equivalentes mensuales.
+  · `sinteticos.plazoConstante[plazo].semanal` / `.mensual` — el spread de sintéticos a plazo
+    constante en la rueda de referencia y cuánto se movió. Las tablas de sintéticos del informe de
+    cierre son las de HOY (una foto, no tienen variación por contrato); el período se cuenta con
+    esto. Va en la prosa de la sección de sintéticos del informe de cierre.
 
 EL DÍA QUE CIERRA PERÍODO SALEN DOS INFORMES, NO UNO. Uno es el diario de siempre, con la ventana
 del día y NADA del período. El otro es el de cierre, con la ventana del período y NADA del día. Son
@@ -579,10 +632,11 @@ cada panel queda a la mitad de alto que el resto y se vuelven ilegibles. Y el pi
 PNG hay que cortarlo a mano con saltos de línea: en una sola línea larga, bbox_inches="tight"
 ensancha la figura y esa curva sale con otra proporción que las demás.
 
-La de futuros sale de spreads_sinteticos.json, no del JSON del informe: precio de cada contrato
-DLR en el eje izquierdo y la devaluación acumulada contra el mayorista de esa misma rueda en el
-derecho. Toma sola la última rueda del archivo, que a las 17:30 es la de AYER porque A3 publica
-el ajuste después del clearing.
+La de futuros: precio de cada contrato DLR en el eje izquierdo y la devaluación acumulada contra el
+mayorista en el derecho. Usa `sinteticos.futuros` del JSON —el último operado de HOY, los mismos
+precios de las tablas de sintéticos— y el título dice «último operado del DD/MM». Si el bloque no
+vino, cae a la última rueda de spreads_sinteticos.json, que a las 17:30 es el AJUSTE de ayer, y el
+título lo dice («ajuste del DD/MM»): en ese caso mencionalo en el texto.
 
 LAS CURVAS NO VAN DENTRO DEL MAIL. VAN POR LINK. No es una preferencia de diseño: el envío de
 Gmail sanitiza el HTML y BORRA TODA ETIQUETA <img>. Verificado el 28/08/2026 mandando cinco
@@ -626,6 +680,13 @@ informe_pdf.construir(json, dir_curvas, textos, salida, modo=...), donde `textos
 prosa del día —incluida la clave `canje`, que es la sección del canje CCL/MEP y va en los tres
 tipos de informe— —las mismas secciones que escribís para el mail—. El módulo pone la maqueta, las tablas y las
 figuras; vos ponés el texto.
+
+La clave `sinteticos` (lista de párrafos) es la prosa de la sección «Sintéticos contra
+instrumentos directos», que va después de dólar linked y futuros en los TRES tipos de informe. Las
+dos tablas, la de plazo constante y la nota de método —interpolación, aranceles, contratos sin
+operar— las arma el módulo solo desde el bloque `sinteticos` del JSON; vos escribís sólo la lectura
+(ver SECCIÓN C). En modo "periodo" la tabla de plazo constante muestra la columna del período en
+lugar de la del día. Si el bloque no vino, la sección no aparece.
 
 QUÉ SACAR, que es todo el punto:
   · vencimientos y altas o bajas del universo del monitor
@@ -681,9 +742,23 @@ NADA DE IMÁGENES NI DE FONDOS DE COLOR: el envío los borra (ver PASO 4). Los r
 marcan con `border-left` y color de texto. El resto —color, borde, padding, tamaño, peso, tablas y
 `<a href>`— pasa sin problema.
 
-TAMAÑO: el htmlBody entra cómodo hasta unos 37 KB, que es lo que ocupa el informe completo con las
-cinco tablas. Si te vas mucho más arriba, acortá la prosa que ya está desarrollada en el PDF antes
-que sacar una tabla: las tablas son lo que no está en ningún otro lado del mail.
+LAS DOS TABLAS DE SINTÉTICOS VAN EN EL MAIL, en el diario, el semanal y el mensual, con las mismas
+columnas que la solapa:
+    En pesos:   Contrato · Días · LECAP TEA · Sintético $ TEA · Spread bruto · Spread neto · Qué paga más
+    En dólares: Contrato · Días · Bono DL TIR · Sintético DL TIR · Spread bruto · Spread neto · Qué paga más
+Debajo de cada tasa de referencia, en gris y chico, los dos bonos entre los que se interpoló
+(`lecap.entre` / `dl.entre`). Spread con signo y dos decimales, verde si es positivo y rojo si es
+negativo; el neto en negrita, que es el que decide «Qué paga más» (`gana`). Un contrato
+`sinOperar` va en gris con la marca «sin operar». Una línea arriba de cada tabla dice qué se
+compara y qué quiere decir el signo, y una nota corta al pie: futuros de A3 (último operado o
+ajuste, según `modoFuturos`), A3500 con su fecha, aranceles 0,5 / 0,5 / 0,2 y contratos a menos
+de 10 días afuera. La de plazo constante es opcional en el mail —está en el PDF—, pero el nivel a
+90 días contra el año va en la prosa.
+
+TAMAÑO: el htmlBody entra cómodo hasta unos 37 KB, que es lo que ocupaba el informe completo con
+cinco tablas; con las dos de sintéticos son siete. Si te vas mucho más arriba, acortá la prosa que
+ya está desarrollada en el PDF antes que sacar una tabla: las tablas son lo que no está en ningún
+otro lado del mail.
 
 Al pie, una línea de procedencia: fuente de los datos (1816 para bonos, A3 para futuros), hora de
 extracción, y cuántos instrumentos quedaron sin precio. Redactá eso último como «sin precio del día
