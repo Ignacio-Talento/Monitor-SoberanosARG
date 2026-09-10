@@ -202,7 +202,7 @@
   // dato, volumen y puntas; lo cacheado con el formato anterior sólo tenía precio, y se seguía
   // sirviendo durante diez minutos con las columnas nuevas vacías y sin ningún error a la vista.
   // Subir este número invalida lo viejo de una.
-  var FUT_VER = 4;   // v4: viaja el modo (intradía o ajuste)
+  var FUT_VER = 5;   // v5: viaja sinDatoDelDia (el pedido de ticks de ese contrato falló)
 
   function futurosCacheados() {
     try {
@@ -268,6 +268,7 @@
             operaciones: f.operaciones != null ? f.operaciones : null,
             minimo: f.minimo, maximo: f.maximo, apertura: f.apertura,
             ajusteAnterior: f.ajusteAnterior, openInterest: f.openInterest,
+            sinDatoDelDia: !!f.sinDatoDelDia,
           };
         }
         var r2 = { futuros: out, fallidos: (d.fallos || []), deCache: false,

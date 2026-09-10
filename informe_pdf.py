@@ -404,8 +404,10 @@ def tabla_sinteticos(sint, lado, ancho):
         i = len(filas)
         d = r.get(lado)
         tk = r["contrato"].replace("DLR/", "")
-        ctr = Paragraph(tk + ('<br/><font size="7" color="#6B7280">sin operar</font>'
-                              if r.get("sinOperar") else ""), CELDA)
+        marca = ("sin dato del día" if r.get("sinDatoDelDia") else
+                 "sin operar" if r.get("sinOperar") else "")
+        ctr = Paragraph(tk + (f'<br/><font size="7" color="#6B7280">{marca}</font>'
+                              if marca else ""), CELDA)
         if not d:
             filas.append([ctr, str(r["dias"]), "sin curva en ese plazo", "", "", "", ""])
             estilos.append(("SPAN", (2, i), (6, i)))
@@ -421,7 +423,7 @@ def tabla_sinteticos(sint, lado, ancho):
         estilos += [("TEXTCOLOR", (4, i), (4, i), _color_num(d["spread"])),
                     ("TEXTCOLOR", (5, i), (5, i), _color_num(d["neto"])),
                     ("FONT", (5, i), (5, i), SEMI, 9.6)]
-        if r.get("sinOperar"):
+        if r.get("sinOperar") or r.get("sinDatoDelDia"):
             estilos.append(("TEXTCOLOR", (1, i), (3, i), GRIS))
     t = Table(filas, colWidths=[w * ancho for w in (.12, .08, .17, .16, .13, .13, .21)],
               repeatRows=1)

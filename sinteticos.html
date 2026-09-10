@@ -561,6 +561,14 @@ function filasSinteticos() {
   return out.sort((a, b) => a.dias - b.dias);
 }
 
+// Por qué un contrato va atenuado. Sin volumen puede ser que NO OPERÓ, o que el pedido de sus
+// operaciones falló (sinDatoDelDia): en el segundo caso el precio es el ajuste anterior y no se sabe
+// si operó, y rotularlo "sin operar" sería afirmar algo que no se sabe.
+function marcaInerte(f) {
+  if (f.sinDatoDelDia) return ' <span class="no-p" style="font-size:9px;">sin dato del día</span>';
+  return f.volumenVN ? '' : ' <span class="no-p" style="font-size:9px;">sin operar</span>';
+}
+
 function renderFuturos() {
   const tb = document.getElementById('tbody-futuros');
   const liq = liquidacion();
@@ -573,7 +581,7 @@ function renderFuturos() {
     // el 27/08/2026 DLR/ABR27 no operó y su precio sostenía el spread más ancho de toda la tabla.
     const inerte = !f.volumenVN;
     return `<tr${inerte ? ' style="opacity:.62"' : ''}>
-      <td class="lft">${tk}${inerte ? ' <span class="no-p" style="font-size:9px;">sin operar</span>' : ''}</td>
+      <td class="lft">${tk}${marcaInerte(f)}</td>
       <td>${fmtFechaDMY(f.venc)}</td>
       <td>${dias}</td>
       <td>${fmt(f.precio, 1)}</td>
@@ -595,9 +603,12 @@ function renderFuturos() {
            <strong>Últ. op.</strong> es la hora de esa operación: si es de hace rato, el precio no se
            movió aunque el mercado sí.`)
     + (() => {
-        const quietos = filas.filter(x => !x.f.volumenVN).map(x => x.tk);
+        const quietos = filas.filter(x => !x.f.volumenVN && !x.f.sinDatoDelDia).map(x => x.tk);
+        const ciegos = filas.filter(x => x.f.sinDatoDelDia).map(x => x.tk);
         const finos = filas.filter(x => x.f.volumenVN && x.f.volumenVN < 1000).map(x => x.tk);
         let t = '';
+        if (ciegos.length) t += ` <span style="color:#7a4b00;">A3 no devolvió las operaciones de hoy de
+          <strong>${ciegos.join(', ')}</strong>: va con el ajuste anterior y no se sabe si operó.</span>`;
         if (quietos.length) t += ` <span style="color:#7a4b00;"><strong>${quietos.join(', ')}</strong>
           no operó en esta rueda: su precio es de antes y las tasas que salen de él no son de hoy.</span>`;
         if (finos.length) t += ` <span style="color:#7a4b00;">${finos.join(', ')} operó muy poco
@@ -624,7 +635,7 @@ function filaComparativa(r, lado, gana, pierde) {
   }
   const refI = lado === 'pesos' ? r.lecap : r.dl;
   return `<tr${inerte ? ' style="opacity:.62"' : ''}>
-    <td class="lft">${r.tk}${inerte ? ' <span class="no-p" style="font-size:9px;">sin operar</span>' : ''}</td>
+    <td class="lft">${r.tk}${marcaInerte(f)}</td>
     <td>${r.dias}</td>
     <td>${pct(d.ref)}${ref(refI)}</td>
     <td>${pct(d.sint)}</td>

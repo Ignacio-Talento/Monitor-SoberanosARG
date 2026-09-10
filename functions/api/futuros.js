@@ -60,6 +60,17 @@ function aTicker(symbol) {
   return `DLR/${MES_TXT[mes - 1]}${String(anio % 100).padStart(2, "0")}`;
 }
 
+/**
+ * DLR/SEP26 -> DLR092026, el símbolo con el que A3 filtra tick-prices. null si no es un futuro de
+ * dólar simple.
+ */
+function aSymbol(tk) {
+  const m = /^DLR\/([A-Z]{3})(\d{2})$/.exec(tk || "");
+  if (!m) return null;
+  const i = MES_TXT.indexOf(m[1]);
+  return i < 0 ? null : `DLR${String(i + 1).padStart(2, "0")}20${m[2]}`;
+}
+
 async function pedir(ruta, params, ms) {
   const url = new URL(CEM + ruta);
   for (const [k, v] of Object.entries(params)) url.searchParams.set(k, v);
@@ -100,14 +111,21 @@ export async function onRequest({ request }) {
   const ahora = new Date();
   const desde = new Date(ahora.getTime() - DIAS_ATRAS * 86400000);
 
-  // Los ticks se piden RUEDA POR RUEDA, empezando por hoy y retrocediendo.
+  // Los ticks se piden RUEDA POR RUEDA, empezando por hoy y retrocediendo, y dentro de cada rueda
+  // UN PEDIDO POR CONTRATO, en paralelo.
   //
-  // Pedir un rango de varios días hace que A3 se caiga por timeout de su propia base:
+  // Pedir el producto entero es lo que hace caer a A3 por timeout de su propia base:
   //     424 · "Execution Timeout Expired. The timeout period elapsed prior to completion..."
-  // Ese 424 es del origen, no del Worker. Un día solo —unos 2.200 ticks— responde sin problema.
+  // Medido el 10/09/2026 a las 13:20: el día completo de DLR tardaba 53 segundos, y hasta un
+  // sondeo de UN SOLO registro tardaba 30, así que el sondeo de 8 segundos que había acá vencía
+  // siempre y la solapa caía al ajuste de ayer. El MISMO día filtrado por `symbol` contesta en 1 a
+  // 3 segundos, y los doce contratos en paralelo también: el costo está en recorrer el producto
+  // entero —con las opciones adentro—, no en la cantidad de pedidos.
   //
-  // Primero se sondea con pageSize=1 si esa fecha tuvo operaciones, y sólo entonces se trae
-  // completa: así un sábado cuesta dos consultas mínimas en vez de una pesada que vuelve vacía.
+  // Una rueda sin operaciones en NINGÚN contrato es un día sin mercado (fin de semana, feriado, o
+  // antes de la apertura): se pasa a la anterior. Si en cambio los pedidos FALLAN, no se retrocede
+  // —se estaría mostrando el día anterior como si hoy no hubiera operado— y se cae al ajuste.
+  //
   // DOS FUENTES, POR ORDEN DE PREFERENCIA.
   //
   //  1. tick-prices — operación por operación, con hora. Es lo que permite mostrar el último
@@ -119,38 +137,51 @@ export async function onRequest({ request }) {
   // 28/08/2026 fallaba hasta el sondeo de un solo registro mientras closing-prices contestaba en
   // dos segundos. Sin fallback, la solapa se queda sin precios enteros.
   let filas = null, rueda = null, cierres = null, modo = "intradia", avisoTicks = null;
-  try {
-    for (let atras = 0; atras <= DIAS_ATRAS && !filas; atras++) {
-      const ref = new Date(ahora.getTime() - atras * 86400000);
-      const argRef = new Date(ref.getTime() - 3 * 3600000);
-      const y = argRef.getUTCFullYear(), m = argRef.getUTCMonth(), d = argRef.getUTCDate();
-      const ini = new Date(Date.UTC(y, m, d, 3, 0, 0));         // 00:00 ARG
-      const fin = new Date(Date.UTC(y, m, d + 1, 2, 59, 59));   // 23:59 ARG
-      const sondeo = await pedir("/tick-prices", {
-        product: "DLR", from: iso(ini), to: iso(fin), pageSize: 1,
-      }, 8000);
-      if (!(sondeo.data || []).length) continue;                // esa fecha no tuvo mercado
-      const completo = await pedir("/tick-prices", {
-        product: "DLR", from: iso(ini), to: iso(fin), pageSize: 5000,
-      }, 20000);
-      filas = completo.data || [];
-      rueda = `${y}-${String(m + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+  // Contratos cuyo pedido de ticks falló aun con reintento en una rueda que SÍ tuvo mercado: van
+  // con el ajuste previo y marcados, para que no se lean como "no operó".
+  let sinTicks = [];
+
+  // El ajuste va en paralelo con los ticks: contesta en dos segundos y hace falta igual.
+  const cierresP = pedir("/closing-prices", {
+    product: "DLR", type: "FUT",
+    from: dia(new Date(ahora.getTime() - DIAS_ATRAS * 86400000)), to: dia(ahora),
+    pageSize: 300, sort: "dateTime", sortDir: "DESC",
+  }, 15000).then((d) => ({ d }), (e) => ({ e }));
+
+  const simbolos = pedidos.map((tk) => [tk, aSymbol(tk)]).filter(([, s]) => s);
+  const ticksDe = (s, ini, fin) => pedir("/tick-prices", {
+    product: "DLR", symbol: s, from: iso(ini), to: iso(fin), pageSize: 5000,
+  }, 12000).then((d) => d.data || []);
+
+  for (let atras = 0; atras <= DIAS_ATRAS && !filas; atras++) {
+    const ref = new Date(ahora.getTime() - atras * 86400000);
+    const argRef = new Date(ref.getTime() - 3 * 3600000);
+    const y = argRef.getUTCFullYear(), m = argRef.getUTCMonth(), d = argRef.getUTCDate();
+    const ini = new Date(Date.UTC(y, m, d, 3, 0, 0));         // 00:00 ARG
+    const fin = new Date(Date.UTC(y, m, d + 1, 2, 59, 59));   // 23:59 ARG
+    // Un reintento por contrato: A3 devuelve 424 sueltos aun cuando el resto contesta.
+    const res = await Promise.all(simbolos.map(([tk, s]) =>
+      ticksDe(s, ini, fin).catch(() => ticksDe(s, ini, fin))
+        .then((data) => ({ tk, data }), (e) => ({ tk, error: String((e && e.message) || e) }))));
+    const conTicks = res.filter((r) => r.data && r.data.length);
+    const fallidos = res.filter((r) => r.error);
+    if (!conTicks.length) {
+      if (fallidos.length) { avisoTicks = fallidos[0].error; break; }   // falla, no día sin mercado
+      continue;                                                        // esa fecha no tuvo mercado
     }
-  } catch (e) {
-    avisoTicks = String((e && e.message) || e);
-    filas = null;
+    filas = conTicks.flatMap((r) => r.data);
+    sinTicks = fallidos.map((r) => r.tk);
+    if (sinTicks.length) avisoTicks = `sin ticks de ${sinTicks.join(", ")}: ${fallidos[0].error}`;
+    rueda = `${y}-${String(m + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
   }
 
-  try {
-    cierres = await pedir("/closing-prices", {
-      product: "DLR", type: "FUT",
-      from: dia(new Date(ahora.getTime() - DIAS_ATRAS * 86400000)), to: dia(ahora),
-      pageSize: 300, sort: "dateTime", sortDir: "DESC",
-    }, 15000);
-  } catch (e) {
+  const rc = await cierresP;
+  if (rc.e) {
     // Si además falla esto no queda nada que servir.
-    if (!filas) return json({ error: `A3 no responde · ticks: ${avisoTicks} · cierres: ${e.message}` }, 502);
+    if (!filas) return json({ error: `A3 no responde · ticks: ${avisoTicks} · cierres: ${rc.e.message}` }, 502);
     cierres = { data: [] };
+  } else {
+    cierres = rc.d;
   }
 
   if (!filas || !filas.length) {
@@ -227,6 +258,15 @@ export async function onRequest({ request }) {
       };
       continue;
     }
+    // El pedido de ticks de ESTE contrato falló: no se sabe si operó. Ajuste previo con volumen
+    // null —no 0, que diría "no operó"— y la marca, para que el frontend lo diga.
+    if (sinTicks.includes(tk)) {
+      if (!p) { fallos.push(tk); continue; }
+      futuros[tk] = { precio: p.ajuste, volumen: null, operaciones: null, ultimaOperacion: null,
+                      apertura: null, minimo: null, maximo: null, ajusteAnterior: p.ajuste,
+                      openInterest: p.openInterest, fechaAjuste: p.fecha, sinDatoDelDia: true };
+      continue;
+    }
     // Sin ticks pero con ajuste previo: el contrato existe y no operó en la rueda. Se devuelve el
     // ajuste con volumen 0 para que el frontend lo marque, en vez de omitirlo como si no existiera.
     if (!a && !p) { fallos.push(tk); continue; }
@@ -248,6 +288,7 @@ export async function onRequest({ request }) {
     { futuros, fallos,
       diag: { rueda, modo, pedidos: pedidos.length, resueltos: Object.keys(futuros).length,
               ticks: (filas || []).length,
+              ...(sinTicks.length ? { sinTicks } : {}),
               ...(avisoTicks ? { avisoTicks } : {}),
               fuente: modo === "intradia"
                 ? "A3 Mercados · CEM (tick-prices)"

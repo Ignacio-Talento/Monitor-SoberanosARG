@@ -579,34 +579,29 @@ def _ticker_cem(symbol):
     return f"DLR/{mes}{int(r[2:]) % 100:02d}"
 
 
+def _symbol_cem(tk):
+    """DLR/SEP26 -> DLR092026, el símbolo con el que A3 filtra tick-prices."""
+    m = MES_FUT.get(tk[4:7])
+    return f"DLR{m:02d}20{tk[7:9]}" if m and tk[7:9].isdigit() else None
+
+
 def futuros_a3(hoy):
     """Foto de los futuros de la rueda, como /api/futuros de la solapa.
 
     Primero tick-prices —operación por operación—, que da el ÚLTIMO OPERADO del día con su hora y
     el volumen de la rueda: a las 17:30 el mercado de A3 cerró a las 15:00, así que es el cierre
-    operado de hoy. Si tick-prices falla —se cae seguido con 424 "Execution Timeout Expired"—, el
-    ajuste de closing-prices, que a esa hora es el de la rueda ANTERIOR. `modo` dice cuál salió.
-    """
-    ini = datetime(hoy.year, hoy.month, hoy.day, 3, 0, 0, tzinfo=timezone.utc)   # 00:00 ART
-    fin = ini + timedelta(days=1, seconds=-1)
-    iso = lambda d: d.strftime("%Y-%m-%dT%H:%M:%S.000Z")
-    filas, aviso = [], None
-    try:
-        pagina = 1
-        while pagina <= 10:
-            r = requests.get(CEM_API + "/tick-prices", headers=CABECERAS_CEM, timeout=45, params={
-                "product": "DLR", "from": iso(ini), "to": iso(fin),
-                "pageSize": 5000, "page": pagina})
-            r.raise_for_status()
-            lote = r.json().get("data") or []
-            filas += lote
-            if len(lote) < 5000:
-                break
-            pagina += 1
-    except Exception as e:                                        # noqa: BLE001
-        aviso, filas = f"tick-prices: {e}", []
+    operado de hoy. Si tick-prices falla, el ajuste de closing-prices, que a esa hora es el de la
+    rueda ANTERIOR. `modo` dice cuál salió.
 
-    previo = {}
+    UN PEDIDO POR CONTRATO, en paralelo, y no el producto entero: el 10/09/2026 el día completo de
+    DLR tardaba 53 segundos —y a veces vuelve 424 "Execution Timeout Expired" a los 31—, mientras
+    que filtrado por `symbol` cada contrato contesta en 1 a 3. Es lo mismo que hace
+    functions/api/futuros.js. Un contrato cuyo pedido falla aun con reintento va con el ajuste
+    previo y `sinDatoDelDia`: no se sabe si operó, y volumen 0 diría que no.
+    """
+    from concurrent.futures import ThreadPoolExecutor
+
+    previo, aviso = {}, None
     try:
         r = requests.get(CEM_API + "/closing-prices", headers=CABECERAS_CEM, timeout=45, params={
             "product": "DLR", "type": "FUT", "from": (hoy - timedelta(days=7)).isoformat(),
@@ -619,29 +614,59 @@ def futuros_a3(hoy):
                               "volumen": int(x.get("volume") or 0),
                               "fecha": str(x.get("dateTime"))[:10]}
     except Exception as e:                                        # noqa: BLE001
-        aviso = (aviso + " · " if aviso else "") + f"closing-prices: {e}"
+        aviso = f"closing-prices: {e}"
+
+    # Los contratos vivos: los que tienen ajuste reciente más los de la solapa, por si alguno no
+    # hubiera aparecido en la ventana de closing-prices.
+    vivos = sorted({tk for tk in set(previo) | set(contratos_solapa())
+                    if (venc_contrato(tk) or hoy) > hoy}, key=lambda t: venc_contrato(t))
+    ini = datetime(hoy.year, hoy.month, hoy.day, 3, 0, 0, tzinfo=timezone.utc)   # 00:00 ART
+    fin = ini + timedelta(days=1, seconds=-1)
+    iso = lambda d: d.strftime("%Y-%m-%dT%H:%M:%S.000Z")
+
+    def ticks(tk):
+        err = None
+        for _ in range(2):                                 # un reintento: A3 da 424 sueltos
+            try:
+                r = requests.get(CEM_API + "/tick-prices", headers=CABECERAS_CEM, timeout=30,
+                                 params={"product": "DLR", "symbol": _symbol_cem(tk),
+                                         "from": iso(ini), "to": iso(fin), "pageSize": 5000})
+                r.raise_for_status()
+                return tk, r.json().get("data") or [], None
+            except Exception as e:                                # noqa: BLE001
+                err = e
+        return tk, None, str(err)
+
+    with ThreadPoolExecutor(max_workers=12) as ex:
+        res = list(ex.map(ticks, vivos))
+    sin_ticks = [tk for tk, _, e in res if e]
+    if sin_ticks:
+        aviso = (aviso + " · " if aviso else "") + (
+            f"tick-prices sin respuesta para {', '.join(sin_ticks)}: "
+            f"{next(e for _, _, e in res if e)}")
 
     agg = {}
-    for x in filas:
-        tk = _ticker_cem(x.get("symbol"))
-        if not tk:
-            continue
-        a = agg.setdefault(tk, {"volumen": 0, "operaciones": 0, "ultimo": None, "precio": None})
-        a["volumen"] += float(x.get("volume") or 0)
-        a["operaciones"] += 1
-        if not a["ultimo"] or x["dateTime"] > a["ultimo"]:
-            a["ultimo"], a["precio"] = x["dateTime"], float(x["price"])
+    for tk, data, _ in res:
+        for x in data or []:
+            a = agg.setdefault(tk, {"volumen": 0, "operaciones": 0, "ultimo": None, "precio": None})
+            a["volumen"] += float(x.get("volume") or 0)
+            a["operaciones"] += 1
+            if not a["ultimo"] or x["dateTime"] > a["ultimo"]:
+                a["ultimo"], a["precio"] = x["dateTime"], float(x["price"])
 
     out = {}
     if agg:
         modo, rueda = "intradia", hoy.isoformat()
-        for tk in set(agg) | set(previo):
+        for tk in vivos:
             a, p = agg.get(tk), previo.get(tk)
             if a:
                 h = datetime.fromisoformat(a["ultimo"].replace("Z", "+00:00")).astimezone(ART)
                 out[tk] = {"precio": a["precio"], "volumen": round(a["volumen"]),
                            "operaciones": a["operaciones"], "ultimaOperacion": h.strftime("%H:%M")}
-            else:
+            elif p and tk in sin_ticks:
+                out[tk] = {"precio": p["ajuste"], "volumen": None, "operaciones": None,
+                           "ultimaOperacion": None, "ajusteDel": p["fecha"], "sinDatoDelDia": True}
+            elif p:
                 # Existe pero no operó hoy: la solapa lo muestra con el ajuste previo y volumen 0,
                 # atenuado y con «sin operar». Acá igual.
                 out[tk] = {"precio": p["ajuste"], "volumen": 0, "operaciones": 0,
@@ -650,7 +675,7 @@ def futuros_a3(hoy):
         modo = "ajuste"
         rueda = max((p["fecha"] for p in previo.values()), default=None)
         for tk, p in previo.items():
-            if p["fecha"] == rueda:
+            if p["fecha"] == rueda and (venc_contrato(tk) or hoy) > hoy:
                 out[tk] = {"precio": p["ajuste"], "volumen": p["volumen"], "operaciones": None,
                            "ultimaOperacion": None, "ajusteDel": p["fecha"]}
     return out, modo, rueda, aviso
@@ -855,7 +880,10 @@ def datos_sinteticos(items, datos, hoy, fer, ayer, referencias):
             continue
         fila = {"contrato": tk, "venc": v.isoformat(), "dias": dias, "precio": f["precio"],
                 "volumen": f.get("volumen"), "ultimaOperacion": f.get("ultimaOperacion"),
-                "sinOperar": not f.get("volumen")}
+                # sinDatoDelDia: A3 no devolvió sus operaciones y va con el ajuste anterior; no se
+                # sabe si operó, así que NO es "sin operar".
+                "sinDatoDelDia": bool(f.get("sinDatoDelDia")),
+                "sinOperar": not f.get("volumen") and not f.get("sinDatoDelDia")}
         fila.update(fila_sintetico(tk, f["precio"], dias, tc, c_lecap, c_dl))
         filas.append(fila)
 
