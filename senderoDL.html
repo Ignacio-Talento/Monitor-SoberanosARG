@@ -418,10 +418,15 @@ function calcTEALecap(lecap, precio) {
 
 // ── TC OFICIAL DE HOY ─────────────────────────────────────────
 async function cargarTCHoy() {
-  // 1) Desde localStorage (lo guarda el Monitor)
+  // 1) El A3500 del día, de la API cambiaria del BCRA (a3500DelDiaBCRA, en monitor-core.js). Va
+  //    antes que lo guardado por el Monitor: eso puede ser de otro día —de la última vez que se
+  //    abrió esa solapa— y además venía del worker, que va una rueda atrás.
+  const a = await a3500DelDiaBCRA();
+  if (a) { tcHoy = a.valor; return; }
+  // 2) Lo que dejó el Monitor en localStorage
   const ls = parseFloat(localStorage.getItem('bonos_usdHoy'));
   if (ls && !isNaN(ls) && ls > 0) { tcHoy = ls; return; }
-  // 2) Respaldo: traer el mayorista del BCRA
+  // 3) Respaldo: traer el mayorista del BCRA
   try {
     const hoyStr = dateToStr(new Date());
     const d = new Date(); const hace = new Date(d.getFullYear(), d.getMonth(), d.getDate() - 10);

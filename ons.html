@@ -2374,6 +2374,37 @@ function buscarUsdCache(fechaStr) {
   return bcraData.usd[fechas[fechas.length - 1]];
 }
 
+// ── A3500 DEL DÍA ────────────────────────────────────────────
+// Copia de la de monitor-core.js: esta solapa no carga el motor común. Si se toca una,
+// se toca la otra.
+// El worker de indicadores trae la variable 5 del BCRA, que se carga recién al día siguiente: el
+// 10/09/2026 a las 18:00 seguía en el 09/09. La API cambiaria del BCRA ya publica la Comunicación
+// A 3500 del día a la tarde (moneda "REF") y acepta CORS abierto. Verificado ese día que las dos
+// fuentes dan lo mismo para la misma fecha (1.515,1105 el 09/09).
+//
+// Importa porque el dólar linked se valúa contra el A3500 corriente (ver la rama usdlinked de
+// calcMetricas): con el de ayer, la TIR de los DL cortos se va de escala y deja de coincidir con
+// 1816, que usa el del día. Y en Sintéticos la devaluación de un futuro a pocos días se corría
+// varios puntos (el spread a 90 días daba +1,01 en vez de +0,27).
+//
+// -> { fecha: 'AAAA-MM-DD', valor } o null si todavía no se publicó o la API no responde.
+async function a3500DelDiaBCRA() {
+  const hoy = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Argentina/Buenos_Aires' })
+    .format(new Date());
+  try {
+    const r = await fetch('https://api.bcra.gob.ar/estadisticascambiarias/v1.0/Cotizaciones?fecha=' + hoy,
+                          { signal: AbortSignal.timeout(8000) });
+    if (!r.ok) return null;
+    const res = (await r.json()).results || {};
+    const ref = (res.detalle || []).find(x => x.codigoMoneda === 'REF');
+    if (res.fecha !== hoy || !ref || !(Number(ref.tipoCotizacion) > 0)) return null;
+    return { fecha: hoy, valor: Number(ref.tipoCotizacion) };
+  } catch (e) {
+    console.warn('A3500 del día (API cambiaria BCRA):', e);
+    return null;
+  }
+}
+
 async function fetchBCRA() {
   const hoy = dateToStr(new Date());
 
@@ -2448,10 +2479,19 @@ async function fetchBCRA() {
       detalle.forEach(r => { if (r.fecha && r.valor) bcraData.usd[r.fecha] = parseFloat(r.valor); });
       detalle.sort((a,b) => b.fecha.localeCompare(a.fecha));
       bcraData.usdHoy = parseFloat(detalle[0].valor);
+      bcraData.usdFecha = detalle[0].fecha;
       console.log(`TC Mayorista: ${bcraData.usdHoy} (${detalle[0].fecha})`);
     }
   } catch(e) {
     console.warn('BCRA USD error:', e);
+  }
+  // El del día, si el BCRA ya lo publicó: el worker va una rueda atrás (ver a3500DelDiaBCRA).
+  const a3500Hoy = await a3500DelDiaBCRA();
+  if (a3500Hoy && (!bcraData.usdFecha || a3500Hoy.fecha > bcraData.usdFecha)) {
+    bcraData.usd[a3500Hoy.fecha] = a3500Hoy.valor;
+    bcraData.usdHoy = a3500Hoy.valor;
+    bcraData.usdFecha = a3500Hoy.fecha;
+    console.log(`TC Mayorista del día (API cambiaria): ${a3500Hoy.valor} (${a3500Hoy.fecha})`);
   }
 
   // PF 30d

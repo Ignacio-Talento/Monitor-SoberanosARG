@@ -428,35 +428,6 @@ let comisiones = { lecap: 0.5, dl: 0.5, fut: 0.2 };   // % por operación
 let tcSpot = null;
 let tcFecha = null;      // fecha del A3500 que se usa como spot
 
-// A3500 DEL DÍA, de la API cambiaria del BCRA (moneda "REF", Com. A 3500).
-//
-// El motor toma bcraData.usdHoy del worker de indicadores, que carga la variable 5 recién al día
-// siguiente: el 10/09/2026 a las 18:00 seguía en el 09/09. En esta solapa eso pesa mucho, porque la
-// devaluación implícita de un futuro de HOY se medía contra el spot de AYER, y anualizada a pocos
-// días un 0,2% de diferencia son casi 4 pp: el spread a 90 días daba +1,01 con el de ayer y +0,27
-// con el de hoy. La API cambiaria ya publica el del día a la tarde y acepta CORS abierto.
-//
-// Se pisa bcraData.usdHoy y no sólo tcSpot a propósito: la TIR de los bonos dólar linked que arma
-// curvaDe() también se valúa contra usdHoy, y las dos patas del sintético tienen que usar el mismo
-// dólar. El cambio vive sólo en esta página: el resto del monitor sigue con el worker.
-// Si la API no responde o todavía no publicó el de hoy, queda el del worker, como antes.
-async function a3500DelDia() {
-  const hoy = MonitorCore.hoyART();
-  try {
-    const r = await fetch('https://api.bcra.gob.ar/estadisticascambiarias/v1.0/Cotizaciones?fecha=' + hoy,
-                          { signal: AbortSignal.timeout(8000) });
-    if (!r.ok) return null;
-    const d = await r.json();
-    const res = d.results || {};
-    const ref = (res.detalle || []).find(x => x.codigoMoneda === 'REF');
-    if (res.fecha !== hoy || !ref || !(ref.tipoCotizacion > 0)) return null;
-    return { fecha: hoy, valor: Number(ref.tipoCotizacion) };
-  } catch (e) {
-    console.warn('A3500 del día:', e);
-    return null;
-  }
-}
-
 // Hasta ABR27: Rofex lista los contratos con unos ocho meses de anticipación y MAY27/JUN27
 // todavía no cotizan (devuelven precio nulo de forma consistente, no intermitente). Pedirlos
 // gastaba una tanda de reintentos por carga contra un contrato que no existe.
@@ -1420,15 +1391,10 @@ async function init() {
 
   try {
     await MonitorCore.cargarUniverso();
+    // El motor ya trae el A3500 del día cuando el BCRA lo publicó (a3500DelDiaBCRA) y deja su
+    // fecha en bcraData.usdFecha; si todavía no salió, es el de la rueda anterior y la nota lo dice.
     tcSpot = bcraData.usdHoy;
-    tcFecha = Object.keys(bcraData.usd || {}).filter(f => bcraData.usd[f] === tcSpot).sort().pop() || null;
-    const a3500 = await a3500DelDia();
-    if (a3500) {
-      bcraData.usdHoy = a3500.valor;
-      bcraData.usd[a3500.fecha] = a3500.valor;
-      tcSpot = a3500.valor;
-      tcFecha = a3500.fecha;
-    }
+    tcFecha = bcraData.usdFecha || null;
     // El REM va acá y no antes: sale de un archivo del propio sitio, no del host de los workers
     // que cargarUniverso() satura, así que no compite con los futuros.
     await cargarREMInflacion().catch(e => console.warn('REM:', e));
