@@ -330,7 +330,7 @@ let MERCADO = null;
 /* Un plazo POR TARJETA. Con un control global había que elegir el mismo para las cinco, y las
    cinco no se miran igual: el ITCRM pide historia larga y la tasa real, las últimas semanas. */
 let plazos = { itcrm: '1A', riesgoPais: '1A', reservas: '1A', tamar: '1A', tamarReal: '1A',
-               repo: '1A', margenTamar: 'Max', embig: 'YTD' };
+               repo: '1A', margenTamar: 'Max', embig: 'YTD', legislacion: 'Max' };
 /* Fecha del dato más fresco de todas las series: de ahí cuelgan los plazos de las cinco. */
 let FIN = 0;
 /* Sobre qué tramo se calculan el promedio y los desvíos del ITCRM. "Ventana visible" es el
@@ -360,6 +360,19 @@ function puntosDe(bloque, tk) {
   const v = (bloque.series || {})[tk] || [], out = [];
   for (let i = 0; i < bloque.f.length; i++) {
     if (v[i] !== null && v[i] !== undefined) out.push([ms(bloque.f[i]), v[i]]);
+  }
+  return out;
+}
+/* Mediana de las últimas n ruedas, punto por punto. Mediana y no promedio: sirve para que un
+   print suelto de una punta finita —el GD30 en MEP operó a 56 redondo el 06/08/2026 y el
+   diferencial dio −0,83% entre dos días de 2,6%— no mueva la línea que se lee. Con promedio, ese
+   solo dato la bajaba un cuarto de punto durante dos semanas. */
+function medianaMovil(pts, n) {
+  const out = [];
+  for (let i = n - 1; i < pts.length; i++) {
+    const v = pts.slice(i - n + 1, i + 1).map((p) => p[1]).sort((a, b) => a - b);
+    const m = v.length >> 1;
+    out.push([pts[i][0], v.length % 2 ? v[m] : (v[m - 1] + v[m]) / 2]);
   }
   return out;
 }
@@ -538,6 +551,10 @@ function dibujar(cfg) {
   const colIzq = der.length ? ((todas.find((s) => !s.der) || {}).color || PAL.gris) : PAL.gris;
 
   const decEje = cfg.decEje !== undefined ? cfg.decEje : cfg.dec;
+  /* decEje 'auto': enteros sin decimales y el resto con uno. Con un número fijo de decimales, o
+     sobraban ("0,0 5,0 10,0") o mentían: con 0, los ticks de 2,5 y 7,5 salían rotulados 3 y 8. */
+  const fTick = (v) => fmt(v, decEje === 'auto'
+    ? (Math.abs(v - Math.round(v)) < 1e-9 ? 0 : 1) : decEje);
   let g = '';
   /* Grilla horizontal y rótulos del eje. */
   for (const v of tick) {
@@ -545,12 +562,12 @@ function dibujar(cfg) {
     g += '<line x1="' + ML + '" y1="' + y + '" x2="' + (ML + pw) + '" y2="' + y +
          '" stroke="' + PAL.suave + '" stroke-width="1"/>';
     g += '<text x="' + (ML - 9) + '" y="' + y + '" text-anchor="end" dominant-baseline="middle" ' +
-         'font-size="11" fill="' + colIzq + '">' + fmt(v, decEje) + '</text>';
+         'font-size="11" fill="' + colIzq + '">' + fTick(v) + '</text>';
   }
   for (const v of tick2) {
     g += '<text x="' + (ML + pw + 9) + '" y="' + Y2(v).toFixed(1) + '" text-anchor="start" ' +
          'dominant-baseline="middle" font-size="11" fill="' + der[0].color + '">' +
-         fmt(v, decEje) + '</text>';
+         (der[0].dec !== undefined ? fmt(v, der[0].dec) : fTick(v)) + '</text>';
   }
   /* El cero se marca aparte: en la tasa real es la frontera que importa. */
   if (cfg.cero && lo < 0 && hi > 0) {
@@ -631,8 +648,12 @@ function cuerpoTip(estado, p) {
   for (let i = 0; i < estado.todas.length; i++) {
     const v = valorEn(estado.todas[i].pts, p[0]);
     if (v === null) continue;
-    filas.push('<div class="t-s"><i style="background:' + estado.todas[i].color + '"></i>' +
-               cfg.etiquetas[i] + '<b>' + fmt(v, cfg.dec) + '</b></div>');
+    /* Decimales y sufijo POR SERIE cuando la serie los trae: con dos ejes cada una puede estar
+       en otra unidad, y "494,00" de riesgo país al lado de "3,89" de un diferencial confunde. */
+    const si = estado.todas[i];
+    const dec = si.dec !== undefined ? si.dec : cfg.dec;
+    filas.push('<div class="t-s"><i style="background:' + si.color + '"></i>' +
+               cfg.etiquetas[i] + '<b>' + fmt(v, dec) + (si.suf || '') + '</b></div>');
   }
   return filas.length ? filas.join('') : '<b>sin datos</b>';
 }
@@ -929,6 +950,57 @@ function render() {
     montar.push(d.estado);
   }
 
+  /* ═══ 2c · Diferencial de legislación contra riesgo país ═══ */
+  const bqL = MERCADO && MERCADO.legislacion;
+  if (bqL && bqL.f && bqL.f.length && pts.riesgoPais && pts.riesgoPais.length) {
+    const crudo = puntosDe(bqL, 'GD30/AL30');
+    const desdeL = desdeDe(plazos.legislacion, fin);
+    /* La mediana se calcula sobre la serie ENTERA y recién después se recorta: calculada sobre
+       la ventana, los primeros nueve días de cada plazo quedarían sin línea. */
+    const vDif = recortar(crudo, desdeL);
+    const vMed = recortar(medianaMovil(crudo, 10), desdeL);
+    /* El riesgo país arranca donde arranca el diferencial: su historia llega a 1999 y en Max
+       estiraría el eje a veinticinco años para una serie de dos. */
+    const t0L = crudo[0][0];
+    const vRpL = recortar(pts.riesgoPais.filter((p) => p[0] >= t0L), desdeL);
+    if (vDif.length && vMed.length && vRpL.length) {
+      const uD = vDif[vDif.length - 1], uM = vMed[vMed.length - 1], uR = vRpL[vRpL.length - 1];
+      const dM = uM[1] - vMed[0][1];
+      const d = dibujar({
+        series: [{ pts: vDif, color: '#a7b2c8', ancho: 1, dec: 2, suf: '%' },
+                 { pts: vMed, color: PAL.navy, ancho: 2.3, dec: 2, suf: '%' },
+                 { pts: vRpL, color: PAL.rojo, der: true, dec: 0, suf: ' pb' }],
+        dec: 1, decEje: 'auto', etiquetas: ['GD30 sobre AL30', 'Mediana 10 ruedas', 'Riesgo país'],
+        aria: 'Diferencial de precio GD30 contra AL30 y riesgo país' });
+      partes.push(tarjeta({
+        titulo: '¿El riesgo país está demasiado bajo o el spread de legislación demasiado alto?',
+        sub: 'Cuánto más caro cotiza el GD30 que el AL30, en %, contra el riesgo país en puntos ' +
+             'básicos. Los dos bonos pagan exactamente lo mismo: la diferencia de precio es la ' +
+             'prima por ley Nueva York. Diferencial en el eje izquierdo, riesgo país en el derecho.',
+        kpis: kpi('GD30 sobre AL30', fmt(uD[1], 2) + '%') +
+              kpi('Mediana 10 ruedas', fmt(uM[1], 2) + '%') +
+              kpi('Riesgo país', fmt(uR[1], 0)) +
+              kpi('En la ventana', signo(dM, 2, ' pp')),
+        ctrl: ctrlPlazo('legislacion', vDif),
+        svg: d.svg,
+        leyenda: '<span><i style="border-color:#a7b2c8"></i>Diferencial diario</span>' +
+                 '<span><i style="border-color:' + PAL.navy + '"></i>Mediana de 10 ruedas · eje izquierdo</span>' +
+                 '<span><i style="border-color:' + PAL.rojo + '"></i>Riesgo país · eje derecho</span>',
+        pie: 'Fuente: precios dirty en MEP de 1816 (BYMA PPT), los mismos de la solapa Glob vs Bon, ' +
+             'y el EMBI+ de la tarjeta de riesgo país. Replica el gráfico del semanal de 1816 del ' +
+             '10/09/2026, que lo mide en pesos; en MEP da prácticamente lo mismo y queda en la misma ' +
+             'punta que el resto del monitor. La lectura es la de ellos: el diferencial volvió a ' +
+             'niveles que tenía cuando el riesgo país estaba mucho más alto, así que o el riesgo ' +
+             'país está demasiado bajo o la prima por legislación demasiado alta. ARRANCA EN 2024 A ' +
+             'PROPÓSITO: con el cepo y las restricciones cruzadas entre MEP y cable, en 2022-2023 el ' +
+             'diferencial anduvo entre 10% y 33% y medía la regulación, no la legislación. El GD30 ' +
+             'en MEP opera poco, así que la serie diaria tiene prints sueltos; la línea que se lee ' +
+             'es la mediana de 10 ruedas.',
+      }));
+      montar.push(d.estado);
+    }
+  }
+
   /* ═══ 3 · Reservas ═══ */
   const vRe = corte('reservas');
   if (vRe.length) {
@@ -1110,9 +1182,10 @@ function render() {
   }
   if (DATOS.rem) f.push(DATOS.rem.nombre + ' — ' + DATOS.rem.fuente + ', relevamiento del ' +
                         DATOS.rem.ultimoRelevamiento);
-  if (MERCADO && MERCADO.margenTamar && MERCADO.margenTamar.hasta) {
-    f.push(MERCADO.margenTamar.nombre + ' — ' + MERCADO.margenTamar.fuente + ', hasta el ' +
-           MERCADO.margenTamar.hasta);
+  for (const k of ['margenTamar', 'legislacion']) {
+    if (MERCADO && MERCADO[k] && MERCADO[k].hasta) {
+      f.push(MERCADO[k].nombre + ' — ' + MERCADO[k].fuente + ', hasta el ' + MERCADO[k].hasta);
+    }
   }
   $('#fuentes').innerHTML = 'Fuentes y último dato de cada serie: ' + f.join('; ') +
     '. Último cambio en los datos: ' + new Date(DATOS.generado).toLocaleString('es-AR') +

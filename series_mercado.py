@@ -214,6 +214,45 @@ META_BONARES = ("Rendimiento de los Bonares AO27 y AO28 contra Cable",
                 "% TNA · forward 1Y1Y implícito",
                 "1816 · BYMA PPT T+1 en CCL")
 
+# ── Diferencial de precio GD30 contra AL30 ──────────────────────────────────────────────────
+# Cuánto más caro cotiza el Global que el Bonar por el MISMO flujo —los dos bonos pagan idéntico—:
+# la prima por ley Nueva York. Es la serie del gráfico "El riesgo país está demasiado bajo o el
+# spread de legislación demasiado alto" del semanal de 1816 del 10/09/2026.
+#
+# NO SE PIDE A 1816. Los dos precios ya los guarda series_globvsbon.xlsx, que el job de
+# históricos actualiza justo antes de este script, así que calcularlo acá cuesta cero créditos.
+# 1816 lo mide en pesos; acá va en MEP, que es la punta de ese archivo y la del resto del monitor.
+# Contrastado contra su gráfico: 8% en enero de 2024, piso cerca de cero en diciembre-enero,
+# pico de 9% en la elección de octubre de 2025, 4% hoy. Coincide.
+#
+# ARRANCA EN 2024, igual que el de 1816, y no es por falta de datos: el archivo llega a 2020. Con
+# el cepo y las restricciones cruzadas entre MEP y cable, en 2022-2023 el diferencial anduvo entre
+# 10% y 33% —mediana de 17% en 2023— y medía la regulación, no la legislación. Incluido, aplasta
+# contra el piso del eje todo lo que vino después.
+GLOBVSBON = Path(__file__).resolve().parent / "series_globvsbon.xlsx"
+DESDE_LEGISLACION = "2024-01-01"
+META_LEGISLACION = ("Diferencial de precio GD30 contra AL30",
+                    "% · precio dirty en MEP",
+                    "1816 · BYMA PPT, vía series_globvsbon.xlsx")
+
+
+def diferencial_legislacion():
+    """GD30 / AL30 − 1, en %, con precio dirty en MEP. Serie cruda: el suavizado lo hace el browser."""
+    from openpyxl import load_workbook
+    ws = load_workbook(GLOBVSBON, read_only=True, data_only=True)["Precio MEP"]
+    filas = list(ws.iter_rows(values_only=True))
+    cab = [str(c) for c in filas[0]]
+    ia, ig = cab.index("AL30"), cab.index("GD30")
+    mapa = {"GD30/AL30": {}}
+    for r in filas[1:]:
+        f = str(r[0])[:10]
+        if f < DESDE_LEGISLACION or not r[ia] or not r[ig]:
+            continue
+        mapa["GD30/AL30"][f] = (r[ig] / r[ia] - 1) * 100
+    if not mapa["GD30/AL30"]:
+        raise ValueError("series_globvsbon.xlsx no tiene AL30 y GD30 desde 2024")
+    return a_bloque(mapa, *META_LEGISLACION, 3, orden=["GD30/AL30"])
+
 
 def main():
     hasta = hoy_art().isoformat()
@@ -230,6 +269,14 @@ def main():
             if viejo.get(clave):
                 out[clave] = viejo[clave]                        # vale más el dato de ayer que nada
 
+    try:
+        out["legislacion"] = diferencial_legislacion()
+    except Exception as e:                                       # noqa: BLE001
+        out["fallos"].append(f"legislacion: {e}")
+        print(f"  legislacion FALLÓ: {e}")
+        if viejo.get("legislacion"):
+            out["legislacion"] = viejo["legislacion"]
+
     if not out.get("margenTamar") and not out.get("bonares"):
         raise SystemExit("no se pudo bajar ninguna de las dos series; no se pisa el JSON anterior")
 
@@ -242,7 +289,7 @@ def main():
         return
 
     SALIDA.write_text(json.dumps(out, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
-    for k in ("margenTamar", "bonares"):
+    for k in ("margenTamar", "bonares", "legislacion"):
         b = out.get(k) or {}
         print(f"{k:12} {b.get('n', 0):5} ruedas  {b.get('desde')} .. {b.get('hasta')}")
     print(f"{SALIDA.name}: {SALIDA.stat().st_size / 1024:.0f} KB")
