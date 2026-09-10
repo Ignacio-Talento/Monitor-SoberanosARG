@@ -4,7 +4,7 @@
  "tipos": [
   "diario"
  ],
- "generado": "2026-09-10T18:00:25-03:00",
+ "generado": "2026-09-10T18:03:43-03:00",
  "feriadosLeidos": true,
  "universo": 198,
  "sinDato": [
@@ -3971,15 +3971,15 @@
   "embig": {
    "disponible": true,
    "fuente": "BCRP · EMBIG de J.P. Morgan (series PD04710XD y PD04708XD)",
-   "hasta": "2026-09-07",
+   "hasta": "2026-09-03",
    "argentina": {
-    "fecha": "2026-09-07",
+    "fecha": "2026-09-03",
     "valor": 496.0,
     "previo": {
-     "fecha": "2026-09-04",
-     "valor": 496.0
+     "fecha": "2026-09-02",
+     "valor": 503.0
     },
-    "variacion": 0.0,
+    "variacion": -7.0,
     "inicioAnio": {
      "fecha": "2026-01-01",
      "valor": 561.0
@@ -3995,22 +3995,22 @@
     }
    },
    "latam": {
-    "fecha": "2026-09-07",
+    "fecha": "2026-09-03",
     "valor": 268.0,
     "previo": {
-     "fecha": "2026-09-04",
-     "valor": 268.0
+     "fecha": "2026-09-02",
+     "valor": 270.0
     },
-    "variacion": 0.0
+    "variacion": -2.0
    },
    "brecha": {
-    "fecha": "2026-09-07",
+    "fecha": "2026-09-03",
     "valor": 228.0,
     "previo": {
-     "fecha": "2026-09-04",
-     "valor": 228.0
+     "fecha": "2026-09-02",
+     "valor": 233.0
     },
-    "variacion": 0.0,
+    "variacion": -5.0,
     "inicioAnio": {
      "fecha": "2026-01-01",
      "valor": 231.0
@@ -4194,8 +4194,8 @@
   "ruedaFuturos": "2026-09-10",
   "avisoFuturos": null,
   "tc": {
-   "fecha": "2026-09-09",
-   "valor": 1515.1105
+   "fecha": "2026-09-10",
+   "valor": 1512.9956
   },
   "liquidacion": "2026-09-11",
   "curvas": {
@@ -4232,7 +4232,7 @@
     "ultimaOperacion": "14:59",
     "sinDatoDelDia": false,
     "sinOperar": false,
-    "devTEA": 16.202,
+    "devTEA": 19.363,
     "lecap": {
      "tasa": 26.01,
      "entre": [
@@ -4249,16 +4249,16 @@
     },
     "pesos": {
      "ref": 26.01,
-     "sint": 24.616,
-     "spread": 1.394,
-     "neto": 5.538,
+     "sint": 28.005,
+     "spread": -1.996,
+     "neto": 2.575,
      "gana": "LECAP directa"
     },
     "dolar": {
      "ref": 7.241,
-     "sint": 8.44,
-     "spread": 1.199,
-     "neto": -2.621,
+     "sint": 5.569,
+     "spread": -1.672,
+     "neto": -5.131,
      "gana": "Bono DL directo"
     }
    },
@@ -4271,7 +4271,7 @@
     "ultimaOperacion": "14:59",
     "sinDatoDelDia": false,
     "sinOperar": false,
-    "devTEA": 19.759,
+    "devTEA": 20.986,
     "lecap": {
      "tasa": 25.993,
      "entre": [
@@ -4288,16 +4288,16 @@
     },
     "pesos": {
      "ref": 25.993,
-     "sint": 27.035,
-     "spread": -1.042,
-     "neto": 0.772,
-     "gana": "LECAP directa"
+     "sint": 28.337,
+     "spread": -2.344,
+     "neto": -0.465,
+     "gana": "Sintético en pesos"
     },
     "dolar": {
      "ref": 6.075,
-     "sint": 5.205,
-     "spread": -0.87,
-     "neto": -2.308,
+     "sint": 4.138,
+     "spread": -1.937,
+     "neto": -3.322,
      "gana": "Bono DL directo"
     }
    },
@@ -4310,7 +4310,7 @@
     "ultimaOperacion": "14:59",
     "sinDatoDelDia": false,
     "sinOperar": false,
-    "devTEA": 21.261,
+    "devTEA": 22.037,
     "lecap": {
      "tasa": 28.047,
      "entre": [
@@ -4327,16 +4327,16 @@
     },
     "pesos": {
      "ref": 28.047,
-     "sint": 27.409,
-     "spread": 0.639,
-     "neto": 1.757,
+     "sint": 28.223,
+     "spread": -0.176,
+     "neto": 0.968,
      "gana": "LECAP directa"
     },
     "dolar": {
      "ref": 5.069,
-     "sint": 5.596,
-     "spread": 0.527,
-     "neto": -0.422,
+     "sint": 4.925,
+     "spread": -0.144,
+     "neto": -1.071,
      "gana": "Bono DL directo"
     }
    },
@@ -4349,7 +4349,7 @@
     "ultimaOperacion": "14:59",
     "sinDatoDelDia": false,
     "sinOperar": false,
-    "devTEA": 21.985,
+    "devTEA": 22.547,
     "lecap": {
      "tasa": 27.853,
      "entre": [
@@ -4366,17 +4366,17 @@
     },
     "pesos": {
      "ref": 27.853,
-     "sint": 26.901,
-     "spread": 0.952,
-     "neto": 1.756,
+     "sint": 27.485,
+     "spread": 0.368,
+     "neto": 1.185,
      "gana": "LECAP directa"
     },
     "dolar": {
      "ref": 4.03,
-     "sint": 4.811,
-     "spread": 0.781,
-     "neto": 0.093,
-     "gana": "Sintético DL"
+     "sint": 4.33,
+     "spread": 0.3,
+     "neto": -0.377,
+     "gana": "Bono DL directo"
     }
    },
    {
@@ -4388,7 +4388,7 @@
     "ultimaOperacion": "14:58",
     "sinDatoDelDia": false,
     "sinOperar": false,
-    "devTEA": 22.197,
+    "devTEA": 22.636,
     "lecap": {
      "tasa": 28.194,
      "entre": [
@@ -4405,16 +4405,16 @@
     },
     "pesos": {
      "ref": 28.194,
-     "sint": 26.954,
-     "spread": 1.24,
-     "neto": 1.867,
+     "sint": 27.411,
+     "spread": 0.783,
+     "neto": 1.419,
      "gana": "LECAP directa"
     },
     "dolar": {
      "ref": 3.893,
-     "sint": 4.908,
-     "spread": 1.014,
-     "neto": 0.471,
+     "sint": 4.532,
+     "spread": 0.638,
+     "neto": 0.102,
      "gana": "Sintético DL"
     }
    },
@@ -4427,7 +4427,7 @@
     "ultimaOperacion": "14:54",
     "sinDatoDelDia": false,
     "sinOperar": false,
-    "devTEA": 22.689,
+    "devTEA": 23.057,
     "lecap": {
      "tasa": 28.41,
      "entre": [
@@ -4444,16 +4444,16 @@
     },
     "pesos": {
      "ref": 28.41,
-     "sint": 28.252,
-     "spread": 0.158,
-     "neto": 0.701,
+     "sint": 28.637,
+     "spread": -0.227,
+     "neto": 0.321,
      "gana": "LECAP directa"
     },
     "dolar": {
      "ref": 4.535,
-     "sint": 4.663,
-     "spread": 0.129,
-     "neto": -0.316,
+     "sint": 4.35,
+     "spread": -0.185,
+     "neto": -0.625,
      "gana": "Bono DL directo"
     }
    },
@@ -4466,7 +4466,7 @@
     "ultimaOperacion": "14:57",
     "sinDatoDelDia": false,
     "sinOperar": false,
-    "devTEA": 22.992,
+    "devTEA": 23.304,
     "lecap": {
      "tasa": 28.65,
      "entre": [
@@ -4483,16 +4483,16 @@
     },
     "pesos": {
      "ref": 28.65,
-     "sint": 29.442,
-     "spread": -0.792,
-     "neto": -0.32,
+     "sint": 29.771,
+     "spread": -1.121,
+     "neto": -0.644,
      "gana": "Sintético en pesos"
     },
     "dolar": {
      "ref": 5.245,
-     "sint": 4.6,
-     "spread": -0.644,
-     "neto": -1.014,
+     "sint": 4.335,
+     "spread": -0.909,
+     "neto": -1.276,
      "gana": "Bono DL directo"
     }
    },
@@ -4505,7 +4505,7 @@
     "ultimaOperacion": null,
     "sinDatoDelDia": false,
     "sinOperar": true,
-    "devTEA": 23.428,
+    "devTEA": 23.7,
     "lecap": {
      "tasa": 28.882,
      "entre": [
@@ -4522,16 +4522,16 @@
     },
     "pesos": {
      "ref": 28.882,
-     "sint": 29.458,
-     "spread": -0.576,
-     "neto": -0.166,
+     "sint": 29.744,
+     "spread": -0.863,
+     "neto": -0.449,
      "gana": "Sintético en pesos"
     },
     "dolar": {
      "ref": 4.886,
-     "sint": 4.419,
-     "spread": -0.467,
-     "neto": -0.79,
+     "sint": 4.188,
+     "spread": -0.697,
+     "neto": -1.018,
      "gana": "Bono DL directo"
     }
    }
@@ -4591,8 +4591,8 @@
   "plazoConstante": {
    "30": {
     "hoy": {
-     "pesos": 1.384,
-     "dolar": 1.206,
+     "pesos": -1.19,
+     "dolar": -0.996,
      "entre": [
       "DLR/SEP26",
       "DLR/OCT26"
@@ -4602,7 +4602,7 @@
      "fecha": "2026-09-09",
      "pesos": -2.186,
      "dolar": -1.866,
-     "variacionPesos": 3.57
+     "variacionPesos": 0.996
     },
     "anio": {
      "ruedas": 89,
@@ -4616,13 +4616,13 @@
       "fecha": "2026-02-10",
       "pesos": 24.883
      },
-     "percentilHoy": 0.899
+     "percentilHoy": 0.809
     }
    },
    "60": {
     "hoy": {
-     "pesos": -0.133,
-     "dolar": -0.115,
+     "pesos": -1.264,
+     "dolar": -1.049,
      "entre": [
       "DLR/OCT26",
       "DLR/NOV26"
@@ -4632,7 +4632,7 @@
      "fecha": "2026-09-09",
      "pesos": -1.02,
      "dolar": -0.856,
-     "variacionPesos": 0.887
+     "variacionPesos": -0.245
     },
     "anio": {
      "ruedas": 163,
@@ -4646,13 +4646,13 @@
       "fecha": "2026-02-10",
       "pesos": 14.146
      },
-     "percentilHoy": 0.81
+     "percentilHoy": 0.681
     }
    },
    "90": {
     "hoy": {
-     "pesos": 1.01,
-     "dolar": 0.833,
+     "pesos": 0.273,
+     "dolar": 0.223,
      "entre": [
       "DLR/NOV26",
       "DLR/DIC26"
@@ -4662,7 +4662,7 @@
      "fecha": "2026-09-09",
      "pesos": 1.141,
      "dolar": 0.939,
-     "variacionPesos": -0.131
+     "variacionPesos": -0.869
     },
     "anio": {
      "ruedas": 167,
@@ -4676,13 +4676,13 @@
       "fecha": "2026-04-14",
       "pesos": 12.499
      },
-     "percentilHoy": 0.749
+     "percentilHoy": 0.665
     }
    },
    "180": {
     "hoy": {
-     "pesos": 0.029,
-     "dolar": 0.024,
+     "pesos": -0.337,
+     "dolar": -0.274,
      "entre": [
       "DLR/FEB27",
       "DLR/MAR27"
@@ -4692,7 +4692,7 @@
      "fecha": "2026-09-09",
      "pesos": 1.051,
      "dolar": 0.855,
-     "variacionPesos": -1.022
+     "variacionPesos": -1.388
     },
     "anio": {
      "ruedas": 129,
@@ -4706,7 +4706,7 @@
       "fecha": "2026-04-14",
       "pesos": 7.249
      },
-     "percentilHoy": 0.566
+     "percentilHoy": 0.543
     }
    }
   }
