@@ -538,6 +538,51 @@ def seccion_sinteticos(d, textos, ancho, periodo, rotulo, con_dia):
     return E
 
 
+def tabla_rotacion(rot, ancho, periodo=None, rotulo="", con_dia=True):
+    """La tabla de la solapa Rotación BOPREAL: una fila por par BOPREAL → Bonar.
+
+    TIR por flujos (XIRR) de cada punta a su precio dirty en MEP, pickup bruto y neto de las dos
+    comisiones, break-even en años y cuánto se movió el pickup en el día o en el período. El pickup
+    va con color —positivo es que el Bonar rinde más—; la variación, también.
+    """
+    col_var = "anterior" if con_dia else periodo
+    filas = [["Rotación", "Precio", "TIR", "Precio", "TIR", "Pickup", "Pickup neto",
+              "Break-even", ("Día" if con_dia else rotulo)],
+             ["", "BOPREAL", "BOPREAL", "Bonar", "Bonar", "bps", "bps", "años", "Δ pickup"]]
+    estilos = []
+    for r in rot.get("filas") or []:
+        i = len(filas)
+        v = (r.get(col_var) or {}).get("variacionPickup") if col_var else None
+        be = r.get("breakEvenAnios")
+        # «→» no está en Open Sans y sale en blanco: va «a».
+        filas.append([f'{r["origen"]} a {r["destino"]}', num(r["precioOrigen"], 2),
+                      f'{num(r["tirOrigen"])}%', num(r["precioDestino"], 2),
+                      f'{num(r["tirDestino"])}%', num(r["pickup"], 0, True),
+                      num(r["pickupNeto"], 0, True), num(be, 2) if be is not None else "—",
+                      num(v, 0, True) if v is not None else "—"])
+        estilos += [("TEXTCOLOR", (5, i), (5, i), _color_num(r["pickup"])),
+                    ("TEXTCOLOR", (6, i), (6, i), _color_num(r["pickupNeto"])),
+                    ("FONT", (6, i), (6, i), SEMI, 9.6)]
+        if v is not None:
+            estilos.append(("TEXTCOLOR", (8, i), (8, i), _color_num(v)))
+    t = Table(filas, colWidths=[w * ancho for w in (.18, .09, .09, .09, .09, .1, .12, .12, .12)],
+              repeatRows=2)
+    t.setStyle(TableStyle([
+        ("FONT", (0, 0), (-1, 1), SEMI, 8.4),
+        ("TEXTCOLOR", (0, 0), (-1, 1), GRIS),
+        ("FONT", (0, 1), (-1, 1), REG, 7.6),
+        ("LINEBELOW", (0, 1), (-1, 1), .8, BORDE),
+        ("FONT", (0, 2), (-1, -1), REG, 9.4),
+        ("ALIGN", (1, 0), (-1, -1), "CENTER"),
+        ("LINEAFTER", (4, 0), (4, -1), .5, SUAVE),
+        ("LINEAFTER", (7, 0), (7, -1), .5, SUAVE),
+        ("TOPPADDING", (0, 0), (-1, -1), 4),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+        ("LEFTPADDING", (0, 0), (-1, -1), 3),
+    ] + estilos))
+    return t
+
+
 def tabla_simple(filas, anchos_rel, ancho, centrar=()):
     t = Table(filas, colWidths=[w * ancho for w in anchos_rel], repeatRows=1)
     est = [("FONT", (0, 0), (-1, 0), SEMI, 8.8),
@@ -770,7 +815,29 @@ def construir(ruta_json, dir_curvas, textos, salida, modo="auto"):
     E.append(Paragraph("BOPREALes y la rotación a Bonares", H2))
     for t in textos["bopreal"]:
         E.append(Paragraph(t, P))
-    if textos.get("tabla_bopreal"):
+    # La tabla de la solapa Rotación BOPREAL, armada del JSON. Va en los tres tipos de informe; la
+    # tabla escrita a mano (`tabla_bopreal`) queda sólo como respaldo si el bloque no vino.
+    rot = d.get("rotacionBopreal") or {}
+    if rot.get("disponible"):
+        per_txt = {"semanal": "Semana", "mensual": "Mes"}.get(periodo, rotulo)
+        ref_f = ((rot["filas"][0].get(periodo) or {}).get("fecha") if periodo and rot["filas"]
+                 else None)
+        E.append(KeepTogether([
+            tabla_rotacion(rot, ANCHO, periodo, per_txt, con_dia=(modo != "periodo")),
+            Spacer(1, 4),
+            Paragraph(
+                "TIR por flujos (XIRR) desde la liquidación en T+1, a precio dirty en MEP. "
+                "<b>Pickup</b> = TIR del Bonar − TIR del BOPREAL: positivo, el Bonar rinde más. "
+                f"El <b>neto</b> descuenta {num(rot.get('comision'), 1)}% de comisión en la venta y "
+                "otro tanto en la compra; el <b>break-even</b> es en cuántos años el pickup repaga "
+                f"ese costo ({num(rot['filas'][0]['costoPct'], 2)}% del monto). Los pares van por "
+                "vencimiento: la Serie 1 del BOPREAL, que amortiza en abril y octubre de 2027, "
+                "contra el AO27; la Serie 4, bullet a octubre de 2028, contra el AO28. Distinto "
+                "emisor —BCRA contra Tesoro— y distinta estructura."
+                + (f" La variación del período se mide contra el {ref_f[8:10]}/{ref_f[5:7]}."
+                   if ref_f and modo == "periodo" else ""), P_CHICO)]))
+        E.append(Spacer(1, 6))
+    elif textos.get("tabla_bopreal"):
         E.append(tabla_simple(textos["tabla_bopreal"], (.16, .13, .13, .16, .13, .13, .16), ANCHO,
                               centrar=(1, 2, 3, 4, 5, 6)))
         E.append(Spacer(1, 6))

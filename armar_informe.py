@@ -963,6 +963,160 @@ def datos_sinteticos(items, datos, hoy, fer, ayer, referencias):
     return out
 
 
+# ── ROTACIÓN BOPREAL → BONARES ──────────────────────────────────────────────────────────────────
+# La tabla de la solapa Rotación BOPREAL: réplica de recompute() de rotacionBopreal.html. Los
+# casos, los flujos y el mapeo de tickers se LEEN DEL HTML, que es donde se mantienen —cuando se
+# corrige un cronograma se corrige ahí—; si se copiaran acá, un día divergen sin que nadie se entere.
+# La TIR sale por XIRR de los flujos reales y NO es la `tea` de 1816: es lo que muestra la solapa,
+# y las dos convenciones no dan igual.
+
+ROTACION_HTML = Path(__file__).resolve().parent / "rotacionBopreal.html"
+COMISION_ROTACION = 0.5          # COMISION_DEFECTO de la solapa, % por punta
+
+
+def _config_rotacion():
+    """-> (casos [(origen, destino)], flujos {bono: [(date, monto)]}, ticker {bono: ticker del informe})."""
+    import re
+    s = ROTACION_HTML.read_text(encoding="utf-8")
+    listas = {}
+    for nombre, cuerpo in re.findall(r"const (\w+)=(\[\[.*?\]\]);", s):
+        try:
+            # JS admite ".5" y JSON no: se completa el cero antes de parsear.
+            cuerpo = re.sub(r"(?<=[,\[])\.(\d)", r"0.\1", cuerpo.replace("'", '"'))
+            listas[nombre] = [(date.fromisoformat(f), float(m)) for f, m in json.loads(cuerpo)]
+        except ValueError:
+            continue
+    mf = re.search(r"const FLUJOS=\{(.*?)\};", s, re.S)
+    flujos = {b: listas[l] for b, l in re.findall(r"(\w+):(\w+)", mf.group(1)) if l in listas}
+    faltan = sorted({x for par in re.findall(r"origen:'(\w+)',\s*destino:'(\w+)'", s) for x in par}
+                    - set(flujos))
+    if faltan:
+        raise ValueError(f"sin flujos leídos para {', '.join(faltan)} en rotacionBopreal.html")
+    mt = re.search(r"const TICKER_MONITOR=\{(.*?)\};", s, re.S)
+    tick = dict(re.findall(r"(\w+):'(\w+)'", mt.group(1)))
+    mc = re.search(r"const CASOS=\[(.*?)\];", s, re.S)
+    casos = re.findall(r"origen:'(\w+)',\s*destino:'(\w+)'", mc.group(1))
+    # El informe nombra a los Bonares con la D de la punta MEP (AO27D): es el mismo precio que
+    # le pide la solapa al proxy, que agrega la D para el grupo usdbonares.
+    ticker = {b: (t + "D" if b.startswith("AO") and not t.endswith("D") else t)
+              for b, t in tick.items()}
+    if not casos or not flujos:
+        raise ValueError("no se pudieron leer CASOS/FLUJOS de rotacionBopreal.html")
+    return casos, flujos, ticker
+
+
+def _xirr(cfs):
+    """xirr() de la solapa, con el mismo arranque (10%) y el mismo Newton."""
+    d0 = cfs[0][0]
+    yf = lambda d: (d - d0).days / 365
+    r = 0.1
+    for _ in range(200):
+        f = sum(a / (1 + r) ** yf(d) for d, a in cfs)
+        df = sum(-yf(d) * a / (1 + r) ** (yf(d) + 1) for d, a in cfs)
+        if abs(df) < 1e-12:
+            break
+        rn = r - f / df
+        if abs(rn - r) < 1e-11:
+            r = rn
+            break
+        r = max(rn, -0.999)
+    return r
+
+
+def _tir_bono(flujos, precio, t0):
+    """tirBono() de la solapa: XIRR desde la liquidación con los flujos posteriores a ella."""
+    if not precio or precio <= 0:
+        return None
+    cfs = [(t0, -precio)] + [(f, m) for f, m in flujos if f > t0]
+    return _xirr(cfs) if len(cfs) >= 2 else None
+
+
+def _fila_rotacion(flujos, origen, destino, pv, pc, t0, com=COMISION_ROTACION):
+    """Una fila de recompute(): TIR de las dos puntas, pickup bruto y neto, costo y break-even."""
+    c = com / 100
+    tir_o = _tir_bono(flujos[origen], pv, t0)
+    tir_d = _tir_bono(flujos[destino], pc, t0)
+    # precio efectivo del destino neto de las dos comisiones: pc·(1+c)/(1−c) — ver la solapa
+    tir_dn = _tir_bono(flujos[destino], pc * (1 + c) / (1 - c), t0) if pc else None
+    costo = c + (1 - c) * c / (1 + c)      # comisión total / monto bruto de venta
+    pickup = (tir_d - tir_o) * 10000 if tir_o is not None and tir_d is not None else None
+    return {
+        "tirOrigen": tir_o * 100 if tir_o is not None else None,
+        "tirDestino": tir_d * 100 if tir_d is not None else None,
+        "tirDestinoNeta": tir_dn * 100 if tir_dn is not None else None,
+        "pickup": pickup,
+        "pickupNeto": (tir_dn - tir_o) * 10000 if tir_o is not None and tir_dn is not None else None,
+        "costoPct": costo * 100,
+        "breakEvenAnios": costo / (tir_d - tir_o) if pickup and pickup > 0 else None,
+    }
+
+
+def datos_rotacion_bopreal(items, datos, hoy, fer, ayer, refs):
+    """La tabla de la solapa Rotación BOPREAL con los precios del informe, más cómo se movió el
+    pickup contra la rueda anterior y contra los cierres de semana y de mes.
+
+    Los precios son los precioDirty en MEP de 1816 que ya trae el informe —los mismos que pide la
+    solapa—. Para la rueda anterior y las de referencia se recalcula con SUS precios y SU
+    liquidación. Con precios quietos el pickup igual se mueve un poco por el paso del tiempo —menos
+    de 1 bps en una semana, medido el 09/09/2026—, así que variaciones de ese orden son ruido.
+    """
+    out = {"disponible": False, "comision": COMISION_ROTACION}
+    try:
+        casos, flujos, ticker = _config_rotacion()
+    except Exception as e:                                        # noqa: BLE001
+        out["motivo"] = str(e)
+        return out
+    t1816 = {it["eco"]: it["t1816"] for it in items if it.get("t1816")}
+
+    def precio(bono, fuente, fecha):
+        v = fuente.get(t1816.get(ticker.get(bono), ""), {}).get(fecha) or {}
+        return v.get("precioDirty")
+
+    def tabla(fuente, fecha):
+        t0 = proxima_habil(date.fromisoformat(fecha), fer)
+        filas = {}
+        for o, dd in casos:
+            pv, pc = precio(o, fuente, fecha), precio(dd, fuente, fecha)
+            if pv and pc:
+                filas[(o, dd)] = dict(_fila_rotacion(flujos, o, dd, pv, pc, t0),
+                                      precioOrigen=pv, precioDestino=pc)
+        return t0, filas
+
+    t0, hoyf = tabla(datos, hoy.isoformat())
+    if not hoyf:
+        out["motivo"] = "sin precios de hoy para los pares de la solapa"
+        return out
+    comparar = {"anterior": (datos, ayer.isoformat())}
+    for tipo, r in (refs or {}).items():
+        comparar[tipo] = (r["datos"], r["fecha"])
+    antes = {k: tabla(f, fe)[1] for k, (f, fe) in comparar.items()}
+
+    filas = []
+    for (o, dd), f in hoyf.items():
+        reg = {"origen": o, "destino": dd, "tickerOrigen": ticker.get(o),
+               "tickerDestino": ticker.get(dd), **f}
+        for k, tab in antes.items():
+            a = tab.get((o, dd))
+            if a and a["pickup"] is not None and f["pickup"] is not None:
+                reg[k] = {"fecha": comparar[k][1], "pickup": a["pickup"],
+                          "variacionPickup": f["pickup"] - a["pickup"],
+                          "variacionTirOrigen": f["tirOrigen"] - a["tirOrigen"],
+                          "variacionTirDestino": f["tirDestino"] - a["tirDestino"]}
+        filas.append(reg)
+
+    def red(x):
+        if isinstance(x, float):
+            return round(x, 4)
+        if isinstance(x, dict):
+            return {k: red(v) for k, v in x.items()}
+        return x
+
+    out.update({"disponible": True, "liquidacion": t0.isoformat(),
+                "faltan": [f"{o}→{dd}" for o, dd in casos if (o, dd) not in hoyf],
+                "filas": [red(f) for f in filas]})
+    return out
+
+
 def main():
     cli = cliente_1816()
     if cli is None:
@@ -1231,6 +1385,18 @@ def main():
     else:
         print(f"  sin sintéticos: {sinteticos.get('motivo')}")
 
+    # Rotación BOPREAL → Bonares: la tabla de la solapa, con los precios de este mismo informe.
+    try:
+        rotacion = datos_rotacion_bopreal(items, datos, hoy, fer, ayer, refs)
+    except Exception as e:                                        # noqa: BLE001
+        rotacion = {"disponible": False, "motivo": f"error armando el bloque: {e}"}
+    if rotacion["disponible"]:
+        print("  rotación BOPREAL: " + ", ".join(
+            f"{f['origen']}→{f['destino']} {f['pickup']:+.0f} bps" for f in rotacion["filas"]
+            if f.get("pickup") is not None))
+    else:
+        print(f"  sin rotación BOPREAL: {rotacion.get('motivo')}")
+
     salida = {
         "fecha": hoy.isoformat(),
         "ruedaAnterior": ayer.isoformat(),
@@ -1257,6 +1423,9 @@ def main():
         # Las dos tablas de la solapa Sintéticos —LECAP contra sintético en pesos, bono DL contra
         # sintético dólar linked— y el spread a plazo constante contra su historia del año.
         "sinteticos": sinteticos,
+        # La tabla de la solapa Rotación BOPREAL: TIR por flujos de cada BOPREAL y su Bonar destino,
+        # pickup bruto y neto de comisiones, costo y break-even, y cómo se movió el pickup.
+        "rotacionBopreal": rotacion,
         # Fechas contra las que se midió cada cierre, para que el informe pueda nombrarlas en vez
         # de decir "la semana pasada".
         "referencias": refs_fechas,

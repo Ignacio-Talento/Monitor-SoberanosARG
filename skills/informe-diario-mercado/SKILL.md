@@ -88,7 +88,8 @@ QUÉ TRAE EL JSON:
   fecha, ruedaAnterior, tipos (["diario"] y, si corresponde, "semanal" y/o "mensual"),
   universo, sinDato (tickers sin precio de hoy), resumen (por familia) e instrumentos (uno por
   instrumento, con ticker, familia, precio, tea, durationMod, paridad, varPrecio %, varTasa pp,
-  varParidad pp).
+  varParidad pp). Además dos bloques que replican solapas del monitor y que van como TABLA en los
+  tres informes: `sinteticos` (ver abajo) y `rotacionBopreal` (ver SECCIÓN C, ROTACIÓN BOPREAL).
 
 TRES COSAS QUE HAY QUE SABER PARA NO DECIR MACANAS:
   · `tea` y `paridad` YA vienen en porcentaje (26.73 = 26,73%) y `durationMod` en AÑOS. El script
@@ -454,14 +455,27 @@ todo derivable del JSON:
     trajo igual: merece una línea en el pie, como con el BCRA.
 
   · BOPREALes: el salto de TIR entre series (la 7 y la 8 rinden muy distinto) y las paridades.
-  · ROTACIÓN BOPREAL → BONARES: va todos los días. Emparejá cada BOPREAL con el Bonar de duration
-    más parecida y mostrá el diferencial de TIR en una tabla. Las dos familias se valúan en MEP, así
-    que se restan directo. Contá también cómo cambió el diferencial en la semana, que sale de
-    varTasa_semanal de las dos patas: el 28/08/2026 los BOPREALes comprimieron 0,49 pp y los Bonares
-    0,06, y el par 2028 se abrió de 141 a 155 bps.
-    Describí el diferencial y de dónde sale —distinto emisor, BCRA contra Tesoro, y distinta
-    estructura: la serie 7 cotiza arriba de la par y el Bonar largo con descuento—. NO recomiendes
-    rotar ni digas qué conviene comprar: el informe describe el mercado, no aconseja.
+  · ROTACIÓN BOPREAL → BONARES: va en LOS TRES informes —diario, semanal y mensual—, con la TABLA
+    en el mail y en el PDF. El usuario lo reclamó el 10/09/2026: la tabla se armaba a mano y algunos
+    días no salía (el 09/09 faltó). Ahora viene hecha en el bloque `rotacionBopreal` del JSON, que
+    replica la solapa Rotación BOPREAL —mismos seis pares (BPOA7/B7/C7/D7 contra AO27, BPOA8/B8
+    contra AO28), mismos flujos, TIR por XIRR desde T+1, comisión 0,5% por punta— y está
+    verificada contra el JavaScript de la solapa. No la rearmes con la `tea` de 1816: da parecido
+    pero no igual, y la tabla tiene que ser la de la solapa. Por fila:
+      `precioOrigen`, `tirOrigen`, `precioDestino`, `tirDestino`, `tirDestinoNeta` (en %),
+      `pickup` y `pickupNeto` (bps; positivo = el Bonar rinde más), `costoPct` (comisión total sobre
+      el monto, ~0,99%), `breakEvenAnios` (en cuántos años el pickup repaga el costo; null si el
+      pickup no es positivo), y `anterior` / `semanal` / `mensual` con `variacionPickup` en bps y
+      la variación de TIR de cada punta, contra la fecha que traen.
+    QUÉ DECIR: el pickup bruto y neto de cada serie y cómo se movió en la ventana del informe —el
+    día en el diario, el período en el de cierre—, y QUÉ PUNTA lo movió (`variacionTirOrigen` contra
+    `variacionTirDestino`): no es lo mismo un pickup que se abre porque comprimió el BOPREAL que uno
+    que se abre porque se estiró el Bonar. El 28/08/2026, por ejemplo, los BOPREALes comprimieron
+    0,49 pp y los Bonares 0,06. Variaciones de 1 bps son ruido: con precios quietos el pickup se
+    mueve eso por el paso del tiempo. Describí de dónde sale el diferencial —distinto emisor, BCRA
+    contra Tesoro, y distinta estructura: la serie 1 amortiza en dos cuotas en 2027 y cotiza arriba
+    de la par—. NO recomiendes rotar ni digas qué conviene comprar: el informe describe el mercado,
+    no aconseja; el pickup neto y el break-even son la cuenta, no una sugerencia.
   · Dólar linked contra los futuros de A3: la curva DL y la DEVALUACIÓN CONTRA INFLACIÓN. La
     implícita de los futuros sube con el plazo y la breakeven de CER baja; decí dónde se cruzan y
     cuánta depreciación real se paga a un año. Los futuros son los de `sinteticos.futuros`, del
@@ -533,6 +547,9 @@ período, el script pide además la última rueda hábil del período anterior y
     informe («contra el viernes 21/08») en vez de decir «la semana pasada».
   · `resumen[familia].semanal` y `.mensual` — con `precio` y `tasa`, misma estructura que la diaria.
   · Por instrumento, `varPrecio_semanal`, `varTasa_semanal` y sus equivalentes mensuales.
+  · `rotacionBopreal.filas[i].semanal` / `.mensual` — el pickup de cada par en la rueda de
+    referencia y cuánto se movió, con la variación de TIR de cada punta. La tabla del informe de
+    cierre ya muestra esa columna.
   · `sinteticos.plazoConstante[plazo].semanal` / `.mensual` — el spread de sintéticos a plazo
     constante en la rueda de referencia y cuánto se movió. Las tablas de sintéticos del informe de
     cierre son las de HOY (una foto, no tienen variación por contrato); el período se cuenta con
@@ -681,6 +698,11 @@ prosa del día —incluida la clave `canje`, que es la sección del canje CCL/ME
 tipos de informe— —las mismas secciones que escribís para el mail—. El módulo pone la maqueta, las tablas y las
 figuras; vos ponés el texto.
 
+La TABLA DE ROTACIÓN BOPREAL la arma el módulo solo desde `rotacionBopreal` del JSON, con su nota
+de método, debajo de la prosa de `textos["bopreal"]`. Ya no hace falta pasar `tabla_bopreal`: esa
+clave queda sólo como respaldo si el bloque no vino. En modo "periodo" la última columna es la
+variación del pickup en el período en vez de la del día.
+
 La clave `sinteticos` (lista de párrafos) es la prosa de la sección «Sintéticos contra
 instrumentos directos», que va después de dólar linked y futuros en los TRES tipos de informe. Las
 dos tablas, la de plazo constante y la nota de método —interpolación, aranceles, contratos sin
@@ -755,8 +777,15 @@ ajuste, según `modoFuturos`), A3500 con su fecha, aranceles 0,5 / 0,5 / 0,2 y c
 de 10 días afuera. La de plazo constante es opcional en el mail —está en el PDF—, pero el nivel a
 90 días contra el año va en la prosa.
 
+LA TABLA DE ROTACIÓN BOPREAL VA EN EL MAIL, en los tres informes, con las columnas de la solapa:
+    Rotación · Precio BOPREAL · TIR BOPREAL · Precio Bonar · TIR Bonar · Pickup (bps) ·
+    Pickup neto (bps) · Break-even (años) · Δ pickup del día (o del período en el de cierre)
+Una fila por par del bloque `rotacionBopreal`. Pickup con signo y color —verde positivo, rojo
+negativo—, el neto en negrita. Nota al pie: TIR por flujos desde T+1 a precio dirty en MEP,
+comisión 0,5% por punta, y contra qué fecha se mide la variación.
+
 TAMAÑO: el htmlBody entra cómodo hasta unos 37 KB, que es lo que ocupaba el informe completo con
-cinco tablas; con las dos de sintéticos son siete. Si te vas mucho más arriba, acortá la prosa que
+cinco tablas; con las dos de sintéticos y la de rotación BOPREAL son ocho. Si te vas mucho más arriba, acortá la prosa que
 ya está desarrollada en el PDF antes que sacar una tabla: las tablas son lo que no está en ningún
 otro lado del mail.
 
