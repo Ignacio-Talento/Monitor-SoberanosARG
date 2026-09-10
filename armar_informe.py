@@ -375,6 +375,75 @@ def datos_mercado(referencias):
     return out
 
 
+def datos_legislacion(referencias, anio):
+    """Diferencial de precio GD30/AL30 con su historia, para contextualizar la tabla de legislación.
+
+    La tabla del informe ya trae el "canje de precio" AL30/GD30 del día, que es este mismo número.
+    Lo que agrega este bloque es DÓNDE está: la mediana de 10 ruedas —la serie diaria del GD30 en
+    MEP tiene prints sueltos—, sus extremos del año y los meses desde 2024 en que la mediana estuvo
+    en un nivel parecido, con el riesgo país que había entonces. Eso es lo que permite contar la
+    tesis del semanal de 1816 del 10/09/2026 —"el riesgo país está demasiado bajo o el spread de
+    legislación demasiado alto"— y también su límite: el mismo diferencial convivió con riesgos
+    país de 500 y de 1.500, así que la relación es floja.
+
+    Sale de series_mercado.json (bloque "legislacion") y de macro_series.json (riesgo país). No
+    pide nada a 1816.
+    """
+    out = {"disponible": False}
+    try:
+        bq = json.loads(SERIES_MERCADO.read_text(encoding="utf-8"))["legislacion"]
+        crudo = [(f, v) for f, v in zip(bq["f"], bq["series"]["GD30/AL30"]) if v is not None]
+        S = json.loads(MACRO_SERIES.read_text(encoding="utf-8"))["series"]["riesgoPais"]
+        rp = dict(zip(S["f"], S["v"]))
+    except Exception as e:                                        # noqa: BLE001
+        out["motivo"] = f"sin diferencial de legislación: {e}"
+        return out
+    if len(crudo) < 10:
+        out["motivo"] = "menos de 10 ruedas de diferencial"
+        return out
+
+    med = []
+    for i in range(9, len(crudo)):
+        v = sorted(x[1] for x in crudo[i - 9:i + 1])
+        med.append((crudo[i][0], (v[4] + v[5]) / 2))
+
+    filas = sorted(med, reverse=True)
+    f, v = filas[0]
+    reg = {"fecha": f, "valor": round(v, 3), "crudo": round(crudo[-1][1], 3),
+           "previo": {"fecha": filas[1][0], "valor": round(filas[1][1], 3)},
+           "variacion": round(v - filas[1][1], 3)}
+    _agregar_periodos(reg, med, v, referencias)
+    del_anio = [(ff, vv) for ff, vv in med if ff >= f"{anio}-01-01"]
+    if del_anio:
+        fmin, vmin = min(del_anio, key=lambda x: x[1])
+        fmax, vmax = max(del_anio, key=lambda x: x[1])
+        reg["minAnio"] = {"fecha": fmin, "valor": round(vmin, 3)}
+        reg["maxAnio"] = {"fecha": fmax, "valor": round(vmax, 3)}
+
+    # Meses con la mediana a ±0,5 pp de la de hoy, con el riesgo país promedio de ese mes. El mes
+    # en curso queda afuera: compararse contra uno mismo no dice nada.
+    por_mes, rp_mes = {}, {}
+    for ff, vv in med:
+        por_mes.setdefault(ff[:7], []).append(vv)
+    for ff, vv in rp.items():
+        if ff >= "2024-01-01":
+            rp_mes.setdefault(ff[:7], []).append(vv)
+    similares = []
+    for mes in sorted(por_mes):
+        if mes == f[:7] or mes not in rp_mes:
+            continue
+        m = sum(por_mes[mes]) / len(por_mes[mes])
+        if abs(m - v) <= 0.5:
+            similares.append({"mes": mes, "diferencial": round(m, 2),
+                              "riesgoPais": round(sum(rp_mes[mes]) / len(rp_mes[mes]))})
+    reg["mesesSimilares"] = similares
+    rph = sorted((ff, vv) for ff, vv in rp.items() if ff <= f)
+    reg["riesgoPais"] = {"fecha": rph[-1][0], "valor": rph[-1][1]} if rph else None
+    out.update({"disponible": True, "fuente": bq.get("fuente"), "hasta": bq.get("hasta"),
+                "mediana10": reg})
+    return out
+
+
 def datos_embig(referencias, anio):
     """EMBIG de Argentina, de Latinoamérica y la distancia entre los dos, para el bloque macro.
 
@@ -688,6 +757,13 @@ def main():
 
     refs_fechas = {t: r["fecha"] for t, r in refs.items()}
     mercado = datos_mercado(refs_fechas)
+    mercado["legislacion"] = datos_legislacion(refs_fechas, hoy.year)
+    if mercado["legislacion"]["disponible"]:
+        lg = mercado["legislacion"]["mediana10"]
+        print(f"  diferencial GD30/AL30 al {lg['fecha']}: {lg['crudo']:.2f}% "
+              f"(mediana 10 ruedas {lg['valor']:.2f}%), {len(lg['mesesSimilares'])} meses parecidos")
+    else:
+        print(f"  sin diferencial de legislación: {mercado['legislacion'].get('motivo')}")
     if mercado["disponible"]:
         bqs = ", ".join(f"{k} al {v['hasta']}" for k, v in mercado["bloques"].items())
         print(f"  series de mercado: {bqs}")

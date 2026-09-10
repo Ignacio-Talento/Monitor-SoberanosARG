@@ -350,6 +350,29 @@ todo derivable del JSON:
     legislación, menos tasa) y que el canje de precio —(precio Global − precio Bonar) / precio
     Bonar, la cuenta de la solapa— sea positivo. Si te da lo contrario, casi seguro estás
     mezclando puntas: verificá antes de reportarlo como hallazgo.
+
+    EL CANJE DE PRECIO DEL PAR AL30/GD30 TIENE CONTEXTO HISTÓRICO Y VA EN LOS TRES INFORMES. Es la
+    tarjeta "¿El riesgo país está demasiado bajo o el spread de legislación demasiado alto?" de la
+    solapa Macro, y los datos vienen en `d["mercado"]["legislacion"]["mediana10"]`: la mediana de
+    10 ruedas del diferencial GD30/AL30 (`valor`), el dato crudo del día (`crudo`), sus extremos del
+    año, el riesgo país y `mesesSimilares` —los meses desde 2024 con la mediana a ±0,5 pp de la de
+    hoy, con el riesgo país promedio de cada uno—.
+
+    Contá la MEDIANA y no el dato crudo: el GD30 en MEP opera unos dos millones de nominales por
+    día y tiene prints sueltos —el 06/08/2026 marcó −0,83% por una operación a 56 redondo entre dos
+    días de 2,6%—. El crudo del día es el de la tabla; la mediana es el nivel.
+
+    La lectura es la de 1816 en su semanal del 10/09/2026: el diferencial volvió a niveles que
+    tenía cuando el riesgo país estaba mucho más alto, así que o el riesgo país está demasiado bajo
+    o la prima por legislación demasiado alta. PERO CONTALA CON SU LÍMITE, que sale de
+    `mesesSimilares`: con la mediana en 4,0% y el riesgo país en 491, los meses parecidos iban de
+    550 (enero de 2026) a 1.531 (julio de 2024). O sea que el mismo diferencial convivió con riesgos
+    país de tres veces distintos, y la relación entre las dos series es floja. Es una señal más,
+    no una regla, y el informe tiene que decirlo así.
+
+    Serie desde enero de 2024, igual que la de 1816: antes, con el cepo, el diferencial medía la
+    regulación y no la legislación. 1816 la mide en pesos; ésta va en MEP y da prácticamente lo
+    mismo.
   · CANJE CCL/MEP: VA EN LOS TRES INFORMES —diario, semanal y mensual—. Es cuánto más caro sale el
     dólar cable que el MEP, y es lo que hace que comparar un Global contra un Bonar exija llevarlos
     a la misma punta: sin eso, parte del spread que uno mide es canje y no crédito.
