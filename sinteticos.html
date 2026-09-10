@@ -499,17 +499,23 @@ function devaluacionTEA(f, dias) {
 
 // Aplica a una tasa YA ANUALIZADA un costo que actúa sobre el capital.
 //
-// No hace falta el precio: si en vez de P se paga P·k, la tasa neta cumple
-// (1 + neta) = (1 + bruta) · k^(365/d). Sólo cambia el factor k según qué se hace:
-//   comprar un bono  -> se paga más:      k = 1/(1+c)
-//   vender un futuro -> se cobra menos:   k = (1-c)
-//   comprar un futuro-> se paga más:      k = 1/(1+c)   [encarece el tipo de cambio de salida]
+// No hace falta el precio: la tasa neta cumple (1 + neta) = (1 + bruta) · k^(365/d), y sólo
+// cambia el factor k según qué se hace. OJO QUE EL SENTIDO SE INVIERTE entre bonos y futuros:
+// la tasa de un bono va con 1/P, y la devaluación de un futuro va con F.
+//   comprar un bono  -> se paga P(1+c), la TIR BAJA:             k = 1/(1+c)
+//   vender un futuro -> se cobra F(1-c), la devaluación BAJA:     k = (1-c)
+//   comprar un futuro-> se paga F(1+c), la devaluación SUBE:      k = (1+c)
+// El tercero estuvo como 1/(1+c) hasta el 10/09/2026: bajaba la devaluación de salida, así que el
+// arancel del futuro MEJORABA el sintético dólar linked en vez de empeorarlo. En DLR/SEP26, a 20
+// días, el bruto de −2,21 pp salía +1,60 neto y el veredicto era «Sintético DL»; bien calculado da
+// −5,51 y gana el bono DL directo.
 function conFactor(tasaPct, k, dias) {
   if (dias <= 0 || k === 1) return tasaPct;
   return ((1 + tasaPct / 100) * Math.pow(k, 365 / dias) - 1) * 100;
 }
-const kCompra = c => 1 / (1 + c / 100);   // se paga de más
-const kVenta = c => 1 - c / 100;          // se cobra de menos
+const kCompra = c => 1 / (1 + c / 100);      // comprar un bono: se paga de más
+const kVenta = c => 1 - c / 100;             // vender un futuro: se cobra de menos
+const kCompraFut = c => 1 + c / 100;         // comprar un futuro: se paga de más
 
 function filasSinteticos() {
   const liq = liquidacion();
@@ -543,7 +549,7 @@ function filasSinteticos() {
       if (iL && iD) {
         const bruto = ((1 + iL.tasa / 100) / (1 + dev / 100) - 1) * 100;
         const lecapN = conFactor(iL.tasa, kCompra(comisiones.lecap), dias);
-        const devCompra = conFactor(dev, kCompra(comisiones.fut), dias);
+        const devCompra = conFactor(dev, kCompraFut(comisiones.fut), dias);
         const netoSint = ((1 + lecapN / 100) / (1 + devCompra / 100) - 1) * 100;
         const dlN = conFactor(iD.tasa, kCompra(comisiones.dl), dias);
         fila.dolar = { sint: bruto, ref: iD.tasa, spread: bruto - iD.tasa,
