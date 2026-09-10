@@ -265,6 +265,27 @@ movimiento de los bonos de hoy, aclará que la del BCRA es de dos días antes. S
 con un rezago mayor al habitual —`rezagoDias` de 5 o más en las tasas—, marcala: puede ser un
 feriado o puede ser que el BCRA dejó de publicarla.
 
+EL RIESGO PAÍS DEL INFORME ES EL DE LA RUEDA ANTERIOR, SIEMPRE. Sale de argentinadatos, que
+republica el EMBI+ de J.P. Morgan: el índice cierra con Nueva York —las 18 de Argentina— y
+argentinadatos lo levanta después, así que a la hora del informe el del día todavía no existe y
+al mediodía siguiente ya está. Verificado el 10/09/2026: a las 12:44 el último era el del 09/09,
+y los informes del 08 y del 09 usaron el del 07 y el del 08. No es un atraso del job, es el
+calendario de la fuente.
+
+Por eso el riesgo país va CON SU FECHA EN LA PROSA TAMBIÉN, incluido el resumen de arriba, no sólo
+en la columna «Al día». "El riesgo país subió cuatro puntos, a 494" leído en el informe del
+miércoles parece el movimiento del miércoles y era el del martes; escribí "subió cuatro puntos a
+494, con dato del martes" o "el martes subió...". Y no lo juntes con el movimiento de los bonos
+del día como si fueran la misma rueda: si el riesgo país bajó y los Globales subieron, son dos
+ruedas distintas, no la misma historia contada dos veces.
+
+LOS FERIADOS DE EE.UU. NO SON "SIN CAMBIO". El EMBI no se calcula los días en que no opera el
+mercado de bonos de Estados Unidos, y argentinadatos repite el último dato: el lunes 07/09/2026
+—Labor Day— figuró con 490, igual que el viernes. Si `variacion` viene exactamente en cero,
+fijate si esa fecha fue feriado allá antes de escribir que el riesgo país no se movió; si lo fue,
+decí eso —"sin dato por el feriado en EE.UU."— y no "quieto" ni "sin cambio". Lo mismo vale para
+el EMBIG del bloque `embig`, que además trae `ultimoCambio` con la última fecha en que se movió.
+
 Las variaciones del bloque macro (`variacion`) son contra el dato previo DE ESA SERIE, que no es
 necesariamente la rueda anterior. Con un fin de semana o un feriado en el medio, el «previo» puede
 ser de tres o cuatro días atrás; el campo `previo.fecha` te dice cuál es.
