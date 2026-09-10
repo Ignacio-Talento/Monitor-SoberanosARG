@@ -51,6 +51,7 @@ from macro_informe import _agregar_periodos, datos_macro
 
 DIR_INFORMES = Path("informes")
 SERIES_MERCADO = Path(__file__).resolve().parent / "series_mercado.json"
+MACRO_SERIES = Path(__file__).resolve().parent / "macro_series.json"
 
 # Campos que se le piden a 1816. Son los mismos cuatro que pide el monitor para los instrumentos
 # sin cronograma cargado (CAMPOS_IND en functions/api/precios.js), así que el informe y la pantalla
@@ -374,6 +375,79 @@ def datos_mercado(referencias):
     return out
 
 
+def datos_embig(referencias, anio):
+    """EMBIG de Argentina, de Latinoamérica y la distancia entre los dos, para el bloque macro.
+
+    Sale de macro_series.json, que arma el job de Series Macro a partir del BCRP; no se pide acá.
+    Es EMBIG y no el EMBI+ de la fila de riesgo país: son índices distintos y difieren en unos
+    puntos. Se usa porque es el único que tiene su par regional público.
+
+    LO QUE IMPORTA ES LA BRECHA, no los dos niveles. Con escalas tan distintas —Argentina rinde
+    casi el doble que la región— un movimiento de los dos puede ser entero regional, y sólo la
+    diferencia dice cuánto es propio. Se calcula en las fechas que tienen las DOS series: restar
+    puntas de días distintos daría una brecha que no existió. Trae además la del primer dato del
+    año, porque la lectura del año —toda la compresión de 2026 fue regional— sale de ahí.
+    """
+    out = {"disponible": False}
+    try:
+        S = json.loads(MACRO_SERIES.read_text(encoding="utf-8"))["series"]
+        a = dict(zip(S["embigArg"]["f"], S["embigArg"]["v"]))
+        l = dict(zip(S["embigLatam"]["f"], S["embigLatam"]["v"]))
+    except Exception as e:                                        # noqa: BLE001
+        out["motivo"] = f"sin EMBIG en macro_series.json: {e}"
+        return out
+
+    def registro(filas):
+        filas = sorted(filas, reverse=True)
+        f, v = filas[0]
+        reg = {"fecha": f, "valor": v}
+        if len(filas) > 1:
+            reg["previo"] = {"fecha": filas[1][0], "valor": filas[1][1]}
+            reg["variacion"] = round(v - filas[1][1], 2)
+        _agregar_periodos(reg, filas, v, referencias)
+        return reg
+
+    comunes = sorted(set(a) & set(l))
+    if not comunes:
+        out["motivo"] = "las dos series no tienen fechas en común"
+        return out
+    brecha = [(f, a[f] - l[f]) for f in comunes]
+    out.update({
+        "disponible": True,
+        "fuente": "BCRP · EMBIG de J.P. Morgan (series PD04710XD y PD04708XD)",
+        "hasta": comunes[-1],
+        "argentina": registro([(f, a[f]) for f in comunes]),
+        "latam": registro([(f, l[f]) for f in comunes]),
+        "brecha": registro(brecha),
+    })
+    # Punta del año y extremos, de la brecha Y del nivel argentino. Son lo que sostiene la lectura:
+    # el 10/09/2026 el nivel había rebotado de 403 a 496 desde el piso de julio mientras la región
+    # no se movía, así que ese rebote era entero propio, y en el año la brecha estaba donde empezó.
+    for clave, serie in (("brecha", brecha), ("argentina", [(f, a[f]) for f in comunes])):
+        del_anio = [(f, v) for f, v in serie if f >= f"{anio}-01-01"]
+        if not del_anio:
+            continue
+        f0, v0 = del_anio[0]
+        reg = out[clave]
+        reg["inicioAnio"] = {"fecha": f0, "valor": v0}
+        reg["variacionAnio"] = round(reg["valor"] - v0, 2)
+        fmin, vmin = min(del_anio, key=lambda x: x[1])
+        fmax, vmax = max(del_anio, key=lambda x: x[1])
+        reg["minAnio"] = {"fecha": fmin, "valor": vmin}
+        reg["maxAnio"] = {"fecha": fmax, "valor": vmax}
+    # El BCRP REPITE el último dato los feriados de EE.UU., en que el índice no se calcula —el
+    # 07/09/2026 fue Labor Day—. Dos ruedas iguales no son necesariamente un mercado quieto, y el
+    # informe tiene que poder decir cuál fue el último dato que cambió.
+    ult_cambio = comunes[-1]
+    for i in range(len(comunes) - 1, 0, -1):
+        f, fa = comunes[i], comunes[i - 1]
+        if a[f] != a[fa] or l[f] != l[fa]:
+            ult_cambio = f
+            break
+    out["ultimoCambio"] = ult_cambio
+    return out
+
+
 def main():
     cli = cliente_1816()
     if cli is None:
@@ -603,6 +677,13 @@ def main():
                         referencias={t: r["fecha"] for t, r in refs.items()})
     if macro["fallos"]:
         print("  fallos macro:", "; ".join(macro["fallos"]))
+    macro["embig"] = datos_embig({t: r["fecha"] for t, r in refs.items()}, hoy.year)
+    if macro["embig"]["disponible"]:
+        e = macro["embig"]
+        print(f"  EMBIG al {e['hasta']}: Argentina {e['argentina']['valor']:.0f}, "
+              f"Latinoamérica {e['latam']['valor']:.0f}, brecha {e['brecha']['valor']:.0f}")
+    else:
+        print(f"  sin EMBIG: {macro['embig'].get('motivo')}")
     print(f"  {len(macro['series'])} series del BCRA · caución 1816: {macro['caucion']}")
 
     refs_fechas = {t: r["fecha"] for t, r in refs.items()}

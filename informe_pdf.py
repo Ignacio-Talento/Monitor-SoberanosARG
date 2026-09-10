@@ -328,6 +328,26 @@ def tabla_macro(macro, ancho, periodo=None, rotulo="", con_dia=True):
         estilos.append(("TEXTCOLOR", (3 + int(con_dia), i), (3 + int(con_dia), i),
                         VERDE if w.get("variacion", 0) < 0 else ROJO))
 
+    # EMBIG de Argentina, de la región y la distancia entre los dos. Mismo color invertido que el
+    # riesgo país: un spread que baja es bueno. Si el bloque no vino, las filas no se inventan.
+    eb = macro.get("embig") or {}
+    if eb.get("disponible"):
+        for et, clave in (("EMBIG Argentina", "argentina"), ("EMBIG Latinoamérica", "latam"),
+                          ("Argentina sobre Latinoamérica", "brecha")):
+            r = eb[clave]
+            i = len(filas)
+            w = r.get(periodo) or {}
+            var = r.get("variacion")
+            filas.append([et, f"{r['valor']:.0f}", "bps"]
+                         + ([num(var, 0, True) if var is not None else "—"] if con_dia else [])
+                         + ([num(w.get("variacion"), 0, True) if w else "—"] if per else [])
+                         + [f"{r['fecha'][8:10]}/{r['fecha'][5:7]}"])
+            if con_dia and var:
+                estilos.append(("TEXTCOLOR", (3, i), (3, i), VERDE if var < 0 else ROJO))
+            if w and w.get("variacion"):
+                estilos.append(("TEXTCOLOR", (3 + int(con_dia), i), (3 + int(con_dia), i),
+                                VERDE if w["variacion"] < 0 else ROJO))
+
     for et, cl, un, kw in [("TAMAR bancos privados", "tamarTEA", "TEA", {}),
                            ("BADLAR bancos privados", "badlarTEA", "TEA", {}),
                            ("Plazo fijo 30 días", "plazoFijo30", "TNA", {}),

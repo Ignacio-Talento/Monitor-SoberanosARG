@@ -208,6 +208,33 @@ contra el dato previo y una ventana de 15 ruedas para ver la tendencia:
   · `comprasMLC` — compra de divisas del BCRA medida por su efecto en reservas, en millones de USD.
   · `efectoMonetario` — el mismo hecho visto en pesos emitidos.
   · `reservas` — reservas internacionales.
+  · `embig` — EMBIG de Argentina, de Latinoamérica y la distancia entre los dos (`argentina`,
+    `latam`, `brecha`). Es la tarjeta "Spread de riesgo soberano" de la solapa Macro.
+
+EL EMBIG VA EN LOS TRES INFORMES, y lo que se cuenta es la BRECHA, no los dos niveles. Con escalas
+tan distintas —Argentina rinde casi el doble que la región— un movimiento del riesgo país puede
+ser entero regional, y sólo la diferencia dice cuánto es propio. Con datos al 07/09/2026 esa
+lectura cambiaba la conversación: en el año Argentina había comprimido 65 pb y la región 62, así
+que la brecha estaba donde empezó enero (231 → 228) y TODA la compresión del año había sido
+regional; pero desde el piso de julio el nivel argentino rebotó de 403 a 496 con la región quieta
+en torno a 268, así que ese rebote fue entero propio —la brecha pasó de 135 a 228—. Los datos para
+contarlo vienen en `brecha.inicioAnio`, `brecha.minAnio`, `brecha.maxAnio` y los mismos campos en
+`argentina`: no hace falta recalcular nada.
+
+En el mail van las tres filas en la tabla macro, con su fecha en «Al día», y una o dos oraciones
+de la brecha en la prosa de la sección. El PDF ya arma las filas solo.
+
+TRES CUIDADOS CON ESTA SERIE:
+  · Es EMBIG, no el EMBI+ de la fila de riesgo país: son índices distintos y difieren en unos
+    puntos (490 contra 496 el 07/09/2026). No los restes ni los presentes como la misma serie.
+  · La publica el Banco Central de Reserva del Perú con dos o tres días hábiles de rezago, Y REPITE
+    EL ÚLTIMO DATO LOS FERIADOS DE EE.UU., en que el índice no se calcula —el 07/09/2026 fue Labor
+    Day—. `ultimoCambio` dice cuál fue la última fecha en que alguna de las dos series se movió: si
+    difiere de `hasta`, la variación del día es cero por calendario y no porque el mercado haya
+    estado quieto. No la comentes como noticia; contá el nivel y la brecha, y decí la fecha.
+  · La de Latinoamérica NO es la que usa 1816 en su semanal: tiene la misma forma pero queda 15-20
+    pb arriba, y 1816 no dice qué agregado regional toma. El EMBIG Argentina sí coincide punto por
+    punto con el de ellos. Si citás un número de 1816 para la región, no lo compares contra éste.
 
 EN LOS CIERRES, ESTAS SERIES TAMBIÉN TRAEN SU PERÍODO, en `serie.semanal` / `serie.mensual` y en
 `macro.riesgoPais.semanal`. Pero ojo con leerlas todas igual, porque hay dos clases y el campo
