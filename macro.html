@@ -330,7 +330,7 @@ let MERCADO = null;
 /* Un plazo POR TARJETA. Con un control global había que elegir el mismo para las cinco, y las
    cinco no se miran igual: el ITCRM pide historia larga y la tasa real, las últimas semanas. */
 let plazos = { itcrm: '1A', riesgoPais: '1A', reservas: '1A', tamar: '1A', tamarReal: '1A',
-               repo: '1A', margenTamar: 'Max' };
+               repo: '1A', margenTamar: 'Max', embig: 'YTD' };
 /* Fecha del dato más fresco de todas las series: de ahí cuelgan los plazos de las cinco. */
 let FIN = 0;
 /* Sobre qué tramo se calculan el promedio y los desvíos del ITCRM. "Ventana visible" es el
@@ -482,15 +482,21 @@ function dibujar(cfg) {
   const todas = cfg.series.filter((s) => s.pts.length);
   if (!todas.length) return { svg: '<div class="cargando">Sin datos en este plazo.</div>', estado: null };
 
+  /* Eje derecho opcional: las series con `der: true` se escalan contra su propio rango y se
+     rotulan a la derecha. Hace falta cuando dos series miden lo mismo en niveles muy distintos —el
+     EMBIG de Argentina rinde casi el doble que el de la región— y en un solo eje una queda chata. */
+  const der = todas.filter((s) => s.der);
   let t0 = Infinity, t1 = -Infinity, vmin = Infinity, vmax = -Infinity;
+  let dmin = Infinity, dmax = -Infinity;
   for (const s of todas) {
     for (const p of s.pts) {
       if (p[0] < t0) t0 = p[0];
       if (p[0] > t1) t1 = p[0];
-      if (p[1] < vmin) vmin = p[1];
-      if (p[1] > vmax) vmax = p[1];
+      if (s.der) { if (p[1] < dmin) dmin = p[1]; if (p[1] > dmax) dmax = p[1]; }
+      else { if (p[1] < vmin) vmin = p[1]; if (p[1] > vmax) vmax = p[1]; }
     }
   }
+  if (vmin === Infinity) { vmin = dmin; vmax = dmax; }
   if (cfg.bandas) {
     vmin = Math.min(vmin, cfg.bandas.prom - 2 * cfg.bandas.sd);
     vmax = Math.max(vmax, cfg.bandas.prom + 2 * cfg.bandas.sd);
@@ -501,7 +507,7 @@ function dibujar(cfg) {
   /* Con bandas, el margen derecho se ensancha y los rótulos de promedio y desvíos van AHÍ,
      fuera del área de dibujo. Puestos adentro se pisaban con la serie justo en el borde
      derecho, que es donde está el último dato y donde uno mira primero. */
-  const mr = cfg.bandas ? 132 : MR;
+  const mr = cfg.bandas ? 132 : der.length ? 60 : MR;
   const pw = W - ML - mr;
   const log = cfg.log && vmin > 0;
   const pad = (vmax - vmin) * 0.08 || Math.abs(vmax) * 0.05 || 1;
@@ -517,6 +523,20 @@ function dibujar(cfg) {
     ? (v) => MT + PH - (Math.log10(v) - Math.log10(lo)) / (Math.log10(hi) - Math.log10(lo)) * PH
     : (v) => MT + PH - (v - lo) / (hi - lo) * PH;
 
+  let Y2 = null, tick2 = [];
+  if (der.length) {
+    const pad2 = (dmax - dmin) * 0.08 || Math.abs(dmax) * 0.05 || 1;
+    let lo2 = dmin - pad2, hi2 = dmax + pad2;
+    if (dmin >= 0 && lo2 < 0) lo2 = 0;
+    tick2 = ticksY(lo2, hi2, 5);
+    if (tick2.length) { lo2 = Math.min(lo2, tick2[0]); hi2 = Math.max(hi2, tick2[tick2.length - 1]); }
+    Y2 = (v) => MT + PH - (v - lo2) / (hi2 - lo2) * PH;
+  }
+  const Yde = (s) => (s.der ? Y2 : Y);
+  /* Con dos ejes, cada columna de rótulos va del color de su serie: si no, no hay forma de saber
+     cuál escala es de cuál línea. */
+  const colIzq = der.length ? ((todas.find((s) => !s.der) || {}).color || PAL.gris) : PAL.gris;
+
   const decEje = cfg.decEje !== undefined ? cfg.decEje : cfg.dec;
   let g = '';
   /* Grilla horizontal y rótulos del eje. */
@@ -525,7 +545,12 @@ function dibujar(cfg) {
     g += '<line x1="' + ML + '" y1="' + y + '" x2="' + (ML + pw) + '" y2="' + y +
          '" stroke="' + PAL.suave + '" stroke-width="1"/>';
     g += '<text x="' + (ML - 9) + '" y="' + y + '" text-anchor="end" dominant-baseline="middle" ' +
-         'font-size="11" fill="' + PAL.gris + '">' + fmt(v, decEje) + '</text>';
+         'font-size="11" fill="' + colIzq + '">' + fmt(v, decEje) + '</text>';
+  }
+  for (const v of tick2) {
+    g += '<text x="' + (ML + pw + 9) + '" y="' + Y2(v).toFixed(1) + '" text-anchor="start" ' +
+         'dominant-baseline="middle" font-size="11" fill="' + der[0].color + '">' +
+         fmt(v, decEje) + '</text>';
   }
   /* El cero se marca aparte: en la tasa real es la frontera que importa. */
   if (cfg.cero && lo < 0 && hi > 0) {
@@ -568,14 +593,14 @@ function dibujar(cfg) {
     const pts = decimar(s.pts, 1800);
     let d = '';
     for (let i = 0; i < pts.length; i++) {
-      d += (i ? 'L' : 'M') + X(pts[i][0]).toFixed(1) + ' ' + Y(pts[i][1]).toFixed(1);
+      d += (i ? 'L' : 'M') + X(pts[i][0]).toFixed(1) + ' ' + Yde(s)(pts[i][1]).toFixed(1);
     }
     g += '<path d="' + d + '" fill="none" stroke="' + s.color + '" stroke-width="' + (s.ancho || 1.9) +
          '" stroke-linejoin="round" stroke-linecap="round"' +
          (s.dash ? ' stroke-dasharray="' + s.dash + '"' : '') + '/>';
     /* El último dato va marcado: es el número que uno busca primero. */
     const u = s.pts[s.pts.length - 1];
-    g += '<circle cx="' + X(u[0]).toFixed(1) + '" cy="' + Y(u[1]).toFixed(1) + '" r="3.4" fill="' +
+    g += '<circle cx="' + X(u[0]).toFixed(1) + '" cy="' + Yde(s)(u[1]).toFixed(1) + '" r="3.4" fill="' +
          s.color + '"/>';
   }
 
@@ -591,7 +616,8 @@ function dibujar(cfg) {
      arrancan en fechas distintas, snapear a la más corta deja media ventana sin tooltip. */
   let busca = todas[0].pts;
   for (const s2 of todas) if (s2.pts.length > busca.length) busca = s2.pts;
-  return { svg, estado: { t0, t1, X, Y, pw, cfg, busca, todas } };
+  const sBusca = todas.find((s2) => s2.pts === busca) || todas[0];
+  return { svg, estado: { t0, t1, X, Y: Yde(sBusca), pw, cfg, busca, todas } };
 }
 
 /* ── hover ────────────────────────────────────────────────────────────────────────────────── */
@@ -862,6 +888,47 @@ function render() {
     montar.push(d.estado);
   }
 
+  /* ═══ 2b · EMBIG Argentina contra Latinoamérica ═══ */
+  const desdeE = desdeDe(plazos.embig, fin);
+  const vEa = recortar(pts.embigArg || [], desdeE), vEl = recortar(pts.embigLatam || [], desdeE);
+  if (vEa.length && vEl.length) {
+    const ua = vEa[vEa.length - 1], ul = vEl[vEl.length - 1];
+    /* La distancia se mide en la MISMA fecha en las dos series, no último contra último: el BCRP
+       publica las dos juntas, pero si un día llegara una sola, restar puntas de fechas distintas
+       daría una brecha que no existió. */
+    const brecha = (t) => {
+      const a = valorEn(vEa, t), l = valorEn(vEl, t);
+      return a === null || l === null ? null : a - l;
+    };
+    const bHoy = brecha(ua[0]), bIni = brecha(vEa[0][0]);
+    const dB = bHoy !== null && bIni !== null ? bHoy - bIni : null;
+    const d = dibujar({ series: [{ pts: vEa, color: PAL.navy },
+                                 { pts: vEl, color: PAL.ambar, der: true }],
+                        dec: 0, etiquetas: ['Argentina', 'Latinoamérica'],
+                        aria: 'EMBIG Argentina contra EMBIG Latinoamérica' });
+    partes.push(tarjeta({
+      titulo: 'Spread de riesgo soberano · Argentina contra Latinoamérica',
+      sub: 'EMBIG de J.P. Morgan, en puntos básicos sobre el Tesoro de los Estados Unidos. ' +
+           'Argentina en el eje izquierdo y Latinoamérica en el derecho. Diario desde enero de 1998.',
+      kpis: kpi('Argentina', fmt(ua[1], 0)) + kpi('Latinoamérica', fmt(ul[1], 0)) +
+            kpi('Argentina sobre la región', bHoy === null ? '—' : fmt(bHoy, 0) + ' pbs') +
+            kpi('En la ventana', dB === null ? '—' : signo(dB, 0, ' pbs'),
+                dB < 0 ? 'pos' : dB > 0 ? 'neg' : ''),
+      ctrl: ctrlPlazo('embig', vEa),
+      svg: d.svg,
+      leyenda: '<span><i style="border-color:' + PAL.navy + '"></i>EMBIG Argentina · eje izquierdo</span>' +
+               '<span><i style="border-color:' + PAL.ambar + '"></i>EMBIG Latinoamérica · eje derecho</span>',
+      pie: 'Fuente: Banco Central de Reserva del Perú, que publica el EMBIG de J.P. Morgan por país y ' +
+           'por región con dos o tres días hábiles de rezago. Es otro índice que el EMBI+ de la ' +
+           'tarjeta de arriba —difieren en unos puntos— y se usa acá para que las dos series sean de ' +
+           'la misma familia. LOS DOS EJES TIENEN ESCALAS DISTINTAS a propósito, porque Argentina ' +
+           'rinde casi el doble que la región: que las líneas se crucen o se separen no significa ' +
+           'nada. Lo que se compara es la forma, y la distancia real está arriba, en «Argentina ' +
+           'sobre la región».',
+    }));
+    montar.push(d.estado);
+  }
+
   /* ═══ 3 · Reservas ═══ */
   const vRe = corte('reservas');
   if (vRe.length) {
@@ -1038,7 +1105,7 @@ function render() {
   montar.forEach((e, i) => montarHover(cuerpos[i], e));
 
   const f = [];
-  for (const k of ['itcrm', 'riesgoPais', 'reservas', 'tamar', 'ipc', 'repo']) {
+  for (const k of ['itcrm', 'riesgoPais', 'embigArg', 'embigLatam', 'reservas', 'tamar', 'ipc', 'repo']) {
     if (S[k]) f.push(S[k].nombre + ' — ' + S[k].fuente + ', hasta el ' + S[k].hasta);
   }
   if (DATOS.rem) f.push(DATOS.rem.nombre + ' — ' + DATOS.rem.fuente + ', relevamiento del ' +
@@ -1094,7 +1161,7 @@ Promise.all([
       return dias > tope ? d.series[k].nombre + ' (' + dias + ' días)' : null;
     };
     const viejas = [atraso('itcrm', 4), atraso('riesgoPais', 5), atraso('reservas', 8),
-                    atraso('tamar', 8), atraso('repo', 5)].filter(Boolean);
+                    atraso('tamar', 8), atraso('repo', 5), atraso('embigArg', 7)].filter(Boolean);
     if (viejas.length) {
       avisos.push('Estas series están atrasadas: ' + viejas.join(', ') +
                   '. El job que las actualiza puede haber dejado de correr; se puede lanzar a ' +

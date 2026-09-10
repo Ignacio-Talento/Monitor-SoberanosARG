@@ -91,6 +91,51 @@ def serie_larga(id_var, desde=DESDE, hasta=None):
     return filas
 
 
+# EMBIG por país y por región, del Banco Central de Reserva del Perú: es la única fuente pública y
+# sin credenciales que publica diario el EMBIG de Latinoamérica. El de Argentina se pide a la MISMA
+# fuente —y no a argentinadatos, que republica el EMBI+— para que las dos series de la tarjeta sean
+# del mismo índice. EMBI+ y EMBIG difieren en unos puntos (490 contra 496 el 07/09/2026).
+# Verificado el 10/09/2026 contra el gráfico "Spread de riesgo soberano en 2026" del semanal de
+# 1816: el de Argentina coincide punto por punto —pico de 634 el 30/03, piso de 403 en julio, 496
+# el 07/09—; el de Latinoamérica tiene la misma forma pero queda 15-20 pb arriba del que usa 1816,
+# que no dice qué agregado regional toma.
+BCRP_API = "https://estadisticas.bcrp.gob.pe/estadisticas/series/api"
+EMBIG = {"embigArg": ("PD04710XD", "Argentina"), "embigLatam": ("PD04708XD", "America Latina")}
+MES_BCRP = {"Ene": 1, "Feb": 2, "Mar": 3, "Abr": 4, "May": 5, "Jun": 6, "Jul": 7, "Ago": 8,
+            "Set": 9, "Sep": 9, "Oct": 10, "Nov": 11, "Dic": 12}
+_embig = {}
+
+
+def embig(clave):
+    """-> [(fecha ISO, pbs)] de una de las dos series, desde enero de 1998.
+
+    Las dos se piden en UNA sola llamada y se cachean. La API devuelve las series en su propio
+    orden y NO en el que se piden —el 10/09/2026 llegaba Latinoamérica primero aunque se pidiera
+    Argentina primero—, así que cada columna se identifica por el nombre en config.series, nunca
+    por posición. Leída por posición, la tarjeta dibujaba Argentina en 260-330 pb.
+    """
+    if not _embig:
+        cods = "-".join(c for c, _ in EMBIG.values())
+        r = requests.get(f"{BCRP_API}/{cods}/json/1998-01-01/{date.today().isoformat()}",
+                         headers=UA, timeout=90)
+        r.raise_for_status()
+        j = json.loads(r.content.decode("utf-8-sig"))        # viene con BOM
+        nombres = [x["name"] for x in j["config"]["series"]]
+        col = {k: next(i for i, n in enumerate(nombres) if marca in n)
+               for k, (_, marca) in EMBIG.items()}
+        for k in EMBIG:
+            _embig[k] = []
+        for per in j["periods"]:
+            dd, mm, yy = per["name"].split(".")                 # "07.Set.26"
+            anio = int(yy) + (1900 if int(yy) >= 90 else 2000)
+            f = date(anio, MES_BCRP[mm], int(dd)).isoformat()
+            for k, i in col.items():
+                v = per["values"][i]
+                if v not in ("n.d.", "", None):                 # los días sin publicar vienen así
+                    _embig[k].append((f, float(v)))
+    return _embig[clave]
+
+
 def riesgo_pais():
     d, _ = _get(RIESGO_PAIS)
     filas = [(x["fecha"], float(x["valor"])) for x in d if x.get("valor") is not None]
@@ -171,6 +216,10 @@ def main():
          "BCRA/INDEC · serie 27", 2, lambda: serie_larga(27)),
         ("repo", "Repo a 1 día entre bancos", "% TNA",
          "BCRA · serie 150 (pases entre terceros)", 2, lambda: serie_larga(150)),
+        ("embigArg", "EMBIG Argentina", "puntos básicos",
+         "BCRP · serie PD04710XD (EMBIG de J.P. Morgan)", 0, lambda: embig("embigArg")),
+        ("embigLatam", "EMBIG Latinoamérica", "puntos básicos",
+         "BCRP · serie PD04708XD (EMBIG de J.P. Morgan)", 0, lambda: embig("embigLatam")),
     ]
     try:
         filas = rem_ipc()
