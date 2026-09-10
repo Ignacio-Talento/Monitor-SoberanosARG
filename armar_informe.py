@@ -682,7 +682,27 @@ def futuros_a3(hoy):
 
 
 def tc_mayorista(hoy):
-    """-> (fecha, A3500) del último dato en o antes de hoy: bcraData.usdHoy de la solapa."""
+    """-> (fecha, A3500) del último dato en o antes de hoy: bcraData.usdHoy de la solapa.
+
+    PRIMERO LA API CAMBIARIA DEL BCRA, que publica la Comunicación A 3500 del día a la tarde
+    (moneda "REF"). El worker de indicadores, que es lo que usa la solapa, toma la variable 5 de
+    Principales Variables y la carga recién al día siguiente: el 10/09/2026 a las 18:00 seguía en
+    el 09/09. Con el spot de ayer contra futuros de hoy, la devaluación anualizada de un contrato a
+    19 días se corre casi 4 pp por cada 0,2% que se movió el dólar. Verificado ese día que las dos
+    fuentes dan el mismo valor para la misma fecha (1.515,1105 el 09/09).
+    """
+    try:
+        url = f"https://api.bcra.gob.ar/estadisticascambiarias/v1.0/Cotizaciones?fecha={hoy.isoformat()}"
+        try:
+            r = requests.get(url, timeout=30)
+        except requests.exceptions.SSLError:
+            r = requests.get(url, timeout=30, verify=False)
+        res = r.json().get("results") or {}
+        ref = [x for x in res.get("detalle") or [] if x.get("codigoMoneda") == "REF"]
+        if res.get("fecha") == hoy.isoformat() and ref and ref[0].get("tipoCotizacion"):
+            return hoy.isoformat(), float(ref[0]["tipoCotizacion"])
+    except Exception as e:                                        # noqa: BLE001
+        print(f"AVISO: la API cambiaria del BCRA no dio el A3500 de hoy ({e}); se usa el worker")
     try:
         r = requests.get("https://indicadoresbcra.granda-fra.workers.dev/", timeout=40, params={
             "serie": "usd", "desde": (hoy - timedelta(days=15)).isoformat(),
