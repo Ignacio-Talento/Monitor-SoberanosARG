@@ -563,6 +563,1826 @@
      "rotulo": "Informe del día"
     }
    ]
+  },
+  {
+   "fecha": "2026-08-21",
+   "graficos": [
+    {
+     "archivo": "globales_bonares.png",
+     "titulo": "Globales vs Bonares",
+     "bajada": "Curva en dólares por legislación, con las dos patas llevadas a la misma punta antes de restarlas, como hace la solapa Glob vs Bon. Mezclar MEP con CCL mueve el spread entre 79 y 279 puntos básicos según el par."
+    },
+    {
+     "archivo": "lecaps_tem.png",
+     "titulo": "LECAPs en TEM",
+     "bajada": "Tasa efectiva mensual de la curva de tasa fija en pesos."
+    },
+    {
+     "archivo": "cer.png",
+     "titulo": "Curva CER",
+     "bajada": "Rendimiento real, CER más un spread. Cada dual entra con su pata CER, pedida a 1816 por separado y con su propia duration."
+    },
+    {
+     "archivo": "lecaps_cer.png",
+     "titulo": "LECAPs contra CER",
+     "bajada": "Las dos curvas en TEA nominal sobre el tramo que comparten: los CER llevados a nominal con la inflación publicada de los últimos tres meses."
+    },
+    {
+     "archivo": "breakeven.png",
+     "titulo": "Inflación implícita",
+     "bajada": "La inflación a la que una LECAP y un CER del mismo plazo rinden lo mismo. Cada CER se compara contra la curva de tasa fija interpolada a su misma duration, no contra la LECAP más cercana."
+    },
+    {
+     "archivo": "tamar.png",
+     "titulo": "Curva TAMAR",
+     "bajada": "Incluye la pata TAMAR de los duales y la TAMAR spot de bancos privados que publica el BCRA."
+    },
+    {
+     "archivo": "dl.png",
+     "titulo": "Curva dólar linked",
+     "bajada": "Devaluación implícita por vencimiento."
+    },
+    {
+     "archivo": "futuros.png",
+     "titulo": "Futuros de dólar",
+     "bajada": "Precio de cada contrato a la izquierda y, a la derecha, la devaluación acumulada que ese precio implica contra el mayorista. Es una sola curva leída en dos escalas: el porcentaje acumulado es una función lineal del precio, así que como segunda línea sería el mismo dato dibujado dos veces. Los círculos huecos son contratos de volumen fino, donde el ajuste lo pone la cámara y no el mercado."
+    },
+    {
+     "archivo": "subsoberanos.png",
+     "titulo": "Subsoberanos en CCL",
+     "bajada": "Provinciales y municipales, valuados en la misma punta en que los muestra el monitor."
+    }
+   ],
+   "pdfs": [],
+   "reconstruida": true
+  },
+  {
+   "fecha": "2026-08-14",
+   "graficos": [
+    {
+     "archivo": "globales_bonares.png",
+     "titulo": "Globales vs Bonares",
+     "bajada": "Curva en dólares por legislación, con las dos patas llevadas a la misma punta antes de restarlas, como hace la solapa Glob vs Bon. Mezclar MEP con CCL mueve el spread entre 79 y 279 puntos básicos según el par."
+    },
+    {
+     "archivo": "lecaps_tem.png",
+     "titulo": "LECAPs en TEM",
+     "bajada": "Tasa efectiva mensual de la curva de tasa fija en pesos."
+    },
+    {
+     "archivo": "cer.png",
+     "titulo": "Curva CER",
+     "bajada": "Rendimiento real, CER más un spread. Cada dual entra con su pata CER, pedida a 1816 por separado y con su propia duration."
+    },
+    {
+     "archivo": "lecaps_cer.png",
+     "titulo": "LECAPs contra CER",
+     "bajada": "Las dos curvas en TEA nominal sobre el tramo que comparten: los CER llevados a nominal con la inflación publicada de los últimos tres meses."
+    },
+    {
+     "archivo": "breakeven.png",
+     "titulo": "Inflación implícita",
+     "bajada": "La inflación a la que una LECAP y un CER del mismo plazo rinden lo mismo. Cada CER se compara contra la curva de tasa fija interpolada a su misma duration, no contra la LECAP más cercana."
+    },
+    {
+     "archivo": "tamar.png",
+     "titulo": "Curva TAMAR",
+     "bajada": "Incluye la pata TAMAR de los duales y la TAMAR spot de bancos privados que publica el BCRA."
+    },
+    {
+     "archivo": "dl.png",
+     "titulo": "Curva dólar linked",
+     "bajada": "Devaluación implícita por vencimiento."
+    },
+    {
+     "archivo": "futuros.png",
+     "titulo": "Futuros de dólar",
+     "bajada": "Precio de cada contrato a la izquierda y, a la derecha, la devaluación acumulada que ese precio implica contra el mayorista. Es una sola curva leída en dos escalas: el porcentaje acumulado es una función lineal del precio, así que como segunda línea sería el mismo dato dibujado dos veces. Los círculos huecos son contratos de volumen fino, donde el ajuste lo pone la cámara y no el mercado."
+    },
+    {
+     "archivo": "subsoberanos.png",
+     "titulo": "Subsoberanos en CCL",
+     "bajada": "Provinciales y municipales, valuados en la misma punta en que los muestra el monitor."
+    }
+   ],
+   "pdfs": [],
+   "reconstruida": true
+  },
+  {
+   "fecha": "2026-08-07",
+   "graficos": [
+    {
+     "archivo": "globales_bonares.png",
+     "titulo": "Globales vs Bonares",
+     "bajada": "Curva en dólares por legislación, con las dos patas llevadas a la misma punta antes de restarlas, como hace la solapa Glob vs Bon. Mezclar MEP con CCL mueve el spread entre 79 y 279 puntos básicos según el par."
+    },
+    {
+     "archivo": "lecaps_tem.png",
+     "titulo": "LECAPs en TEM",
+     "bajada": "Tasa efectiva mensual de la curva de tasa fija en pesos."
+    },
+    {
+     "archivo": "cer.png",
+     "titulo": "Curva CER",
+     "bajada": "Rendimiento real, CER más un spread. Cada dual entra con su pata CER, pedida a 1816 por separado y con su propia duration."
+    },
+    {
+     "archivo": "lecaps_cer.png",
+     "titulo": "LECAPs contra CER",
+     "bajada": "Las dos curvas en TEA nominal sobre el tramo que comparten: los CER llevados a nominal con la inflación publicada de los últimos tres meses."
+    },
+    {
+     "archivo": "breakeven.png",
+     "titulo": "Inflación implícita",
+     "bajada": "La inflación a la que una LECAP y un CER del mismo plazo rinden lo mismo. Cada CER se compara contra la curva de tasa fija interpolada a su misma duration, no contra la LECAP más cercana."
+    },
+    {
+     "archivo": "tamar.png",
+     "titulo": "Curva TAMAR",
+     "bajada": "Incluye la pata TAMAR de los duales y la TAMAR spot de bancos privados que publica el BCRA."
+    },
+    {
+     "archivo": "dl.png",
+     "titulo": "Curva dólar linked",
+     "bajada": "Devaluación implícita por vencimiento."
+    },
+    {
+     "archivo": "futuros.png",
+     "titulo": "Futuros de dólar",
+     "bajada": "Precio de cada contrato a la izquierda y, a la derecha, la devaluación acumulada que ese precio implica contra el mayorista. Es una sola curva leída en dos escalas: el porcentaje acumulado es una función lineal del precio, así que como segunda línea sería el mismo dato dibujado dos veces. Los círculos huecos son contratos de volumen fino, donde el ajuste lo pone la cámara y no el mercado."
+    },
+    {
+     "archivo": "subsoberanos.png",
+     "titulo": "Subsoberanos en CCL",
+     "bajada": "Provinciales y municipales, valuados en la misma punta en que los muestra el monitor."
+    }
+   ],
+   "pdfs": [],
+   "reconstruida": true
+  },
+  {
+   "fecha": "2026-07-31",
+   "graficos": [
+    {
+     "archivo": "globales_bonares.png",
+     "titulo": "Globales vs Bonares",
+     "bajada": "Curva en dólares por legislación, con las dos patas llevadas a la misma punta antes de restarlas, como hace la solapa Glob vs Bon. Mezclar MEP con CCL mueve el spread entre 79 y 279 puntos básicos según el par."
+    },
+    {
+     "archivo": "lecaps_tem.png",
+     "titulo": "LECAPs en TEM",
+     "bajada": "Tasa efectiva mensual de la curva de tasa fija en pesos."
+    },
+    {
+     "archivo": "cer.png",
+     "titulo": "Curva CER",
+     "bajada": "Rendimiento real, CER más un spread. Cada dual entra con su pata CER, pedida a 1816 por separado y con su propia duration."
+    },
+    {
+     "archivo": "lecaps_cer.png",
+     "titulo": "LECAPs contra CER",
+     "bajada": "Las dos curvas en TEA nominal sobre el tramo que comparten: los CER llevados a nominal con la inflación publicada de los últimos tres meses."
+    },
+    {
+     "archivo": "breakeven.png",
+     "titulo": "Inflación implícita",
+     "bajada": "La inflación a la que una LECAP y un CER del mismo plazo rinden lo mismo. Cada CER se compara contra la curva de tasa fija interpolada a su misma duration, no contra la LECAP más cercana."
+    },
+    {
+     "archivo": "tamar.png",
+     "titulo": "Curva TAMAR",
+     "bajada": "Incluye la pata TAMAR de los duales y la TAMAR spot de bancos privados que publica el BCRA."
+    },
+    {
+     "archivo": "dl.png",
+     "titulo": "Curva dólar linked",
+     "bajada": "Devaluación implícita por vencimiento."
+    },
+    {
+     "archivo": "futuros.png",
+     "titulo": "Futuros de dólar",
+     "bajada": "Precio de cada contrato a la izquierda y, a la derecha, la devaluación acumulada que ese precio implica contra el mayorista. Es una sola curva leída en dos escalas: el porcentaje acumulado es una función lineal del precio, así que como segunda línea sería el mismo dato dibujado dos veces. Los círculos huecos son contratos de volumen fino, donde el ajuste lo pone la cámara y no el mercado."
+    },
+    {
+     "archivo": "subsoberanos.png",
+     "titulo": "Subsoberanos en CCL",
+     "bajada": "Provinciales y municipales, valuados en la misma punta en que los muestra el monitor."
+    }
+   ],
+   "pdfs": [],
+   "reconstruida": true
+  },
+  {
+   "fecha": "2026-07-24",
+   "graficos": [
+    {
+     "archivo": "globales_bonares.png",
+     "titulo": "Globales vs Bonares",
+     "bajada": "Curva en dólares por legislación, con las dos patas llevadas a la misma punta antes de restarlas, como hace la solapa Glob vs Bon. Mezclar MEP con CCL mueve el spread entre 79 y 279 puntos básicos según el par."
+    },
+    {
+     "archivo": "lecaps_tem.png",
+     "titulo": "LECAPs en TEM",
+     "bajada": "Tasa efectiva mensual de la curva de tasa fija en pesos."
+    },
+    {
+     "archivo": "cer.png",
+     "titulo": "Curva CER",
+     "bajada": "Rendimiento real, CER más un spread. Cada dual entra con su pata CER, pedida a 1816 por separado y con su propia duration."
+    },
+    {
+     "archivo": "lecaps_cer.png",
+     "titulo": "LECAPs contra CER",
+     "bajada": "Las dos curvas en TEA nominal sobre el tramo que comparten: los CER llevados a nominal con la inflación publicada de los últimos tres meses."
+    },
+    {
+     "archivo": "breakeven.png",
+     "titulo": "Inflación implícita",
+     "bajada": "La inflación a la que una LECAP y un CER del mismo plazo rinden lo mismo. Cada CER se compara contra la curva de tasa fija interpolada a su misma duration, no contra la LECAP más cercana."
+    },
+    {
+     "archivo": "tamar.png",
+     "titulo": "Curva TAMAR",
+     "bajada": "Incluye la pata TAMAR de los duales y la TAMAR spot de bancos privados que publica el BCRA."
+    },
+    {
+     "archivo": "dl.png",
+     "titulo": "Curva dólar linked",
+     "bajada": "Devaluación implícita por vencimiento."
+    },
+    {
+     "archivo": "futuros.png",
+     "titulo": "Futuros de dólar",
+     "bajada": "Precio de cada contrato a la izquierda y, a la derecha, la devaluación acumulada que ese precio implica contra el mayorista. Es una sola curva leída en dos escalas: el porcentaje acumulado es una función lineal del precio, así que como segunda línea sería el mismo dato dibujado dos veces. Los círculos huecos son contratos de volumen fino, donde el ajuste lo pone la cámara y no el mercado."
+    },
+    {
+     "archivo": "subsoberanos.png",
+     "titulo": "Subsoberanos en CCL",
+     "bajada": "Provinciales y municipales, valuados en la misma punta en que los muestra el monitor."
+    }
+   ],
+   "pdfs": [],
+   "reconstruida": true
+  },
+  {
+   "fecha": "2026-07-17",
+   "graficos": [
+    {
+     "archivo": "globales_bonares.png",
+     "titulo": "Globales vs Bonares",
+     "bajada": "Curva en dólares por legislación, con las dos patas llevadas a la misma punta antes de restarlas, como hace la solapa Glob vs Bon. Mezclar MEP con CCL mueve el spread entre 79 y 279 puntos básicos según el par."
+    },
+    {
+     "archivo": "lecaps_tem.png",
+     "titulo": "LECAPs en TEM",
+     "bajada": "Tasa efectiva mensual de la curva de tasa fija en pesos."
+    },
+    {
+     "archivo": "cer.png",
+     "titulo": "Curva CER",
+     "bajada": "Rendimiento real, CER más un spread. Cada dual entra con su pata CER, pedida a 1816 por separado y con su propia duration."
+    },
+    {
+     "archivo": "lecaps_cer.png",
+     "titulo": "LECAPs contra CER",
+     "bajada": "Las dos curvas en TEA nominal sobre el tramo que comparten: los CER llevados a nominal con la inflación publicada de los últimos tres meses."
+    },
+    {
+     "archivo": "breakeven.png",
+     "titulo": "Inflación implícita",
+     "bajada": "La inflación a la que una LECAP y un CER del mismo plazo rinden lo mismo. Cada CER se compara contra la curva de tasa fija interpolada a su misma duration, no contra la LECAP más cercana."
+    },
+    {
+     "archivo": "tamar.png",
+     "titulo": "Curva TAMAR",
+     "bajada": "Incluye la pata TAMAR de los duales y la TAMAR spot de bancos privados que publica el BCRA."
+    },
+    {
+     "archivo": "dl.png",
+     "titulo": "Curva dólar linked",
+     "bajada": "Devaluación implícita por vencimiento."
+    },
+    {
+     "archivo": "futuros.png",
+     "titulo": "Futuros de dólar",
+     "bajada": "Precio de cada contrato a la izquierda y, a la derecha, la devaluación acumulada que ese precio implica contra el mayorista. Es una sola curva leída en dos escalas: el porcentaje acumulado es una función lineal del precio, así que como segunda línea sería el mismo dato dibujado dos veces. Los círculos huecos son contratos de volumen fino, donde el ajuste lo pone la cámara y no el mercado."
+    },
+    {
+     "archivo": "subsoberanos.png",
+     "titulo": "Subsoberanos en CCL",
+     "bajada": "Provinciales y municipales, valuados en la misma punta en que los muestra el monitor."
+    }
+   ],
+   "pdfs": [],
+   "reconstruida": true
+  },
+  {
+   "fecha": "2026-07-10",
+   "graficos": [
+    {
+     "archivo": "globales_bonares.png",
+     "titulo": "Globales vs Bonares",
+     "bajada": "Curva en dólares por legislación, con las dos patas llevadas a la misma punta antes de restarlas, como hace la solapa Glob vs Bon. Mezclar MEP con CCL mueve el spread entre 79 y 279 puntos básicos según el par."
+    },
+    {
+     "archivo": "lecaps_tem.png",
+     "titulo": "LECAPs en TEM",
+     "bajada": "Tasa efectiva mensual de la curva de tasa fija en pesos."
+    },
+    {
+     "archivo": "cer.png",
+     "titulo": "Curva CER",
+     "bajada": "Rendimiento real, CER más un spread. Cada dual entra con su pata CER, pedida a 1816 por separado y con su propia duration."
+    },
+    {
+     "archivo": "lecaps_cer.png",
+     "titulo": "LECAPs contra CER",
+     "bajada": "Las dos curvas en TEA nominal sobre el tramo que comparten: los CER llevados a nominal con la inflación publicada de los últimos tres meses."
+    },
+    {
+     "archivo": "breakeven.png",
+     "titulo": "Inflación implícita",
+     "bajada": "La inflación a la que una LECAP y un CER del mismo plazo rinden lo mismo. Cada CER se compara contra la curva de tasa fija interpolada a su misma duration, no contra la LECAP más cercana."
+    },
+    {
+     "archivo": "tamar.png",
+     "titulo": "Curva TAMAR",
+     "bajada": "Incluye la pata TAMAR de los duales y la TAMAR spot de bancos privados que publica el BCRA."
+    },
+    {
+     "archivo": "dl.png",
+     "titulo": "Curva dólar linked",
+     "bajada": "Devaluación implícita por vencimiento."
+    },
+    {
+     "archivo": "futuros.png",
+     "titulo": "Futuros de dólar",
+     "bajada": "Precio de cada contrato a la izquierda y, a la derecha, la devaluación acumulada que ese precio implica contra el mayorista. Es una sola curva leída en dos escalas: el porcentaje acumulado es una función lineal del precio, así que como segunda línea sería el mismo dato dibujado dos veces. Los círculos huecos son contratos de volumen fino, donde el ajuste lo pone la cámara y no el mercado."
+    },
+    {
+     "archivo": "subsoberanos.png",
+     "titulo": "Subsoberanos en CCL",
+     "bajada": "Provinciales y municipales, valuados en la misma punta en que los muestra el monitor."
+    }
+   ],
+   "pdfs": [],
+   "reconstruida": true
+  },
+  {
+   "fecha": "2026-07-03",
+   "graficos": [
+    {
+     "archivo": "globales_bonares.png",
+     "titulo": "Globales vs Bonares",
+     "bajada": "Curva en dólares por legislación, con las dos patas llevadas a la misma punta antes de restarlas, como hace la solapa Glob vs Bon. Mezclar MEP con CCL mueve el spread entre 79 y 279 puntos básicos según el par."
+    },
+    {
+     "archivo": "lecaps_tem.png",
+     "titulo": "LECAPs en TEM",
+     "bajada": "Tasa efectiva mensual de la curva de tasa fija en pesos."
+    },
+    {
+     "archivo": "cer.png",
+     "titulo": "Curva CER",
+     "bajada": "Rendimiento real, CER más un spread. Cada dual entra con su pata CER, pedida a 1816 por separado y con su propia duration."
+    },
+    {
+     "archivo": "lecaps_cer.png",
+     "titulo": "LECAPs contra CER",
+     "bajada": "Las dos curvas en TEA nominal sobre el tramo que comparten: los CER llevados a nominal con la inflación publicada de los últimos tres meses."
+    },
+    {
+     "archivo": "breakeven.png",
+     "titulo": "Inflación implícita",
+     "bajada": "La inflación a la que una LECAP y un CER del mismo plazo rinden lo mismo. Cada CER se compara contra la curva de tasa fija interpolada a su misma duration, no contra la LECAP más cercana."
+    },
+    {
+     "archivo": "tamar.png",
+     "titulo": "Curva TAMAR",
+     "bajada": "Incluye la pata TAMAR de los duales y la TAMAR spot de bancos privados que publica el BCRA."
+    },
+    {
+     "archivo": "dl.png",
+     "titulo": "Curva dólar linked",
+     "bajada": "Devaluación implícita por vencimiento."
+    },
+    {
+     "archivo": "futuros.png",
+     "titulo": "Futuros de dólar",
+     "bajada": "Precio de cada contrato a la izquierda y, a la derecha, la devaluación acumulada que ese precio implica contra el mayorista. Es una sola curva leída en dos escalas: el porcentaje acumulado es una función lineal del precio, así que como segunda línea sería el mismo dato dibujado dos veces. Los círculos huecos son contratos de volumen fino, donde el ajuste lo pone la cámara y no el mercado."
+    },
+    {
+     "archivo": "subsoberanos.png",
+     "titulo": "Subsoberanos en CCL",
+     "bajada": "Provinciales y municipales, valuados en la misma punta en que los muestra el monitor."
+    }
+   ],
+   "pdfs": [],
+   "reconstruida": true
+  },
+  {
+   "fecha": "2026-06-26",
+   "graficos": [
+    {
+     "archivo": "globales_bonares.png",
+     "titulo": "Globales vs Bonares",
+     "bajada": "Curva en dólares por legislación, con las dos patas llevadas a la misma punta antes de restarlas, como hace la solapa Glob vs Bon. Mezclar MEP con CCL mueve el spread entre 79 y 279 puntos básicos según el par."
+    },
+    {
+     "archivo": "lecaps_tem.png",
+     "titulo": "LECAPs en TEM",
+     "bajada": "Tasa efectiva mensual de la curva de tasa fija en pesos."
+    },
+    {
+     "archivo": "cer.png",
+     "titulo": "Curva CER",
+     "bajada": "Rendimiento real, CER más un spread. Cada dual entra con su pata CER, pedida a 1816 por separado y con su propia duration."
+    },
+    {
+     "archivo": "lecaps_cer.png",
+     "titulo": "LECAPs contra CER",
+     "bajada": "Las dos curvas en TEA nominal sobre el tramo que comparten: los CER llevados a nominal con la inflación publicada de los últimos tres meses."
+    },
+    {
+     "archivo": "breakeven.png",
+     "titulo": "Inflación implícita",
+     "bajada": "La inflación a la que una LECAP y un CER del mismo plazo rinden lo mismo. Cada CER se compara contra la curva de tasa fija interpolada a su misma duration, no contra la LECAP más cercana."
+    },
+    {
+     "archivo": "tamar.png",
+     "titulo": "Curva TAMAR",
+     "bajada": "Incluye la pata TAMAR de los duales y la TAMAR spot de bancos privados que publica el BCRA."
+    },
+    {
+     "archivo": "dl.png",
+     "titulo": "Curva dólar linked",
+     "bajada": "Devaluación implícita por vencimiento."
+    },
+    {
+     "archivo": "futuros.png",
+     "titulo": "Futuros de dólar",
+     "bajada": "Precio de cada contrato a la izquierda y, a la derecha, la devaluación acumulada que ese precio implica contra el mayorista. Es una sola curva leída en dos escalas: el porcentaje acumulado es una función lineal del precio, así que como segunda línea sería el mismo dato dibujado dos veces. Los círculos huecos son contratos de volumen fino, donde el ajuste lo pone la cámara y no el mercado."
+    },
+    {
+     "archivo": "subsoberanos.png",
+     "titulo": "Subsoberanos en CCL",
+     "bajada": "Provinciales y municipales, valuados en la misma punta en que los muestra el monitor."
+    }
+   ],
+   "pdfs": [],
+   "reconstruida": true
+  },
+  {
+   "fecha": "2026-06-19",
+   "graficos": [
+    {
+     "archivo": "globales_bonares.png",
+     "titulo": "Globales vs Bonares",
+     "bajada": "Curva en dólares por legislación, con las dos patas llevadas a la misma punta antes de restarlas, como hace la solapa Glob vs Bon. Mezclar MEP con CCL mueve el spread entre 79 y 279 puntos básicos según el par."
+    },
+    {
+     "archivo": "lecaps_tem.png",
+     "titulo": "LECAPs en TEM",
+     "bajada": "Tasa efectiva mensual de la curva de tasa fija en pesos."
+    },
+    {
+     "archivo": "cer.png",
+     "titulo": "Curva CER",
+     "bajada": "Rendimiento real, CER más un spread. Cada dual entra con su pata CER, pedida a 1816 por separado y con su propia duration."
+    },
+    {
+     "archivo": "lecaps_cer.png",
+     "titulo": "LECAPs contra CER",
+     "bajada": "Las dos curvas en TEA nominal sobre el tramo que comparten: los CER llevados a nominal con la inflación publicada de los últimos tres meses."
+    },
+    {
+     "archivo": "breakeven.png",
+     "titulo": "Inflación implícita",
+     "bajada": "La inflación a la que una LECAP y un CER del mismo plazo rinden lo mismo. Cada CER se compara contra la curva de tasa fija interpolada a su misma duration, no contra la LECAP más cercana."
+    },
+    {
+     "archivo": "tamar.png",
+     "titulo": "Curva TAMAR",
+     "bajada": "Incluye la pata TAMAR de los duales y la TAMAR spot de bancos privados que publica el BCRA."
+    },
+    {
+     "archivo": "dl.png",
+     "titulo": "Curva dólar linked",
+     "bajada": "Devaluación implícita por vencimiento."
+    },
+    {
+     "archivo": "futuros.png",
+     "titulo": "Futuros de dólar",
+     "bajada": "Precio de cada contrato a la izquierda y, a la derecha, la devaluación acumulada que ese precio implica contra el mayorista. Es una sola curva leída en dos escalas: el porcentaje acumulado es una función lineal del precio, así que como segunda línea sería el mismo dato dibujado dos veces. Los círculos huecos son contratos de volumen fino, donde el ajuste lo pone la cámara y no el mercado."
+    },
+    {
+     "archivo": "subsoberanos.png",
+     "titulo": "Subsoberanos en CCL",
+     "bajada": "Provinciales y municipales, valuados en la misma punta en que los muestra el monitor."
+    }
+   ],
+   "pdfs": [],
+   "reconstruida": true
+  },
+  {
+   "fecha": "2026-06-12",
+   "graficos": [
+    {
+     "archivo": "globales_bonares.png",
+     "titulo": "Globales vs Bonares",
+     "bajada": "Curva en dólares por legislación, con las dos patas llevadas a la misma punta antes de restarlas, como hace la solapa Glob vs Bon. Mezclar MEP con CCL mueve el spread entre 79 y 279 puntos básicos según el par."
+    },
+    {
+     "archivo": "lecaps_tem.png",
+     "titulo": "LECAPs en TEM",
+     "bajada": "Tasa efectiva mensual de la curva de tasa fija en pesos."
+    },
+    {
+     "archivo": "cer.png",
+     "titulo": "Curva CER",
+     "bajada": "Rendimiento real, CER más un spread. Cada dual entra con su pata CER, pedida a 1816 por separado y con su propia duration."
+    },
+    {
+     "archivo": "lecaps_cer.png",
+     "titulo": "LECAPs contra CER",
+     "bajada": "Las dos curvas en TEA nominal sobre el tramo que comparten: los CER llevados a nominal con la inflación publicada de los últimos tres meses."
+    },
+    {
+     "archivo": "breakeven.png",
+     "titulo": "Inflación implícita",
+     "bajada": "La inflación a la que una LECAP y un CER del mismo plazo rinden lo mismo. Cada CER se compara contra la curva de tasa fija interpolada a su misma duration, no contra la LECAP más cercana."
+    },
+    {
+     "archivo": "tamar.png",
+     "titulo": "Curva TAMAR",
+     "bajada": "Incluye la pata TAMAR de los duales y la TAMAR spot de bancos privados que publica el BCRA."
+    },
+    {
+     "archivo": "dl.png",
+     "titulo": "Curva dólar linked",
+     "bajada": "Devaluación implícita por vencimiento."
+    },
+    {
+     "archivo": "futuros.png",
+     "titulo": "Futuros de dólar",
+     "bajada": "Precio de cada contrato a la izquierda y, a la derecha, la devaluación acumulada que ese precio implica contra el mayorista. Es una sola curva leída en dos escalas: el porcentaje acumulado es una función lineal del precio, así que como segunda línea sería el mismo dato dibujado dos veces. Los círculos huecos son contratos de volumen fino, donde el ajuste lo pone la cámara y no el mercado."
+    },
+    {
+     "archivo": "subsoberanos.png",
+     "titulo": "Subsoberanos en CCL",
+     "bajada": "Provinciales y municipales, valuados en la misma punta en que los muestra el monitor."
+    }
+   ],
+   "pdfs": [],
+   "reconstruida": true
+  },
+  {
+   "fecha": "2026-06-05",
+   "graficos": [
+    {
+     "archivo": "globales_bonares.png",
+     "titulo": "Globales vs Bonares",
+     "bajada": "Curva en dólares por legislación, con las dos patas llevadas a la misma punta antes de restarlas, como hace la solapa Glob vs Bon. Mezclar MEP con CCL mueve el spread entre 79 y 279 puntos básicos según el par."
+    },
+    {
+     "archivo": "lecaps_tem.png",
+     "titulo": "LECAPs en TEM",
+     "bajada": "Tasa efectiva mensual de la curva de tasa fija en pesos."
+    },
+    {
+     "archivo": "cer.png",
+     "titulo": "Curva CER",
+     "bajada": "Rendimiento real, CER más un spread. Cada dual entra con su pata CER, pedida a 1816 por separado y con su propia duration."
+    },
+    {
+     "archivo": "lecaps_cer.png",
+     "titulo": "LECAPs contra CER",
+     "bajada": "Las dos curvas en TEA nominal sobre el tramo que comparten: los CER llevados a nominal con la inflación publicada de los últimos tres meses."
+    },
+    {
+     "archivo": "breakeven.png",
+     "titulo": "Inflación implícita",
+     "bajada": "La inflación a la que una LECAP y un CER del mismo plazo rinden lo mismo. Cada CER se compara contra la curva de tasa fija interpolada a su misma duration, no contra la LECAP más cercana."
+    },
+    {
+     "archivo": "tamar.png",
+     "titulo": "Curva TAMAR",
+     "bajada": "Incluye la pata TAMAR de los duales y la TAMAR spot de bancos privados que publica el BCRA."
+    },
+    {
+     "archivo": "dl.png",
+     "titulo": "Curva dólar linked",
+     "bajada": "Devaluación implícita por vencimiento."
+    },
+    {
+     "archivo": "futuros.png",
+     "titulo": "Futuros de dólar",
+     "bajada": "Precio de cada contrato a la izquierda y, a la derecha, la devaluación acumulada que ese precio implica contra el mayorista. Es una sola curva leída en dos escalas: el porcentaje acumulado es una función lineal del precio, así que como segunda línea sería el mismo dato dibujado dos veces. Los círculos huecos son contratos de volumen fino, donde el ajuste lo pone la cámara y no el mercado."
+    },
+    {
+     "archivo": "subsoberanos.png",
+     "titulo": "Subsoberanos en CCL",
+     "bajada": "Provinciales y municipales, valuados en la misma punta en que los muestra el monitor."
+    }
+   ],
+   "pdfs": [],
+   "reconstruida": true
+  },
+  {
+   "fecha": "2026-05-29",
+   "graficos": [
+    {
+     "archivo": "globales_bonares.png",
+     "titulo": "Globales vs Bonares",
+     "bajada": "Curva en dólares por legislación, con las dos patas llevadas a la misma punta antes de restarlas, como hace la solapa Glob vs Bon. Mezclar MEP con CCL mueve el spread entre 79 y 279 puntos básicos según el par."
+    },
+    {
+     "archivo": "lecaps_tem.png",
+     "titulo": "LECAPs en TEM",
+     "bajada": "Tasa efectiva mensual de la curva de tasa fija en pesos."
+    },
+    {
+     "archivo": "cer.png",
+     "titulo": "Curva CER",
+     "bajada": "Rendimiento real, CER más un spread. Cada dual entra con su pata CER, pedida a 1816 por separado y con su propia duration."
+    },
+    {
+     "archivo": "lecaps_cer.png",
+     "titulo": "LECAPs contra CER",
+     "bajada": "Las dos curvas en TEA nominal sobre el tramo que comparten: los CER llevados a nominal con la inflación publicada de los últimos tres meses."
+    },
+    {
+     "archivo": "breakeven.png",
+     "titulo": "Inflación implícita",
+     "bajada": "La inflación a la que una LECAP y un CER del mismo plazo rinden lo mismo. Cada CER se compara contra la curva de tasa fija interpolada a su misma duration, no contra la LECAP más cercana."
+    },
+    {
+     "archivo": "tamar.png",
+     "titulo": "Curva TAMAR",
+     "bajada": "Incluye la pata TAMAR de los duales y la TAMAR spot de bancos privados que publica el BCRA."
+    },
+    {
+     "archivo": "dl.png",
+     "titulo": "Curva dólar linked",
+     "bajada": "Devaluación implícita por vencimiento."
+    },
+    {
+     "archivo": "futuros.png",
+     "titulo": "Futuros de dólar",
+     "bajada": "Precio de cada contrato a la izquierda y, a la derecha, la devaluación acumulada que ese precio implica contra el mayorista. Es una sola curva leída en dos escalas: el porcentaje acumulado es una función lineal del precio, así que como segunda línea sería el mismo dato dibujado dos veces. Los círculos huecos son contratos de volumen fino, donde el ajuste lo pone la cámara y no el mercado."
+    },
+    {
+     "archivo": "subsoberanos.png",
+     "titulo": "Subsoberanos en CCL",
+     "bajada": "Provinciales y municipales, valuados en la misma punta en que los muestra el monitor."
+    }
+   ],
+   "pdfs": [],
+   "reconstruida": true
+  },
+  {
+   "fecha": "2026-05-22",
+   "graficos": [
+    {
+     "archivo": "globales_bonares.png",
+     "titulo": "Globales vs Bonares",
+     "bajada": "Curva en dólares por legislación, con las dos patas llevadas a la misma punta antes de restarlas, como hace la solapa Glob vs Bon. Mezclar MEP con CCL mueve el spread entre 79 y 279 puntos básicos según el par."
+    },
+    {
+     "archivo": "lecaps_tem.png",
+     "titulo": "LECAPs en TEM",
+     "bajada": "Tasa efectiva mensual de la curva de tasa fija en pesos."
+    },
+    {
+     "archivo": "cer.png",
+     "titulo": "Curva CER",
+     "bajada": "Rendimiento real, CER más un spread. Cada dual entra con su pata CER, pedida a 1816 por separado y con su propia duration."
+    },
+    {
+     "archivo": "lecaps_cer.png",
+     "titulo": "LECAPs contra CER",
+     "bajada": "Las dos curvas en TEA nominal sobre el tramo que comparten: los CER llevados a nominal con la inflación publicada de los últimos tres meses."
+    },
+    {
+     "archivo": "breakeven.png",
+     "titulo": "Inflación implícita",
+     "bajada": "La inflación a la que una LECAP y un CER del mismo plazo rinden lo mismo. Cada CER se compara contra la curva de tasa fija interpolada a su misma duration, no contra la LECAP más cercana."
+    },
+    {
+     "archivo": "tamar.png",
+     "titulo": "Curva TAMAR",
+     "bajada": "Incluye la pata TAMAR de los duales y la TAMAR spot de bancos privados que publica el BCRA."
+    },
+    {
+     "archivo": "dl.png",
+     "titulo": "Curva dólar linked",
+     "bajada": "Devaluación implícita por vencimiento."
+    },
+    {
+     "archivo": "futuros.png",
+     "titulo": "Futuros de dólar",
+     "bajada": "Precio de cada contrato a la izquierda y, a la derecha, la devaluación acumulada que ese precio implica contra el mayorista. Es una sola curva leída en dos escalas: el porcentaje acumulado es una función lineal del precio, así que como segunda línea sería el mismo dato dibujado dos veces. Los círculos huecos son contratos de volumen fino, donde el ajuste lo pone la cámara y no el mercado."
+    },
+    {
+     "archivo": "subsoberanos.png",
+     "titulo": "Subsoberanos en CCL",
+     "bajada": "Provinciales y municipales, valuados en la misma punta en que los muestra el monitor."
+    }
+   ],
+   "pdfs": [],
+   "reconstruida": true
+  },
+  {
+   "fecha": "2026-05-15",
+   "graficos": [
+    {
+     "archivo": "globales_bonares.png",
+     "titulo": "Globales vs Bonares",
+     "bajada": "Curva en dólares por legislación, con las dos patas llevadas a la misma punta antes de restarlas, como hace la solapa Glob vs Bon. Mezclar MEP con CCL mueve el spread entre 79 y 279 puntos básicos según el par."
+    },
+    {
+     "archivo": "lecaps_tem.png",
+     "titulo": "LECAPs en TEM",
+     "bajada": "Tasa efectiva mensual de la curva de tasa fija en pesos."
+    },
+    {
+     "archivo": "cer.png",
+     "titulo": "Curva CER",
+     "bajada": "Rendimiento real, CER más un spread. Cada dual entra con su pata CER, pedida a 1816 por separado y con su propia duration."
+    },
+    {
+     "archivo": "lecaps_cer.png",
+     "titulo": "LECAPs contra CER",
+     "bajada": "Las dos curvas en TEA nominal sobre el tramo que comparten: los CER llevados a nominal con la inflación publicada de los últimos tres meses."
+    },
+    {
+     "archivo": "breakeven.png",
+     "titulo": "Inflación implícita",
+     "bajada": "La inflación a la que una LECAP y un CER del mismo plazo rinden lo mismo. Cada CER se compara contra la curva de tasa fija interpolada a su misma duration, no contra la LECAP más cercana."
+    },
+    {
+     "archivo": "tamar.png",
+     "titulo": "Curva TAMAR",
+     "bajada": "Incluye la pata TAMAR de los duales y la TAMAR spot de bancos privados que publica el BCRA."
+    },
+    {
+     "archivo": "dl.png",
+     "titulo": "Curva dólar linked",
+     "bajada": "Devaluación implícita por vencimiento."
+    },
+    {
+     "archivo": "futuros.png",
+     "titulo": "Futuros de dólar",
+     "bajada": "Precio de cada contrato a la izquierda y, a la derecha, la devaluación acumulada que ese precio implica contra el mayorista. Es una sola curva leída en dos escalas: el porcentaje acumulado es una función lineal del precio, así que como segunda línea sería el mismo dato dibujado dos veces. Los círculos huecos son contratos de volumen fino, donde el ajuste lo pone la cámara y no el mercado."
+    },
+    {
+     "archivo": "subsoberanos.png",
+     "titulo": "Subsoberanos en CCL",
+     "bajada": "Provinciales y municipales, valuados en la misma punta en que los muestra el monitor."
+    }
+   ],
+   "pdfs": [],
+   "reconstruida": true
+  },
+  {
+   "fecha": "2026-05-08",
+   "graficos": [
+    {
+     "archivo": "globales_bonares.png",
+     "titulo": "Globales vs Bonares",
+     "bajada": "Curva en dólares por legislación, con las dos patas llevadas a la misma punta antes de restarlas, como hace la solapa Glob vs Bon. Mezclar MEP con CCL mueve el spread entre 79 y 279 puntos básicos según el par."
+    },
+    {
+     "archivo": "lecaps_tem.png",
+     "titulo": "LECAPs en TEM",
+     "bajada": "Tasa efectiva mensual de la curva de tasa fija en pesos."
+    },
+    {
+     "archivo": "cer.png",
+     "titulo": "Curva CER",
+     "bajada": "Rendimiento real, CER más un spread. Cada dual entra con su pata CER, pedida a 1816 por separado y con su propia duration."
+    },
+    {
+     "archivo": "lecaps_cer.png",
+     "titulo": "LECAPs contra CER",
+     "bajada": "Las dos curvas en TEA nominal sobre el tramo que comparten: los CER llevados a nominal con la inflación publicada de los últimos tres meses."
+    },
+    {
+     "archivo": "breakeven.png",
+     "titulo": "Inflación implícita",
+     "bajada": "La inflación a la que una LECAP y un CER del mismo plazo rinden lo mismo. Cada CER se compara contra la curva de tasa fija interpolada a su misma duration, no contra la LECAP más cercana."
+    },
+    {
+     "archivo": "tamar.png",
+     "titulo": "Curva TAMAR",
+     "bajada": "Incluye la pata TAMAR de los duales y la TAMAR spot de bancos privados que publica el BCRA."
+    },
+    {
+     "archivo": "dl.png",
+     "titulo": "Curva dólar linked",
+     "bajada": "Devaluación implícita por vencimiento."
+    },
+    {
+     "archivo": "futuros.png",
+     "titulo": "Futuros de dólar",
+     "bajada": "Precio de cada contrato a la izquierda y, a la derecha, la devaluación acumulada que ese precio implica contra el mayorista. Es una sola curva leída en dos escalas: el porcentaje acumulado es una función lineal del precio, así que como segunda línea sería el mismo dato dibujado dos veces. Los círculos huecos son contratos de volumen fino, donde el ajuste lo pone la cámara y no el mercado."
+    },
+    {
+     "archivo": "subsoberanos.png",
+     "titulo": "Subsoberanos en CCL",
+     "bajada": "Provinciales y municipales, valuados en la misma punta en que los muestra el monitor."
+    }
+   ],
+   "pdfs": [],
+   "reconstruida": true
+  },
+  {
+   "fecha": "2026-04-30",
+   "graficos": [
+    {
+     "archivo": "globales_bonares.png",
+     "titulo": "Globales vs Bonares",
+     "bajada": "Curva en dólares por legislación, con las dos patas llevadas a la misma punta antes de restarlas, como hace la solapa Glob vs Bon. Mezclar MEP con CCL mueve el spread entre 79 y 279 puntos básicos según el par."
+    },
+    {
+     "archivo": "lecaps_tem.png",
+     "titulo": "LECAPs en TEM",
+     "bajada": "Tasa efectiva mensual de la curva de tasa fija en pesos."
+    },
+    {
+     "archivo": "cer.png",
+     "titulo": "Curva CER",
+     "bajada": "Rendimiento real, CER más un spread. Cada dual entra con su pata CER, pedida a 1816 por separado y con su propia duration."
+    },
+    {
+     "archivo": "lecaps_cer.png",
+     "titulo": "LECAPs contra CER",
+     "bajada": "Las dos curvas en TEA nominal sobre el tramo que comparten: los CER llevados a nominal con la inflación publicada de los últimos tres meses."
+    },
+    {
+     "archivo": "breakeven.png",
+     "titulo": "Inflación implícita",
+     "bajada": "La inflación a la que una LECAP y un CER del mismo plazo rinden lo mismo. Cada CER se compara contra la curva de tasa fija interpolada a su misma duration, no contra la LECAP más cercana."
+    },
+    {
+     "archivo": "tamar.png",
+     "titulo": "Curva TAMAR",
+     "bajada": "Incluye la pata TAMAR de los duales y la TAMAR spot de bancos privados que publica el BCRA."
+    },
+    {
+     "archivo": "dl.png",
+     "titulo": "Curva dólar linked",
+     "bajada": "Devaluación implícita por vencimiento."
+    },
+    {
+     "archivo": "futuros.png",
+     "titulo": "Futuros de dólar",
+     "bajada": "Precio de cada contrato a la izquierda y, a la derecha, la devaluación acumulada que ese precio implica contra el mayorista. Es una sola curva leída en dos escalas: el porcentaje acumulado es una función lineal del precio, así que como segunda línea sería el mismo dato dibujado dos veces. Los círculos huecos son contratos de volumen fino, donde el ajuste lo pone la cámara y no el mercado."
+    },
+    {
+     "archivo": "subsoberanos.png",
+     "titulo": "Subsoberanos en CCL",
+     "bajada": "Provinciales y municipales, valuados en la misma punta en que los muestra el monitor."
+    }
+   ],
+   "pdfs": [],
+   "reconstruida": true
+  },
+  {
+   "fecha": "2026-04-24",
+   "graficos": [
+    {
+     "archivo": "globales_bonares.png",
+     "titulo": "Globales vs Bonares",
+     "bajada": "Curva en dólares por legislación, con las dos patas llevadas a la misma punta antes de restarlas, como hace la solapa Glob vs Bon. Mezclar MEP con CCL mueve el spread entre 79 y 279 puntos básicos según el par."
+    },
+    {
+     "archivo": "lecaps_tem.png",
+     "titulo": "LECAPs en TEM",
+     "bajada": "Tasa efectiva mensual de la curva de tasa fija en pesos."
+    },
+    {
+     "archivo": "cer.png",
+     "titulo": "Curva CER",
+     "bajada": "Rendimiento real, CER más un spread. Cada dual entra con su pata CER, pedida a 1816 por separado y con su propia duration."
+    },
+    {
+     "archivo": "lecaps_cer.png",
+     "titulo": "LECAPs contra CER",
+     "bajada": "Las dos curvas en TEA nominal sobre el tramo que comparten: los CER llevados a nominal con la inflación publicada de los últimos tres meses."
+    },
+    {
+     "archivo": "breakeven.png",
+     "titulo": "Inflación implícita",
+     "bajada": "La inflación a la que una LECAP y un CER del mismo plazo rinden lo mismo. Cada CER se compara contra la curva de tasa fija interpolada a su misma duration, no contra la LECAP más cercana."
+    },
+    {
+     "archivo": "tamar.png",
+     "titulo": "Curva TAMAR",
+     "bajada": "Incluye la pata TAMAR de los duales y la TAMAR spot de bancos privados que publica el BCRA."
+    },
+    {
+     "archivo": "dl.png",
+     "titulo": "Curva dólar linked",
+     "bajada": "Devaluación implícita por vencimiento."
+    },
+    {
+     "archivo": "futuros.png",
+     "titulo": "Futuros de dólar",
+     "bajada": "Precio de cada contrato a la izquierda y, a la derecha, la devaluación acumulada que ese precio implica contra el mayorista. Es una sola curva leída en dos escalas: el porcentaje acumulado es una función lineal del precio, así que como segunda línea sería el mismo dato dibujado dos veces. Los círculos huecos son contratos de volumen fino, donde el ajuste lo pone la cámara y no el mercado."
+    },
+    {
+     "archivo": "subsoberanos.png",
+     "titulo": "Subsoberanos en CCL",
+     "bajada": "Provinciales y municipales, valuados en la misma punta en que los muestra el monitor."
+    }
+   ],
+   "pdfs": [],
+   "reconstruida": true
+  },
+  {
+   "fecha": "2026-04-17",
+   "graficos": [
+    {
+     "archivo": "globales_bonares.png",
+     "titulo": "Globales vs Bonares",
+     "bajada": "Curva en dólares por legislación, con las dos patas llevadas a la misma punta antes de restarlas, como hace la solapa Glob vs Bon. Mezclar MEP con CCL mueve el spread entre 79 y 279 puntos básicos según el par."
+    },
+    {
+     "archivo": "lecaps_tem.png",
+     "titulo": "LECAPs en TEM",
+     "bajada": "Tasa efectiva mensual de la curva de tasa fija en pesos."
+    },
+    {
+     "archivo": "cer.png",
+     "titulo": "Curva CER",
+     "bajada": "Rendimiento real, CER más un spread. Cada dual entra con su pata CER, pedida a 1816 por separado y con su propia duration."
+    },
+    {
+     "archivo": "lecaps_cer.png",
+     "titulo": "LECAPs contra CER",
+     "bajada": "Las dos curvas en TEA nominal sobre el tramo que comparten: los CER llevados a nominal con la inflación publicada de los últimos tres meses."
+    },
+    {
+     "archivo": "breakeven.png",
+     "titulo": "Inflación implícita",
+     "bajada": "La inflación a la que una LECAP y un CER del mismo plazo rinden lo mismo. Cada CER se compara contra la curva de tasa fija interpolada a su misma duration, no contra la LECAP más cercana."
+    },
+    {
+     "archivo": "tamar.png",
+     "titulo": "Curva TAMAR",
+     "bajada": "Incluye la pata TAMAR de los duales y la TAMAR spot de bancos privados que publica el BCRA."
+    },
+    {
+     "archivo": "dl.png",
+     "titulo": "Curva dólar linked",
+     "bajada": "Devaluación implícita por vencimiento."
+    },
+    {
+     "archivo": "futuros.png",
+     "titulo": "Futuros de dólar",
+     "bajada": "Precio de cada contrato a la izquierda y, a la derecha, la devaluación acumulada que ese precio implica contra el mayorista. Es una sola curva leída en dos escalas: el porcentaje acumulado es una función lineal del precio, así que como segunda línea sería el mismo dato dibujado dos veces. Los círculos huecos son contratos de volumen fino, donde el ajuste lo pone la cámara y no el mercado."
+    },
+    {
+     "archivo": "subsoberanos.png",
+     "titulo": "Subsoberanos en CCL",
+     "bajada": "Provinciales y municipales, valuados en la misma punta en que los muestra el monitor."
+    }
+   ],
+   "pdfs": [],
+   "reconstruida": true
+  },
+  {
+   "fecha": "2026-04-10",
+   "graficos": [
+    {
+     "archivo": "globales_bonares.png",
+     "titulo": "Globales vs Bonares",
+     "bajada": "Curva en dólares por legislación, con las dos patas llevadas a la misma punta antes de restarlas, como hace la solapa Glob vs Bon. Mezclar MEP con CCL mueve el spread entre 79 y 279 puntos básicos según el par."
+    },
+    {
+     "archivo": "lecaps_tem.png",
+     "titulo": "LECAPs en TEM",
+     "bajada": "Tasa efectiva mensual de la curva de tasa fija en pesos."
+    },
+    {
+     "archivo": "cer.png",
+     "titulo": "Curva CER",
+     "bajada": "Rendimiento real, CER más un spread. Cada dual entra con su pata CER, pedida a 1816 por separado y con su propia duration."
+    },
+    {
+     "archivo": "lecaps_cer.png",
+     "titulo": "LECAPs contra CER",
+     "bajada": "Las dos curvas en TEA nominal sobre el tramo que comparten: los CER llevados a nominal con la inflación publicada de los últimos tres meses."
+    },
+    {
+     "archivo": "breakeven.png",
+     "titulo": "Inflación implícita",
+     "bajada": "La inflación a la que una LECAP y un CER del mismo plazo rinden lo mismo. Cada CER se compara contra la curva de tasa fija interpolada a su misma duration, no contra la LECAP más cercana."
+    },
+    {
+     "archivo": "tamar.png",
+     "titulo": "Curva TAMAR",
+     "bajada": "Incluye la pata TAMAR de los duales y la TAMAR spot de bancos privados que publica el BCRA."
+    },
+    {
+     "archivo": "dl.png",
+     "titulo": "Curva dólar linked",
+     "bajada": "Devaluación implícita por vencimiento."
+    },
+    {
+     "archivo": "futuros.png",
+     "titulo": "Futuros de dólar",
+     "bajada": "Precio de cada contrato a la izquierda y, a la derecha, la devaluación acumulada que ese precio implica contra el mayorista. Es una sola curva leída en dos escalas: el porcentaje acumulado es una función lineal del precio, así que como segunda línea sería el mismo dato dibujado dos veces. Los círculos huecos son contratos de volumen fino, donde el ajuste lo pone la cámara y no el mercado."
+    },
+    {
+     "archivo": "subsoberanos.png",
+     "titulo": "Subsoberanos en CCL",
+     "bajada": "Provinciales y municipales, valuados en la misma punta en que los muestra el monitor."
+    }
+   ],
+   "pdfs": [],
+   "reconstruida": true
+  },
+  {
+   "fecha": "2026-04-01",
+   "graficos": [
+    {
+     "archivo": "globales_bonares.png",
+     "titulo": "Globales vs Bonares",
+     "bajada": "Curva en dólares por legislación, con las dos patas llevadas a la misma punta antes de restarlas, como hace la solapa Glob vs Bon. Mezclar MEP con CCL mueve el spread entre 79 y 279 puntos básicos según el par."
+    },
+    {
+     "archivo": "lecaps_tem.png",
+     "titulo": "LECAPs en TEM",
+     "bajada": "Tasa efectiva mensual de la curva de tasa fija en pesos."
+    },
+    {
+     "archivo": "cer.png",
+     "titulo": "Curva CER",
+     "bajada": "Rendimiento real, CER más un spread. Cada dual entra con su pata CER, pedida a 1816 por separado y con su propia duration."
+    },
+    {
+     "archivo": "lecaps_cer.png",
+     "titulo": "LECAPs contra CER",
+     "bajada": "Las dos curvas en TEA nominal sobre el tramo que comparten: los CER llevados a nominal con la inflación publicada de los últimos tres meses."
+    },
+    {
+     "archivo": "breakeven.png",
+     "titulo": "Inflación implícita",
+     "bajada": "La inflación a la que una LECAP y un CER del mismo plazo rinden lo mismo. Cada CER se compara contra la curva de tasa fija interpolada a su misma duration, no contra la LECAP más cercana."
+    },
+    {
+     "archivo": "tamar.png",
+     "titulo": "Curva TAMAR",
+     "bajada": "Incluye la pata TAMAR de los duales y la TAMAR spot de bancos privados que publica el BCRA."
+    },
+    {
+     "archivo": "dl.png",
+     "titulo": "Curva dólar linked",
+     "bajada": "Devaluación implícita por vencimiento."
+    },
+    {
+     "archivo": "futuros.png",
+     "titulo": "Futuros de dólar",
+     "bajada": "Precio de cada contrato a la izquierda y, a la derecha, la devaluación acumulada que ese precio implica contra el mayorista. Es una sola curva leída en dos escalas: el porcentaje acumulado es una función lineal del precio, así que como segunda línea sería el mismo dato dibujado dos veces. Los círculos huecos son contratos de volumen fino, donde el ajuste lo pone la cámara y no el mercado."
+    },
+    {
+     "archivo": "subsoberanos.png",
+     "titulo": "Subsoberanos en CCL",
+     "bajada": "Provinciales y municipales, valuados en la misma punta en que los muestra el monitor."
+    }
+   ],
+   "pdfs": [],
+   "reconstruida": true
+  },
+  {
+   "fecha": "2026-03-27",
+   "graficos": [
+    {
+     "archivo": "globales_bonares.png",
+     "titulo": "Globales vs Bonares",
+     "bajada": "Curva en dólares por legislación, con las dos patas llevadas a la misma punta antes de restarlas, como hace la solapa Glob vs Bon. Mezclar MEP con CCL mueve el spread entre 79 y 279 puntos básicos según el par."
+    },
+    {
+     "archivo": "lecaps_tem.png",
+     "titulo": "LECAPs en TEM",
+     "bajada": "Tasa efectiva mensual de la curva de tasa fija en pesos."
+    },
+    {
+     "archivo": "cer.png",
+     "titulo": "Curva CER",
+     "bajada": "Rendimiento real, CER más un spread. Cada dual entra con su pata CER, pedida a 1816 por separado y con su propia duration."
+    },
+    {
+     "archivo": "lecaps_cer.png",
+     "titulo": "LECAPs contra CER",
+     "bajada": "Las dos curvas en TEA nominal sobre el tramo que comparten: los CER llevados a nominal con la inflación publicada de los últimos tres meses."
+    },
+    {
+     "archivo": "breakeven.png",
+     "titulo": "Inflación implícita",
+     "bajada": "La inflación a la que una LECAP y un CER del mismo plazo rinden lo mismo. Cada CER se compara contra la curva de tasa fija interpolada a su misma duration, no contra la LECAP más cercana."
+    },
+    {
+     "archivo": "tamar.png",
+     "titulo": "Curva TAMAR",
+     "bajada": "Incluye la pata TAMAR de los duales y la TAMAR spot de bancos privados que publica el BCRA."
+    },
+    {
+     "archivo": "dl.png",
+     "titulo": "Curva dólar linked",
+     "bajada": "Devaluación implícita por vencimiento."
+    },
+    {
+     "archivo": "futuros.png",
+     "titulo": "Futuros de dólar",
+     "bajada": "Precio de cada contrato a la izquierda y, a la derecha, la devaluación acumulada que ese precio implica contra el mayorista. Es una sola curva leída en dos escalas: el porcentaje acumulado es una función lineal del precio, así que como segunda línea sería el mismo dato dibujado dos veces. Los círculos huecos son contratos de volumen fino, donde el ajuste lo pone la cámara y no el mercado."
+    },
+    {
+     "archivo": "subsoberanos.png",
+     "titulo": "Subsoberanos en CCL",
+     "bajada": "Provinciales y municipales, valuados en la misma punta en que los muestra el monitor."
+    }
+   ],
+   "pdfs": [],
+   "reconstruida": true
+  },
+  {
+   "fecha": "2026-03-20",
+   "graficos": [
+    {
+     "archivo": "globales_bonares.png",
+     "titulo": "Globales vs Bonares",
+     "bajada": "Curva en dólares por legislación, con las dos patas llevadas a la misma punta antes de restarlas, como hace la solapa Glob vs Bon. Mezclar MEP con CCL mueve el spread entre 79 y 279 puntos básicos según el par."
+    },
+    {
+     "archivo": "lecaps_tem.png",
+     "titulo": "LECAPs en TEM",
+     "bajada": "Tasa efectiva mensual de la curva de tasa fija en pesos."
+    },
+    {
+     "archivo": "cer.png",
+     "titulo": "Curva CER",
+     "bajada": "Rendimiento real, CER más un spread. Cada dual entra con su pata CER, pedida a 1816 por separado y con su propia duration."
+    },
+    {
+     "archivo": "lecaps_cer.png",
+     "titulo": "LECAPs contra CER",
+     "bajada": "Las dos curvas en TEA nominal sobre el tramo que comparten: los CER llevados a nominal con la inflación publicada de los últimos tres meses."
+    },
+    {
+     "archivo": "breakeven.png",
+     "titulo": "Inflación implícita",
+     "bajada": "La inflación a la que una LECAP y un CER del mismo plazo rinden lo mismo. Cada CER se compara contra la curva de tasa fija interpolada a su misma duration, no contra la LECAP más cercana."
+    },
+    {
+     "archivo": "tamar.png",
+     "titulo": "Curva TAMAR",
+     "bajada": "Incluye la pata TAMAR de los duales y la TAMAR spot de bancos privados que publica el BCRA."
+    },
+    {
+     "archivo": "dl.png",
+     "titulo": "Curva dólar linked",
+     "bajada": "Devaluación implícita por vencimiento."
+    },
+    {
+     "archivo": "futuros.png",
+     "titulo": "Futuros de dólar",
+     "bajada": "Precio de cada contrato a la izquierda y, a la derecha, la devaluación acumulada que ese precio implica contra el mayorista. Es una sola curva leída en dos escalas: el porcentaje acumulado es una función lineal del precio, así que como segunda línea sería el mismo dato dibujado dos veces. Los círculos huecos son contratos de volumen fino, donde el ajuste lo pone la cámara y no el mercado."
+    },
+    {
+     "archivo": "subsoberanos.png",
+     "titulo": "Subsoberanos en CCL",
+     "bajada": "Provinciales y municipales, valuados en la misma punta en que los muestra el monitor."
+    }
+   ],
+   "pdfs": [],
+   "reconstruida": true
+  },
+  {
+   "fecha": "2026-03-13",
+   "graficos": [
+    {
+     "archivo": "globales_bonares.png",
+     "titulo": "Globales vs Bonares",
+     "bajada": "Curva en dólares por legislación, con las dos patas llevadas a la misma punta antes de restarlas, como hace la solapa Glob vs Bon. Mezclar MEP con CCL mueve el spread entre 79 y 279 puntos básicos según el par."
+    },
+    {
+     "archivo": "lecaps_tem.png",
+     "titulo": "LECAPs en TEM",
+     "bajada": "Tasa efectiva mensual de la curva de tasa fija en pesos."
+    },
+    {
+     "archivo": "cer.png",
+     "titulo": "Curva CER",
+     "bajada": "Rendimiento real, CER más un spread. Cada dual entra con su pata CER, pedida a 1816 por separado y con su propia duration."
+    },
+    {
+     "archivo": "lecaps_cer.png",
+     "titulo": "LECAPs contra CER",
+     "bajada": "Las dos curvas en TEA nominal sobre el tramo que comparten: los CER llevados a nominal con la inflación publicada de los últimos tres meses."
+    },
+    {
+     "archivo": "breakeven.png",
+     "titulo": "Inflación implícita",
+     "bajada": "La inflación a la que una LECAP y un CER del mismo plazo rinden lo mismo. Cada CER se compara contra la curva de tasa fija interpolada a su misma duration, no contra la LECAP más cercana."
+    },
+    {
+     "archivo": "tamar.png",
+     "titulo": "Curva TAMAR",
+     "bajada": "Incluye la pata TAMAR de los duales y la TAMAR spot de bancos privados que publica el BCRA."
+    },
+    {
+     "archivo": "dl.png",
+     "titulo": "Curva dólar linked",
+     "bajada": "Devaluación implícita por vencimiento."
+    },
+    {
+     "archivo": "futuros.png",
+     "titulo": "Futuros de dólar",
+     "bajada": "Precio de cada contrato a la izquierda y, a la derecha, la devaluación acumulada que ese precio implica contra el mayorista. Es una sola curva leída en dos escalas: el porcentaje acumulado es una función lineal del precio, así que como segunda línea sería el mismo dato dibujado dos veces. Los círculos huecos son contratos de volumen fino, donde el ajuste lo pone la cámara y no el mercado."
+    },
+    {
+     "archivo": "subsoberanos.png",
+     "titulo": "Subsoberanos en CCL",
+     "bajada": "Provinciales y municipales, valuados en la misma punta en que los muestra el monitor."
+    }
+   ],
+   "pdfs": [],
+   "reconstruida": true
+  },
+  {
+   "fecha": "2026-03-06",
+   "graficos": [
+    {
+     "archivo": "globales_bonares.png",
+     "titulo": "Globales vs Bonares",
+     "bajada": "Curva en dólares por legislación, con las dos patas llevadas a la misma punta antes de restarlas, como hace la solapa Glob vs Bon. Mezclar MEP con CCL mueve el spread entre 79 y 279 puntos básicos según el par."
+    },
+    {
+     "archivo": "lecaps_tem.png",
+     "titulo": "LECAPs en TEM",
+     "bajada": "Tasa efectiva mensual de la curva de tasa fija en pesos."
+    },
+    {
+     "archivo": "cer.png",
+     "titulo": "Curva CER",
+     "bajada": "Rendimiento real, CER más un spread. Cada dual entra con su pata CER, pedida a 1816 por separado y con su propia duration."
+    },
+    {
+     "archivo": "lecaps_cer.png",
+     "titulo": "LECAPs contra CER",
+     "bajada": "Las dos curvas en TEA nominal sobre el tramo que comparten: los CER llevados a nominal con la inflación publicada de los últimos tres meses."
+    },
+    {
+     "archivo": "breakeven.png",
+     "titulo": "Inflación implícita",
+     "bajada": "La inflación a la que una LECAP y un CER del mismo plazo rinden lo mismo. Cada CER se compara contra la curva de tasa fija interpolada a su misma duration, no contra la LECAP más cercana."
+    },
+    {
+     "archivo": "tamar.png",
+     "titulo": "Curva TAMAR",
+     "bajada": "Incluye la pata TAMAR de los duales y la TAMAR spot de bancos privados que publica el BCRA."
+    },
+    {
+     "archivo": "dl.png",
+     "titulo": "Curva dólar linked",
+     "bajada": "Devaluación implícita por vencimiento."
+    },
+    {
+     "archivo": "futuros.png",
+     "titulo": "Futuros de dólar",
+     "bajada": "Precio de cada contrato a la izquierda y, a la derecha, la devaluación acumulada que ese precio implica contra el mayorista. Es una sola curva leída en dos escalas: el porcentaje acumulado es una función lineal del precio, así que como segunda línea sería el mismo dato dibujado dos veces. Los círculos huecos son contratos de volumen fino, donde el ajuste lo pone la cámara y no el mercado."
+    },
+    {
+     "archivo": "subsoberanos.png",
+     "titulo": "Subsoberanos en CCL",
+     "bajada": "Provinciales y municipales, valuados en la misma punta en que los muestra el monitor."
+    }
+   ],
+   "pdfs": [],
+   "reconstruida": true
+  },
+  {
+   "fecha": "2026-02-27",
+   "graficos": [
+    {
+     "archivo": "globales_bonares.png",
+     "titulo": "Globales vs Bonares",
+     "bajada": "Curva en dólares por legislación, con las dos patas llevadas a la misma punta antes de restarlas, como hace la solapa Glob vs Bon. Mezclar MEP con CCL mueve el spread entre 79 y 279 puntos básicos según el par."
+    },
+    {
+     "archivo": "lecaps_tem.png",
+     "titulo": "LECAPs en TEM",
+     "bajada": "Tasa efectiva mensual de la curva de tasa fija en pesos."
+    },
+    {
+     "archivo": "cer.png",
+     "titulo": "Curva CER",
+     "bajada": "Rendimiento real, CER más un spread. Cada dual entra con su pata CER, pedida a 1816 por separado y con su propia duration."
+    },
+    {
+     "archivo": "lecaps_cer.png",
+     "titulo": "LECAPs contra CER",
+     "bajada": "Las dos curvas en TEA nominal sobre el tramo que comparten: los CER llevados a nominal con la inflación publicada de los últimos tres meses."
+    },
+    {
+     "archivo": "breakeven.png",
+     "titulo": "Inflación implícita",
+     "bajada": "La inflación a la que una LECAP y un CER del mismo plazo rinden lo mismo. Cada CER se compara contra la curva de tasa fija interpolada a su misma duration, no contra la LECAP más cercana."
+    },
+    {
+     "archivo": "tamar.png",
+     "titulo": "Curva TAMAR",
+     "bajada": "Incluye la pata TAMAR de los duales y la TAMAR spot de bancos privados que publica el BCRA."
+    },
+    {
+     "archivo": "dl.png",
+     "titulo": "Curva dólar linked",
+     "bajada": "Devaluación implícita por vencimiento."
+    },
+    {
+     "archivo": "futuros.png",
+     "titulo": "Futuros de dólar",
+     "bajada": "Precio de cada contrato a la izquierda y, a la derecha, la devaluación acumulada que ese precio implica contra el mayorista. Es una sola curva leída en dos escalas: el porcentaje acumulado es una función lineal del precio, así que como segunda línea sería el mismo dato dibujado dos veces. Los círculos huecos son contratos de volumen fino, donde el ajuste lo pone la cámara y no el mercado."
+    },
+    {
+     "archivo": "subsoberanos.png",
+     "titulo": "Subsoberanos en CCL",
+     "bajada": "Provinciales y municipales, valuados en la misma punta en que los muestra el monitor."
+    }
+   ],
+   "pdfs": [],
+   "reconstruida": true
+  },
+  {
+   "fecha": "2026-02-20",
+   "graficos": [
+    {
+     "archivo": "globales_bonares.png",
+     "titulo": "Globales vs Bonares",
+     "bajada": "Curva en dólares por legislación, con las dos patas llevadas a la misma punta antes de restarlas, como hace la solapa Glob vs Bon. Mezclar MEP con CCL mueve el spread entre 79 y 279 puntos básicos según el par."
+    },
+    {
+     "archivo": "lecaps_tem.png",
+     "titulo": "LECAPs en TEM",
+     "bajada": "Tasa efectiva mensual de la curva de tasa fija en pesos."
+    },
+    {
+     "archivo": "cer.png",
+     "titulo": "Curva CER",
+     "bajada": "Rendimiento real, CER más un spread. Cada dual entra con su pata CER, pedida a 1816 por separado y con su propia duration."
+    },
+    {
+     "archivo": "lecaps_cer.png",
+     "titulo": "LECAPs contra CER",
+     "bajada": "Las dos curvas en TEA nominal sobre el tramo que comparten: los CER llevados a nominal con la inflación publicada de los últimos tres meses."
+    },
+    {
+     "archivo": "breakeven.png",
+     "titulo": "Inflación implícita",
+     "bajada": "La inflación a la que una LECAP y un CER del mismo plazo rinden lo mismo. Cada CER se compara contra la curva de tasa fija interpolada a su misma duration, no contra la LECAP más cercana."
+    },
+    {
+     "archivo": "tamar.png",
+     "titulo": "Curva TAMAR",
+     "bajada": "Incluye la pata TAMAR de los duales y la TAMAR spot de bancos privados que publica el BCRA."
+    },
+    {
+     "archivo": "dl.png",
+     "titulo": "Curva dólar linked",
+     "bajada": "Devaluación implícita por vencimiento."
+    },
+    {
+     "archivo": "futuros.png",
+     "titulo": "Futuros de dólar",
+     "bajada": "Precio de cada contrato a la izquierda y, a la derecha, la devaluación acumulada que ese precio implica contra el mayorista. Es una sola curva leída en dos escalas: el porcentaje acumulado es una función lineal del precio, así que como segunda línea sería el mismo dato dibujado dos veces. Los círculos huecos son contratos de volumen fino, donde el ajuste lo pone la cámara y no el mercado."
+    },
+    {
+     "archivo": "subsoberanos.png",
+     "titulo": "Subsoberanos en CCL",
+     "bajada": "Provinciales y municipales, valuados en la misma punta en que los muestra el monitor."
+    }
+   ],
+   "pdfs": [],
+   "reconstruida": true
+  },
+  {
+   "fecha": "2026-02-13",
+   "graficos": [
+    {
+     "archivo": "globales_bonares.png",
+     "titulo": "Globales vs Bonares",
+     "bajada": "Curva en dólares por legislación, con las dos patas llevadas a la misma punta antes de restarlas, como hace la solapa Glob vs Bon. Mezclar MEP con CCL mueve el spread entre 79 y 279 puntos básicos según el par."
+    },
+    {
+     "archivo": "lecaps_tem.png",
+     "titulo": "LECAPs en TEM",
+     "bajada": "Tasa efectiva mensual de la curva de tasa fija en pesos."
+    },
+    {
+     "archivo": "cer.png",
+     "titulo": "Curva CER",
+     "bajada": "Rendimiento real, CER más un spread. Cada dual entra con su pata CER, pedida a 1816 por separado y con su propia duration."
+    },
+    {
+     "archivo": "lecaps_cer.png",
+     "titulo": "LECAPs contra CER",
+     "bajada": "Las dos curvas en TEA nominal sobre el tramo que comparten: los CER llevados a nominal con la inflación publicada de los últimos tres meses."
+    },
+    {
+     "archivo": "breakeven.png",
+     "titulo": "Inflación implícita",
+     "bajada": "La inflación a la que una LECAP y un CER del mismo plazo rinden lo mismo. Cada CER se compara contra la curva de tasa fija interpolada a su misma duration, no contra la LECAP más cercana."
+    },
+    {
+     "archivo": "tamar.png",
+     "titulo": "Curva TAMAR",
+     "bajada": "Incluye la pata TAMAR de los duales y la TAMAR spot de bancos privados que publica el BCRA."
+    },
+    {
+     "archivo": "dl.png",
+     "titulo": "Curva dólar linked",
+     "bajada": "Devaluación implícita por vencimiento."
+    },
+    {
+     "archivo": "futuros.png",
+     "titulo": "Futuros de dólar",
+     "bajada": "Precio de cada contrato a la izquierda y, a la derecha, la devaluación acumulada que ese precio implica contra el mayorista. Es una sola curva leída en dos escalas: el porcentaje acumulado es una función lineal del precio, así que como segunda línea sería el mismo dato dibujado dos veces. Los círculos huecos son contratos de volumen fino, donde el ajuste lo pone la cámara y no el mercado."
+    },
+    {
+     "archivo": "subsoberanos.png",
+     "titulo": "Subsoberanos en CCL",
+     "bajada": "Provinciales y municipales, valuados en la misma punta en que los muestra el monitor."
+    }
+   ],
+   "pdfs": [],
+   "reconstruida": true
+  },
+  {
+   "fecha": "2026-02-06",
+   "graficos": [
+    {
+     "archivo": "globales_bonares.png",
+     "titulo": "Globales vs Bonares",
+     "bajada": "Curva en dólares por legislación, con las dos patas llevadas a la misma punta antes de restarlas, como hace la solapa Glob vs Bon. Mezclar MEP con CCL mueve el spread entre 79 y 279 puntos básicos según el par."
+    },
+    {
+     "archivo": "lecaps_tem.png",
+     "titulo": "LECAPs en TEM",
+     "bajada": "Tasa efectiva mensual de la curva de tasa fija en pesos."
+    },
+    {
+     "archivo": "cer.png",
+     "titulo": "Curva CER",
+     "bajada": "Rendimiento real, CER más un spread. Cada dual entra con su pata CER, pedida a 1816 por separado y con su propia duration."
+    },
+    {
+     "archivo": "lecaps_cer.png",
+     "titulo": "LECAPs contra CER",
+     "bajada": "Las dos curvas en TEA nominal sobre el tramo que comparten: los CER llevados a nominal con la inflación publicada de los últimos tres meses."
+    },
+    {
+     "archivo": "breakeven.png",
+     "titulo": "Inflación implícita",
+     "bajada": "La inflación a la que una LECAP y un CER del mismo plazo rinden lo mismo. Cada CER se compara contra la curva de tasa fija interpolada a su misma duration, no contra la LECAP más cercana."
+    },
+    {
+     "archivo": "tamar.png",
+     "titulo": "Curva TAMAR",
+     "bajada": "Incluye la pata TAMAR de los duales y la TAMAR spot de bancos privados que publica el BCRA."
+    },
+    {
+     "archivo": "dl.png",
+     "titulo": "Curva dólar linked",
+     "bajada": "Devaluación implícita por vencimiento."
+    },
+    {
+     "archivo": "futuros.png",
+     "titulo": "Futuros de dólar",
+     "bajada": "Precio de cada contrato a la izquierda y, a la derecha, la devaluación acumulada que ese precio implica contra el mayorista. Es una sola curva leída en dos escalas: el porcentaje acumulado es una función lineal del precio, así que como segunda línea sería el mismo dato dibujado dos veces. Los círculos huecos son contratos de volumen fino, donde el ajuste lo pone la cámara y no el mercado."
+    },
+    {
+     "archivo": "subsoberanos.png",
+     "titulo": "Subsoberanos en CCL",
+     "bajada": "Provinciales y municipales, valuados en la misma punta en que los muestra el monitor."
+    }
+   ],
+   "pdfs": [],
+   "reconstruida": true
+  },
+  {
+   "fecha": "2026-01-30",
+   "graficos": [
+    {
+     "archivo": "globales_bonares.png",
+     "titulo": "Globales vs Bonares",
+     "bajada": "Curva en dólares por legislación, con las dos patas llevadas a la misma punta antes de restarlas, como hace la solapa Glob vs Bon. Mezclar MEP con CCL mueve el spread entre 79 y 279 puntos básicos según el par."
+    },
+    {
+     "archivo": "lecaps_tem.png",
+     "titulo": "LECAPs en TEM",
+     "bajada": "Tasa efectiva mensual de la curva de tasa fija en pesos."
+    },
+    {
+     "archivo": "cer.png",
+     "titulo": "Curva CER",
+     "bajada": "Rendimiento real, CER más un spread. Cada dual entra con su pata CER, pedida a 1816 por separado y con su propia duration."
+    },
+    {
+     "archivo": "lecaps_cer.png",
+     "titulo": "LECAPs contra CER",
+     "bajada": "Las dos curvas en TEA nominal sobre el tramo que comparten: los CER llevados a nominal con la inflación publicada de los últimos tres meses."
+    },
+    {
+     "archivo": "breakeven.png",
+     "titulo": "Inflación implícita",
+     "bajada": "La inflación a la que una LECAP y un CER del mismo plazo rinden lo mismo. Cada CER se compara contra la curva de tasa fija interpolada a su misma duration, no contra la LECAP más cercana."
+    },
+    {
+     "archivo": "tamar.png",
+     "titulo": "Curva TAMAR",
+     "bajada": "Incluye la pata TAMAR de los duales y la TAMAR spot de bancos privados que publica el BCRA."
+    },
+    {
+     "archivo": "dl.png",
+     "titulo": "Curva dólar linked",
+     "bajada": "Devaluación implícita por vencimiento."
+    },
+    {
+     "archivo": "futuros.png",
+     "titulo": "Futuros de dólar",
+     "bajada": "Precio de cada contrato a la izquierda y, a la derecha, la devaluación acumulada que ese precio implica contra el mayorista. Es una sola curva leída en dos escalas: el porcentaje acumulado es una función lineal del precio, así que como segunda línea sería el mismo dato dibujado dos veces. Los círculos huecos son contratos de volumen fino, donde el ajuste lo pone la cámara y no el mercado."
+    },
+    {
+     "archivo": "subsoberanos.png",
+     "titulo": "Subsoberanos en CCL",
+     "bajada": "Provinciales y municipales, valuados en la misma punta en que los muestra el monitor."
+    }
+   ],
+   "pdfs": [],
+   "reconstruida": true
+  },
+  {
+   "fecha": "2026-01-23",
+   "graficos": [
+    {
+     "archivo": "globales_bonares.png",
+     "titulo": "Globales vs Bonares",
+     "bajada": "Curva en dólares por legislación, con las dos patas llevadas a la misma punta antes de restarlas, como hace la solapa Glob vs Bon. Mezclar MEP con CCL mueve el spread entre 79 y 279 puntos básicos según el par."
+    },
+    {
+     "archivo": "lecaps_tem.png",
+     "titulo": "LECAPs en TEM",
+     "bajada": "Tasa efectiva mensual de la curva de tasa fija en pesos."
+    },
+    {
+     "archivo": "cer.png",
+     "titulo": "Curva CER",
+     "bajada": "Rendimiento real, CER más un spread. Cada dual entra con su pata CER, pedida a 1816 por separado y con su propia duration."
+    },
+    {
+     "archivo": "lecaps_cer.png",
+     "titulo": "LECAPs contra CER",
+     "bajada": "Las dos curvas en TEA nominal sobre el tramo que comparten: los CER llevados a nominal con la inflación publicada de los últimos tres meses."
+    },
+    {
+     "archivo": "breakeven.png",
+     "titulo": "Inflación implícita",
+     "bajada": "La inflación a la que una LECAP y un CER del mismo plazo rinden lo mismo. Cada CER se compara contra la curva de tasa fija interpolada a su misma duration, no contra la LECAP más cercana."
+    },
+    {
+     "archivo": "tamar.png",
+     "titulo": "Curva TAMAR",
+     "bajada": "Incluye la pata TAMAR de los duales y la TAMAR spot de bancos privados que publica el BCRA."
+    },
+    {
+     "archivo": "dl.png",
+     "titulo": "Curva dólar linked",
+     "bajada": "Devaluación implícita por vencimiento."
+    },
+    {
+     "archivo": "futuros.png",
+     "titulo": "Futuros de dólar",
+     "bajada": "Precio de cada contrato a la izquierda y, a la derecha, la devaluación acumulada que ese precio implica contra el mayorista. Es una sola curva leída en dos escalas: el porcentaje acumulado es una función lineal del precio, así que como segunda línea sería el mismo dato dibujado dos veces. Los círculos huecos son contratos de volumen fino, donde el ajuste lo pone la cámara y no el mercado."
+    },
+    {
+     "archivo": "subsoberanos.png",
+     "titulo": "Subsoberanos en CCL",
+     "bajada": "Provinciales y municipales, valuados en la misma punta en que los muestra el monitor."
+    }
+   ],
+   "pdfs": [],
+   "reconstruida": true
+  },
+  {
+   "fecha": "2026-01-16",
+   "graficos": [
+    {
+     "archivo": "globales_bonares.png",
+     "titulo": "Globales vs Bonares",
+     "bajada": "Curva en dólares por legislación, con las dos patas llevadas a la misma punta antes de restarlas, como hace la solapa Glob vs Bon. Mezclar MEP con CCL mueve el spread entre 79 y 279 puntos básicos según el par."
+    },
+    {
+     "archivo": "lecaps_tem.png",
+     "titulo": "LECAPs en TEM",
+     "bajada": "Tasa efectiva mensual de la curva de tasa fija en pesos."
+    },
+    {
+     "archivo": "cer.png",
+     "titulo": "Curva CER",
+     "bajada": "Rendimiento real, CER más un spread. Cada dual entra con su pata CER, pedida a 1816 por separado y con su propia duration."
+    },
+    {
+     "archivo": "lecaps_cer.png",
+     "titulo": "LECAPs contra CER",
+     "bajada": "Las dos curvas en TEA nominal sobre el tramo que comparten: los CER llevados a nominal con la inflación publicada de los últimos tres meses."
+    },
+    {
+     "archivo": "breakeven.png",
+     "titulo": "Inflación implícita",
+     "bajada": "La inflación a la que una LECAP y un CER del mismo plazo rinden lo mismo. Cada CER se compara contra la curva de tasa fija interpolada a su misma duration, no contra la LECAP más cercana."
+    },
+    {
+     "archivo": "tamar.png",
+     "titulo": "Curva TAMAR",
+     "bajada": "Incluye la pata TAMAR de los duales y la TAMAR spot de bancos privados que publica el BCRA."
+    },
+    {
+     "archivo": "dl.png",
+     "titulo": "Curva dólar linked",
+     "bajada": "Devaluación implícita por vencimiento."
+    },
+    {
+     "archivo": "futuros.png",
+     "titulo": "Futuros de dólar",
+     "bajada": "Precio de cada contrato a la izquierda y, a la derecha, la devaluación acumulada que ese precio implica contra el mayorista. Es una sola curva leída en dos escalas: el porcentaje acumulado es una función lineal del precio, así que como segunda línea sería el mismo dato dibujado dos veces. Los círculos huecos son contratos de volumen fino, donde el ajuste lo pone la cámara y no el mercado."
+    },
+    {
+     "archivo": "subsoberanos.png",
+     "titulo": "Subsoberanos en CCL",
+     "bajada": "Provinciales y municipales, valuados en la misma punta en que los muestra el monitor."
+    }
+   ],
+   "pdfs": [],
+   "reconstruida": true
+  },
+  {
+   "fecha": "2026-01-09",
+   "graficos": [
+    {
+     "archivo": "globales_bonares.png",
+     "titulo": "Globales vs Bonares",
+     "bajada": "Curva en dólares por legislación, con las dos patas llevadas a la misma punta antes de restarlas, como hace la solapa Glob vs Bon. Mezclar MEP con CCL mueve el spread entre 79 y 279 puntos básicos según el par."
+    },
+    {
+     "archivo": "lecaps_tem.png",
+     "titulo": "LECAPs en TEM",
+     "bajada": "Tasa efectiva mensual de la curva de tasa fija en pesos."
+    },
+    {
+     "archivo": "cer.png",
+     "titulo": "Curva CER",
+     "bajada": "Rendimiento real, CER más un spread. Cada dual entra con su pata CER, pedida a 1816 por separado y con su propia duration."
+    },
+    {
+     "archivo": "lecaps_cer.png",
+     "titulo": "LECAPs contra CER",
+     "bajada": "Las dos curvas en TEA nominal sobre el tramo que comparten: los CER llevados a nominal con la inflación publicada de los últimos tres meses."
+    },
+    {
+     "archivo": "breakeven.png",
+     "titulo": "Inflación implícita",
+     "bajada": "La inflación a la que una LECAP y un CER del mismo plazo rinden lo mismo. Cada CER se compara contra la curva de tasa fija interpolada a su misma duration, no contra la LECAP más cercana."
+    },
+    {
+     "archivo": "tamar.png",
+     "titulo": "Curva TAMAR",
+     "bajada": "Incluye la pata TAMAR de los duales y la TAMAR spot de bancos privados que publica el BCRA."
+    },
+    {
+     "archivo": "dl.png",
+     "titulo": "Curva dólar linked",
+     "bajada": "Devaluación implícita por vencimiento."
+    },
+    {
+     "archivo": "futuros.png",
+     "titulo": "Futuros de dólar",
+     "bajada": "Precio de cada contrato a la izquierda y, a la derecha, la devaluación acumulada que ese precio implica contra el mayorista. Es una sola curva leída en dos escalas: el porcentaje acumulado es una función lineal del precio, así que como segunda línea sería el mismo dato dibujado dos veces. Los círculos huecos son contratos de volumen fino, donde el ajuste lo pone la cámara y no el mercado."
+    },
+    {
+     "archivo": "subsoberanos.png",
+     "titulo": "Subsoberanos en CCL",
+     "bajada": "Provinciales y municipales, valuados en la misma punta en que los muestra el monitor."
+    }
+   ],
+   "pdfs": [],
+   "reconstruida": true
+  },
+  {
+   "fecha": "2026-01-02",
+   "graficos": [
+    {
+     "archivo": "globales_bonares.png",
+     "titulo": "Globales vs Bonares",
+     "bajada": "Curva en dólares por legislación, con las dos patas llevadas a la misma punta antes de restarlas, como hace la solapa Glob vs Bon. Mezclar MEP con CCL mueve el spread entre 79 y 279 puntos básicos según el par."
+    },
+    {
+     "archivo": "lecaps_tem.png",
+     "titulo": "LECAPs en TEM",
+     "bajada": "Tasa efectiva mensual de la curva de tasa fija en pesos."
+    },
+    {
+     "archivo": "cer.png",
+     "titulo": "Curva CER",
+     "bajada": "Rendimiento real, CER más un spread. Cada dual entra con su pata CER, pedida a 1816 por separado y con su propia duration."
+    },
+    {
+     "archivo": "lecaps_cer.png",
+     "titulo": "LECAPs contra CER",
+     "bajada": "Las dos curvas en TEA nominal sobre el tramo que comparten: los CER llevados a nominal con la inflación publicada de los últimos tres meses."
+    },
+    {
+     "archivo": "breakeven.png",
+     "titulo": "Inflación implícita",
+     "bajada": "La inflación a la que una LECAP y un CER del mismo plazo rinden lo mismo. Cada CER se compara contra la curva de tasa fija interpolada a su misma duration, no contra la LECAP más cercana."
+    },
+    {
+     "archivo": "tamar.png",
+     "titulo": "Curva TAMAR",
+     "bajada": "Incluye la pata TAMAR de los duales y la TAMAR spot de bancos privados que publica el BCRA."
+    },
+    {
+     "archivo": "dl.png",
+     "titulo": "Curva dólar linked",
+     "bajada": "Devaluación implícita por vencimiento."
+    },
+    {
+     "archivo": "futuros.png",
+     "titulo": "Futuros de dólar",
+     "bajada": "Precio de cada contrato a la izquierda y, a la derecha, la devaluación acumulada que ese precio implica contra el mayorista. Es una sola curva leída en dos escalas: el porcentaje acumulado es una función lineal del precio, así que como segunda línea sería el mismo dato dibujado dos veces. Los círculos huecos son contratos de volumen fino, donde el ajuste lo pone la cámara y no el mercado."
+    },
+    {
+     "archivo": "subsoberanos.png",
+     "titulo": "Subsoberanos en CCL",
+     "bajada": "Provinciales y municipales, valuados en la misma punta en que los muestra el monitor."
+    }
+   ],
+   "pdfs": [],
+   "reconstruida": true
+  },
+  {
+   "fecha": "2025-12-30",
+   "graficos": [
+    {
+     "archivo": "globales_bonares.png",
+     "titulo": "Globales vs Bonares",
+     "bajada": "Curva en dólares por legislación, con las dos patas llevadas a la misma punta antes de restarlas, como hace la solapa Glob vs Bon. Mezclar MEP con CCL mueve el spread entre 79 y 279 puntos básicos según el par."
+    },
+    {
+     "archivo": "lecaps_tem.png",
+     "titulo": "LECAPs en TEM",
+     "bajada": "Tasa efectiva mensual de la curva de tasa fija en pesos."
+    },
+    {
+     "archivo": "cer.png",
+     "titulo": "Curva CER",
+     "bajada": "Rendimiento real, CER más un spread. Cada dual entra con su pata CER, pedida a 1816 por separado y con su propia duration."
+    },
+    {
+     "archivo": "lecaps_cer.png",
+     "titulo": "LECAPs contra CER",
+     "bajada": "Las dos curvas en TEA nominal sobre el tramo que comparten: los CER llevados a nominal con la inflación publicada de los últimos tres meses."
+    },
+    {
+     "archivo": "breakeven.png",
+     "titulo": "Inflación implícita",
+     "bajada": "La inflación a la que una LECAP y un CER del mismo plazo rinden lo mismo. Cada CER se compara contra la curva de tasa fija interpolada a su misma duration, no contra la LECAP más cercana."
+    },
+    {
+     "archivo": "tamar.png",
+     "titulo": "Curva TAMAR",
+     "bajada": "Incluye la pata TAMAR de los duales y la TAMAR spot de bancos privados que publica el BCRA."
+    },
+    {
+     "archivo": "dl.png",
+     "titulo": "Curva dólar linked",
+     "bajada": "Devaluación implícita por vencimiento."
+    },
+    {
+     "archivo": "futuros.png",
+     "titulo": "Futuros de dólar",
+     "bajada": "Precio de cada contrato a la izquierda y, a la derecha, la devaluación acumulada que ese precio implica contra el mayorista. Es una sola curva leída en dos escalas: el porcentaje acumulado es una función lineal del precio, así que como segunda línea sería el mismo dato dibujado dos veces. Los círculos huecos son contratos de volumen fino, donde el ajuste lo pone la cámara y no el mercado."
+    },
+    {
+     "archivo": "subsoberanos.png",
+     "titulo": "Subsoberanos en CCL",
+     "bajada": "Provinciales y municipales, valuados en la misma punta en que los muestra el monitor."
+    }
+   ],
+   "pdfs": [],
+   "reconstruida": true
   }
  ]
 }

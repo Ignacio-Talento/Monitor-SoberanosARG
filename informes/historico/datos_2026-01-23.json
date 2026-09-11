@@ -1,0 +1,746 @@
+{
+ "fecha": "2026-01-23",
+ "tipos": [
+  "semanal"
+ ],
+ "reconstruido": true,
+ "fuente": "1816 · /indicadores con fechaOperacion; universo del catálogo de 1816 a esa fecha",
+ "instrumentos": [
+  {
+   "ticker": "AE38D",
+   "familia": "Bonares",
+   "moneda": "mep",
+   "precio": 79.87,
+   "tea": 9.592,
+   "durationMod": 4.932384543896873,
+   "paridad": 79.682
+  },
+  {
+   "ticker": "AL29D",
+   "familia": "Bonares",
+   "moneda": "mep",
+   "precio": 61.14999999999999,
+   "tea": 8.467,
+   "durationMod": 1.7920130508030352,
+   "paridad": 87.316
+  },
+  {
+   "ticker": "AL30D",
+   "familia": "Bonares",
+   "moneda": "mep",
+   "precio": 60.42000000000001,
+   "tea": 9.021,
+   "durationMod": 2.2085953843950676,
+   "paridad": 83.887
+  },
+  {
+   "ticker": "AL35D",
+   "familia": "Bonares",
+   "moneda": "mep",
+   "precio": 77.3,
+   "tea": 9.392,
+   "durationMod": 5.691882950454662,
+   "paridad": 77.15
+  },
+  {
+   "ticker": "AL41D",
+   "familia": "Bonares",
+   "moneda": "mep",
+   "precio": 72.68,
+   "tea": 9.294,
+   "durationMod": 6.222165931592729,
+   "paridad": 72.56
+  },
+  {
+   "ticker": "AN29D",
+   "familia": "Bonares",
+   "moneda": "mep",
+   "precio": 92.17999999999999,
+   "tea": 9.416,
+   "durationMod": 3.265038797906557,
+   "paridad": 91.453
+  },
+  {
+   "ticker": "CUAP",
+   "familia": "CER",
+   "moneda": "ars",
+   "precio": 37580,
+   "tea": 8.549,
+   "durationMod": 10.09077594321108,
+   "paridad": 57.494
+  },
+  {
+   "ticker": "D27F6",
+   "familia": "Dólar linked",
+   "moneda": "ars",
+   "precio": 143350,
+   "tea": -0.239,
+   "durationMod": 0.0877759802349362,
+   "paridad": 100.021
+  },
+  {
+   "ticker": "D30A6",
+   "familia": "Dólar linked",
+   "moneda": "ars",
+   "precio": 143000,
+   "tea": 0.872,
+   "durationMod": 0.2564190718314037,
+   "paridad": 99.777
+  },
+  {
+   "ticker": "D30E6",
+   "familia": "Dólar linked",
+   "moneda": "ars",
+   "precio": 143070,
+   "tea": 17.269,
+   "durationMod": 0.010119862579444054,
+   "paridad": 99.826
+  },
+  {
+   "ticker": "DICP",
+   "familia": "CER",
+   "moneda": "ars",
+   "precio": 43580,
+   "tea": 8.757,
+   "durationMod": 3.3564278981160225,
+   "paridad": 90.964
+  },
+  {
+   "ticker": "GD29D",
+   "familia": "Globales",
+   "moneda": "ccl",
+   "precio": 61.419999999999995,
+   "tea": 8.211,
+   "durationMod": 1.796376234825149,
+   "paridad": 87.701,
+   "enMep": {
+    "precio": 63.300000000000004,
+    "tea": 6.487,
+    "paridad": 90.386
+   }
+  },
+  {
+   "ticker": "GD30D",
+   "familia": "Globales",
+   "moneda": "ccl",
+   "precio": 60.79,
+   "tea": 8.733,
+   "durationMod": 2.2156724212287493,
+   "paridad": 84.401,
+   "enMep": {
+    "precio": 62.51,
+    "tea": 7.433,
+    "paridad": 86.789
+   }
+  },
+  {
+   "ticker": "GD35D",
+   "familia": "Globales",
+   "moneda": "ccl",
+   "precio": 75.75,
+   "tea": 9.765,
+   "durationMod": 5.664543427168546,
+   "paridad": 75.603,
+   "enMep": {
+    "precio": 78.03,
+    "tea": 9.219,
+    "paridad": 77.878
+   }
+  },
+  {
+   "ticker": "GD38D",
+   "familia": "Globales",
+   "moneda": "ccl",
+   "precio": 79.7,
+   "tea": 9.638,
+   "durationMod": 4.927513789168905,
+   "paridad": 79.512,
+   "enMep": {
+    "precio": 81.89,
+    "tea": 9.066,
+    "paridad": 81.697
+   }
+  },
+  {
+   "ticker": "GD41D",
+   "familia": "Globales",
+   "moneda": "ccl",
+   "precio": 70.92,
+   "tea": 9.708,
+   "durationMod": 6.155757745122415,
+   "paridad": 70.803,
+   "enMep": {
+    "precio": 72.89,
+    "tea": 9.245,
+    "paridad": 72.77
+   }
+  },
+  {
+   "ticker": "GD46D",
+   "familia": "Globales",
+   "moneda": "ccl",
+   "precio": 66.5,
+   "tea": 9.865,
+   "durationMod": 6.295336136993428,
+   "paridad": 71.227,
+   "enMep": {
+    "precio": 68.73,
+    "tea": 9.322,
+    "paridad": 73.616
+   }
+  },
+  {
+   "ticker": "M27F6",
+   "familia": "TAMAR",
+   "moneda": "ars",
+   "precio": 121.81,
+   "tea": 17.203,
+   "durationMod": 0.08645961994472214,
+   "paridad": 101.985
+  },
+  {
+   "ticker": "M30A6",
+   "familia": "TAMAR",
+   "moneda": "ars",
+   "precio": 106.1,
+   "tea": 46.402,
+   "durationMod": 0.2490699678984803,
+   "paridad": 100.389
+  },
+  {
+   "ticker": "M31G6",
+   "familia": "TAMAR",
+   "moneda": "ars",
+   "precio": 107.69899999999998,
+   "tea": 51.389,
+   "durationMod": 0.5732946425560451,
+   "paridad": 99.508
+  },
+  {
+   "ticker": "PARP",
+   "familia": "CER",
+   "moneda": "ars",
+   "precio": 30064.999999999996,
+   "tea": 8.66,
+   "durationMod": 6.778743954980204,
+   "paridad": 63.66
+  },
+  {
+   "ticker": "S17A6",
+   "familia": "LECAPs y tasa fija",
+   "moneda": "ars",
+   "precio": 102.12,
+   "tea": 40.505,
+   "durationMod": 0.2057865750314902,
+   "paridad": 98.863
+  },
+  {
+   "ticker": "S27F6",
+   "familia": "LECAPs y tasa fija",
+   "moneda": "ars",
+   "precio": 122.13800000000002,
+   "tea": 40.603,
+   "durationMod": 0.08509074109673852,
+   "paridad": 101.021
+  },
+  {
+   "ticker": "S29Y6",
+   "familia": "LECAPs y tasa fija",
+   "moneda": "ars",
+   "precio": 117.85,
+   "tea": 40.14,
+   "durationMod": 0.3007621369879639,
+   "paridad": 98.168
+  },
+  {
+   "ticker": "S30A6",
+   "familia": "LECAPs y tasa fija",
+   "moneda": "ars",
+   "precio": 117.208,
+   "tea": 38.595,
+   "durationMod": 0.23677167667510823,
+   "paridad": 102.495
+  },
+  {
+   "ticker": "S30N6",
+   "familia": "LECAPs y tasa fija",
+   "moneda": "ars",
+   "precio": 100.85,
+   "tea": 34.968,
+   "durationMod": 0.6551861751494745,
+   "paridad": 97.764
+  },
+  {
+   "ticker": "S30O6",
+   "familia": "LECAPs y tasa fija",
+   "moneda": "ars",
+   "precio": 106.839,
+   "tea": 36.477,
+   "durationMod": 0.5993624696134975,
+   "paridad": 99.399
+  },
+  {
+   "ticker": "S31G6",
+   "familia": "LECAPs y tasa fija",
+   "moneda": "ars",
+   "precio": 104.85,
+   "tea": 38.157,
+   "durationMod": 0.4905833237742678,
+   "paridad": 98.492
+  },
+  {
+   "ticker": "T13F6",
+   "familia": "LECAPs y tasa fija",
+   "moneda": "ars",
+   "precio": 142.534,
+   "tea": 40.927,
+   "durationMod": 0.04848774176429477,
+   "paridad": 99.763
+  },
+  {
+   "ticker": "T15E7",
+   "familia": "LECAPs y tasa fija",
+   "moneda": "ars",
+   "precio": 120.39999999999999,
+   "tea": 35.024,
+   "durationMod": 0.7248206552865115,
+   "paridad": 94.634
+  },
+  {
+   "ticker": "T30A7",
+   "familia": "LECAPs y tasa fija",
+   "moneda": "ars",
+   "precio": 107.5,
+   "tea": 35.38,
+   "durationMod": 0.8591843925414528,
+   "paridad": 100.014
+  },
+  {
+   "ticker": "T30E6",
+   "familia": "LECAPs y tasa fija",
+   "moneda": "ars",
+   "precio": 141.79,
+   "tea": 31.995,
+   "durationMod": 0.010925616386344103,
+   "paridad": 100.044
+  },
+  {
+   "ticker": "T30J6",
+   "familia": "LECAPs y tasa fija",
+   "moneda": "ars",
+   "precio": 125.8,
+   "tea": 39.486,
+   "durationMod": 0.36869146013842796,
+   "paridad": 96.839
+  },
+  {
+   "ticker": "T30J7",
+   "familia": "LECAPs y tasa fija",
+   "moneda": "ars",
+   "precio": 101,
+   "tea": 35.706,
+   "durationMod": 0.9221557128046609,
+   "paridad": 100.146
+  },
+  {
+   "ticker": "T31Y7",
+   "familia": "LECAPs y tasa fija",
+   "moneda": "ars",
+   "precio": 100.6,
+   "tea": 35.703,
+   "durationMod": 0.8910621642123947,
+   "paridad": 97.392
+  },
+  {
+   "ticker": "TO26",
+   "familia": "LECAPs y tasa fija",
+   "moneda": "ars",
+   "precio": 92.5,
+   "tea": 37.833,
+   "durationMod": 0.5870580131792434,
+   "paridad": 88.718
+  },
+  {
+   "ticker": "TTD26",
+   "familia": "Duales",
+   "moneda": "ars",
+   "precio": 137.3,
+   "tea": 51.503,
+   "durationMod": 0.8532806824970054,
+   "paridad": 95.072,
+   "patas": {
+    "TAMAR": {
+     "tea": 51.503,
+     "durationMod": 0.8532806824970054,
+     "conDatos": true
+    }
+   }
+  },
+  {
+   "ticker": "TTJ26",
+   "familia": "Duales",
+   "moneda": "ars",
+   "precio": 141.75,
+   "tea": 49.921,
+   "durationMod": 0.40984593047397855,
+   "paridad": 98.154,
+   "patas": {
+    "TAMAR": {
+     "tea": 49.921,
+     "durationMod": 0.40984593047397855,
+     "conDatos": true
+    }
+   }
+  },
+  {
+   "ticker": "TTM26",
+   "familia": "Duales",
+   "moneda": "ars",
+   "precio": 144.4,
+   "tea": 45.302,
+   "durationMod": 0.12992019703698357,
+   "paridad": 99.989,
+   "patas": {
+    "TAMAR": {
+     "tea": 45.302,
+     "durationMod": 0.12992019703698357,
+     "conDatos": true
+    }
+   }
+  },
+  {
+   "ticker": "TTS26",
+   "familia": "Duales",
+   "moneda": "ars",
+   "precio": 139.55,
+   "tea": 51.014,
+   "durationMod": 0.6130563209815205,
+   "paridad": 96.63,
+   "patas": {
+    "TAMAR": {
+     "tea": 51.014,
+     "durationMod": 0.6130563209815205,
+     "conDatos": true
+    }
+   }
+  },
+  {
+   "ticker": "TX26",
+   "familia": "CER",
+   "moneda": "ars",
+   "precio": 1180,
+   "tea": 8.188,
+   "durationMod": 0.5103829439674975,
+   "paridad": 96.913
+  },
+  {
+   "ticker": "TX28",
+   "familia": "CER",
+   "moneda": "ars",
+   "precio": 1668,
+   "tea": 8.754,
+   "durationMod": 1.3996873028360421,
+   "paridad": 91.28
+  },
+  {
+   "ticker": "TX31",
+   "familia": "CER",
+   "moneda": "ars",
+   "precio": 1197,
+   "tea": 8.809,
+   "durationMod": 3.1567349867109193,
+   "paridad": 81.863
+  },
+  {
+   "ticker": "TY30P",
+   "familia": "LECAPs y tasa fija",
+   "moneda": "ars",
+   "precio": 113.75,
+   "tea": 27.472,
+   "durationMod": 2.3748263933296885,
+   "paridad": 108.759
+  },
+  {
+   "ticker": "TZV26",
+   "familia": "Dólar linked",
+   "moneda": "ars",
+   "precio": 142100,
+   "tea": 2.034,
+   "durationMod": 0.4204045804439046,
+   "paridad": 99.149
+  },
+  {
+   "ticker": "TZX26",
+   "familia": "CER",
+   "moneda": "ars",
+   "precio": 330.2,
+   "tea": 7.866,
+   "durationMod": 0.4088807589208127,
+   "paridad": 96.836
+  },
+  {
+   "ticker": "TZX27",
+   "familia": "CER",
+   "moneda": "ars",
+   "precio": 304.95,
+   "tea": 8.156,
+   "durationMod": 1.3698855361851194,
+   "paridad": 89.431
+  },
+  {
+   "ticker": "TZX28",
+   "familia": "CER",
+   "moneda": "ars",
+   "precio": 276.7,
+   "tea": 8.988,
+   "durationMod": 2.3251533673937677,
+   "paridad": 81.146
+  },
+  {
+   "ticker": "TZXA7",
+   "familia": "CER",
+   "moneda": "ars",
+   "precio": 96.7,
+   "tea": 6.622,
+   "durationMod": 1.21785804381453,
+   "paridad": 92.253
+  },
+  {
+   "ticker": "TZXD6",
+   "familia": "CER",
+   "moneda": "ars",
+   "precio": 234.39999999999998,
+   "tea": 8.574,
+   "durationMod": 0.849271516846663,
+   "paridad": 92.979
+  },
+  {
+   "ticker": "TZXD7",
+   "familia": "CER",
+   "moneda": "ars",
+   "precio": 215.15,
+   "tea": 8.772,
+   "durationMod": 1.8073290085464373,
+   "paridad": 85.343
+  },
+  {
+   "ticker": "TZXM6",
+   "familia": "CER",
+   "moneda": "ars",
+   "precio": 200.44999999999996,
+   "tea": 6.693,
+   "durationMod": 0.16975370569757678,
+   "paridad": 98.87
+  },
+  {
+   "ticker": "TZXM7",
+   "familia": "CER",
+   "moneda": "ars",
+   "precio": 171.55,
+   "tea": 8.645,
+   "durationMod": 1.1276116640670997,
+   "paridad": 90.714
+  },
+  {
+   "ticker": "TZXO6",
+   "familia": "CER",
+   "moneda": "ars",
+   "precio": 133.75,
+   "tea": 8.518,
+   "durationMod": 0.7285117386894641,
+   "paridad": 93.985
+  },
+  {
+   "ticker": "TZXY7",
+   "familia": "CER",
+   "moneda": "ars",
+   "precio": 91.05,
+   "tea": 10.081,
+   "durationMod": 1.279521473162019,
+   "paridad": 87.903
+  },
+  {
+   "ticker": "X29Y6",
+   "familia": "CER",
+   "moneda": "ars",
+   "precio": 102.25,
+   "tea": 7.645,
+   "durationMod": 0.32480019936460836,
+   "paridad": 97.548
+  },
+  {
+   "ticker": "X30N6",
+   "familia": "CER",
+   "moneda": "ars",
+   "precio": 96.55,
+   "tea": 8.686,
+   "durationMod": 0.8094156758991795,
+   "paridad": 93.213
+  },
+  {
+   "ticker": "PMM29",
+   "familia": "Subsoberanos",
+   "moneda": "ccl",
+   "precio": 53,
+   "tea": 8.347,
+   "durationMod": 1.4560625038731845,
+   "paridad": 96.472,
+   "enMep": {
+    "precio": 54.1,
+    "tea": 6.895,
+    "paridad": 98.474
+   }
+  },
+  {
+   "ticker": "CO32",
+   "familia": "Subsoberanos",
+   "moneda": "ccl",
+   "precio": 105.1,
+   "tea": 8.887,
+   "durationMod": 4.156395725112737,
+   "paridad": 104.421,
+   "enMep": {
+    "precio": 108.65,
+    "tea": 8.058,
+    "paridad": 107.948
+   }
+  },
+  {
+   "ticker": "BA37D",
+   "familia": "Subsoberanos",
+   "moneda": "ccl",
+   "precio": 76.28,
+   "tea": 11.735,
+   "durationMod": 4.136983342749031,
+   "paridad": 80.899,
+   "enMep": {
+    "precio": 78.6,
+    "tea": 10.978,
+    "paridad": 83.359
+   }
+  },
+  {
+   "ticker": "BB37D",
+   "familia": "Subsoberanos",
+   "moneda": "ccl",
+   "precio": 74.99,
+   "tea": 11.797,
+   "durationMod": 5.250444695222535,
+   "paridad": 73.257,
+   "enMep": {
+    "precio": 74.81,
+    "tea": 11.845,
+    "paridad": 73.081
+   }
+  }
+ ],
+ "resumen": {
+  "TAMAR": {
+   "instrumentos": 3,
+   "convencionDudosa": [],
+   "monedas": {
+    "ars": 3
+   }
+  },
+  "Dólar linked": {
+   "instrumentos": 4,
+   "convencionDudosa": [
+    "D27F6",
+    "D30E6"
+   ],
+   "monedas": {
+    "ars": 4
+   }
+  },
+  "CER": {
+   "instrumentos": 18,
+   "convencionDudosa": [],
+   "monedas": {
+    "ars": 18
+   }
+  },
+  "Globales": {
+   "instrumentos": 6,
+   "convencionDudosa": [],
+   "monedas": {
+    "ccl": 6
+   }
+  },
+  "Duales": {
+   "instrumentos": 4,
+   "convencionDudosa": [],
+   "monedas": {
+    "ars": 4
+   }
+  },
+  "Subsoberanos": {
+   "instrumentos": 4,
+   "convencionDudosa": [],
+   "monedas": {
+    "ccl": 4
+   }
+  },
+  "Bonares": {
+   "instrumentos": 6,
+   "convencionDudosa": [],
+   "monedas": {
+    "mep": 6
+   }
+  },
+  "LECAPs y tasa fija": {
+   "instrumentos": 16,
+   "convencionDudosa": [],
+   "monedas": {
+    "ars": 16
+   }
+  }
+ },
+ "sinDatoPorFamilia": {
+  "Subsoberanos": [
+   "NDT25",
+   "ERM33",
+   "NDG34",
+   "SFD34",
+   "CO35",
+   "PUA36",
+   "BDC36",
+   "BDC33"
+  ]
+ },
+ "sinDato": [
+  "NDT25",
+  "ERM33",
+  "NDG34",
+  "SFD34",
+  "CO35",
+  "PUA36",
+  "BDC36",
+  "BDC33"
+ ],
+ "macro": {
+  "inflacion": {
+   "mensuales": [
+    {
+     "fecha": "2025-10-31",
+     "valor": 2.3
+    },
+    {
+     "fecha": "2025-11-30",
+     "valor": 2.5
+    },
+    {
+     "fecha": "2025-12-31",
+     "valor": 2.8
+    }
+   ],
+   "anualizada3m": 35.011404461017825,
+   "fecha": "2025-12-31"
+  },
+  "series": {
+   "tamarTEA": {
+    "fecha": "2026-01-23",
+    "valor": 45.06
+   }
+  }
+ }
+}

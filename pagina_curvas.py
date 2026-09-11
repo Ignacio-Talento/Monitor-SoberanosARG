@@ -170,7 +170,17 @@ def escribir_indice(raiz):
                  "rotulo": next((r for k, r in ROTULOS.items() if f.name.startswith(f"cierre-{k}-")),
                                 "Informe del día")}
                 for f in sorted(d.glob("cierre-*.pdf"))]
-        ruedas.append({"fecha": d.name, "graficos": graficos, "pdfs": pdfs})
+        r = {"fecha": d.name, "graficos": graficos, "pdfs": pdfs}
+        # Rueda sin informe propio, rearmada por curvas_historicas.py con los cierres de 1816.
+        if not pdfs and (raiz.parent / "historico" / f"datos_{d.name}.json").exists():
+            r["reconstruida"] = True
+        ruedas.append(r)
     (raiz / "indice.json").write_text(json.dumps({"ruedas": ruedas}, ensure_ascii=False, indent=1),
                                       encoding="utf-8")
+    # Y los datos del modo «Comparar fechas», que tienen que acompañar a cada rueda nueva.
+    try:
+        import historia_curvas
+        historia_curvas.escribir(raiz.parent)
+    except Exception as e:                                        # noqa: BLE001
+        print(f"  historia de curvas: FALLÓ ({e})")
     return len(ruedas)

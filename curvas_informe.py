@@ -568,10 +568,14 @@ def curva_dl(instr, salida, faltan=""):
     if not pts:
         return None
     fig, ax = balanz_figure(figsize=(9.5, 5.2))
-    _serie_ajustada(ax, pts, NAVY, "Dólar linked · TIR")
+    # Fuera del ajuste los de menos de un mes: a tres semanas de vencer, unos pesos de diferencia en
+    # el precio anualizan a 19% de TIR —D31L6 el 10/07/2026, con sus pares entre 2 y 8%— y la curva
+    # se desplomaba desde ahí. Se dibujan igual.
+    cortos = {tk for d, _, tk in pts if d < 1 / 12}
+    _serie_ajustada(ax, pts, NAVY, "Dólar linked · TIR", excluir=cortos)
     _ejes(ax, "Curva dólar linked", "TIR (%)")
     ax.axhline(0, color=GRIS, linewidth=.9, linestyle=":", zorder=1)
-    _nota(ax, "Rendimiento por encima de la devaluación oficial. Son pocos instrumentos y " "algunos muy ilíquidos, así que la curva es indicativa.\n" + NOTA_AJUSTE + faltan)
+    _nota(ax, "Rendimiento por encima de la devaluación oficial. Son pocos instrumentos y " "algunos muy ilíquidos, así que la curva es indicativa.\n" + NOTA_AJUSTE[:-1] + ". Quedan fuera del ajuste los de menos de un mes." + faltan)
     return _cerrar(fig, ax, salida)
 
 

@@ -687,6 +687,16 @@ Lee informes/curvas/indice.json, que reescribe publicar_curvas.py (vía pagina_c
 vez que se publica una rueda: si armás las curvas a mano, publicalas con `py publicar_curvas.py
 AAAA-MM-DD` —no copiando la carpeta— para que el índice se actualice.
 
+La solapa tiene además un modo COMPARAR FECHAS (pedido del usuario, 11/09/2026): una curva en hasta
+cuatro ruedas superpuestas, con la tabla del nivel de la curva ajustada por plazo y cuánto se movió.
+Lee informes/curvas/historia.json, que arma historia_curvas.py a partir de TODOS los
+informes/datos_*.json más informes/historico/datos_*.json, con el mismo ajuste que las imágenes. Se
+regenera solo dentro de pagina_curvas.escribir_indice, así que cada rueda publicada entra sola; hay
+que commitear historia.json junto con la carpeta de la rueda. Las ruedas anteriores al 28/08/2026 no
+tuvieron informe: las rearmó curvas_historicas.py (cierres semanales desde el último hábil de 2025,
+~500 créditos de 1816 por rueda) con el universo de ESA fecha, vencidos incluidos. Para sumar otra
+fecha vieja: `py curvas_historicas.py --fechas AAAA-MM-DD` (con API_1816_KEY exportada).
+
 TODAS AL MISMO TAMAÑO, 9,5 x 5,2 pulgadas. Si alguna vez hace falta una figura de dos paneles, van
 como dos PNG separados y no apilados en una sola imagen: apilados, al llevarlos al ancho de columna
 cada panel queda a la mitad de alto que el resto y se vuelven ilegibles. Y el pie que va DENTRO del
