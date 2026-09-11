@@ -493,7 +493,7 @@ todo derivable del JSON:
   · ROTACIÓN BOPREAL → BONARES: va en LOS TRES informes —diario, semanal y mensual—, con la TABLA
     en el mail y en el PDF. El usuario lo reclamó el 10/09/2026: la tabla se armaba a mano y algunos
     días no salía (el 09/09 faltó). Ahora viene hecha en el bloque `rotacionBopreal` del JSON, que
-    replica la solapa Rotación BOPREAL —mismos seis pares (BPOA7/B7/C7/D7 contra AO27, BPOA8/B8
+    replica la solapa «BOPREALes vs Bonares» —Rotación BOPREAL hasta el 11/09/2026; mismos seis pares (BPOA7/B7/C7/D7 contra AO27, BPOA8/B8
     contra AO28), mismos flujos, TIR por XIRR desde T+1, comisión 0,5% por punta— y está
     verificada contra el JavaScript de la solapa. No la rearmes con la `tea` de 1816: da parecido
     pero no igual, y la tabla tiene que ser la de la solapa. Por fila:
