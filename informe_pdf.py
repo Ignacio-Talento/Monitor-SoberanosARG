@@ -583,6 +583,82 @@ def tabla_rotacion(rot, ancho, periodo=None, rotulo="", con_dia=True):
     return t
 
 
+def tabla_licitacion(lic, ancho):
+    """Resultado de la licitación del Tesoro, instrumento por instrumento (licitacion_tesoro.py).
+
+    Montos en miles de millones de VNO. «Ofert./adj.» es cuánto se ofertó por cada peso adjudicado:
+    cerca de 1 es que el Tesoro tomó casi todo lo que le ofrecieron. La última columna es la TIREA de
+    corte menos la TIR de cierre del mismo bono en el secundario: positiva, el Tesoro convalidó más
+    tasa que el mercado.
+    """
+    filas = [["Instrumento", "Ofertado", "Adjudicado", "Ofert./adj.", "Corte", "TIREA",
+              "Secundario", "Corte − sec."]]
+    estilos = []
+    for r in lic.get("instrumentos") or []:
+        i = len(filas)
+        mon = "USD" if r.get("moneda") == "USD" else "$"
+        corte = (f"{num(r['corte'])}% TEM" if r.get("corteEsTEM") else
+                 f"{mon} {num(r['corte'])}" if r.get("corte") is not None else "—")
+        sec = (r.get("secundario") or {}).get("tir")
+        dif = r.get("corteMenosSecundarioPb")
+        tk = (r.get("ticker") or r.get("nombre", "")[:18]) + (" · nueva" if r.get("nueva") else "")
+        # Pesos en miles de millones; dólar linked en millones de USD —dividirlos igual daba «USD 0»—.
+        def monto(v):
+            return (f"USD {miles(v or 0)} M" if mon == "USD" else f"$ {miles((v or 0) / 1000)}")
+        filas.append([tk, monto(r.get("vnoOfertado")),
+                      monto(r.get("vnoAdjudicado")) + (" *" if r.get("prorrateo") else ""),
+                      num(r.get("ofertadoSobreAdjudicado")),
+                      corte,
+                      f"{num(r['tirea'])}%" if r.get("tirea") is not None else "—",
+                      f"{num(sec)}%" if sec is not None else "—",
+                      (num(dif, 0, True) + " pb") if dif is not None else "—"])
+        # Sin color: convalidar más o menos tasa que el secundario no es bueno ni malo en sí.
+    t = Table(filas, colWidths=[w * ancho for w in (.18, .13, .14, .1, .13, .1, .11, .11)],
+              repeatRows=1)
+    t.setStyle(TableStyle([
+        ("FONT", (0, 0), (-1, 0), SEMI, 8.6),
+        ("TEXTCOLOR", (0, 0), (-1, 0), GRIS),
+        ("LINEBELOW", (0, 0), (-1, 0), .8, BORDE),
+        ("FONT", (0, 1), (-1, -1), REG, 9.4),
+        ("FONT", (0, 1), (0, -1), SEMI, 9.4),
+        ("ALIGN", (1, 0), (-1, -1), "CENTER"),
+        ("TOPPADDING", (0, 0), (-1, -1), 4),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+        ("LEFTPADDING", (0, 0), (-1, -1), 3),
+    ] + estilos))
+    return t
+
+
+def seccion_licitacion(d, textos, ancho):
+    """La licitación del Tesoro del día, si hay resultado publicado (informes/licitacion_FECHA.json)."""
+    ruta = Path(__file__).resolve().parent / "informes" / f"licitacion_{d['fecha']}.json"
+    if not ruta.exists():
+        return []
+    lic = json.loads(ruta.read_text(encoding="utf-8"))
+    if not lic.get("publicado") or not lic.get("instrumentos"):
+        return []
+    E = [Paragraph("Licitación del Tesoro", H2)]
+    for t in textos.get("licitacion") or []:
+        E.append(Paragraph(t, P))
+    tot = lic.get("totales") or {}
+    E.append(KeepTogether([tabla_licitacion(lic, ancho), Spacer(1, 4), Paragraph(
+        "Montos en miles de millones de valor nominal original; los dólar linked, en millones de "
+        "dólares. "
+        + (f"Se ofertaron $ {num(tot['veOfertadoBillones'])} billones de valor efectivo y se "
+           f"adjudicaron $ {num(tot['veAdjudicadoBillones'])} billones. "
+           if tot.get("veOfertadoBillones") else "")
+        + "«Ofert./adj.» es lo ofertado por cada peso adjudicado. «Corte − sec.» es la TIREA de "
+        "corte menos la TIR de cierre del mismo bono en el secundario —positiva, el Tesoro convalidó "
+        "más tasa que el mercado—; en los TAMAR no se resta, porque la TIR del secundario depende de "
+        "la TAMAR que se proyecte. El corte liquida en T+2 y el secundario en T+1, así que la "
+        "comparación tiene un día de diferencia de plazo. "
+        + ("* Adjudicado con prorrateo al precio de corte. " if any(
+            r.get("prorrateo") for r in lic["instrumentos"]) else "")
+        + "Fuente: Secretaría de Finanzas.", P_CHICO)]))
+    E.append(Spacer(1, 6))
+    return E
+
+
 def tabla_simple(filas, anchos_rel, ancho, centrar=()):
     t = Table(filas, colWidths=[w * ancho for w in anchos_rel], repeatRows=1)
     est = [("FONT", (0, 0), (-1, 0), SEMI, 8.8),
@@ -724,6 +800,8 @@ def construir(ruta_json, dir_curvas, textos, salida, modo="auto"):
             "proyectada sube también el pago final.", P_CHICO)]))
 
     E.append(PageBreak())
+    # Los días de licitación, el resultado va primero en el cuerpo: es la noticia del día en pesos.
+    E += seccion_licitacion(d, textos, ANCHO)
     E.append(Paragraph("La curva de pesos", H2))
     for t in textos["pesos"]:
         E.append(Paragraph(t, P))

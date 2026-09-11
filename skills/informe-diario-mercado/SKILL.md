@@ -340,6 +340,37 @@ DOS ADVERTENCIAS PARA NO CONFUNDIR AL LECTOR:
     contada dos veces y conviene decirlo así, no como dos hallazgos separados. Si en cambio van en
     direcciones opuestas, eso sí es una observación.
 
+LICITACIÓN DEL TESORO: los días en que la Secretaría de Finanzas licita (en general dos por mes,
+un miércoles o viernes, con cierre de ofertas a las 15), EL RESULTADO VA EN EL INFORME. Lo pidió el
+usuario el 11/09/2026. Se lee con:
+
+    py licitacion_tesoro.py --datos informes/datos_AAAA-MM-DD.json
+
+que busca en https://www.argentina.gob.ar/economia/finanzas/noticias la noticia de resultado con la
+fecha de hoy, la parsea y deja informes/licitacion_AAAA-MM-DD.json (sale con código 2 y
+`"publicado": false` si todavía no está). Trae, por instrumento: VNO ofertado y adjudicado (en
+millones), valor efectivo, precio o TEM de corte, TIREA, circulación, si hubo prorrateo, cuánto se
+ofertó por cada peso adjudicado y —con --datos— la TIR de cierre del mismo bono en el secundario y
+la diferencia en pb. Los instrumentos nuevos no traen ticker en la fuente: el script lo arma con
+la convención del Tesoro (S29E7, D30N6); los TAMAR nuevos quedan con el nombre.
+  · SI YA SALIÓ: el PDF arma solo la sección «Licitación del Tesoro» con su tabla —detecta el
+    JSON— y vos le pasás la prosa en `textos["licitacion"]`. En el mail, la misma tabla (Instrumento
+    · Ofertado · Adjudicado · Ofert./adj. · Corte · TIREA · Secundario · Corte − sec.) y dos o tres
+    oraciones: cuánto se adjudicó contra lo ofertado, en qué instrumentos se concentró, y si el
+    Tesoro convalidó más o menos tasa que el secundario —«Corte − sec.» positivo es que pagó más—.
+    Si la página o el X de Economía informan el rollover, decilo; la página del resultado no trae
+    los vencimientos, así que no lo calcules por tu cuenta. En los TAMAR no restes contra el
+    secundario: la TIR de 1816 depende de la TAMAR que proyecte.
+  · SI TODAVÍA NO SALIÓ a la hora del informe: una línea que lo diga («la licitación de hoy cerró
+    a las 15 y el resultado todavía no se publicó; va en un mail aparte»), mandá el informe igual,
+    y DESPUÉS esperá el resultado consultando el script cada 10 minutos hasta las 20:30. Cuando
+    salga, mandá un mail corto EN EL MISMO HILO del informe del día (replyThreadId), con asunto
+    «Renta fija AR · licitación DD/MM», la tabla y las dos o tres oraciones. Antes de mandarlo
+    buscá en Gmail `subject:"licitación DD/MM"`: si ya salió uno —puede haberlo mandado otra
+    sesión—, no lo repitas. Si a las 20:30 no salió, no mandes nada más.
+  · En el SEMANAL, si hubo licitación en la semana, un párrafo con el resultado (sin repetir la
+    tabla si ya salió en el diario).
+
 SECCIÓN C — LO RELEVANTE DEL DÍA. Tres a seis observaciones, no más, y sólo si el dato las
 sostiene. Un informe que dice "sin novedades" cuando no las hubo es mejor que uno que infla. Es
 todo derivable del JSON:
