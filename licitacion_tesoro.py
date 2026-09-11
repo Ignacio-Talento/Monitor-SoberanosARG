@@ -66,6 +66,10 @@ def _get(url):
         try:
             r = requests.get(url, headers=CAB, timeout=30)
             if r.status_code < 500:
+                # argentina.gob.ar no declara el charset y requests asume ISO-8859-1: sin esto el
+                # comunicado entra como «D�LAR» y con él la familia y los nombres de los títulos.
+                if not r.encoding or r.encoding.upper() in ("ISO-8859-1", "LATIN-1"):
+                    r.encoding = "utf-8"
                 return r
         except requests.exceptions.RequestException:
             if i == 2:
@@ -102,7 +106,9 @@ def _ticker(nombre):
     n = nombre.upper()
     if "TAMAR" in n:
         return None, True
-    letra = ("X" if "CER" in n else "D" if ("DÓLAR" in n or "DOLAR" in n) else
+    # «CER» como palabra: las letras dólar linked son «CERO CUPÓN» y con un `in` se las llevaba la
+    # rama del CER —la nueva del 11/09/2026 salía X30N6, que además es el ticker de un Boncer vivo—.
+    letra = ("X" if re.search(r"CER", n) else "D" if ("DÓLAR" in n or "DOLAR" in n) else
              "T" if n.startswith("BONO") else "S")
     return f"{letra}{dia:02d}{LETRA_MES[mes - 1]}{anio % 10}", True
 

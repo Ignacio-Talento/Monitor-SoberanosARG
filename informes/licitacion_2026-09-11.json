@@ -1,0 +1,209 @@
+{
+ "fecha": "2026-09-11",
+ "publicado": true,
+ "url": "https://www.argentina.gob.ar/noticias/resultado-de-la-licitacion-por-efectivo-de-instrumentos-del-tesoro-nacional-denominados-12",
+ "instrumentos": [
+  {
+   "nombre": "LETRA DEL TESORO NACIONAL CAPITALIZABLE EN PESOS CON VENCIMIENTO 13 DE NOVIEMBRE DE 2026 (S13N6 - reapertura)",
+   "ticker": "S13N6",
+   "nueva": false,
+   "familia": "tasa fija",
+   "moneda": "ARS",
+   "vnoOfertado": 5411797.0,
+   "vnoAdjudicado": 3858364.0,
+   "veAdjudicado": 4066407.0,
+   "corte": 1053.92,
+   "corteEsTEM": false,
+   "tirea": 27.88,
+   "circulacion": 10558364.0,
+   "prorrateo": false,
+   "ofertadoSobreAdjudicado": 1.403,
+   "secundario": {
+    "tir": 28.077,
+    "precio": 105.28,
+    "fecha": "2026-09-11"
+   },
+   "corteMenosSecundarioPb": -20
+  },
+  {
+   "nombre": "LETRA DEL TESORO NACIONAL EN PESOS AJUSTADA POR CER A DESCUENTO VENCIMIENTO 29 DE ENERO DE 2027 (X29E7 - reapertura)",
+   "ticker": "X29E7",
+   "nueva": false,
+   "familia": "CER",
+   "moneda": "ARS",
+   "vnoOfertado": 2247763.0,
+   "vnoAdjudicado": 688547.0,
+   "veAdjudicado": 688925.0,
+   "corte": 1000.55,
+   "corteEsTEM": false,
+   "tirea": 5.5,
+   "circulacion": 6788547.0,
+   "prorrateo": false,
+   "ofertadoSobreAdjudicado": 3.265,
+   "secundario": {
+    "tir": 5.643,
+    "precio": 99.92,
+    "fecha": "2026-09-11"
+   },
+   "corteMenosSecundarioPb": -14
+  },
+  {
+   "nombre": "BONO DEL TESORO NACIONAL EN PESOS A TASA TAMAR CON VENCIMIENTO 26 DE FEBRERO DE 2027 (TMF27 - reapertura)",
+   "ticker": "TMF27",
+   "nueva": false,
+   "familia": "TAMAR",
+   "moneda": "ARS",
+   "vnoOfertado": 2183729.0,
+   "vnoAdjudicado": 1137878.0,
+   "veAdjudicado": 1389349.0,
+   "corte": 1221.0,
+   "corteEsTEM": false,
+   "tirea": 30.55,
+   "circulacion": 6137877.9,
+   "prorrateo": false,
+   "ofertadoSobreAdjudicado": 1.919,
+   "secundario": {
+    "tir": 30.456,
+    "precio": 122,
+    "fecha": "2026-09-11"
+   }
+  },
+  {
+   "nombre": "BONO DEL TESORO NACIONAL EN PESOS A TASA TAMAR CON VENCIMIENTO 30 DE JULIO DE 2027 (TML27 - reapertura)",
+   "ticker": "TML27",
+   "nueva": false,
+   "familia": "TAMAR",
+   "moneda": "ARS",
+   "vnoOfertado": 2004586.0,
+   "vnoAdjudicado": 1192852.0,
+   "veAdjudicado": 1282316.0,
+   "corte": 1075.0,
+   "corteEsTEM": false,
+   "tirea": 31.66,
+   "circulacion": 6792851.94,
+   "prorrateo": false,
+   "ofertadoSobreAdjudicado": 1.68,
+   "secundario": {
+    "tir": 31.758,
+    "precio": 107.45,
+    "fecha": "2026-09-11"
+   }
+  },
+  {
+   "nombre": "LETRA DEL TESORO NACIONAL VINCULADA AL DÓLAR ESTADOUNIDENSE CERO CUPÓN CON VENCIMIENTO 30 DE OCTUBRE DE 2026 (D30O6 - reapertura)",
+   "ticker": "D30O6",
+   "nueva": false,
+   "familia": "dólar linked",
+   "moneda": "USD",
+   "vnoOfertado": 353.0,
+   "vnoAdjudicado": 314.0,
+   "veAdjudicado": 470216.0,
+   "corte": 989.54,
+   "corteEsTEM": false,
+   "tirea": 8.78,
+   "circulacion": 4404.0,
+   "prorrateo": false,
+   "ofertadoSobreAdjudicado": 1.124,
+   "secundario": {
+    "tir": 5.642,
+    "precio": 149950,
+    "fecha": "2026-09-11"
+   },
+   "corteMenosSecundarioPb": 314
+  },
+  {
+   "nombre": "LETRA DEL TESORO NACIONAL VINCULADA AL DÓLAR ESTADOUNIDENSE CERO CUPÓN CON VENCIMIENTO 30 DE NOVIEMBRE DE 2026 (nueva)",
+   "ticker": "D30N6",
+   "nueva": true,
+   "familia": "dólar linked",
+   "moneda": "USD",
+   "vnoOfertado": 136.0,
+   "vnoAdjudicado": 63.0,
+   "veAdjudicado": 93697.0,
+   "corte": 985.2,
+   "corteEsTEM": false,
+   "tirea": 7.42,
+   "circulacion": 4153.0,
+   "prorrateo": false,
+   "ofertadoSobreAdjudicado": 2.159
+  },
+  {
+   "nombre": "LETRA DEL TESORO NACIONAL VINCULADA AL DÓLAR ESTADOUNIDENSE CERO CUPÓN CON VENCIMIENTO 31 DE MARZO DE 2027 (D31M7 - reapertura)",
+   "ticker": "D31M7",
+   "nueva": false,
+   "familia": "dólar linked",
+   "moneda": "USD",
+   "vnoOfertado": 275.0,
+   "vnoAdjudicado": 154.0,
+   "veAdjudicado": 224105.0,
+   "corte": 961.0,
+   "corteEsTEM": false,
+   "tirea": 7.58,
+   "circulacion": 4244.0,
+   "prorrateo": false,
+   "ofertadoSobreAdjudicado": 1.786,
+   "secundario": {
+    "tir": 4.799,
+    "precio": 147200,
+    "fecha": "2026-09-11"
+   },
+   "corteMenosSecundarioPb": 278
+  },
+  {
+   "nombre": "BONO DEL TESORO NACIONAL VINCULADA AL DÓLAR ESTADOUNIDENSE CERO CUPÓN CON VENCIMIENTO 30 DE JUNIO DE 2027 (TZV27 - reapertura)",
+   "ticker": "TZV27",
+   "nueva": false,
+   "familia": "dólar linked",
+   "moneda": "USD",
+   "vnoOfertado": 169.0,
+   "vnoAdjudicado": 134.0,
+   "veAdjudicado": 194090.0,
+   "corte": 960.35,
+   "corteEsTEM": false,
+   "tirea": 5.24,
+   "circulacion": 4224.0,
+   "prorrateo": false,
+   "ofertadoSobreAdjudicado": 1.261,
+   "secundario": {
+    "tir": 3.842,
+    "precio": 146550,
+    "fecha": "2026-09-11"
+   },
+   "corteMenosSecundarioPb": 140
+  }
+ ],
+ "totales": {
+  "veOfertadoBillones": 14.17,
+  "veAdjudicadoBillones": 8.41,
+  "Cantidad de Ofertas Recibidas": {
+   "Resultados de la Licitación por instrumentos denominados en pesos": "4.588",
+   "Resultado de la Licitación por instrumentos denominados en Dólares Estadounidenses": "422",
+   "TOTAL (El VE de los títulos denominados en Dólares Estadounidenses se expresan en pesos al tipo de cambio \"T-1\" de la Com. \"A\" 3500)": "5.010"
+  },
+  "Total VNO Ofertado (*)": {
+   "Resultados de la Licitación por instrumentos denominados en pesos": "$ 11.847.875",
+   "Resultado de la Licitación por instrumentos denominados en Dólares Estadounidenses": "USD 933",
+   "TOTAL (El VE de los títulos denominados en Dólares Estadounidenses se expresan en pesos al tipo de cambio \"T-1\" de la Com. \"A\" 3500)": "$ 13.259.407"
+  },
+  "Total VE Ofertado (*)": {
+   "Resultados de la Licitación por instrumentos denominados en pesos": "$ 12.784.625",
+   "Resultado de la Licitación por instrumentos denominados en Dólares Estadounidenses": "$ 1.381.322",
+   "TOTAL (El VE de los títulos denominados en Dólares Estadounidenses se expresan en pesos al tipo de cambio \"T-1\" de la Com. \"A\" 3500)": "$ 14.165.947"
+  },
+  "Total VNO Adjudicado (*)": {
+   "Resultados de la Licitación por instrumentos denominados en pesos": "$ 6.877.641",
+   "Resultado de la Licitación por instrumentos denominados en Dólares Estadounidenses": "USD 665",
+   "TOTAL (El VE de los títulos denominados en Dólares Estadounidenses se expresan en pesos al tipo de cambio \"T-1\" de la Com. \"A\" 3500)": "$ 7.883.235"
+  },
+  "Total Valor Efectivo Adjudicado (*)": {
+   "Resultados de la Licitación por instrumentos denominados en pesos": "$ 7.426.997",
+   "Resultado de la Licitación por instrumentos denominados en Dólares Estadounidenses": "$ 982.108",
+   "TOTAL (El VE de los títulos denominados en Dólares Estadounidenses se expresan en pesos al tipo de cambio \"T-1\" de la Com. \"A\" 3500)": "$ 8.409.105"
+  }
+ },
+ "pdf": "https://www.argentina.gob.ar/sites/default/files/2026/09/comunicado_resultados_20260911.pdf",
+ "tcReferencia": {
+  "dia": "10 de septiembre de 2026",
+  "valor": 1512.9956
+ }
+}
