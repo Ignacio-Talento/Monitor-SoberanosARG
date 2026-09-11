@@ -45,6 +45,8 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import matplotlib.ticker as mtick
+import numpy as np
+from matplotlib.lines import Line2D
 
 SKILL = (r"C:\Users\Usuario\AppData\Roaming\Claude\local-agent-mode-sessions\skills-plugin"
          r"\b8cdd89c-febc-4430-ac7d-eb55f2fb0c82\032bf20c-fc9a-48c9-80cf-4f4994992f7e"
@@ -245,6 +247,90 @@ def _serie(ax, pts, color, rotulo, marcador="o", linea="-", etiquetas=True, cada
         _etiquetar(ax, pts, color, cada, tam=tam)
 
 
+# ── CURVAS AJUSTADAS ─────────────────────────────────────────────────────────
+# Las curvas de rendimiento van como PUNTOS SUELTOS más la curva que mejor los ajusta, no con los
+# puntos unidos: lo pidió el usuario el 11/09/2026, con el gráfico de ONs de la casa de referencia.
+# Unir los puntos dibuja cada precio viejo o ilíquido como un pico de la curva; con el ajuste, el
+# que queda por encima rinde más que sus pares de plazo parecido y el que queda por debajo, menos,
+# que es la lectura que se busca.
+#
+# Mínimos cuadrados, probando tres formas y quedándose con la que mejor ajusta (ver _elegir_forma):
+# parábola sobre la duration —la que usan las solapas ONs y Glob vs Bon—, parábola sobre el
+# logaritmo de la duration —mejor cuando la curva va de semanas a años, como la CER, porque si no
+# el tramo corto queda aplastado— y recta sobre el logaritmo. La curva se dibuja sólo entre el
+# primer y el último punto del ajuste: no se extrapola.
+# Las formas que se prueban, en orden de preferencia ante un empate: (grado, sobre log de la duration)
+FORMAS = [(2, False), (2, True), (1, True)]
+
+
+def _elegir_forma(xs, ys):
+    """La forma que mejor ajusta, por AICc —que castiga el parámetro de más con pocos puntos—, y
+    que no invente una joroba: se descarta la que, dentro del tramo con datos, sube o baja más de
+    un 15% del rango de los puntos por fuera de ellos. Pasó con la tasa fija el 10/09/2026: la
+    parábola sobre la duration trepaba a 2,31% de TEM entre T30J7 y TY30P, más que cualquier bono."""
+    n = len(xs)
+    rango = float(ys.max() - ys.min()) or 1.0
+    malla = np.linspace(xs.min(), xs.max(), 200)
+    cands = []
+    for grado, log_x in FORMAS:
+        k = grado + 1
+        if n <= k + 1:
+            continue
+        X = np.log(xs) if log_x else xs
+        coef = np.polyfit(X, ys, grado)
+        sse = float(((ys - np.polyval(coef, X)) ** 2).sum())
+        aicc = n * np.log(max(sse, 1e-12) / n) + 2 * k + 2 * k * (k + 1) / (n - k - 1)
+        curva = np.polyval(coef, np.log(malla) if log_x else malla)
+        joroba = max(curva.max() - ys.max(), ys.min() - curva.min(), 0) / rango
+        cands.append((joroba > .15, aicc, grado, log_x, coef, sse))
+    if not cands:
+        return None
+    cands.sort(key=lambda c: (c[0], c[1]))
+    return cands[0]
+
+
+def _ajuste(ax, pts, color, estilo="-", excluir=()):
+    """Dibuja la curva que mejor ajusta `pts` y devuelve (R², forma), o None con menos de 3 puntos.
+
+    Afuera del ajuste, además de `excluir`, lo que vence en menos de dos semanas: a esos plazos la
+    tasa anualizada es ruido —S15S6 a cuatro días de vencer daba 1,76% de TEM contra 1,9% de sus
+    vecinos— y tira la curva. Los puntos se dibujan igual.
+    """
+    usados = [(x, y) for x, y, tk in pts if tk not in excluir and x and x >= .04]
+    if len(usados) < 3:
+        return None
+    xs = np.array([u[0] for u in usados], dtype=float)
+    ys = np.array([u[1] for u in usados], dtype=float)
+    elegida = _elegir_forma(xs, ys)
+    if not elegida:
+        return None
+    _, _, grado, log_x, coef, sse = elegida
+    malla = np.linspace(xs.min(), xs.max(), 200)
+    ax.plot(malla, np.polyval(coef, np.log(malla) if log_x else malla), color=color,
+            linewidth=2, linestyle=estilo, zorder=2, alpha=.9)
+    tot = float(((ys - ys.mean()) ** 2).sum())
+    return (1 - sse / tot if tot else None), (grado, log_x)
+
+
+def _serie_ajustada(ax, pts, color, rotulo, marcador="o", estilo="-", excluir=(),
+                    etiquetas=True, cada=1, tam=TAM_ROTULO):
+    """Puntos sueltos + su curva ajustada, con una entrada de leyenda que muestra las dos cosas."""
+    if not pts:
+        return None
+    ax.plot([p[0] for p in pts], [p[1] for p in pts], color=color, linestyle="none",
+            marker=marcador, markersize=7, zorder=3)
+    r2 = _ajuste(ax, pts, color, estilo, excluir)
+    ax.plot([], [], color=color, marker=marcador, markersize=7, linestyle=estilo, linewidth=2,
+            label=rotulo)
+    if etiquetas:
+        _etiquetar(ax, pts, color, cada, tam=tam)
+    return r2
+
+
+NOTA_AJUSTE = ("La línea es la curva que mejor ajusta los puntos por mínimos cuadrados, no los une: "
+               "un bono por encima rinde más que sus pares de plazo parecido.")
+
+
 # EL PESO IMPORTA POR EL PDF que se adjunta al mail: ocho imágenes pesadas lo vuelven inadjuntable.
 # A 100 dpi con paleta indexada quedan en unos 15 KB cada uno contra 100 sin comprimir, y no se
 # nota: son líneas y texto sobre fondo plano, sin degradados que sufran la cuantización. 100 dpi da
@@ -312,10 +398,10 @@ def globales_vs_bonares(instr, salida, faltan=""):
     if not (bon and glo):
         return None
     fig, ax = balanz_figure(figsize=(9.5, 5.2))
-    _serie(ax, bon, NAVY, "Bonares · ley local")
-    _serie(ax, glo, CYAN, "Globales · ley NY", marcador="s")
+    _serie_ajustada(ax, bon, NAVY, "Bonares · ley local")
+    _serie_ajustada(ax, glo, CYAN, "Globales · ley NY", marcador="s", estilo="--")
     _ejes(ax, "Curva soberana en dólares · ley local contra ley NY", "TIR (%)")
-    _nota(ax, "Ambas curvas en MEP. Los globales se llevan a esa punta a propósito: se " "negocian al CCL y restar dos monedas daría un spread que no existe." + faltan)
+    _nota(ax, "Ambas curvas en MEP. Los globales se llevan a esa punta a propósito: se " "negocian al CCL y restar dos monedas daría un spread que no existe.\n" + NOTA_AJUSTE + faltan)
     return _cerrar(fig, ax, salida)
 
 
@@ -326,10 +412,10 @@ def lecaps_tem(instr, salida, faltan=""):
     if not pts:
         return None
     fig, ax = balanz_figure(figsize=(9.5, 5.2))
-    _serie(ax, pts, NAVY, "LECAPs y tasa fija")
+    _serie_ajustada(ax, pts, NAVY, "LECAPs y tasa fija")
     _ejes(ax, "Curva de pesos a tasa fija · TEM", "TEM (%)")
     ax.yaxis.set_major_formatter(mtick.FormatStrFormatter("%.2f%%"))
-    _nota(ax, "La TEM se deriva de la TEA informada: (1 + TEA)^(1/12) − 1." + faltan)
+    _nota(ax, "La TEM se deriva de la TEA informada: (1 + TEA)^(1/12) − 1.\n" + NOTA_AJUSTE + faltan)
     return _cerrar(fig, ax, salida)
 
 
@@ -339,7 +425,10 @@ def curva_cer(instr, salida, duales_cer, faltan=""):
     if not pts:
         return None
     fig, ax = balanz_figure(figsize=(9.5, 5.2))
-    _serie(ax, pts, NAVY, "CER · TIR real")
+    # Fuera del ajuste los CER de menos de dos meses: con el coeficiente casi todo devengado su TIR
+    # real se va a negativo sin informar nada, y torcería la curva entera. Se dibujan igual.
+    cortos = {tk for d, _, tk in pts if d < 2 / 12}
+    _serie_ajustada(ax, pts, NAVY, "CER · TIR real", excluir=cortos)
     if duales_cer:
         _serie(ax, duales_cer, AMBAR, "Duales · pata CER", marcador="D", linea="")
     _ejes(ax, "Curva CER · rendimiento real sobre el índice", "CER + x % (TIR real)")
@@ -350,6 +439,7 @@ def curva_cer(instr, salida, duales_cer, faltan=""):
         nota += ("\nLos rombos son la PATA CER de cada dual, no el instrumento entero. Rinden "
                  "menos que un CER puro de la misma duration: en un dual se cobra el máximo entre "
                  "las dos patas, y esa opcionalidad se paga.")
+    nota += "\n" + NOTA_AJUSTE[:-1] + ". Quedan fuera del ajuste los CER de menos de dos meses."
     _nota(ax, nota + faltan)
     return _cerrar(fig, ax, salida)
 
@@ -406,8 +496,10 @@ def lecaps_vs_cer(instr, salida, dudosos_cer, infl_anual=None):
     cer_nom = [(d, ((1 + infl_anual / 100) * (1 + r / 100) - 1) * 100, tk) for d, r, tk in cer_vis]
 
     fig, ax = balanz_figure(figsize=(9.5, 5.2))
-    _serie(ax, lec, NAVY, "LECAPs · TEA nominal")
-    _serie(ax, cer_nom, ACERO, "Bonos CER · CER + TIR", marcador="s")
+    _serie_ajustada(ax, lec, NAVY, "LECAPs · TEA nominal")
+    cortos = {tk for d, _, tk in cer_nom if d < 2 / 12}
+    _serie_ajustada(ax, cer_nom, ACERO, "Bonos CER · CER + TIR", marcador="s", estilo="--",
+                    excluir=cortos)
     _ejes(ax, "Tasa fija contra CER", "TEA (%)")
     ax.set_xlim(-xmax * .09, xmax)
     ax.legend(frameon=False, fontsize=TAM_LEYENDA, labelcolor=NAVY, loc="lower right")
@@ -415,7 +507,8 @@ def lecaps_vs_cer(instr, salida, dudosos_cer, infl_anual=None):
               f"tres últimos meses del IPC anualizados dan {infl_anual:.1f}%.\nNo es lo que el "
               "mercado espera —eso es el breakeven del gráfico siguiente, bastante más bajo—, sino "
               "cuánto rendiría cada CER si la inflación se mantuviera en el ritmo actual. Que la "
-              "curva CER corra por encima es esa diferencia.")
+              "curva CER corra por encima es esa diferencia.\nLas líneas son las curvas que mejor "
+              "ajustan cada grupo de puntos, no los unen.")
     # Por _cerrar y no por savefig directo: es el que llama a _acomodar. Guardando a mano, los
     # rotulos quedaban donde cayeron.
     return _cerrar(fig, ax, salida, leyenda=False)
@@ -448,7 +541,7 @@ def curva_tamar(instr, salida, duales_tamar, tamar_bcra=None, faltan=""):
     if not pts:
         return None
     fig, ax = balanz_figure(figsize=(9.5, 5.2))
-    _serie(ax, pts, NAVY, "TAMAR · TEA")
+    _serie_ajustada(ax, pts, NAVY, "TAMAR · TEA")
     if duales_tamar:
         _serie(ax, duales_tamar, AMBAR, "Duales · pata TAMAR", marcador="D", linea="")
     if tamar_bcra:
@@ -463,6 +556,7 @@ def curva_tamar(instr, salida, duales_tamar, tamar_bcra=None, faltan=""):
         extra = ("Los rombos son la PATA TAMAR de cada dual, no el instrumento entero: rinden "
                  "menos que un TAMAR puro porque incluyen el costo de la opcionalidad.")
         nota = (nota + "\n" + extra) if nota else extra
+    nota = (nota + "\n" if nota else "") + NOTA_AJUSTE
     if nota:
         _nota(ax, nota + faltan)
     return _cerrar(fig, ax, salida)
@@ -474,10 +568,10 @@ def curva_dl(instr, salida, faltan=""):
     if not pts:
         return None
     fig, ax = balanz_figure(figsize=(9.5, 5.2))
-    _serie(ax, pts, NAVY, "Dólar linked · TIR")
+    _serie_ajustada(ax, pts, NAVY, "Dólar linked · TIR")
     _ejes(ax, "Curva dólar linked", "TIR (%)")
     ax.axhline(0, color=GRIS, linewidth=.9, linestyle=":", zorder=1)
-    _nota(ax, "Rendimiento por encima de la devaluación oficial. Son pocos instrumentos y " "algunos muy ilíquidos, así que la curva es indicativa." + faltan)
+    _nota(ax, "Rendimiento por encima de la devaluación oficial. Son pocos instrumentos y " "algunos muy ilíquidos, así que la curva es indicativa.\n" + NOTA_AJUSTE + faltan)
     return _cerrar(fig, ax, salida)
 
 

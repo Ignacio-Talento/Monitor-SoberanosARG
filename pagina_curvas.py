@@ -23,9 +23,8 @@ FICHAS = [
      "Rendimiento real, CER más un spread. Cada dual entra con su pata CER, pedida a 1816 por "
      "separado y con su propia duration."),
     ("lecaps_cer", "LECAPs contra CER",
-     "Las dos curvas sobre el tramo que comparten, cada una en su escala: la tasa fija a la "
-     "izquierda y el rendimiento real de los CER a la derecha. En un solo eje los CER quedaban "
-     "aplastados contra el piso."),
+     "Las dos curvas en TEA nominal sobre el tramo que comparten: los CER llevados a nominal con "
+     "la inflación publicada de los últimos tres meses."),
     ("breakeven", "Inflación implícita",
      "La inflación a la que una LECAP y un CER del mismo plazo rinden lo mismo. Cada CER se "
      "compara contra la curva de tasa fija interpolada a su misma duration, no contra la LECAP "
@@ -145,4 +144,33 @@ def escribir(dir_salida, hechos, fecha):
 """
     ruta = Path(dir_salida) / "index.html"
     ruta.write_text(html, encoding="utf-8")
+    escribir_indice(Path(dir_salida).parent)
     return str(ruta)
+
+
+def escribir_indice(raiz):
+    """informes/curvas/indice.json: qué ruedas tienen curvas, con qué gráficos y qué PDF.
+
+    Lo lee la solapa Curvas del monitor. Hace falta porque el hosting es estático y no lista
+    carpetas: sin índice, la solapa no tendría forma de saber qué fechas existen. Se reescribe
+    entero cada vez que se publica una rueda, así que nunca queda desfasado de las carpetas.
+    """
+    import json
+    import re
+    raiz = Path(raiz)
+    ROTULOS = {"mensual": "Cierre mensual", "semanal": "Cierre semanal"}
+    ruedas = []
+    for d in sorted((x for x in raiz.iterdir() if x.is_dir() and re.fullmatch(r"\d{4}-\d{2}-\d{2}", x.name)),
+                    reverse=True):
+        graficos = [{"archivo": f"{n}.png", "titulo": t, "bajada": b}
+                    for n, t, b in FICHAS if (d / f"{n}.png").exists()]
+        if not graficos:
+            continue
+        pdfs = [{"archivo": f.name,
+                 "rotulo": next((r for k, r in ROTULOS.items() if f.name.startswith(f"cierre-{k}-")),
+                                "Informe del día")}
+                for f in sorted(d.glob("cierre-*.pdf"))]
+        ruedas.append({"fecha": d.name, "graficos": graficos, "pdfs": pdfs})
+    (raiz / "indice.json").write_text(json.dumps({"ruedas": ruedas}, ensure_ascii=False, indent=1),
+                                      encoding="utf-8")
+    return len(ruedas)

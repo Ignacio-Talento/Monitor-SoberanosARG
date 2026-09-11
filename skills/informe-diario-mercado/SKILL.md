@@ -674,6 +674,19 @@ Deja NUEVE PNG (~150 KB en total): globales_bonares, lecaps_tem, cer, lecaps_cer
 tamar, dl, subsoberanos y futuros. Y además escribe un index.html con las nueve, que es lo que se
 linkea.
 
+LAS CURVAS DE RENDIMIENTO VAN CON LA CURVA AJUSTADA, NO CON LOS PUNTOS UNIDOS (pedido del usuario,
+11/09/2026): tasa fija, CER, tasa fija contra CER, TAMAR, soberana en dólares y dólar linked. Cada
+serie son puntos sueltos más la curva que mejor los ajusta por mínimos cuadrados —el script prueba
+parábola sobre la duration, parábola sobre su logaritmo y recta sobre el logaritmo, y descarta la
+que invente una joroba—. En la prosa, un bono «por encima de su curva» es el que rinde más que sus
+pares de plazo parecido: esa lectura ahora se ve directo en el gráfico. Lo que vence en menos de
+dos semanas —y en CER, en menos de dos meses— se dibuja pero no entra al ajuste.
+
+LA SOLAPA CURVAS DEL MONITOR muestra estas mismas imágenes, rueda por rueda, con el link al PDF.
+Lee informes/curvas/indice.json, que reescribe publicar_curvas.py (vía pagina_curvas.escribir) cada
+vez que se publica una rueda: si armás las curvas a mano, publicalas con `py publicar_curvas.py
+AAAA-MM-DD` —no copiando la carpeta— para que el índice se actualice.
+
 TODAS AL MISMO TAMAÑO, 9,5 x 5,2 pulgadas. Si alguna vez hace falta una figura de dos paneles, van
 como dos PNG separados y no apilados en una sola imagen: apilados, al llevarlos al ancho de columna
 cada panel queda a la mitad de alto que el resto y se vuelven ilegibles. Y el pie que va DENTRO del

@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <script src="tema.js"></script>
-<title>Caución Neta de Costos</title>
+<title>Curvas · Monitor Renta Fija AR</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@300;400;600;700&display=swap" rel="stylesheet"><style>body{font-variant-numeric:tabular-nums;}
   /* ═══ HEADER DE MARCA ═══════════════════════════════════════════
      Barra navy a todo el ancho con el logo oficial y la navegación adentro, como balanz.com.
@@ -209,181 +209,122 @@
   <a class="nav-tab" href="globVsBon.html">Glob vs Bon</a>
   <a class="nav-tab" href="caucionVsLecap.html">Caución vs Lecap</a>
   <a class="nav-tab" href="sinteticos.html">Sintéticos</a>
-  <a class="nav-tab active" href="caucionNeta.html">Caución Neta</a>
+  <a class="nav-tab" href="caucionNeta.html">Caución Neta</a>
   <a class="nav-tab" href="rotacionBopreal.html">Rotación BOPREAL</a>
   <a class="nav-tab" href="macro.html">Macro</a>
-  <a class="nav-tab" href="curvas.html">Curvas</a>
+  <a class="nav-tab active" href="curvas.html">Curvas</a>
 </div>
 
+<style>
+  /* ═══ SOLAPA CURVAS ═══
+     Las curvas de los informes diarios, semanales y mensuales, rueda por rueda. Son las mismas
+     imágenes que se linkean en el mail: las genera curvas_informe.py al cierre y quedan en
+     informes/curvas/AAAA-MM-DD/. La lista de ruedas sale de informes/curvas/indice.json, porque el
+     hosting es estático y no lista carpetas. */
+  .cv-barra { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; margin-bottom: 14px; }
+  .cv-lbl { font-size: 10px; font-family: var(--mono); color: var(--text-3); letter-spacing: .08em;
+            text-transform: uppercase; }
+  .cv-sel { font: 600 13px var(--sans); color: var(--navy); background: var(--surface);
+            border: 1px solid var(--border); border-radius: var(--r-input); padding: 7px 10px; }
+  .cv-nav { font: 600 12px var(--sans); color: var(--text-2); background: var(--surface);
+            border: 1px solid var(--border); border-radius: var(--r-pill); padding: 6px 12px; cursor: pointer; }
+  .cv-nav:disabled { opacity: .4; cursor: default; }
+  .cv-pdf a, .cv-link { font: 600 12px var(--sans); color: var(--cyan); text-decoration: none; }
+  .cv-pdf a:hover, .cv-link:hover { text-decoration: underline; }
+  .cv-pdf { display: inline-flex; gap: 14px; }
+  .cv-intro { font-size: 12px; color: var(--text-2); line-height: 1.6; margin: 0 0 18px; max-width: 980px; }
+  .cv-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(560px, 1fr)); gap: 18px;
+             align-items: start; }
+  @media (max-width: 640px) { .cv-grid { grid-template-columns: 1fr; } }
+  .cv-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-card);
+             box-shadow: var(--sh-card); margin: 0; overflow: hidden; display: flex; flex-direction: column; }
+  .cv-card h3 { margin: 0; padding: 14px 18px 4px; font-size: 13px; color: var(--navy); font-weight: 700; }
+  .cv-card p { margin: 0; padding: 0 18px 12px; font-size: 11px; color: var(--text-3); line-height: 1.55; }
+  /* Las imágenes son las del informe, con fondo blanco: van sobre un marco blanco también en el
+     tema oscuro, para que se lean como lo que son —la lámina que sale en el PDF— y no como un
+     parche claro en el medio de la página. */
+  .cv-img { display: block; background: #fff; padding: 8px; margin: 0 12px 12px; border-radius: 8px; }
+  .cv-img img { display: block; width: 100%; height: auto; }
+  .cv-vacio { font-size: 12px; color: var(--text-3); padding: 30px 0; }
+</style>
+
 <div class="wrap">
-
-  <div class="modo-toggle">
-    <button class="modo-btn active" id="btn-coloc" type="button" onclick="setModo('coloc')">Colocadora</button>
-    <button class="modo-btn" id="btn-tom" type="button" onclick="setModo('tom')">Tomadora</button>
+  <div class="cv-barra">
+    <span class="cv-lbl">Rueda</span>
+    <button class="cv-nav" id="cv-ant" title="Rueda anterior">‹</button>
+    <select class="cv-sel" id="cv-fecha" aria-label="Rueda"></select>
+    <button class="cv-nav" id="cv-sig" title="Rueda siguiente">›</button>
+    <span class="cv-pdf" id="cv-pdfs"></span>
   </div>
-
-  <div class="intro" id="intro">
-    Caución colocadora — rendimiento neto de costos. Colocás un monto a una tasa por una cantidad de días y cobrás el interés, netos el arancel, derechos de mercado y bolsa (con su IVA). Los gastos se calculan sobre el importe bruto futuro y se prorratean en 90 días.
-  </div>
-
-  <div class="layout">
-    <!-- INPUTS -->
-    <div class="card">
-      <div class="card-header"><div class="card-title" id="card-header-title">Datos de la colocación</div></div>
-      <div class="card-body">
-        <div class="field">
-          <label>Monto contado ($)</label>
-          <input class="inp" id="monto" type="number" step="1000" value="10000000" oninput="calc()">
-        </div>
-        <div class="field">
-          <label>Tasa (TNA %)</label>
-          <input class="inp" id="tasa" type="number" step="0.1" value="20" oninput="calc()">
-        </div>
-        <div class="field">
-          <label>Días</label>
-          <input class="inp" id="dias" type="number" step="1" value="1" oninput="calc()">
-        </div>
-
-        <div class="params">
-          <div class="params-title">Parámetros de costos</div>
-          <div class="param-row"><label>Arancel (%)</label><input class="inp-sm" id="arancel" type="number" step="0.001" value="0.5" oninput="calc()"></div>
-          <div class="param-row"><label>Derecho de mercado (%)</label><input class="inp-sm" id="mercado" type="number" step="0.001" value="0.03" oninput="calc()"></div>
-          <div class="param-row"><label>Derecho de bolsa (%)</label><input class="inp-sm" id="bolsa" type="number" step="0.001" value="0.015" oninput="calc()"></div>
-          <div class="param-row"><label>IVA (%)</label><input class="inp-sm" id="iva" type="number" step="1" value="21" readonly></div>
-          <div class="param-row"><label>Prorrateo (días)</label><input class="inp-sm" id="prorrateo" type="number" step="1" value="90" readonly></div>
-        </div>
-      </div>
-    </div>
-
-    <!-- RESULTADOS -->
-    <div class="card">
-      <div class="card-header"><div class="card-title">Resultado</div></div>
-      <table class="result-table">
-        <tbody>
-          <tr><td class="lbl">Monto futuro (bruto)</td><td class="val" id="r-futuro">—</td></tr>
-          <tr><td class="lbl sub">Arancel</td><td class="val neg" id="r-arancel">—</td></tr>
-          <tr><td class="lbl sub">IVA s/ arancel</td><td class="val neg" id="r-ivaAr">—</td></tr>
-          <tr><td class="lbl sub">Derechos de mercado y bolsa</td><td class="val neg" id="r-mb">—</td></tr>
-          <tr><td class="lbl sub">IVA s/ mercado y bolsa</td><td class="val neg" id="r-ivaMb">—</td></tr>
-          <tr class="total"><td class="lbl" id="lbl-neto">Monto neto</td><td class="val" id="r-neto">—</td></tr>
-        </tbody>
-      </table>
-      <div class="kpis" id="kpis">
-        <div class="kpi"><div class="k-lbl" id="lbl-tasa">Tasa neta (TNA)</div><div class="k-val green" id="r-tasaNeta">—</div></div>
-        <div class="kpi" id="kpi-cft" style="display:none"><div class="k-lbl">CFT</div><div class="k-val amber" id="r-cft">—</div></div>
-        <div class="kpi"><div class="k-lbl">Gastos totales</div><div class="k-val amber" id="r-gastos">—</div></div>
-      </div>
-    </div>
-  </div>
-
-  <div class="nota" id="nota">
-    Monto futuro = Contado × (1 + Tasa × Días/365). &nbsp;·&nbsp; Cada costo = Monto futuro × alícuota × Días/Prorrateo, más su IVA. &nbsp;·&nbsp; Tasa neta = ((Neto − Contado)/Contado) / Días × 365.
-  </div>
+  <p class="cv-intro">Las curvas que salen en los informes diarios, semanales y mensuales, con los
+    precios de cierre de cada rueda. En las curvas de rendimiento la línea es la curva que mejor
+    ajusta los puntos, no los une: un bono por encima de su curva rinde más que sus pares de plazo
+    parecido. Tocá una imagen para abrirla en tamaño completo.</p>
+  <div class="cv-grid" id="cv-grid"><div class="cv-vacio">Cargando…</div></div>
 </div>
 
 <script>
-function n(id) { return parseFloat(document.getElementById(id).value) || 0; }
-function fmtPesos(x) {
-  return '$' + x.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-}
+(function () {
+  var ruedas = [];
+  var sel = document.getElementById('cv-fecha');
+  var MESES = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+  var DIAS = ['dom','lun','mar','mié','jue','vie','sáb'];
 
-// Defaults de costos por modo (arancel/mercado/bolsa en %). IVA y prorrateo no cambian.
-const DEFAULTS = {
-  coloc: { arancel: 0.5, mercado: 0.03, bolsa: 0.015 },
-  tom:   { arancel: 1.5, mercado: 0.06, bolsa: 0.03  },
-};
-const TEXTOS = {
-  coloc: {
-    intro: 'Caución colocadora — rendimiento neto de costos. Colocás un monto a una tasa por una cantidad de días y cobrás el interés, netos el arancel, derechos de mercado y bolsa (con su IVA). Los gastos se calculan sobre el importe bruto futuro y se prorratean en 90 días.',
-    header: 'Datos de la colocación',
-    neto: 'Monto neto',
-    tasa: 'Tasa neta (TNA)',
-    nota: 'Monto futuro = Contado × (1 + Tasa × Días/365).  ·  Cada costo = Monto futuro × alícuota × Días/Prorrateo, más su IVA (se restan).  ·  Tasa neta = ((Neto − Contado)/Contado) / Días × 365.',
-  },
-  tom: {
-    intro: 'Caución tomadora — costo neto de fondearte. Tomás un monto a una tasa por una cantidad de días y devolvés el interés más el arancel, derechos de mercado y bolsa (con su IVA). Los gastos se calculan sobre el importe bruto futuro y se prorratean en 90 días.',
-    header: 'Datos de la toma',
-    neto: 'Monto a devolver',
-    tasa: 'Costo neto (TNA)',
-    nota: 'Monto futuro = Contado × (1 + Tasa × Días/365).  ·  Cada costo = Monto futuro × alícuota × Días/Prorrateo, más su IVA (se suman).  ·  Costo neto = ((Devolvés − Contado)/Contado) / Días × 365.  ·  CFT = (Devolvés/Contado)^(365/Días) − 1.',
-  },
-};
+  function rotulo(f) {
+    var p = f.split('-').map(Number), d = new Date(p[0], p[1] - 1, p[2]);
+    return DIAS[d.getDay()] + ' ' + p[2] + ' ' + MESES[p[1] - 1] + ' ' + p[0];
+  }
+  function esc(s) { return String(s).replace(/[&<>"]/g, function (c) {
+    return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
 
-let MODO = 'coloc';
+  function mostrar(fecha) {
+    var i = ruedas.findIndex(function (r) { return r.fecha === fecha; });
+    if (i < 0) i = 0;
+    var r = ruedas[i], base = 'informes/curvas/' + r.fecha + '/';
+    sel.value = r.fecha;
+    // la lista va de la más nueva a la más vieja: «anterior» es el índice siguiente
+    document.getElementById('cv-ant').disabled = i >= ruedas.length - 1;
+    document.getElementById('cv-sig').disabled = i <= 0;
+    document.getElementById('cv-pdfs').innerHTML = r.pdfs.map(function (p) {
+      return '<a href="' + base + encodeURIComponent(p.archivo) + '" target="_blank" rel="noopener">' +
+             esc(p.rotulo) + ' · PDF</a>';
+    }).join('');
+    document.getElementById('cv-grid').innerHTML = r.graficos.map(function (g) {
+      var src = base + encodeURIComponent(g.archivo);
+      return '<figure class="cv-card"><h3>' + esc(g.titulo) + '</h3><p>' + esc(g.bajada) + '</p>' +
+             '<a class="cv-img" href="' + src + '" target="_blank" rel="noopener">' +
+             '<img src="' + src + '" alt="' + esc(g.titulo) + '" loading="lazy"></a></figure>';
+    }).join('');
+    if (location.hash.slice(1) !== r.fecha) history.replaceState(null, '', '#' + r.fecha);
+  }
 
-function setModo(m) {
-  MODO = m;
-  document.getElementById('btn-coloc').classList.toggle('active', m === 'coloc');
-  document.getElementById('btn-tom').classList.toggle('active', m === 'tom');
-  // Reset de los costos editables a los defaults del modo (IVA/prorrateo no se tocan).
-  const d = DEFAULTS[m];
-  document.getElementById('arancel').value = d.arancel;
-  document.getElementById('mercado').value = d.mercado;
-  document.getElementById('bolsa').value   = d.bolsa;
-  // Textos y labels dinámicos
-  const t = TEXTOS[m];
-  document.getElementById('intro').textContent            = t.intro;
-  document.getElementById('card-header-title').textContent = t.header;
-  document.getElementById('lbl-neto').textContent          = t.neto;
-  document.getElementById('lbl-tasa').textContent          = t.tasa;
-  document.getElementById('nota').textContent              = t.nota;
-  // CFT solo en tomadora; ajustar columnas del bloque de KPIs
-  document.getElementById('kpi-cft').style.display   = m === 'tom' ? 'flex' : 'none';
-  document.getElementById('kpis').style.gridTemplateColumns = m === 'tom' ? '1fr 1fr 1fr' : '1fr 1fr';
-  // KPI de tasa: verde si es rendimiento (coloc), rojo si es costo (tom)
-  const kv = document.getElementById('r-tasaNeta');
-  kv.classList.toggle('green', m === 'coloc');
-  kv.classList.toggle('red',   m === 'tom');
-  calc();
-}
+  sel.addEventListener('change', function () { mostrar(sel.value); });
+  document.getElementById('cv-ant').addEventListener('click', function () {
+    var i = ruedas.findIndex(function (r) { return r.fecha === sel.value; });
+    if (i < ruedas.length - 1) mostrar(ruedas[i + 1].fecha);
+  });
+  document.getElementById('cv-sig').addEventListener('click', function () {
+    var i = ruedas.findIndex(function (r) { return r.fecha === sel.value; });
+    if (i > 0) mostrar(ruedas[i - 1].fecha);
+  });
 
-function calc() {
-  const monto = n('monto');          // Contado
-  const tasa  = n('tasa') / 100;     // TNA decimal
-  const dias  = n('dias');
-  const arancel = n('arancel') / 100;
-  const mercado = n('mercado') / 100;
-  const bolsa   = n('bolsa') / 100;
-  const iva     = n('iva') / 100;
-  const prorr   = n('prorrateo') || 90;
-
-  // Monto futuro (bruto)
-  const futuro = monto * (1 + tasa * dias / 365);
-
-  // Costos sobre el bruto futuro, prorrateados. Colocadora los resta; tomadora los suma.
-  const signo = MODO === 'tom' ? 1 : -1;
-  const cArancel = signo * (futuro * arancel * dias / prorr);
-  const cIvaAr   = cArancel * iva;
-  const cMb      = signo * (futuro * (mercado + bolsa) * dias / prorr);
-  const cIvaMb   = cMb * iva;
-
-  // Monto neto: coloc = futuro − costos (a cobrar); tom = futuro + costos (a devolver)
-  const neto = futuro + cArancel + cIvaAr + cMb + cIvaMb;
-
-  const tasaNeta = dias > 0 && monto > 0 ? ((neto - monto) / monto) / dias * 365 : null;
-  const gastos   = Math.abs(futuro - neto);
-  // CFT (Costo Financiero Total, efectivo anual). Solo se muestra en tomadora.
-  const cft = (dias > 0 && monto > 0 && neto > 0) ? Math.pow(neto / monto, 365 / dias) - 1 : null;
-
-  document.getElementById('r-futuro').textContent   = fmtPesos(futuro);
-  document.getElementById('r-arancel').textContent  = fmtPesos(cArancel);
-  document.getElementById('r-ivaAr').textContent    = fmtPesos(cIvaAr);
-  document.getElementById('r-mb').textContent       = fmtPesos(cMb);
-  document.getElementById('r-ivaMb').textContent    = fmtPesos(cIvaMb);
-  document.getElementById('r-neto').textContent     = fmtPesos(neto);
-  document.getElementById('r-tasaNeta').textContent = tasaNeta !== null ? (tasaNeta * 100).toFixed(2) + '%' : '—';
-  document.getElementById('r-gastos').textContent   = fmtPesos(gastos);
-  document.getElementById('r-cft').textContent      = cft !== null ? (cft * 100).toFixed(2) + '%' : '—';
-
-  // En colocadora los costos son restas (rojo); en tomadora, sumas (sin rojo).
-  const esNeg = MODO !== 'tom';
-  ['r-arancel', 'r-ivaAr', 'r-mb', 'r-ivaMb'].forEach(id =>
-    document.getElementById(id).classList.toggle('neg', esNeg));
-}
-
-setModo('coloc');
+  fetch('informes/curvas/indice.json?t=' + Date.now())
+    .then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+    .then(function (d) {
+      ruedas = d.ruedas || [];
+      if (!ruedas.length) throw new Error('el índice no tiene ruedas');
+      sel.innerHTML = ruedas.map(function (r) {
+        var cierre = r.pdfs.some(function (p) { return p.rotulo !== 'Informe del día'; });
+        return '<option value="' + r.fecha + '">' + rotulo(r.fecha) +
+               (cierre ? ' · cierre' : '') + '</option>';
+      }).join('');
+      mostrar(location.hash.slice(1));
+    })
+    .catch(function (e) {
+      document.getElementById('cv-grid').innerHTML =
+        '<div class="cv-vacio">No se pudo leer el índice de curvas (' + esc(e.message) + ').</div>';
+    });
+})();
 </script>
-
-
 </body>
 </html>
