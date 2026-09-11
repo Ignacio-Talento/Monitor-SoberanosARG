@@ -24,7 +24,10 @@ abierta. No produjo nada y se perdieron DOS reportes, el del jueves y el del vie
 **SI SON LAS 17:00 ART O MÁS TARDE, y es día hábil:** camino normal. Seguí al PASO 1.
 
 **SI ES ANTES DE LAS 17:00 ART, o es fin de semana o feriado —o 31/12, que no es feriado pero hay
-asueto bancario y el mercado no abre—:** el mercado no cerró y NO hay que
+asueto bancario y el mercado no abre—:** (OJO: los «puente turístico no laborable» NO cuentan
+como feriado acá: no hay bancos pero SÍ hay rueda —1816 tiene precios del 23/03 y del 10/07/2026—,
+así que el informe sale normal. armar_informe.py ya lo sabe; si dice que hoy es rueda, lo es.)
+En esos casos el mercado no cerró y NO hay que
 armar un informe de la rueda de hoy —saldría con precios intradía presentados como cierre, que es
 peor que no mandarlo—. Pero tampoco te vayas sin hacer nada, que es el error que costó los dos
 reportes:
@@ -569,7 +572,10 @@ El campo `tipos` del JSON dice qué cierres caen hoy. Se calcula mirando la pró
 contra el calendario de feriados, así que ya contempla los viernes feriados y los fin de mes que
 caen domingo. No lo recalcules por tu cuenta. También sabe que el 31/12 no hay rueda (asueto
 bancario, sin un precio en 1816 ni en 2024 ni en 2025): el cierre de año y de diciembre es la última
-rueda ANTERIOR al 31 —el miércoles 30/12/2026—, que sale como diario + semanal + mensual.
+rueda ANTERIOR al 31 —el miércoles 30/12/2026—, que sale como diario + semanal + mensual. Y que
+los puentes turísticos SÍ son rueda: un viernes puente es el cierre semanal (el 10/07/2026 lo fue)
+y un lunes puente tiene su informe (el 07/12/2026). Lo único que se corre en un puente es la
+liquidación, que va al siguiente día con bancos: por eso el script lleva dos calendarios.
 
 LOS DATOS YA VIENEN CALCULADOS, no hace falta que busques nada. Cuando la rueda es cierre de
 período, el script pide además la última rueda hábil del período anterior y deja:

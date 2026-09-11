@@ -190,16 +190,24 @@ def mapa_ons():
     return out
 
 
-def feriados(anio):
+def feriados(anio, puentes=True):
     """Feriados nacionales del año, como set de date. Si la API no responde, se sigue sin ellos.
 
-    Sólo afecta a la detección de cierre de mes y de semana: sin feriados, el informe mensual podría
-    salir un día tarde. Se avisa en el JSON en vez de abortar la corrida entera por eso.
+    HAY DOS CALENDARIOS, y `puentes` elige cuál. Los «puente turístico no laborable» (tipo 'puente'
+    en la API) son días sin bancos pero CON mercado: 1816 tiene precios del 23/03 y del 10/07/2026, y
+    historicos.xlsx trae 139 precios propios del 10/07. Así que:
+      · puentes=False → calendario de RUEDAS: si hoy hay informe, cuál es la rueda anterior y qué
+        cierres caen (un viernes puente ES el cierre semanal).
+      · puentes=True  → calendario BANCARIO: la liquidación T+1 no cae en un puente, y el rezago del
+        CER se cuenta en hábiles bancarios.
+    Sin feriados, el informe mensual podría salir un día tarde. Se avisa en el JSON en vez de
+    abortar la corrida entera por eso.
     """
     try:
         r = requests.get(FERIADOS_API.format(anio=anio), timeout=15)
         r.raise_for_status()
-        return {date.fromisoformat(f["fecha"]) for f in r.json()}
+        return {date.fromisoformat(f["fecha"]) for f in r.json()
+                if puentes or f.get("tipo") != "puente"}
     except Exception as e:                                    # noqa: BLE001
         print(f"AVISO: no se pudieron leer los feriados de {anio} ({e})")
         return None
@@ -1156,17 +1164,24 @@ def main():
     # próxima rueda cae en enero —y el 1/1 no es hábil—, y en enero la referencia del cierre mensual
     # cae en diciembre. Con un solo año, el 30/12/2026 tomaba el 1/1/2027 como próxima rueda: la
     # liquidación salía en un feriado y no se marcaba como cierre semanal.
-    fer = None
+    fer, fer_rueda = None, None          # bancario (con puentes) y de ruedas (sin puentes)
     for a in (hoy.year - 1, hoy.year, hoy.year + 1):
-        f = feriados(a)
+        f, fr = feriados(a), feriados(a, puentes=False)
         if f is not None:
             fer = (fer or set()) | f
-    if not es_habil(hoy, fer):
+        if fr is not None:
+            fer_rueda = (fer_rueda or set()) | fr
+    if not es_habil(hoy, fer_rueda):
         print(f"{hoy} no es rueda hábil; no se arma informe.")
         return 0
+    if fer and hoy in fer:
+        print(f"{hoy} es puente turístico: hay rueda, pero sin bancos (la liquidación pasa al "
+              f"{proxima_habil(hoy, fer)})")
 
-    ayer = rueda_anterior_habil(hoy, fer)
-    tipos = tipos_de_cierre(hoy, fer)
+    # Las ruedas —la anterior, los cierres y sus referencias— van con el calendario de ruedas. La
+    # liquidación de los sintéticos y de la rotación BOPREAL, con el bancario (`fer`).
+    ayer = rueda_anterior_habil(hoy, fer_rueda)
+    tipos = tipos_de_cierre(hoy, fer_rueda)
     items = leer_tickers()
 
     # CONTROL DE QUE LA MONEDA COINCIDE CON LA DEL MONITOR. No corrige nada: leer_tickers() ya
@@ -1233,7 +1248,7 @@ def main():
     for tipo in ("semanal", "mensual"):
         if tipo not in tipos:
             continue
-        f = ultima_rueda_de_periodo_anterior(hoy, fer, tipo)
+        f = ultima_rueda_de_periodo_anterior(hoy, fer_rueda, tipo)
         print(f"Cierre {tipo}: referencia {f}")
         # Se pide con un día de margen hacia atrás porque /series no devuelve nada cuando la fecha
         # inicial y la final coinciden; después se toma sólo la rueda que interesa.

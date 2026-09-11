@@ -60,12 +60,11 @@ def feriados_de_mercado(anio):
     cuentan como no hábiles (sirven para el rezago del CER), pero el mercado OPERA en ellos —1816 tiene
     precios del 23/03/2026 y del 10/07/2026—. Y al revés, el 31/12 no es feriado pero el sistema
     financiero no abre (asueto bancario): el 31/12/2025 no hay un solo precio. El 24/12 sí operó."""
-    import requests
-    from armar_informe import FERIADOS_API
-    r = requests.get(FERIADOS_API.format(anio=anio), timeout=15)
-    r.raise_for_status()
-    return ({date.fromisoformat(f["fecha"]) for f in r.json() if f.get("tipo") != "puente"}
-            | {date(anio, 12, 31)})
+    from armar_informe import feriados
+    fer = feriados(anio, puentes=False)
+    if fer is None:
+        raise SystemExit(f"no se pudieron leer los feriados de {anio}")
+    return fer | {date(anio, 12, 31)}
 
 
 def cierres_semanales(desde, hasta):
