@@ -58,9 +58,25 @@ def _num(celda):
     return float(m.group(0).replace(".", "").replace(",", "."))
 
 
+def _get(url):
+    """GET con tres intentos: argentina.gob.ar corta conexiones sueltas (ConnectionResetError
+    10054 el 11/09/2026) y un solo corte no puede hacer que el informe diga «no salió»."""
+    import time
+    for i in range(3):
+        try:
+            r = requests.get(url, headers=CAB, timeout=30)
+            if r.status_code < 500:
+                return r
+        except requests.exceptions.RequestException:
+            if i == 2:
+                raise
+        time.sleep(5 * (i + 1))
+    return r
+
+
 def buscar_resultado(fecha):
     """URL de la noticia de resultado publicada en `fecha`, o None si todavía no salió."""
-    r = requests.get(LISTADO, headers=CAB, timeout=30)
+    r = _get(LISTADO)
     r.raise_for_status()
     links = []
     for href in re.findall(r'href="(/noticias/resultado-de-la-licitacion[^"]*)"', r.text):
@@ -69,7 +85,7 @@ def buscar_resultado(fecha):
     buscada = f"{fecha.day:02d} de {MESES[fecha.month - 1]} de {fecha.year}"
     buscada2 = f"{fecha.day} de {MESES[fecha.month - 1]} de {fecha.year}"
     for href in links[:4]:                  # el listado va del más nuevo al más viejo
-        p = requests.get(BASE + href, headers=CAB, timeout=30)
+        p = _get(BASE + href)
         if p.ok and (buscada in p.text or buscada2 in p.text) and "Secretaría de Finanzas anuncia" in p.text:
             return BASE + href, p.text
     return None, None
