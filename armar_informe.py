@@ -205,8 +205,16 @@ def feriados(anio):
         return None
 
 
+# Días sin rueda que NO son feriado nacional y por eso la API no los trae. El 31/12 hay asueto
+# bancario y el mercado no abre: 1816 no tiene un solo precio del 31/12/2024 ni del 31/12/2025
+# (el 24/12, en cambio, operó los dos años). Sin esto, el 31/12/2026 —jueves— habría sido la
+# «última rueda del año» y el cierre mensual se habría armado sobre un día sin mercado.
+SIN_RUEDA = {(12, 31)}
+
+
 def es_habil(d, fer):
-    return d.weekday() < 5 and (fer is None or d not in fer)
+    return (d.weekday() < 5 and (d.month, d.day) not in SIN_RUEDA
+            and (fer is None or d not in fer))
 
 
 def proxima_habil(d, fer):
@@ -1144,7 +1152,15 @@ def main():
         return 1
 
     hoy = hoy_art()          # ya viene como date, en calendario argentino
-    fer = feriados(hoy.year)
+    # Los feriados del año anterior y del siguiente también: en la última semana de diciembre la
+    # próxima rueda cae en enero —y el 1/1 no es hábil—, y en enero la referencia del cierre mensual
+    # cae en diciembre. Con un solo año, el 30/12/2026 tomaba el 1/1/2027 como próxima rueda: la
+    # liquidación salía en un feriado y no se marcaba como cierre semanal.
+    fer = None
+    for a in (hoy.year - 1, hoy.year, hoy.year + 1):
+        f = feriados(a)
+        if f is not None:
+            fer = (fer or set()) | f
     if not es_habil(hoy, fer):
         print(f"{hoy} no es rueda hábil; no se arma informe.")
         return 0

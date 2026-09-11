@@ -23,7 +23,8 @@ abierta. No produjo nada y se perdieron DOS reportes, el del jueves y el del vie
 
 **SI SON LAS 17:00 ART O MÁS TARDE, y es día hábil:** camino normal. Seguí al PASO 1.
 
-**SI ES ANTES DE LAS 17:00 ART, o es fin de semana o feriado:** el mercado no cerró y NO hay que
+**SI ES ANTES DE LAS 17:00 ART, o es fin de semana o feriado —o 31/12, que no es feriado pero hay
+asueto bancario y el mercado no abre—:** el mercado no cerró y NO hay que
 armar un informe de la rueda de hoy —saldría con precios intradía presentados como cierre, que es
 peor que no mandarlo—. Pero tampoco te vayas sin hacer nada, que es el error que costó los dos
 reportes:
@@ -566,7 +567,9 @@ PASO 3 · CIERRES SEMANAL Y MENSUAL
 
 El campo `tipos` del JSON dice qué cierres caen hoy. Se calcula mirando la próxima rueda hábil
 contra el calendario de feriados, así que ya contempla los viernes feriados y los fin de mes que
-caen domingo. No lo recalcules por tu cuenta.
+caen domingo. No lo recalcules por tu cuenta. También sabe que el 31/12 no hay rueda (asueto
+bancario, sin un precio en 1816 ni en 2024 ni en 2025): el cierre de año y de diciembre es la última
+rueda ANTERIOR al 31 —el miércoles 30/12/2026—, que sale como diario + semanal + mensual.
 
 LOS DATOS YA VIENEN CALCULADOS, no hace falta que busques nada. Cuando la rueda es cierre de
 período, el script pide además la última rueda hábil del período anterior y deja:
