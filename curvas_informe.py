@@ -583,9 +583,12 @@ def curva_subsoberanos(instr, salida, faltan=""):
     fig, ax = balanz_figure(figsize=(9.5, 5.2))
     # Son cinco puntos en todo el ancho del gráfico: el rótulo de 7,5 que sirve para una curva de
     # veinte instrumentos acá queda diminuto sin ninguna razón.
-    _serie(ax, pts, NAVY, "Subsoberanos · TIR")
+    # PUNTOS SUELTOS, sin unir ni ajustar (pedido del usuario, 11/09/2026): son emisores distintos,
+    # así que una línea —unida o ajustada— sugeriría una curva de un solo crédito que no existe.
+    _serie(ax, pts, NAVY, "Subsoberanos · TIR", linea="")
     _ejes(ax, "Curva subsoberana en dólares", "TIR (%)")
-    _nota(ax, "Valuados al CCL. Son provincias " "con riesgos crediticios distintos entre sí, no una curva de un solo emisor: " "la línea ordena por plazo, no dice que sean sustitutos." + faltan)
+    _nota(ax, "Valuados al CCL. Son provincias y municipios con riesgos crediticios distintos entre "
+              "sí, no una curva de un solo emisor: por eso van como puntos sueltos, sin línea." + faltan)
     return _cerrar(fig, ax, salida)
 
 
