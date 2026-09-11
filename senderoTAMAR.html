@@ -3,13 +3,14 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<script src="tema.js"></script>
 <title>Sendero TAMAR</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@300;400;600;700&display=swap" rel="stylesheet"><style>body{font-variant-numeric:tabular-nums;}
   /* ═══ HEADER DE MARCA ═══════════════════════════════════════════
      Barra navy a todo el ancho con el logo oficial y la navegación adentro, como balanz.com.
      Antes eran dos bloques sueltos (barra navy + tab-strip blanco). */
   .navbar {
-    background: var(--navy); padding: 0 32px; height: 64px;
+    background: var(--navy-fondo); padding: 0 32px; height: 64px;
     display: flex; align-items: center; justify-content: space-between;
     margin: 0;
   }
@@ -23,7 +24,7 @@
 
   /* Solapas dentro del header: activo con subrayado cyan, como la nav de la web */
   .nav-tabs {
-    display: flex; gap: 2px; flex-wrap: wrap; background: var(--navy);
+    display: flex; gap: 2px; flex-wrap: wrap; background: var(--navy-fondo);
     border-bottom: none; padding: 0 32px 0;
     margin: 0 0 24px;
     box-shadow: var(--sh-card);
@@ -50,7 +51,7 @@
 
   /* Controles segmentados (comisión, vistas, moneda): píldora con el activo en navy */
   .com-lado, .vista-btn { border-radius: var(--r-pill); font-weight: 600; }
-  .com-lado.on, .vista-btn.on { background: var(--navy); border-color: var(--navy); }
+  .com-lado.on, .vista-btn.on { background: var(--navy-fondo); border-color: var(--navy-fondo); }
   .com-input, .filtro-input { border-radius: var(--r-input); }
 
   /* ═══ TÍTULO DE GRUPO ═══ eyebrow cyan en mayúsculas, como los títulos de sección de la web */
@@ -144,24 +145,24 @@
 
   .table-wrap { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; box-shadow: 0 1px 4px rgba(0,0,0,0.06); overflow-x: auto; }
   table { width: 100%; border-collapse: collapse; min-width: 850px; }
-  thead tr { border-bottom: 2px solid var(--navy); }
+  thead tr { border-bottom: 2px solid var(--navy-linea); }
   th { padding: 10px 14px; font-size: 10px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--text-3); text-align: right; background: var(--card); white-space: nowrap; font-family: var(--mono); }
   th:first-child, th:nth-child(2) { text-align: left; }
   tbody tr { border-bottom: 1px solid var(--border); transition: background .1s; }
   tbody tr:last-child { border-bottom: none; }
-  tbody tr:hover { background: var(--row-hover, #eef2f7); }
+  tbody tr:hover { background: var(--row-hover, var(--k-eef2f7)); }
   td { padding: 9px 14px; font-size: 12px; text-align: right; color: var(--text-2); white-space: nowrap; font-family: var(--mono); }
   td:first-child { text-align: left; font-weight: 600; color: var(--text); }
   td:nth-child(2) { text-align: left; }
-  .badge-rec { background: #dbeafe; color: var(--navy); border: 1px solid var(--navy); padding: 2px 8px; border-radius: 4px; font-size: 10px; font-weight: 600; }
+  .badge-rec { background: var(--k-dbeafe); color: var(--navy); border: 1px solid var(--navy-linea); padding: 2px 8px; border-radius: 4px; font-size: 10px; font-weight: 600; }
   .no-comp { color: var(--text-3); font-style: italic; font-size: 11px; }
   .val-blue { color: var(--blue); font-weight: 500; }
   .val-amber { color: var(--amber); font-weight: 500; }
   .val-text3 { color: var(--text-2); font-weight: 400; }
   .alert { padding: 10px 14px; border-radius: 6px; font-size: 11px; font-family: var(--mono); margin-bottom: 14px; display: none; }
   .alert.show { display: block; }
-  .alert.info { background:#f0fdf4; border:1px solid #86efac; color:var(--green); }
-  .alert.err { background:#fef2f2; border:1px solid #fecaca; color:var(--red); }
+  .alert.info { background:var(--k-f0fdf4); border:1px solid var(--k-86efac); color:var(--green); }
+  .alert.err { background:var(--k-fef2f2); border:1px solid var(--k-fecaca); color:var(--red); }
 
   /* ── Gráfico TAMAR vs LECAPs ── mismo lenguaje que el resto de las solapas ── */
   .gt-titulo { color: var(--cyan) !important; font-family: var(--sans) !important; margin-bottom: 6px !important; }
@@ -182,7 +183,7 @@
   .gt-linea.gt-lecap { stroke: var(--navy); }
   .gt-linea.gt-tam   { stroke: var(--cyan); }
   .gt-pt:hover circle:not([fill="transparent"]) { stroke: var(--navy); stroke-width: 3; }
-  .gt-tip  { position: absolute; pointer-events: none; background: var(--navy); color: #fff;
+  .gt-tip  { position: absolute; pointer-events: none; background: var(--navy-fondo); color: #fff;
              border-radius: 6px; padding: 8px 11px; font-size: 11px; line-height: 1.5;
              box-shadow: var(--sh-raised); white-space: nowrap; z-index: 5; }
   .gt-tip b { display: block; font-size: 12px; letter-spacing: .04em; margin-bottom: 2px; }
@@ -223,7 +224,7 @@
   <div class="panel">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
       <div class="panel-title" style="margin-bottom:0;">Expectativas de TAMAR (REM)</div>
-      <button id="btn-reset-rem" onclick="restablecerREM()" style="font-size:10px;font-family:var(--mono);font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:#fff;background:var(--navy);border:1px solid var(--navy);border-radius:5px;padding:6px 12px;cursor:pointer;transition:background .15s;" onmouseover="this.style.background='var(--navy-light)'" onmouseout="this.style.background='var(--navy)'">Restablecer REM</button>
+      <button id="btn-reset-rem" onclick="restablecerREM()" style="font-size:10px;font-family:var(--mono);font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:#fff;background:var(--navy-fondo);border:1px solid var(--navy-fondo);border-radius:5px;padding:6px 12px;cursor:pointer;transition:background .15s;" onmouseover="this.style.background='var(--navy-light)'" onmouseout="this.style.background='var(--navy-fondo)'">Restablecer REM</button>
     </div>
     <div class="infl-grid" id="tamar-grid">
       <div style="font-size:12px;color:var(--text-3);font-family:var(--mono)">Cargando datos del REM...</div>

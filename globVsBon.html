@@ -3,13 +3,14 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<script src="tema.js"></script>
 <title>Globales vs Bonares</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@300;400;600;700&display=swap" rel="stylesheet"><style>body{font-variant-numeric:tabular-nums;}
   /* ═══ HEADER DE MARCA ═══════════════════════════════════════════
      Barra navy a todo el ancho con el logo oficial y la navegación adentro, como balanz.com.
      Antes eran dos bloques sueltos (barra navy + tab-strip blanco). */
   .navbar {
-    background: var(--navy); padding: 0 32px; height: 64px;
+    background: var(--navy-fondo); padding: 0 32px; height: 64px;
     display: flex; align-items: center; justify-content: space-between;
     margin: 0;
   }
@@ -23,7 +24,7 @@
 
   /* Solapas dentro del header: activo con subrayado cyan, como la nav de la web */
   .nav-tabs {
-    display: flex; gap: 2px; flex-wrap: wrap; background: var(--navy);
+    display: flex; gap: 2px; flex-wrap: wrap; background: var(--navy-fondo);
     border-bottom: none; padding: 0 32px 0;
     margin: 0 0 24px;
     box-shadow: var(--sh-card);
@@ -50,7 +51,7 @@
 
   /* Controles segmentados (comisión, vistas, moneda): píldora con el activo en navy */
   .com-lado, .vista-btn { border-radius: var(--r-pill); font-weight: 600; }
-  .com-lado.on, .vista-btn.on { background: var(--navy); border-color: var(--navy); }
+  .com-lado.on, .vista-btn.on { background: var(--navy-fondo); border-color: var(--navy-fondo); }
   .com-input, .filtro-input { border-radius: var(--r-input); }
 
   /* ═══ TÍTULO DE GRUPO ═══ eyebrow cyan en mayúsculas, como los títulos de sección de la web */
@@ -91,7 +92,7 @@
   .gb-curva.gb-bon { stroke: var(--navy); }
   .gb-curva.gb-glo { stroke: var(--cyan); }
   .gb-pt:hover circle:not([fill="transparent"]) { stroke: var(--navy); stroke-width: 3; }
-  .gb-tip  { position: absolute; pointer-events: none; background: var(--navy); color: #fff;
+  .gb-tip  { position: absolute; pointer-events: none; background: var(--navy-fondo); color: #fff;
              border-radius: 6px; padding: 7px 10px; font-size: 11px; line-height: 1.5;
              box-shadow: var(--sh-raised); white-space: nowrap; z-index: 5; }
   .gb-tip b { display: block; font-size: 12px; letter-spacing: .04em; margin-bottom: 2px; }
@@ -102,7 +103,7 @@
   .hc-barra { display: flex; gap: 16px; align-items: center; flex-wrap: wrap; justify-content: space-between; margin-bottom: 12px; }
   .hc-periodos { display: inline-flex; }
   .hc-per { font-family: var(--mono); font-size: 10px; font-weight: 700; letter-spacing: .05em;
-            padding: 4px 10px; cursor: pointer; background: #fff; color: var(--text-3);
+            padding: 4px 10px; cursor: pointer; background: var(--surface); color: var(--text-3);
             border: 1px solid var(--border-l); border-left-width: 0; }
   .hc-per:first-child { border-left-width: 1px; border-radius: 4px 0 0 4px; }
   .hc-per:last-child  { border-radius: 0 4px 4px 0; }
@@ -110,7 +111,7 @@
   .hc-per.on { background: var(--cyan); border-color: var(--cyan); color: #fff; }
   .hc-fechas { display: flex; gap: 12px; align-items: center; font-size: 11px; color: var(--text-3); font-family: var(--sans); }
   .hc-fechas input { font-family: var(--mono); font-size: 11px; padding: 3px 6px; margin-left: 5px;
-                     border: 1px solid var(--border-l); border-radius: 4px; color: var(--navy); background: #fff; }
+                     border: 1px solid var(--border-l); border-radius: 4px; color: var(--navy); background: var(--surface); }
   .hc-ley { display: flex; gap: 14px; align-items: center; flex-wrap: wrap; font-size: 11px;
             color: var(--text-3); margin: 2px 0 12px 2px; }
   .hc-ley button { display: inline-flex; align-items: center; gap: 6px; background: none; border: none;
@@ -189,7 +190,7 @@
   .legend-outlier-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--red); flex-shrink: 0; }
 
   table { width: 100%; border-collapse: collapse; }
-  thead tr { border-bottom: 2px solid var(--navy); }
+  thead tr { border-bottom: 2px solid var(--navy-linea); }
   th { padding: 9px 14px; font-size: 10px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--text-3); text-align: right; background: var(--card); font-family: var(--mono); white-space: nowrap; }
   th:first-child, th:nth-child(4) { text-align: left; }
   tbody tr { border-bottom: 1px solid var(--border); }
@@ -201,7 +202,7 @@
   .val-blue { color: var(--blue); font-weight: 500; }
   .no-comp { color: var(--text-3); font-style: italic; font-size: 11px; }
   .bei-empty { font-size: 12px; color: var(--text-3); font-family: var(--mono); font-style: italic; padding: 16px 0; }
-  .comentario { background: #e8edf5; border-left: 3px solid var(--navy); border-radius: 0 6px 6px 0; padding: 12px 16px; margin-bottom: 16px; font-size: 11px; color: var(--text-2); line-height: 1.7; font-family: var(--sans); }
+  .comentario { background: var(--k-e8edf5); border-left: 3px solid var(--navy-linea); border-radius: 0 6px 6px 0; padding: 12px 16px; margin-bottom: 16px; font-size: 11px; color: var(--text-2); line-height: 1.7; font-family: var(--sans); }
   .comentario strong { color: var(--navy); }
 </style>
 </head>

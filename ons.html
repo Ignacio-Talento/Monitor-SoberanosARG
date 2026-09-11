@@ -3,13 +3,14 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<script src="tema.js"></script>
 <title>Monitor ONs</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@300;400;600;700&display=swap" rel="stylesheet"><style>body{font-variant-numeric:tabular-nums;}
   /* ═══ HEADER DE MARCA ═══════════════════════════════════════════
      Barra navy a todo el ancho con el logo oficial y la navegación adentro, como balanz.com.
      Antes eran dos bloques sueltos (barra navy + tab-strip blanco). */
   .navbar {
-    background: var(--navy); padding: 0 32px; height: 64px;
+    background: var(--navy-fondo); padding: 0 32px; height: 64px;
     display: flex; align-items: center; justify-content: space-between;
     margin: 0;
   }
@@ -23,7 +24,7 @@
 
   /* Solapas dentro del header: activo con subrayado cyan, como la nav de la web */
   .nav-tabs {
-    display: flex; gap: 2px; flex-wrap: wrap; background: var(--navy);
+    display: flex; gap: 2px; flex-wrap: wrap; background: var(--navy-fondo);
     border-bottom: none; padding: 0 32px 0;
     margin: 0 0 24px;
     box-shadow: var(--sh-card);
@@ -50,7 +51,7 @@
 
   /* Controles segmentados (comisión, vistas, moneda): píldora con el activo en navy */
   .com-lado, .vista-btn { border-radius: var(--r-pill); font-weight: 600; }
-  .com-lado.on, .vista-btn.on { background: var(--navy); border-color: var(--navy); }
+  .com-lado.on, .vista-btn.on { background: var(--navy-fondo); border-color: var(--navy-fondo); }
   .com-input, .filtro-input { border-radius: var(--r-input); }
 
   /* ═══ TÍTULO DE GRUPO ═══ eyebrow cyan en mayúsculas, como los títulos de sección de la web */
@@ -160,7 +161,7 @@
   .go-curva.go-local { stroke: var(--navy); }
   .go-curva.go-ny    { stroke: var(--cyan); }
   .go-pt:hover circle:not([fill="transparent"]) { stroke: var(--navy); stroke-width: 3; }
-  .go-tip  { position: absolute; pointer-events: none; background: var(--navy); color: #fff;
+  .go-tip  { position: absolute; pointer-events: none; background: var(--navy-fondo); color: #fff;
              border-radius: 6px; padding: 8px 11px; font-size: 11px; line-height: 1.5;
              box-shadow: var(--sh-raised); white-space: nowrap; z-index: 5; }
   .go-tip b { display: block; font-size: 12px; letter-spacing: .04em; margin-bottom: 2px; }
@@ -261,8 +262,8 @@
   /* ALERT */
   .alert { padding: 10px 14px; border-radius: 6px; font-size: 11px; font-family: var(--mono); margin-bottom: 14px; display: none; }
   .alert.show { display: block; }
-  .alert.err { background:#fef2f2; border:1px solid #fecaca; color:var(--red); }
-  .alert.info { background:#f0fdf4; border:1px solid #86efac; color:var(--green); }
+  .alert.err { background:var(--k-fef2f2); border:1px solid var(--k-fecaca); color:var(--red); }
+  .alert.info { background:var(--k-f0fdf4); border:1px solid var(--k-86efac); color:var(--green); }
 
   /* TABLA PRINCIPAL */
   /* min-width:fit-content -> el recuadro acompaña a la tabla cuando la vista Completa la hace
@@ -280,7 +281,7 @@
   /* Título del grupo — sticky arriba de su sección */
   .grupo-titulo {
     position: sticky; top: 0; z-index: 5;
-    background: #e8edf5; border-top: 2px solid var(--navy); border-bottom: 1px solid #c5cfe0;
+    background: var(--k-e8edf5); border-top: 2px solid var(--navy-linea); border-bottom: 1px solid var(--k-c5cfe0);
     padding: 7px 14px; height: 28px; box-sizing: border-box;
     font-size: 10px; font-weight: 700; letter-spacing: .10em; text-transform: uppercase;
     color: var(--navy); font-family: var(--mono); text-align: left;
@@ -290,7 +291,7 @@
     position: sticky; top: 28px; z-index: 4;
     padding: 9px 14px; font-size: 10px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase;
     color: var(--text-3); text-align: right; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-    background: var(--card); box-shadow: inset 0 -2px 0 var(--navy);
+    background: var(--card); box-shadow: inset 0 -2px 0 var(--navy-linea);
     cursor: pointer; user-select: none; transition: color .12s;
   }
   .col-header-row th.th-left { text-align: left; }
@@ -339,7 +340,7 @@
   .rt-sfx { font-size: 8.5px; font-weight: 600; opacity: .55; }  /* (arg) / .ar — marca la escala */
   .rt-ag { font-size: 8.5px; font-weight: 600; opacity: .55; margin-left: 3px; }  /* agencia calificadora */
   .val-green { color: var(--green); font-weight: 500; }
-  .val-cyan  { color: #17336f;  font-weight: 700; }
+  .val-cyan  { color: var(--k-17336f-tx);  font-weight: 700; }
   .val-blue  { color: var(--blue);  font-weight: 500; }
   .val-amber { color: var(--amber); font-weight: 500; }
   .val-text3 { color: var(--text-2); font-weight: 400; }
@@ -355,7 +356,7 @@
     transition: border-color .15s, color .15s;
   }
   .precio-cell-input:focus { outline: none; border-color: var(--blue); color: var(--text); }
-  .precio-cell-input.has-value { color: var(--navy); border-color: #a0b4d8; background: #e8edf5; }
+  .precio-cell-input.has-value { color: var(--navy); border-color: var(--k-a0b4d8); background: var(--k-e8edf5); }
   .precio-cell-input::placeholder { color: var(--text-3); font-size: 11px; }
   input[type=number]::-webkit-inner-spin-button,
   input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
@@ -372,20 +373,20 @@
      la punta cambia cómo se lee el número. */
   .chip-moneda { font-size: 9.5px; font-weight: 700; letter-spacing: .05em; padding: 2px 7px;
     border-radius: 999px; margin-left: 9px; vertical-align: middle; }
-  .chip-moneda.mep { background: #e8edf5; color: #002060; border: 1px solid #a0b4d8; }
-  .chip-moneda.ccl { background: #e6f6fd; color: #005f80; border: 1px solid #7fd0ef; }
-  .chip-moneda.mixto { background: #fff4e5; color: #7a4b00; border: 1px solid #f0c890; }
-  .marca-ccl { font-size: 8.5px; font-weight: 700; color: #005f80; margin-left: 5px;
+  .chip-moneda.mep { background: var(--k-e8edf5); color: var(--k-002060); border: 1px solid var(--k-a0b4d8); }
+  .chip-moneda.ccl { background: var(--k-e6f6fd); color: var(--k-005f80); border: 1px solid #7fd0ef; }
+  .chip-moneda.mixto { background: var(--k-fff4e5); color: var(--k-7a4b00); border: 1px solid var(--k-f0c890); }
+  .marca-ccl { font-size: 8.5px; font-weight: 700; color: var(--k-005f80); margin-left: 5px;
     letter-spacing: .04em; vertical-align: super; }
   .nota-pie { position: sticky; left: 2px; display: inline-block; white-space: nowrap;
               margin: 10px 2px 22px; padding: 8px 12px; font-size: 11.5px; line-height: 1.4;
-              color: var(--text-3); background: #F2F4F8; border-left: 3px solid #00B0F0;
+              color: var(--text-3); background: var(--k-f2f4f8); border-left: 3px solid #00B0F0;
               border-radius: 0 4px 4px 0; }
-  .nota-pie b { color: var(--navy, #002060); font-weight: 700; }
+  .nota-pie b { color: var(--navy, var(--k-002060)); font-weight: 700; }
 
   /* PANEL INDICADORES */
   .indicadores { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; margin-bottom: 20px; overflow: hidden; box-shadow: 0 1px 4px rgba(0,0,0,0.06); }
-  .ind-header { background: var(--navy); padding: 8px 18px; display: flex; align-items: center; justify-content: space-between; }
+  .ind-header { background: var(--navy-fondo); padding: 8px 18px; display: flex; align-items: center; justify-content: space-between; }
   .ind-title { font-size: 10px; font-weight: 600; letter-spacing: .10em; text-transform: uppercase; color: rgba(255,255,255,0.6); font-family: var(--mono); }
   .ind-body { display: grid; grid-template-columns: repeat(auto-fit, minmax(80px, 1fr)); padding: 12px 18px; gap: 0; }
   .ind-group { display: flex; flex-direction: column; gap: 2px; padding: 8px 12px; border-right: 1px solid var(--border); }
@@ -403,8 +404,8 @@
   .moneda-toggle { display: flex; width: 100%; margin-bottom: 16px; background: var(--surface); border: 1px solid var(--border-l); border-radius: 8px; padding: 3px; gap: 3px; }
   .moneda-btn { flex: 1; font-size: 12px; font-family: var(--mono); font-weight: 600; letter-spacing: .06em; text-transform: uppercase; padding: 10px 0; border-radius: 6px; cursor: pointer; border: none; background: transparent; color: var(--text-3); transition: all .15s; }
   .moneda-btn:hover { color: var(--navy); }
-  .moneda-btn-active { background: var(--navy); color: #fff; }
-  .moneda-btn-active:hover { background: var(--navy); color: #fff; }
+  .moneda-btn-active { background: var(--navy-fondo); color: #fff; }
+  .moneda-btn-active:hover { background: var(--navy-fondo); color: #fff; }
 
   @media (max-width: 768px) { body { padding: 12px; } }
 </style>

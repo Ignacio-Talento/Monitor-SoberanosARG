@@ -3,13 +3,14 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<script src="tema.js"></script>
 <title>Sendero CER</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@300;400;600;700&display=swap" rel="stylesheet"><style>body{font-variant-numeric:tabular-nums;}
   /* ═══ HEADER DE MARCA ═══════════════════════════════════════════
      Barra navy a todo el ancho con el logo oficial y la navegación adentro, como balanz.com.
      Antes eran dos bloques sueltos (barra navy + tab-strip blanco). */
   .navbar {
-    background: var(--navy); padding: 0 32px; height: 64px;
+    background: var(--navy-fondo); padding: 0 32px; height: 64px;
     display: flex; align-items: center; justify-content: space-between;
     margin: 0;
   }
@@ -23,7 +24,7 @@
 
   /* Solapas dentro del header: activo con subrayado cyan, como la nav de la web */
   .nav-tabs {
-    display: flex; gap: 2px; flex-wrap: wrap; background: var(--navy);
+    display: flex; gap: 2px; flex-wrap: wrap; background: var(--navy-fondo);
     border-bottom: none; padding: 0 32px 0;
     margin: 0 0 24px;
     box-shadow: var(--sh-card);
@@ -50,7 +51,7 @@
 
   /* Controles segmentados (comisión, vistas, moneda): píldora con el activo en navy */
   .com-lado, .vista-btn { border-radius: var(--r-pill); font-weight: 600; }
-  .com-lado.on, .vista-btn.on { background: var(--navy); border-color: var(--navy); }
+  .com-lado.on, .vista-btn.on { background: var(--navy-fondo); border-color: var(--navy-fondo); }
   .com-input, .filtro-input { border-radius: var(--r-input); }
 
   /* ═══ TÍTULO DE GRUPO ═══ eyebrow cyan en mayúsculas, como los títulos de sección de la web */
@@ -98,7 +99,7 @@
   .gc-curva.gc-lecap { stroke: var(--navy); }
   .gc-curva.gc-cer   { stroke: var(--cyan); }
   .gc-pt:hover circle:not([fill="transparent"]) { stroke: var(--navy); stroke-width: 3; }
-  .gc-tip  { position: absolute; pointer-events: none; background: var(--navy); color: #fff;
+  .gc-tip  { position: absolute; pointer-events: none; background: var(--navy-fondo); color: #fff;
              border-radius: 6px; padding: 8px 11px; font-size: 11px; line-height: 1.5;
              box-shadow: var(--sh-raised); white-space: nowrap; z-index: 5; }
   .gc-tip b { display: block; font-size: 12px; letter-spacing: .04em; margin-bottom: 2px; }
@@ -177,36 +178,36 @@
   /* TABLA BONOS CER */
   .table-wrap { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; box-shadow: 0 1px 4px rgba(0,0,0,0.06); overflow-x: auto; }
   table { width: 100%; border-collapse: collapse; min-width: 900px; }
-  thead tr { border-bottom: 2px solid var(--navy); }
+  thead tr { border-bottom: 2px solid var(--navy-linea); }
   th { padding: 10px 14px; font-size: 10px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--text-3); text-align: right; background: var(--card); white-space: nowrap; font-family: var(--mono); }
   th:first-child, th:nth-child(2) { text-align: left; }
   tbody tr { border-bottom: 1px solid var(--border); transition: background .1s; }
   tbody tr:last-child { border-bottom: none; }
-  tbody tr:hover { background: var(--row-hover, #eef2f7); }
+  tbody tr:hover { background: var(--row-hover, var(--k-eef2f7)); }
   td { padding: 9px 14px; font-size: 12px; text-align: right; color: var(--text-2); white-space: nowrap; font-family: var(--mono); }
   td:first-child { text-align: left; font-weight: 600; color: var(--text); }
   td:nth-child(2) { text-align: left; }
   .badge-confirmado { background: var(--green-bg); color: var(--green); border: 1px solid var(--green-border); padding: 2px 8px; border-radius: 4px; font-size: 10px; font-weight: 600; }
-  .badge-proyectado { background: #fef3c7; color: var(--amber); border: 1px solid #fcd34d; padding: 2px 8px; border-radius: 4px; font-size: 10px; font-weight: 600; }
-  .badge-rec { background: #dbeafe; color: var(--navy); border: 1px solid var(--navy); padding: 2px 8px; border-radius: 4px; font-size: 10px; font-weight: 600; }
+  .badge-proyectado { background: var(--k-fef3c7); color: var(--amber); border: 1px solid var(--k-fcd34d); padding: 2px 8px; border-radius: 4px; font-size: 10px; font-weight: 600; }
+  .badge-rec { background: var(--k-dbeafe); color: var(--navy); border: 1px solid var(--navy-linea); padding: 2px 8px; border-radius: 4px; font-size: 10px; font-weight: 600; }
   .no-comp { color: var(--text-3); font-style: italic; font-size: 11px; }
   .val-green { color: var(--green); font-weight: 600; }
   .val-blue { color: var(--blue); font-weight: 500; }
   .val-amber { color: var(--amber); font-weight: 500; }
   .alert { padding: 10px 14px; border-radius: 6px; font-size: 11px; font-family: var(--mono); margin-bottom: 14px; display: none; }
   .alert.show { display: block; }
-  .alert.info { background:#f0fdf4; border:1px solid #86efac; color:var(--green); }
-  .alert.err { background:#fef2f2; border:1px solid #fecaca; color:var(--red); }
+  .alert.info { background:var(--k-f0fdf4); border:1px solid var(--k-86efac); color:var(--green); }
+  .alert.err { background:var(--k-fef2f2); border:1px solid var(--k-fecaca); color:var(--red); }
   .bei-section { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 20px 24px; margin-top: 16px; box-shadow: 0 1px 4px rgba(0,0,0,0.06); width: 100%; }
   .bei-title { font-size: 11px; font-weight: 700; letter-spacing: .10em; text-transform: uppercase; color: var(--navy); font-family: var(--mono); margin-bottom: 16px; }
   .bei-table { width: 100%; border-collapse: collapse; }
-  .bei-table th { padding: 8px 14px; font-size: 10px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--text-3); text-align: right; background: var(--card); border-bottom: 2px solid var(--navy); font-family: var(--mono); }
+  .bei-table th { padding: 8px 14px; font-size: 10px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--text-3); text-align: right; background: var(--card); border-bottom: 2px solid var(--navy-linea); font-family: var(--mono); }
   .bei-table th:first-child { text-align: left; }
   .bei-table td { padding: 9px 14px; font-size: 12px; font-family: var(--mono); text-align: right; border-bottom: 1px solid var(--border); color: var(--text-2); }
   .bei-table td:first-child { text-align: left; font-weight: 600; color: var(--text); }
   .bei-table tr:last-child td { border-bottom: none; }
-  .rec-cer { color: var(--navy); font-weight: 700; background: #e8edf5; padding: 2px 10px; border-radius: 4px; }
-  .rec-lecap { color: #17336f; font-weight: 700; background: #dbeafe; padding: 2px 10px; border-radius: 4px; }
+  .rec-cer { color: var(--navy); font-weight: 700; background: var(--k-e8edf5); padding: 2px 10px; border-radius: 4px; }
+  .rec-lecap { color: var(--k-17336f-tx); font-weight: 700; background: var(--k-dbeafe); padding: 2px 10px; border-radius: 4px; }
   .rec-neutro { color: var(--text-3); font-weight: 500; }
   .bei-empty { font-size: 12px; color: var(--text-3); font-family: var(--mono); font-style: italic; padding: 16px 0; }
   /* Marca de mes parcial: el tramo no cubre el mes entero y el REM va prorrateado. */
@@ -215,14 +216,14 @@
                  padding: 0 3px; margin-left: 4px; vertical-align: 1px; cursor: help; }
   /* Marca de valor extrapolado: el punto cae fuera del tramo con bonos en las dos curvas. */
   .bei-ext { font-size: 8.5px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase;
-             color: #E08E16; border: 1px solid rgba(224,142,22,.45); border-radius: 3px;
+             color: var(--k-e08e16); border: 1px solid rgba(224,142,22,.45); border-radius: 3px;
              padding: 0 3px; margin-left: 4px; vertical-align: 1px; cursor: help; }
   /* Aviso de REM desactualizado: los meses vencidos se omiten, pero se dice cuáles y por qué. */
   .bei-aviso { margin-top: 10px; padding: 8px 12px; font-size: 11.5px; line-height: 1.45;
-               color: var(--text-3); background: #FFF7E6; border-left: 3px solid #E08E16;
+               color: var(--text-3); background: var(--k-fff7e6); border-left: 3px solid #E08E16;
                border-radius: 0 4px 4px 0; }
-  .bei-aviso b { color: var(--navy, #002060); font-weight: 700; }
-  .bei-explicacion { background: #e8edf5; border-left: 3px solid var(--navy); border-radius: 0 6px 6px 0; padding: 12px 16px; margin-bottom: 16px; font-size: 11px; color: var(--text-2); line-height: 1.7; font-family: var(--sans); }
+  .bei-aviso b { color: var(--navy, var(--k-002060)); font-weight: 700; }
+  .bei-explicacion { background: var(--k-e8edf5); border-left: 3px solid var(--navy-linea); border-radius: 0 6px 6px 0; padding: 12px 16px; margin-bottom: 16px; font-size: 11px; color: var(--text-2); line-height: 1.7; font-family: var(--sans); }
   .bei-explicacion strong { color: var(--navy); }
 </style>
 </head>
@@ -259,7 +260,7 @@
   <div class="panel">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
       <div class="panel-title" style="margin-bottom:0;">Expectativas de inflación mensual</div>
-      <button id="btn-reset-rem" onclick="restablecerREM()" style="font-size:10px;font-family:var(--mono);font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:#fff;background:var(--navy);border:1px solid var(--navy);border-radius:5px;padding:6px 12px;cursor:pointer;transition:background .15s;" onmouseover="this.style.background='var(--navy-light)'" onmouseout="this.style.background='var(--navy)'">Restablecer REM</button>
+      <button id="btn-reset-rem" onclick="restablecerREM()" style="font-size:10px;font-family:var(--mono);font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:#fff;background:var(--navy-fondo);border:1px solid var(--navy-fondo);border-radius:5px;padding:6px 12px;cursor:pointer;transition:background .15s;" onmouseover="this.style.background='var(--navy-light)'" onmouseout="this.style.background='var(--navy-fondo)'">Restablecer REM</button>
     </div>
     <div class="infl-grid" id="infl-grid">
       <div style="font-size:12px;color:var(--text-3);font-family:var(--mono)">Cargando datos del REM...</div>

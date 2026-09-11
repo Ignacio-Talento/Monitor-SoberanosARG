@@ -3,13 +3,14 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<script src="tema.js"></script>
 <title>Rotación BOPREAL</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@300;400;600;700&display=swap" rel="stylesheet"><style>body{font-variant-numeric:tabular-nums;}
   /* ═══ HEADER DE MARCA ═══════════════════════════════════════════
      Barra navy a todo el ancho con el logo oficial y la navegación adentro, como balanz.com.
      Antes eran dos bloques sueltos (barra navy + tab-strip blanco). */
   .navbar {
-    background: var(--navy); padding: 0 32px; height: 64px;
+    background: var(--navy-fondo); padding: 0 32px; height: 64px;
     display: flex; align-items: center; justify-content: space-between;
     margin: 0;
   }
@@ -23,7 +24,7 @@
 
   /* Solapas dentro del header: activo con subrayado cyan, como la nav de la web */
   .nav-tabs {
-    display: flex; gap: 2px; flex-wrap: wrap; background: var(--navy);
+    display: flex; gap: 2px; flex-wrap: wrap; background: var(--navy-fondo);
     border-bottom: none; padding: 0 32px 0;
     margin: 0 0 24px;
     box-shadow: var(--sh-card);
@@ -50,7 +51,7 @@
 
   /* Controles segmentados (comisión, vistas, moneda): píldora con el activo en navy */
   .com-lado, .vista-btn { border-radius: var(--r-pill); font-weight: 600; }
-  .com-lado.on, .vista-btn.on { background: var(--navy); border-color: var(--navy); }
+  .com-lado.on, .vista-btn.on { background: var(--navy-fondo); border-color: var(--navy-fondo); }
   .com-input, .filtro-input { border-radius: var(--r-input); }
 
   /* ═══ TÍTULO DE GRUPO ═══ eyebrow cyan en mayúsculas, como los títulos de sección de la web */
@@ -94,7 +95,7 @@
   .gr-dest { fill: var(--cyan); }
   .gr-pt   { cursor: default; }
   .gr-pt:hover .gr-orig, .gr-pt:hover .gr-dest { stroke: var(--navy); stroke-width: 3; }
-  .gr-tip  { position: absolute; pointer-events: none; background: var(--navy); color: #fff;
+  .gr-tip  { position: absolute; pointer-events: none; background: var(--navy-fondo); color: #fff;
              border-radius: 6px; padding: 7px 10px; font-size: 11px; line-height: 1.5;
              box-shadow: var(--sh-raised); white-space: nowrap; z-index: 5; }
   .gr-tip b { display: block; font-size: 12px; letter-spacing: .04em; margin-bottom: 2px; }
@@ -170,7 +171,7 @@
   .dot.ok { background: var(--green); } .dot.err { background: var(--red); } .dot.loading { background: var(--amber); } .dot.idle { background: var(--text-3); }
 
   .toolbar { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; flex-wrap: wrap; }
-  .btn-navy { color: #fff; background: var(--navy); border-color: var(--navy); }
+  .btn-navy { color: #fff; background: var(--navy-fondo); border-color: var(--navy-fondo); }
   .btn-navy:hover { background: var(--navy-light); }
   .sep-v { width: 1px; height: 20px; background: var(--border); }
   .upload-st { font-size: 11px; font-family: var(--mono); color: var(--text-3); }
@@ -194,7 +195,7 @@
   /* TABLA */
   .table-wrap { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; margin-bottom: 16px; overflow-x: auto; box-shadow: 0 1px 4px rgba(0,0,0,0.06); }
   table { width: 100%; border-collapse: collapse; min-width: 1000px; }
-  thead tr { border-bottom: 2px solid var(--navy); }
+  thead tr { border-bottom: 2px solid var(--navy-linea); }
   th { padding: 10px 14px; font-size: 10px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--text-3); text-align: right; white-space: nowrap; cursor: pointer; background: var(--card); transition: color .15s; user-select: none; }
   th:hover { color: var(--text-2); }
   th:first-child, th:nth-child(2) { text-align: left; }
@@ -219,13 +220,13 @@
 
   .precio-cell-input { background: var(--bg); border: 1px solid var(--border-l); border-radius: 4px; color: var(--text-2); font-family: var(--mono); font-size: 12px; text-align: right; width: 100px; padding: 3px 6px; transition: border-color .15s, color .15s; }
   .precio-cell-input:focus { outline: none; border-color: var(--blue); color: var(--text); }
-  .precio-cell-input.has-value { color: var(--navy); border-color: #a0b4d8; background: #e8edf5; }
+  .precio-cell-input.has-value { color: var(--navy); border-color: var(--k-a0b4d8); background: var(--k-e8edf5); }
   .precio-cell-input::placeholder { color: var(--text-3); font-size: 11px; }
 
   .alert { padding: 10px 14px; border-radius: 6px; font-size: 11px; font-family: var(--mono); margin-bottom: 14px; display: none; }
   .alert.show { display: block; }
-  .alert.err { background:#fef2f2; border:1px solid #fecaca; color:var(--red); }
-  .alert.info { background:#f0fdf4; border:1px solid #86efac; color:var(--green); }
+  .alert.err { background:var(--k-fef2f2); border:1px solid var(--k-fecaca); color:var(--red); }
+  .alert.info { background:var(--k-f0fdf4); border:1px solid var(--k-86efac); color:var(--green); }
 
   /* SIMULADOR */
   .sim { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; margin-top: 16px; overflow: hidden; box-shadow: 0 1px 4px rgba(0,0,0,0.06); }
@@ -292,7 +293,7 @@
 
   .table-wrap { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-card); overflow-x: auto; box-shadow: var(--sh-card); }
   table.rot { width: 100%; border-collapse: collapse; min-width: 1500px; }
-  table.rot thead tr { border-bottom: 2px solid var(--navy); }
+  table.rot thead tr { border-bottom: 2px solid var(--navy-linea); }
   /* 10px en vez de 12: con 20 columnas son ~80px que alcanzan para que entre la última. */
   table.rot th { padding: 9px 10px; font-size: 10px; font-weight: 600; letter-spacing: .05em; text-transform: uppercase; color: var(--text-3); text-align: right; background: var(--card); white-space: nowrap; font-family: var(--mono); vertical-align: bottom; }
   table.rot th.lft { text-align: left; }
