@@ -5,7 +5,7 @@
   "diario",
   "semanal"
  ],
- "generado": "2026-09-11T20:13:50-03:00",
+ "generado": "2026-09-11T21:38:14-03:00",
  "feriadosLeidos": true,
  "universo": 198,
  "sinDato": [
@@ -4527,19 +4527,19 @@
    "fecha": "2026-08-31"
   },
   "riesgoPais": {
-   "valor": 491.0,
-   "fecha": "2026-09-10",
-   "rezagoDias": 1,
+   "valor": 485.0,
+   "fecha": "2026-09-11",
+   "rezagoDias": 0,
    "fuente": "EMBI+ Argentina vía argentinadatos.com",
    "previo": {
-    "fecha": "2026-09-09",
+    "fecha": "2026-09-10",
     "valor": 491.0
    },
-   "variacion": 0.0,
+   "variacion": -6.0,
    "semanal": {
     "fecha": "2026-09-04",
     "valor": 490.0,
-    "variacion": 1.0,
+    "variacion": -5.0,
     "pedida": "2026-09-04",
     "exacta": true,
     "clase": "stock"
