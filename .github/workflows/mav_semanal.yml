@@ -12,6 +12,12 @@
 # NO PISA NADA SI FALLA: el script conserva las semanas que ya estaban en mav_series.json y sólo
 # agrega las nuevas, así que una caída del sitio del MAV deja la solapa con el dato de la semana
 # anterior y no vacía. Con --semanas 4 se recuperan hasta tres semanas perdidas de una.
+#
+# Y SE COMPLETA SOLO HACIA ATRÁS: --completar 6 pide en cada corrida hasta seis semanas viejas
+# que falten en el archivo, de la más nueva hacia atrás. El sitio del MAV devuelve 429 si se le
+# piden decenas de ZIP seguidos, así que reconstruir el año entero de una sentada no siempre
+# entra; de a seis por corrida, con tres corridas por semana, el archivo se llena en unas pocas
+# semanas sin castigar al sitio. Cuando no falta nada, el paso no baja nada extra.
 name: MAV semanal
 
 on:
@@ -26,6 +32,10 @@ on:
         description: 'Cuántas semanas hacia atrás revisar (4 por defecto)'
         required: false
         default: '4'
+      completar:
+        description: 'Cuántas semanas viejas faltantes rellenar en esta corrida (6 por defecto)'
+        required: false
+        default: '6'
 
 permissions:
   contents: write
@@ -47,7 +57,7 @@ jobs:
         run: pip install openpyxl
 
       - name: Bajar y procesar el informe del MAV
-        run: python mav_datos.py --semanas "${{ github.event.inputs.semanas || 4 }}"
+        run: python mav_datos.py --semanas "${{ github.event.inputs.semanas || 4 }}" --completar "${{ github.event.inputs.completar || 6 }}" --pausa 5
 
       - name: Commitear si cambió
         run: |

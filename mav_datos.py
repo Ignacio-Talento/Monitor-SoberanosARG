@@ -324,6 +324,8 @@ def main(argv=None):
     ap.add_argument("--sin-mensual", action="store_true")
     ap.add_argument("--pausa", type=float, default=2.0,
                     help="segundos entre descargas; subilo para reconstruir muchas semanas")
+    ap.add_argument("--completar", type=int, default=0,
+                    help="además de las últimas, rellena hasta N semanas viejas que falten")
     a = ap.parse_args(argv)
     globals()["PAUSA"] = a.pausa
 
@@ -355,6 +357,27 @@ def main(argv=None):
         print(f"  {desde} a {hasta}: {len(ops)} ops · MAV 30 {t('mav30')}% · MAV 90 {t('mav90')}% · "
               f"MAV 200 {t('mav200')}%")
         nuevos += 1
+
+    # RELLENO DE A POCO. El sitio del MAV devuelve 429 cuando se le piden muchos ZIP seguidos y la
+    # ventana del límite es larga, así que reconstruir un año de una sentada no siempre entra. El job
+    # semanal pide unas pocas semanas viejas en cada corrida —de la más nueva que falte hacia atrás—
+    # y el archivo se completa solo en unas semanas, sin castigar al sitio ni depender de una corrida
+    # larga que puede fallar a mitad de camino.
+    if a.completar:
+        faltan = [x for x in archivos if (rango(x["nombre"])[1] or "") not in por_semana]
+        print(f"faltan {len(faltan)} semanas del archivo; se intentan {min(a.completar, len(faltan))}")
+        for arch in faltan[:a.completar]:
+            desde, hasta = rango(arch["nombre"])
+            try:
+                ops = operaciones(bajar(arch["url"]))
+            except Exception as e:                                # noqa: BLE001
+                print(f"  {hasta}: FALLÓ ({e}); queda para la próxima corrida", file=sys.stderr)
+                continue
+            if not ops:
+                continue
+            por_semana[hasta] = resumen_semana(ops, desde, hasta, arch["fecha"])
+            print(f"  + {desde} a {hasta}: {len(ops)} ops")
+            nuevos += 1
 
     doc = {
         "generado": date.today().isoformat(),
