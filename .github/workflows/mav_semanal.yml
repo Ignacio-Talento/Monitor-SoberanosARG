@@ -1,0 +1,67 @@
+# Financiamiento PyME del MAV —cheques, pagarés y FCE— para la solapa MAV.
+#
+# CORRE LOS LUNES Y NO TODOS LOS DÍAS porque la fuente es semanal: MAV publica el informe de la
+# semana cerrada el viernes, con los ZIP colgados en su WordPress. No hay API ni dato en vivo, así
+# que pedirlo a diario sería pegarle al sitio para bajar el mismo archivo.
+#
+# DOS CORRIDAS EL LUNES. El archivo aparece a lo largo del día —de 44 semanas relevadas, 44 se
+# publicaron un lunes, pero también hubo viernes y martes— y los crones de GitHub llegan tarde. Si
+# a la mañana todavía no está, la corrida de la tarde lo levanta. Y los martes queda una tercera
+# pasada por si esa semana se publicó tarde.
+#
+# NO PISA NADA SI FALLA: el script conserva las semanas que ya estaban en mav_series.json y sólo
+# agrega las nuevas, así que una caída del sitio del MAV deja la solapa con el dato de la semana
+# anterior y no vacía. Con --semanas 4 se recuperan hasta tres semanas perdidas de una.
+name: MAV semanal
+
+on:
+  schedule:
+    # Lunes 10:00 y 17:00, y martes 10:00, hora Argentina (UTC-3).
+    - cron: '0 13 * * 1'
+    - cron: '0 20 * * 1'
+    - cron: '0 13 * * 2'
+  workflow_dispatch:
+    inputs:
+      semanas:
+        description: 'Cuántas semanas hacia atrás revisar (4 por defecto)'
+        required: false
+        default: '4'
+
+permissions:
+  contents: write
+
+jobs:
+  mav:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repositorio
+        uses: actions/checkout@v4
+
+      - name: Configurar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Instalar dependencias
+        run: pip install openpyxl
+
+      - name: Bajar y procesar el informe del MAV
+        run: python mav_datos.py --semanas "${{ github.event.inputs.semanas || 4 }}"
+
+      - name: Commitear si cambió
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          if git diff --quiet -- mav_series.json; then
+            echo "sin cambios en mav_series.json"
+            exit 0
+          fi
+          git add mav_series.json
+          git commit -m "MAV: semana al $(date -u +%Y-%m-%d)"
+          # El repo lo escriben varios jobs; si otro commiteó mientras tanto, rebase y reintento.
+          for i in 1 2 3; do
+            git pull --rebase --autostash origin "${GITHUB_REF_NAME}" && git push && exit 0
+            sleep 5
+          done
+          exit 1

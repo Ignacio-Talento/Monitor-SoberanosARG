@@ -706,6 +706,22 @@ tuvieron informe: las rearmó curvas_historicas.py (cierres semanales desde el �
 ~500 créditos de 1816 por rueda) con el universo de ESA fecha, vencidos incluidos. Para sumar otra
 fecha vieja: `py curvas_historicas.py --fechas AAAA-MM-DD` (con API_1816_KEY exportada).
 
+EL FINANCIAMIENTO PyME DEL MAV —cheques de pago diferido, pagarés y FCE— tiene su propia solapa y
+su propio archivo, mav_series.json, que arma `py mav_datos.py` leyendo el anexo operación por
+operación del informe del MAV; el job mav_semanal.yml lo actualiza los lunes. Tres cosas para
+usarlo bien en la prosa:
+  · ES SEMANAL, NO DIARIO. MAV publica los lunes la semana cerrada el viernes, y hubo seis huecos
+    de 9 a 11 días en el último año. En el informe DIARIO no va, salvo el día que se publica; en el
+    SEMANAL sí, con la fecha de la semana que se está citando.
+  · LAS TASAS DE REFERENCIA son MAV 30, MAV 90 y MAV 200: el promedio ponderado por monto del
+    cheque AVALADO en pesos por tramo de plazo. Están en `semanas[-1].indices` y reproducen exacto
+    el número que publica MAV. La variación se informa en puntos básicos contra la semana anterior.
+  · LA TASA DEL MAV ES TNA VENCIDA 365 y no se compara contra una TEA sin convertir: el JSON trae
+    las dos. El spread contra la curva de pesos se mide en TEA y contra la curva del MISMO viernes
+    (viene en `semanas[-1].lecap`). Medido el 11/09/2026: el cheque avalado paga entre 0,1 y 1,3 pp
+    sobre la LECAP de igual plazo y el directo sin garantía, entre 4 y 11 pp. Eso —el precio del
+    crédito PyME contra el soberano— es lo que vale contar, no el nivel suelto.
+
 TODAS AL MISMO TAMAÑO, 9,5 x 5,2 pulgadas. Si alguna vez hace falta una figura de dos paneles, van
 como dos PNG separados y no apilados en una sola imagen: apilados, al llevarlos al ancho de columna
 cada panel queda a la mitad de alto que el resto y se vuelven ilegibles. Y el pie que va DENTRO del

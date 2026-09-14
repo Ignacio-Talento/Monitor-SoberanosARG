@@ -7,3 +7,6 @@ __pycache__/
 *.pyc
 inf_tmp.json
 /curvas/
+
+# Caché de los ZIP del MAV: se bajan de nuevo cuando hace falta
+.cache_mav/

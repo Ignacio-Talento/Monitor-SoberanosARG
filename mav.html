@@ -1,0 +1,660 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<script src="tema.js"></script>
+<title>MAV · financiamiento PyME</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@300;400;600;700&display=swap" rel="stylesheet"><style>body{font-variant-numeric:tabular-nums;}
+  /* ═══ HEADER DE MARCA ═══════════════════════════════════════════
+     Barra navy a todo el ancho con el logo oficial y la navegación adentro, como balanz.com.
+     Antes eran dos bloques sueltos (barra navy + tab-strip blanco). */
+  .navbar {
+    background: var(--navy-fondo); padding: 0 32px; height: 64px;
+    display: flex; align-items: center; justify-content: space-between;
+    margin: 0;
+  }
+  .navbar-brand { display: flex; align-items: center; gap: 18px; }
+  .navbar-logo { height: 26px; width: auto; display: block; }
+  .navbar-sep { width: 1px; height: 22px; background: rgba(255,255,255,.22); }
+  .navbar-title { font-size: 11px; color: rgba(255,255,255,.72); font-family: var(--sans);
+                  letter-spacing: .12em; text-transform: uppercase; font-weight: 600; }
+  .navbar-status { display: flex; align-items: center; gap: 8px; font-size: 11px;
+                   color: rgba(255,255,255,.72); font-family: var(--sans); }
+
+  /* Solapas dentro del header: activo con subrayado cyan, como la nav de la web */
+  .nav-tabs {
+    display: flex; gap: 2px; flex-wrap: wrap; background: var(--navy-fondo);
+    border-bottom: none; padding: 0 32px 0;
+    margin: 0 0 24px;
+    box-shadow: var(--sh-card);
+  }
+  .nav-tab {
+    font-size: 12px; font-family: var(--sans); font-weight: 600; letter-spacing: .04em;
+    padding: 12px 16px 11px; border-radius: 0; cursor: pointer; border: 0;
+    border-bottom: 3px solid transparent; color: rgba(255,255,255,.7); background: transparent;
+    transition: color .15s, border-color .15s; text-transform: uppercase;
+    text-decoration: none; display: block; margin: 0;
+  }
+  .nav-tab:hover { color: #fff; background: transparent; border-bottom-color: rgba(255,255,255,.3); }
+  .nav-tab.active { color: #fff; background: transparent; border-bottom-color: var(--cyan); font-weight: 700; }
+
+  /* ═══ BOTONES ═══ La marca usa píldoras; el CTA es cyan, no verde. */
+  .btn { font-size: 12px; font-family: var(--sans); font-weight: 600; border-radius: var(--r-pill);
+         padding: 8px 18px; cursor: pointer; border: 1px solid; transition: background .15s, color .15s;
+         white-space: nowrap; }
+  .btn-green { color: #fff; background: var(--cyan); border-color: var(--cyan); }
+  .btn-green:hover { background: var(--cyan-dark); border-color: var(--cyan-dark); }
+  .btn-green:disabled { opacity: .45; cursor: not-allowed; }
+  .btn-ghost { color: var(--text-2); background: var(--surface); border-color: var(--border); }
+  .btn-ghost:hover { background: var(--row-hover); color: var(--navy); border-color: var(--border-l); }
+
+  /* Controles segmentados (comisión, vistas, moneda): píldora con el activo en navy */
+  .com-lado, .vista-btn { border-radius: var(--r-pill); font-weight: 600; }
+  .com-lado.on, .vista-btn.on { background: var(--navy-fondo); border-color: var(--navy-fondo); }
+  .com-input, .filtro-input { border-radius: var(--r-input); }
+
+  /* ═══ TÍTULO DE GRUPO ═══ eyebrow cyan en mayúsculas, como los títulos de sección de la web */
+  .grupo-titulo {
+    color: var(--navy) !important; letter-spacing: .1em; font-weight: 700;
+    border-bottom: 2px solid var(--cyan) !important;
+  }
+
+
+
+  /* Alinea el contenido del header con el de .wrap. Se usa 100% (ancho del <body>, que ya
+     excluye la barra de scroll) y NO 100vw, que la incluye y hacía sobresalir la barra. El ancho
+     de referencia es fijo (1850, el de Monitor/ONs) para que el header se vea igual en todas las
+     solapas: las páginas angostas usan .wrap de 1400 y el logo se corría hacia adentro. */
+  .navbar, .nav-tabs {
+    padding-left: max(24px, calc((100% - 1850px) / 2 + 24px)) !important; padding-right: max(24px, calc((100% - 1850px) / 2 + 24px)) !important;
+  }
+
+  /* El skill pide los nombres de sección (eyebrow) en CYAN y MAYÚSCULAS. */
+  .grupo-titulo { color: var(--cyan) !important; }
+  /* Aire entre el header y el contenido, y entre bloques. */
+  .toolbar { margin-bottom: 22px; }
+  .indicadores { border-radius: var(--r-card); box-shadow: var(--sh-card); }
+  .table-wrap { border-radius: var(--r-card); box-shadow: var(--sh-card); }
+</style>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    /* Paleta Balanz. Navy y cyan tomados de balanz.com; el resto sigue balanz-design. */
+    --navy: #0d2055;          /* color dominante: header, texto principal */
+    --navy-deep: #01092d;     /* base de degradados */
+    --navy-soft: #06214e;
+    --navy-light: #17336f;    /* hover sobre navy */
+    --cyan: #00a3e4;          /* acento: eyebrows, CTAs, activo */
+    --cyan-dark: #0089c1;     /* hover del CTA */
+    --cyan-bg: #e6f6fd;       /* recuadros informativos */
+
+    --bg: #f2f4f8;            /* fondo de página */
+    --surface: #ffffff;       /* tarjetas */
+    --card: #f8fafc;          /* encabezados de tabla */
+    --row-hover: #eef4fa;
+    --border: #c8d3e0;
+    --border-l: #a7b2c8;
+
+    --text: #0d2055;
+    --text-2: #3a4a5c;
+    --text-3: #6b7280;        /* label_gray del skill */
+
+    --green: #1b9e5a;         /* semánticos de perfil de riesgo */
+    --green-bg: #dcfce7;
+    --green-border: #86efac;
+    --amber: #e08e16;
+    --red: #c0392b;
+    --blue: #145e81;
+    --purple: #7c3aed;
+    --teal: #0d9488;
+
+    --r-pill: 999px;          /* la marca usa píldoras para los CTA */
+    --r-card: 12px;
+    --r-input: 8px;
+    --sh-card: 0 1px 3px rgba(13,32,85,.08), 0 1px 2px rgba(13,32,85,.04);
+    --sh-raised: 0 4px 16px rgba(13,32,85,.10);
+
+    --mono: 'Open Sans',Arial,system-ui,sans-serif;
+    --sans: 'Open Sans',Arial,system-ui,sans-serif;
+  }
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap');
+  /* Barra de scroll vertical siempre visible: sin esto las páginas cortas (Duales, Caución)
+     son 15px más anchas que las largas y el header se corre al cambiar de solapa. */
+  html { overflow-y: scroll; }
+
+  /* min-width: fit-content -> si una tabla se sale a lo ancho (vista Completa), el body crece
+     con ella y el header, que mide 100% del body, la sigue cubriendo al scrollear. */
+  body { background: var(--bg); color: var(--text); font-family: var(--sans); min-height: 100vh;
+         margin: 0; padding: 0; min-width: fit-content; }
+  .wrap { max-width: 1400px; margin: 0 auto; padding: 0 24px 24px; }
+
+
+
+  .intro { font-size: 12px; color: var(--text-3); font-family: var(--mono); margin-bottom: 20px; line-height: 1.6; }
+
+  .modo-toggle { display: inline-flex; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; margin-bottom: 18px; background: var(--surface); box-shadow: 0 1px 4px rgba(0,0,0,0.06); }
+  .modo-btn { font-size: 11px; font-family: var(--mono); font-weight: 600; letter-spacing: .05em; text-transform: uppercase; padding: 9px 24px; cursor: pointer; border: none; background: transparent; color: var(--text-3); transition: all .15s; }
+  .modo-btn:hover { color: var(--navy); background: var(--row-hover); }
+  .modo-btn.active, .modo-btn.active:hover { background: var(--navy-fondo); color: #fff; }
+
+  .layout { display: grid; grid-template-columns: 340px 1fr; gap: 20px; align-items: start; }
+  @media (max-width: 860px) { .layout { grid-template-columns: 1fr; } }
+
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; box-shadow: 0 1px 4px rgba(0,0,0,0.06); }
+  .card-header { background: var(--card); border-bottom: 1px solid var(--border); padding: 12px 18px; }
+  .card-title { font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--text-3); font-family: var(--mono); font-weight: 600; }
+  .card-body { padding: 18px; }
+
+  .field { display: flex; flex-direction: column; gap: 5px; margin-bottom: 14px; }
+  .field:last-child { margin-bottom: 0; }
+  .field label { font-size: 10px; color: var(--text-3); font-family: var(--mono); letter-spacing: .06em; text-transform: uppercase; }
+  .field .hint { font-size: 9px; color: var(--text-3); font-family: var(--mono); }
+  .inp { background: var(--bg); border: 1px solid var(--border-l); border-radius: 6px; color: var(--navy); font-family: var(--mono); font-size: 15px; font-weight: 600; padding: 9px 12px; width: 100%; transition: border-color .15s; }
+  .inp:focus { outline: none; border-color: var(--blue); }
+  input[type=number]::-webkit-inner-spin-button, input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+  input[type=number] { -moz-appearance: textfield; appearance: textfield; }
+
+  .params { margin-top: 6px; }
+  .params-title { font-size: 10px; font-family: var(--mono); color: var(--text-3); letter-spacing: .06em; text-transform: uppercase; padding: 6px 0; }
+  .param-row { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
+  .param-row label { font-size: 10px; color: var(--text-3); font-family: var(--mono); flex: 1; }
+  .inp-sm { background: var(--bg); border: 1px solid var(--border-l); border-radius: 5px; color: var(--text-2); font-family: var(--mono); font-size: 12px; text-align: right; width: 90px; padding: 5px 8px; }
+  .inp-sm:focus { outline: none; border-color: var(--blue); }
+  .inp-sm[readonly] { opacity: .6; cursor: not-allowed; background: var(--card); }
+
+  /* Desglose de resultados */
+  .result-table { width: 100%; border-collapse: collapse; }
+  .result-table td { padding: 10px 18px; font-family: var(--mono); font-size: 13px; border-bottom: 1px solid var(--border); }
+  .result-table tr:last-child td { border-bottom: none; }
+  .result-table .lbl { color: var(--text-2); text-align: left; }
+  .result-table .val { text-align: right; color: var(--text); font-weight: 500; }
+  .result-table .val.neg { color: var(--red); }
+  .result-table .sub { padding-left: 34px; color: var(--text-3); font-size: 12px; }
+  .result-table tr.total td { background: var(--card); font-weight: 700; }
+  .result-table tr.total .lbl { color: var(--navy); text-transform: uppercase; font-size: 11px; letter-spacing: .06em; }
+  .result-table tr.total .val { color: var(--navy); font-size: 15px; }
+  .result-table tr.destacada td { background: var(--k-e8edf5); }
+  .result-table tr.destacada .lbl { color: var(--navy); font-weight: 700; text-transform: uppercase; font-size: 11px; letter-spacing: .06em; }
+  .result-table tr.destacada .val { color: var(--navy); font-size: 18px; font-weight: 700; }
+
+  .kpis { display: grid; grid-template-columns: 1fr 1fr; gap: 1px; background: var(--border); border-top: 1px solid var(--border); }
+  .kpi { background: var(--surface); padding: 14px 18px; display: flex; flex-direction: column; gap: 4px; }
+  .kpi .k-lbl { font-size: 10px; color: var(--text-3); font-family: var(--mono); letter-spacing: .06em; text-transform: uppercase; }
+  .kpi .k-val { font-size: 18px; font-weight: 700; font-family: var(--mono); color: var(--navy); }
+  .kpi .k-val.green { color: var(--green); }
+  .kpi .k-val.amber { color: var(--amber); }
+  .kpi .k-val.red { color: var(--red); }
+
+  .nota { font-size: 10px; color: var(--text-3); font-family: var(--mono); line-height: 1.6; margin-top: 14px; padding: 12px 16px; background: var(--card); border-left: 3px solid var(--cyan); border-radius: 0 6px 6px 0; }
+</style>
+</head>
+<body>
+
+<nav class="navbar">
+<div class="navbar-brand">
+  <img class="navbar-logo" alt="Balanz" src="data:image/png;base64,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">
+  <div class="navbar-sep"></div>
+  <div class="navbar-title">Monitor · Renta Fija AR</div>
+</div>
+</nav>
+
+<div class="nav-tabs">
+  <a class="nav-tab" href="bonos.html">Letras + bonos</a>
+  <a class="nav-tab" href="ons.html">ONs</a>
+  <a class="nav-tab" href="curvas.html">Curvas</a>
+  <a class="nav-tab" href="senderoCER.html">Sendero CER</a>
+  <a class="nav-tab" href="senderoTAMAR.html">Sendero TAMAR</a>
+  <a class="nav-tab" href="duales.html">Duales</a>
+  <a class="nav-tab" href="senderoDL.html">Sendero DL</a>
+  <a class="nav-tab" href="globVsBon.html">Glob vs Bon</a>
+  <a class="nav-tab" href="rotacionBopreal.html">BOPREALes vs Bonares</a>
+  <a class="nav-tab" href="caucionVsLecap.html">Caución vs Lecap</a>
+  <a class="nav-tab" href="sinteticos.html">Sintéticos</a>
+  <a class="nav-tab" href="caucionNeta.html">Caución Neta</a>
+  <a class="nav-tab active" href="mav.html">MAV</a>
+  <a class="nav-tab" href="macro.html">Macro</a>
+</div>
+
+<style>
+  /* ═══ SOLAPA MAV ═══
+     El financiamiento PyME que se negocia en el Mercado Argentino de Valores: cheques de pago
+     diferido, pagarés bursátiles y facturas de crédito electrónicas. Es el tramo corto del crédito
+     privado y no está en 1816, así que acá no hay nada que cruzar contra otra fuente.
+
+     ES DATO SEMANAL, NO DIARIO, y la solapa lo dice arriba: MAV publica los lunes la semana cerrada
+     el viernes. Todo sale de mav_series.json, que arma mav_datos.py leyendo el anexo operación por
+     operación del informe del MAV; el job de los lunes lo actualiza. */
+  .mv-barra { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 8px; }
+  .mv-lbl { font-size: 10px; font-family: var(--mono); color: var(--text-3); letter-spacing: .08em;
+            text-transform: uppercase; }
+  .mv-sel { font: 600 13px var(--sans); color: var(--navy); background: var(--surface);
+            border: 1px solid var(--border); border-radius: var(--r-input); padding: 7px 10px; }
+  .mv-nav { font: 600 12px var(--sans); color: var(--text-2); background: var(--surface);
+            border: 1px solid var(--border); border-radius: var(--r-pill); padding: 6px 12px; cursor: pointer; }
+  .mv-nav:disabled { opacity: .4; cursor: default; }
+  .mv-meta { font-size: 11px; font-family: var(--mono); color: var(--text-3); }
+  .mv-intro { font-size: 12px; color: var(--text-2); line-height: 1.6; margin: 0 0 16px; max-width: 1000px; }
+  .mv-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-card);
+             box-shadow: var(--sh-card); margin-bottom: 20px; overflow: hidden; }
+  .mv-head { padding: 14px 20px 12px; border-bottom: 1px solid var(--border); background: var(--card);
+             display: flex; align-items: flex-start; justify-content: space-between; gap: 24px; flex-wrap: wrap; }
+  .mv-tit { font-size: 13px; font-weight: 700; color: var(--navy); letter-spacing: .02em; }
+  .mv-sub { font-size: 10.5px; font-family: var(--mono); color: var(--text-3); margin-top: 3px; line-height: 1.5; }
+  .mv-kpis { display: flex; gap: 26px; align-items: flex-start; flex: 0 0 auto; }
+  .mv-kpi { text-align: right; }
+  .mv-kpi .k-lbl { font-size: 9px; font-family: var(--mono); color: var(--text-3);
+                   letter-spacing: .07em; text-transform: uppercase; }
+  .mv-kpi .k-val { font-size: 19px; font-weight: 700; font-family: var(--mono); color: var(--navy); line-height: 1.25; }
+  .mv-kpi .k-pie { font-size: 10px; font-family: var(--mono); color: var(--text-3); }
+  .mv-kpi .k-pie .pos { color: var(--green); } .mv-kpi .k-pie .neg { color: var(--red); }
+  .mv-body { padding: 10px 14px 6px; position: relative; }
+  .mv-svg { width: 100%; height: auto; display: block; font-family: var(--sans); }
+  .mv-ctrl { padding: 10px 20px 0; display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+  .mv-modo { display: inline-flex; gap: 3px; background: var(--card); border: 1px solid var(--border);
+             border-radius: var(--r-pill); padding: 3px; }
+  .mv-modo button { font: 600 11px var(--sans); color: var(--text-2); background: transparent; border: 0;
+                    border-radius: var(--r-pill); padding: 5px 12px; cursor: pointer; }
+  .mv-modo button.on { background: var(--navy-fondo); color: #fff; }
+  .mv-leyenda { display: flex; gap: 16px; flex-wrap: wrap; padding: 4px 20px 0; font-size: 11px; color: var(--text-2); }
+  .mv-leyenda span { display: inline-flex; align-items: center; gap: 6px; }
+  .mv-sw { width: 11px; height: 11px; border-radius: 3px; flex: none; }
+  .mv-tabla-wrap { overflow-x: auto; }
+  table.mv { border-collapse: collapse; width: 100%; font-size: 12px; }
+  table.mv th, table.mv td { padding: 7px 14px; text-align: right; border-bottom: 1px solid var(--border);
+                             white-space: nowrap; }
+  table.mv th:first-child, table.mv td:first-child { text-align: left; }
+  table.mv th { font: 600 10px var(--mono); color: var(--text-3); letter-spacing: .06em;
+                text-transform: uppercase; background: var(--card); }
+  table.mv td { color: var(--text); font-variant-numeric: tabular-nums; }
+  table.mv tr:hover td { background: var(--row-hover); }
+  table.mv td.seg { font-weight: 600; color: var(--navy); }
+  table.mv tr.propio td { background: var(--cyan-bg); }
+  .mv-pos { color: var(--green); } .mv-neg { color: var(--red); }
+  .mv-pie { padding: 4px 20px 14px; font-size: 10.5px; font-family: var(--mono); color: var(--text-3);
+            line-height: 1.6; }
+  .mv-dos { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  @media (max-width: 900px) { .mv-dos { grid-template-columns: 1fr; } }
+  .mv-tip { position: absolute; pointer-events: none; background: var(--navy-fondo); color: #fff;
+            font: 11px var(--mono); padding: 5px 9px; border-radius: 6px; white-space: nowrap;
+            transform: translate(-50%, -130%); z-index: 5; }
+  .mv-vacio { font-size: 12px; color: var(--text-3); padding: 26px 20px; }
+</style>
+
+<div class="wrap">
+  <div class="mv-barra">
+    <span class="mv-lbl">Semana</span>
+    <button class="mv-nav" id="mv-ant" title="Semana anterior">‹</button>
+    <select class="mv-sel" id="mv-semana" aria-label="Semana"></select>
+    <button class="mv-nav" id="mv-sig" title="Semana siguiente">›</button>
+    <span class="mv-meta" id="mv-meta"></span>
+  </div>
+  <p class="mv-intro">Cheques de pago diferido, pagarés bursátiles y facturas de crédito
+    electrónicas negociados en el MAV: el tramo corto del crédito PyME. <b>El dato es semanal, no
+    diario</b> —MAV publica los lunes la semana que cerró el viernes— y las tasas son el promedio
+    ponderado por monto de lo que efectivamente se operó, no puntas de pantalla. La tasa del MAV es
+    TNA vencida base 365; la TEA se deriva para poder compararla contra la curva de pesos, que a
+    igual plazo corre 3 a 5 puntos por encima de la nominal.</p>
+  <div id="mv-todo"><div class="mv-vacio">Cargando datos del MAV…</div></div>
+</div>
+
+<script>
+/* ═══════════════════════════════════════════════════════════════════════════════════════════
+   SOLAPA MAV — financiamiento PyME, con la curva soberana al lado.
+
+   TODO SALE DE mav_series.json. Lo arma mav_datos.py a partir del anexo del informe semanal del
+   MAV, que viene operación por operación: la solapa no recalcula tasas, sólo dibuja. Las tres
+   tasas de referencia (MAV 30 / 90 / 200) se calculan como promedio ponderado por monto del cheque
+   avalado en pesos, que es la convención del propio MAV: reproducen exacto el número de su PDF.
+
+   LA COMPARACIÓN CONTRA LECAPs usa la curva de tasa fija de ESE viernes —viene en el JSON, en
+   `lecap`— y no la de hoy. Y se hace en TEA, nunca en TNA: la TNA del MAV a 30 días subestima el
+   rendimiento en más de tres puntos.
+   ═════════════════════════════════════════════════════════════════════════════════════════ */
+const PAL = { navy: '#0d2055', cyan: '#00a3e4', azul: '#145e81', ambar: '#e08e16',
+              gris: '#6b7280', verde: '#1b9e5a', rojo: '#c0392b', borde: '#c8d3e0' };
+const MESES = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+const DIAS_SEM = ['dom','lun','mar','mié','jue','vie','sáb'];
+// Un color por segmento, y el orden en que se dibujan. Los de dólares van en su propia tabla.
+const SEGS = [
+  ['CPD ARS avalado', PAL.navy, 'Cheque avalado'],
+  ['CPD ARS directo', PAL.cyan, 'Cheque directo sin garantía'],
+  ['CPD ARS garantizado', PAL.azul, 'Cheque garantizado (ag. vendedor)'],
+  ['FCE ARS directo', PAL.ambar, 'FCE'],
+  ['Pagaré ARS avalado', PAL.verde, 'Pagaré avalado'],
+  ['Pagaré ARS directo', PAL.gris, 'Pagaré directo sin garantía'],
+];
+// Hasta dónde llega el eje del gráfico: el financiamiento PyME vive en el año, y el tramo de
+// 366 días o más son unos pocos pagarés largos que estiraban el eje hasta 700 días y dejaban
+// ilegible el tramo corto. Ese tramo se sigue viendo en la tabla.
+const TOPE_DIAS = 370;
+let D = null, ix = 0, modo = 'tea';
+
+function fmt(x, d) { return x == null ? '—' : x.toFixed(d === undefined ? 2 : d).replace('.', ','); }
+function miles(x) { return x == null ? '—' : Math.round(x).toLocaleString('es-AR'); }
+function esc(s) { return String(s).replace(/[&<>"]/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;' }[c])); }
+function dia(f) { const p = f.split('-').map(Number), d = new Date(p[0], p[1]-1, p[2]);
+                  return DIAS_SEM[d.getDay()] + ' ' + p[2] + '/' + p[1]; }
+function corto(f) { const p = f.split('-').map(Number); return p[2] + ' ' + MESES[p[1]-1]; }
+function pb(x) { if (x == null) return '—';
+  const v = Math.round(x * 100);
+  return `<span class="${v > 0 ? 'mv-pos' : v < 0 ? 'mv-neg' : ''}">${v > 0 ? '+' : ''}${v} pb</span>`; }
+function pp(x) { if (x == null) return '—';
+  return `<span class="${x > 0 ? 'mv-pos' : x < 0 ? 'mv-neg' : ''}">${x > 0 ? '+' : ''}${fmt(x)} pp</span>`; }
+
+/* La curva LECAP del mismo viernes, interpolada al plazo promedio del tramo. No se extrapola:
+   más allá del último punto de tasa fija no hay contra qué comparar. */
+function lecapA(sem, dias) {
+  const p = sem.lecap && sem.lecap.puntos;
+  if (!p || !p.length || dias < p[0][0] || dias > p[p.length-1][0]) return null;
+  for (let i = 1; i < p.length; i++) if (dias <= p[i][0]) {
+    const w = (dias - p[i-1][0]) / ((p[i][0] - p[i-1][0]) || 1);
+    return p[i-1][1] + w * (p[i][1] - p[i-1][1]);
+  }
+  return null;
+}
+
+/* ── un mini-motor de ejes para los tres gráficos ── */
+function marcas(a, b, n) {
+  let paso = (b - a) / n, p10 = Math.pow(10, Math.floor(Math.log10(paso))), r = paso / p10;
+  paso = (r < 1.5 ? 1 : r < 2.25 ? 2 : r < 3.5 ? 2.5 : r < 7.5 ? 5 : 10) * p10;
+  const out = [];
+  for (let v = Math.ceil(a / paso) * paso; v <= b + paso * 1e-9; v += paso) out.push(+v.toFixed(10));
+  return { v: out, paso };
+}
+function ejes(g, X, Y, mx, my, W, H, mL, mR, mT, mB, fx, fy, xlab, ylab) {
+  my.v.forEach(v => {
+    g.push(`<line x1="${mL}" x2="${W-mR}" y1="${Y(v).toFixed(1)}" y2="${Y(v).toFixed(1)}" stroke="${PAL.borde}" stroke-opacity=".55"/>`);
+    g.push(`<text x="${mL-8}" y="${(Y(v)+4).toFixed(1)}" text-anchor="end" fill="${PAL.gris}" font-size="11">${fy(v)}</text>`);
+  });
+  mx.v.forEach(v => {
+    g.push(`<line x1="${X(v).toFixed(1)}" x2="${X(v).toFixed(1)}" y1="${mT}" y2="${H-mB}" stroke="${PAL.borde}" stroke-opacity=".3"/>`);
+    g.push(`<text x="${X(v).toFixed(1)}" y="${H-mB+18}" text-anchor="middle" fill="${PAL.gris}" font-size="11">${fx(v)}</text>`);
+  });
+  g.push(`<line x1="${mL}" x2="${W-mR}" y1="${H-mB}" y2="${H-mB}" stroke="${PAL.gris}"/>`);
+  if (xlab) g.push(`<text x="${(mL+W-mR)/2}" y="${H-4}" text-anchor="middle" fill="${PAL.gris}" font-size="11.5">${xlab}</text>`);
+  if (ylab) g.push(`<text transform="translate(14 ${(mT+H-mB)/2}) rotate(-90)" text-anchor="middle" fill="${PAL.gris}" font-size="11.5">${ylab}</text>`);
+}
+
+/* ── 1 · tarjeta de tasas de referencia + su historia ── */
+function tarjetaIndices(sem, prev) {
+  const IND = [['mav30', 'MAV 30', '0 a 60 días'], ['mav90', 'MAV 90', '61 a 120'], ['mav200', 'MAV 200', '121 a 365']];
+  const kpis = IND.map(([k, n, tramo]) => {
+    const a = sem.indices[k], b = prev && prev.indices[k];
+    const dif = a && b ? a.tna - b.tna : null;
+    return `<div class="mv-kpi"><div class="k-lbl">${n} · ${tramo}</div>
+      <div class="k-val">${a ? fmt(a.tna) + '%' : '—'}</div>
+      <div class="k-pie">TEA ${a ? fmt(a.tea) + '%' : '—'} · ${pb(dif)}</div></div>`;
+  }).join('');
+
+  // Historia de las tres tasas: una línea por índice sobre todas las semanas del archivo.
+  const W = 960, H = 260, mL = 54, mR = 16, mT = 12, mB = 40;
+  const sem_ok = D.semanas.filter(s => s.indices.mav30);
+  const xs = sem_ok.map((_, i) => i);
+  const vals = [];
+  sem_ok.forEach(s => IND.forEach(([k]) => { if (s.indices[k]) vals.push(s.indices[k].tna); }));
+  const g = [];
+  if (vals.length > 2) {
+    const y0 = Math.min(...vals) - 1, y1 = Math.max(...vals) + 1;
+    const X = i => mL + (i / Math.max(1, xs.length - 1)) * (W - mL - mR);
+    const Y = v => H - mB - (v - y0) / (y1 - y0) * (H - mT - mB);
+    const mx = { v: xs.filter(i => i % Math.ceil(xs.length / 10) === 0), paso: 1 };
+    ejes(g, X, Y, mx, marcas(y0, y1, 5), W, H, mL, mR, mT, mB,
+         i => corto(sem_ok[i].hasta), v => fmt(v, 1) + '%', '', 'TNA (%)');
+    IND.forEach(([k, n], j) => {
+      const col = [PAL.navy, PAL.cyan, PAL.ambar][j];
+      const d = sem_ok.map((s, i) => (s.indices[k] ? `${i ? 'L' : 'M'}${X(i).toFixed(1)} ${Y(s.indices[k].tna).toFixed(1)}` : '')).join('');
+      g.push(`<path d="${d}" fill="none" stroke="${col}" stroke-width="2"/>`);
+      const i2 = sem_ok.length - 1;
+      g.push(`<circle cx="${X(i2).toFixed(1)}" cy="${Y(sem_ok[i2].indices[k].tna).toFixed(1)}" r="3.5" fill="${col}"/>`);
+    });
+    // Marca la semana que se está mirando.
+    const iSel = sem_ok.findIndex(s => s.hasta === sem.hasta);
+    if (iSel >= 0) g.push(`<line x1="${X(iSel).toFixed(1)}" x2="${X(iSel).toFixed(1)}" y1="${mT}" y2="${H-mB}" stroke="${PAL.gris}" stroke-dasharray="3 3"/>`);
+  }
+  return `<div class="mv-card">
+    <div class="mv-head"><div>
+      <div class="mv-tit">Tasas de referencia MAV</div>
+      <div class="mv-sub">Cheque avalado en pesos, promedio ponderado por monto · TNA vencida base 365</div>
+    </div><div class="mv-kpis">${kpis}</div></div>
+    <div class="mv-leyenda"><span><span class="mv-sw" style="background:${PAL.navy}"></span>MAV 30</span>
+      <span><span class="mv-sw" style="background:${PAL.cyan}"></span>MAV 90</span>
+      <span><span class="mv-sw" style="background:${PAL.ambar}"></span>MAV 200</span></div>
+    <div class="mv-body"><svg class="mv-svg" viewBox="0 0 ${W} ${H}" role="img" aria-label="Historia de las tasas MAV">${g.join('')}</svg></div>
+    <div class="mv-pie">Los tres índices son los que publica MAV en su informe: el promedio ponderado
+      por monto nominal del cheque avalado en pesos, por tramo de plazo. La variación es contra la
+      semana anterior. La línea punteada marca la semana seleccionada.</div></div>`;
+}
+
+/* ── 2 · la curva PyME contra la curva soberana ── */
+function tarjetaCurva(sem) {
+  const W = 960, H = 380, mL = 58, mR = 18, mT = 14, mB = 46;
+  const pts = [], series = [];
+  SEGS.forEach(([seg, col, nombre]) => {
+    const tr = sem.curva[seg];
+    if (!tr) return;
+    const p = Object.keys(tr).filter(t => tr[t] && tr[t].dias <= TOPE_DIAS)
+      .map(t => ({ t, ...tr[t] })).sort((a, b) => a.dias - b.dias);
+    if (!p.length) return;
+    series.push({ seg, col, nombre, p });
+    p.forEach(x => pts.push(x));
+  });
+  const g = [], leyenda = [];
+  if (!pts.length) return '';
+  const lec = ((sem.lecap && sem.lecap.puntos) || []).filter(p => p[0] <= TOPE_DIAS);
+  const xs = pts.map(p => p.dias).concat(modo === 'tea' ? lec.map(p => p[0]) : []);
+  const ys = pts.map(p => p[modo]).concat(modo === 'tea' ? lec.map(p => p[1]) : []);
+  let x0 = 0, x1 = Math.max(...xs) * 1.04, y0 = Math.min(...ys), y1 = Math.max(...ys);
+  const dy = (y1 - y0) || 1; y0 -= dy * .08; y1 += dy * .08;
+  const X = v => mL + (v - x0) / (x1 - x0) * (W - mL - mR);
+  const Y = v => H - mB - (v - y0) / (y1 - y0) * (H - mT - mB);
+  ejes(g, X, Y, marcas(x0, x1, 8), marcas(y0, y1, 6), W, H, mL, mR, mT, mB,
+       v => String(Math.round(v)), v => fmt(v, 1) + '%', 'Plazo promedio del tramo (días)',
+       modo === 'tea' ? 'TEA (%)' : 'TNA (%)');
+  if (modo === 'tea' && lec.length > 1) {
+    g.push(`<path d="${lec.map((p, i) => `${i ? 'L' : 'M'}${X(p[0]).toFixed(1)} ${Y(p[1]).toFixed(1)}`).join('')}" fill="none" stroke="${PAL.rojo}" stroke-width="2" stroke-dasharray="6 4"/>`);
+    leyenda.push(`<span><span class="mv-sw" style="background:${PAL.rojo}"></span>Curva de pesos (LECAPs) del ${dia(sem.lecap.fecha)}</span>`);
+  }
+  const marcadores = [];
+  series.forEach(s => {
+    g.push(`<path d="${s.p.map((p, i) => `${i ? 'L' : 'M'}${X(p.dias).toFixed(1)} ${Y(p[modo]).toFixed(1)}`).join('')}" fill="none" stroke="${s.col}" stroke-width="2.2"/>`);
+    s.p.forEach(p => {
+      g.push(`<circle cx="${X(p.dias).toFixed(1)}" cy="${Y(p[modo]).toFixed(1)}" r="4" fill="${s.col}"/>`);
+      marcadores.push({ x: X(p.dias), y: Y(p[modo]), txt: `${s.nombre} · ${p.t} d · ${fmt(p[modo])}% ${modo.toUpperCase()} · ${miles(p.vol / 1e6)} M · ${p.ops} ops` });
+    });
+    leyenda.push(`<span><span class="mv-sw" style="background:${s.col}"></span>${esc(s.nombre)}</span>`);
+  });
+  window.MV_MARCAS = marcadores;
+  // Tabla: tramo por tramo, con el spread contra la curva soberana del mismo viernes.
+  const tramos = D.tramos;
+  const filas = series.map(s => {
+    const celdas = tramos.map(t => {
+      const v = sem.curva[s.seg][t];
+      if (!v) return '<td>—</td>';
+      const ref = lecapA(sem, v.dias);
+      const sp = ref == null ? null : v.tea - ref;
+      return `<td>${fmt(v.tea)}%<br><span style="font-size:10.5px;color:var(--text-3)">${sp == null ? 'sin par' : (sp > 0 ? '+' : '') + fmt(sp) + ' pp'}</span></td>`;
+    }).join('');
+    const vol = tramos.reduce((a, t) => a + ((sem.curva[s.seg][t] || {}).vol || 0), 0);
+    return `<tr><td class="seg">${esc(s.nombre)}</td>${celdas}<td>${miles(vol / 1e6)}</td></tr>`;
+  }).join('');
+  return `<div class="mv-card">
+    <div class="mv-head"><div>
+      <div class="mv-tit">La curva PyME contra la curva soberana</div>
+      <div class="mv-sub">Tasa por tramo de plazo, en la semana seleccionada · el spread es contra la curva de tasa fija del mismo viernes</div>
+    </div></div>
+    <div class="mv-ctrl"><div class="mv-modo">
+      <button id="mv-tea" class="${modo === 'tea' ? 'on' : ''}">TEA</button>
+      <button id="mv-tna" class="${modo === 'tna' ? 'on' : ''}">TNA</button>
+    </div><span class="mv-meta">${modo === 'tea' ? 'Comparable contra LECAPs' : 'Como la informa MAV; no comparable contra LECAPs'}</span></div>
+    <div class="mv-leyenda">${leyenda.join('')}</div>
+    <div class="mv-body" id="mv-lienzo">
+      <svg class="mv-svg" id="mv-svg-curva" viewBox="0 0 ${W} ${H}" role="img" aria-label="Curva de tasas del MAV">${g.join('')}</svg>
+      <div class="mv-tip" id="mv-tip" hidden></div>
+    </div>
+    <div class="mv-tabla-wrap"><table class="mv"><thead><tr><th>Segmento</th>
+      ${tramos.map(t => `<th>${t} d</th>`).join('')}<th>Volumen (millones)</th></tr></thead>
+      <tbody>${filas}</tbody></table></div>
+    <div class="mv-pie">El gráfico llega hasta 370 días; el tramo de 366 o más —unos pocos pagarés
+      largos— va sólo en la tabla, porque estiraba el eje y aplastaba el tramo donde opera casi todo
+      el mercado. TEA del tramo y, debajo, el spread contra la curva de pesos interpolada al
+      mismo plazo promedio: positivo es que el papel PyME paga más que la LECAP equivalente.
+      «Sin par» es un plazo fuera del tramo con LECAPs. El volumen está en millones de pesos de
+      valor nominal. Los pagarés con ajuste TAMAR, SOJA o BADLAR quedan afuera: cotizan un margen
+      sobre el índice y no una tasa fija.</div></div>`;
+}
+
+/* ── 3 · dólares ── */
+function tarjetaDolares(sem) {
+  const segs = Object.keys(sem.curva).filter(s => s.includes('USD'));
+  if (!segs.length) return '';
+  const filas = segs.map(seg => {
+    const celdas = D.tramos.map(t => {
+      const v = sem.curva[seg][t];
+      return v ? `<td>${fmt(v.tna)}%<br><span style="font-size:10.5px;color:var(--text-3)">${miles(v.vol / 1e3)} k · ${v.ops}</span></td>` : '<td>—</td>';
+    }).join('');
+    return `<tr><td class="seg">${esc(seg.replace(' USD', ''))}</td>${celdas}</tr>`;
+  }).join('');
+  return `<div class="mv-card">
+    <div class="mv-head"><div><div class="mv-tit">En dólares</div>
+      <div class="mv-sub">Pagarés y FCE nominados en dólares · TNA por tramo, con volumen en miles de dólares y cantidad de operaciones</div></div></div>
+    <div class="mv-tabla-wrap"><table class="mv"><thead><tr><th>Segmento</th>
+      ${D.tramos.map(t => `<th>${t} d</th>`).join('')}</tr></thead><tbody>${filas}</tbody></table></div>
+    <div class="mv-pie">Ojo con la moneda: el informe del MAV usa tres etiquetas que no son lo
+      mismo —U$S al tipo de cambio del Banco Nación, U$D al A3500 y «hard dollar»— y acá van
+      agrupadas. Sirve para el nivel de tasa, que es lo comparable contra las ONs cortas; para
+      sumar montos hay que mirar el informe.</div></div>`;
+}
+
+/* ── 4 · volumen ── */
+function tarjetaVolumen(sem, prev) {
+  const claves = Object.keys(sem.volumen).sort((a, b) => sem.volumen[b].vol - sem.volumen[a].vol);
+  const filas = claves.map(k => {
+    const v = sem.volumen[k], p = prev && prev.volumen[k];
+    const var_ = p && p.vol ? (v.vol / p.vol - 1) * 100 : null;
+    const esArs = k.endsWith('ARS');
+    return `<tr><td class="seg">${esc(k)}</td>
+      <td>${esArs ? miles(v.vol / 1e6) + ' M' : miles(v.vol / 1e3) + ' k'}</td>
+      <td>${var_ == null ? '—' : `<span class="${var_ > 0 ? 'mv-pos' : 'mv-neg'}">${var_ > 0 ? '+' : ''}${fmt(var_, 1)}%</span>`}</td>
+      <td>${miles(v.ops)}</td></tr>`;
+  }).join('');
+  // Historia del volumen en pesos por instrumento.
+  const W = 960, H = 230, mL = 60, mR = 16, mT = 12, mB = 40;
+  const INS = [['CPD ARS', PAL.navy], ['Pagaré ARS', PAL.cyan], ['FCE ARS', PAL.ambar]];
+  const g = [];
+  const vals = [];
+  D.semanas.forEach(s => INS.forEach(([k]) => { if (s.volumen[k]) vals.push(s.volumen[k].vol / 1e6); }));
+  if (vals.length > 2) {
+    const y1 = Math.max(...vals) * 1.08;
+    const X = i => mL + (i / Math.max(1, D.semanas.length - 1)) * (W - mL - mR);
+    const Y = v => H - mB - (v / y1) * (H - mT - mB);
+    const paso = Math.ceil(D.semanas.length / 10);
+    ejes(g, X, Y, { v: D.semanas.map((_, i) => i).filter(i => i % paso === 0), paso: 1 },
+         marcas(0, y1, 5), W, H, mL, mR, mT, mB, i => corto(D.semanas[i].hasta),
+         v => miles(v / 1e3) + ' bn', '', 'Millones de $');
+    INS.forEach(([k, col]) => {
+      g.push(`<path d="${D.semanas.map((s, i) => (s.volumen[k] ? `${i ? 'L' : 'M'}${X(i).toFixed(1)} ${Y(s.volumen[k].vol / 1e6).toFixed(1)}` : '')).join('')}" fill="none" stroke="${col}" stroke-width="2"/>`);
+    });
+  }
+  return `<div class="mv-card">
+    <div class="mv-head"><div><div class="mv-tit">Volumen negociado</div>
+      <div class="mv-sub">Valor nominal de la semana, por instrumento y moneda, contra la semana anterior</div></div></div>
+    <div class="mv-tabla-wrap"><table class="mv"><thead><tr><th>Instrumento</th><th>Volumen</th>
+      <th>vs. semana anterior</th><th>Operaciones</th></tr></thead><tbody>${filas}</tbody></table></div>
+    <div class="mv-leyenda">${INS.map(([k, c]) => `<span><span class="mv-sw" style="background:${c}"></span>${k}</span>`).join('')}</div>
+    <div class="mv-body"><svg class="mv-svg" viewBox="0 0 ${W} ${H}" role="img" aria-label="Volumen por semana">${g.join('')}</svg></div>
+    <div class="mv-pie">Los montos en pesos van en millones y los de dólares en miles. El eje del
+      gráfico está en miles de millones («bn»). El volumen es de valor nominal, no de valor
+      efectivo: el efectivo es algo menor, por el descuento.</div></div>`;
+}
+
+/* ── 5 · quién avala y quién opera ── */
+function tarjetaQuien(sem) {
+  const aval = (sem.avalistas || []).map(a => `<tr><td class="seg">${esc(a.nombre)}</td>
+      <td>${miles(a.vol / 1e6)} M</td><td>${miles(a.ops)}</td></tr>`).join('');
+  const men = D.mensual || {};
+  const secciones = Object.keys(men.agentes || {});
+  const sec = secciones.find(s => /CPD Avalado/i.test(s)) || secciones[0];
+  const ag = sec ? (men.agentes[sec].compra || []) : [];
+  const filasAg = ag.map((a, i) => {
+    const propio = /BALANZ/i.test(a.agente);
+    return `<tr class="${propio ? 'propio' : ''}"><td class="seg">${i + 1}. ${esc(a.agente)}</td>
+      <td>${miles(a.vol / 1e6)} M</td></tr>`;
+  }).join('');
+  return `<div class="mv-dos">
+    <div class="mv-card"><div class="mv-head"><div><div class="mv-tit">Quién avala</div>
+      <div class="mv-sub">Avalistas de la semana, por monto nominal de cheques y pagarés avalados</div></div></div>
+      <div class="mv-tabla-wrap"><table class="mv"><thead><tr><th>Avalista</th><th>Volumen</th>
+        <th>Operaciones</th></tr></thead><tbody>${aval || '<tr><td colspan="3">—</td></tr>'}</tbody></table></div>
+      <div class="mv-pie">Sale del campo del anexo que identifica al avalista o al deudor cedido:
+        SGR en su mayoría, más algún banco que avala directo.</div></div>
+    <div class="mv-card"><div class="mv-head"><div><div class="mv-tit">Quién opera</div>
+      <div class="mv-sub">${sec ? esc(sec) : '—'} · ranking de compra del mes${men.mes ? ' · ' + esc(men.mes.replace('-', ' ')) : ''}</div></div></div>
+      <div class="mv-tabla-wrap"><table class="mv"><thead><tr><th>Agente</th><th>Volumen</th></tr></thead>
+        <tbody>${filasAg || '<tr><td colspan="2">—</td></tr>'}</tbody></table></div>
+      <div class="mv-pie">Es el ranking del informe MENSUAL, así que la ventana no es la de la
+        semana de arriba. Balanz queda resaltado.</div></div></div>`;
+}
+
+function pintar() {
+  const sem = D.semanas[ix], prev = ix > 0 ? D.semanas[ix - 1] : null;
+  document.getElementById('mv-semana').value = sem.hasta;
+  document.getElementById('mv-ant').disabled = ix <= 0;
+  document.getElementById('mv-sig').disabled = ix >= D.semanas.length - 1;
+  document.getElementById('mv-meta').textContent =
+    `semana del ${dia(sem.desde)} al ${dia(sem.hasta)} · publicado el ${dia(sem.publicado)} · `
+    + `${miles(sem.operaciones)} operaciones`;
+  document.getElementById('mv-todo').innerHTML =
+    tarjetaIndices(sem, prev) + tarjetaCurva(sem) + tarjetaDolares(sem)
+    + tarjetaVolumen(sem, prev) + tarjetaQuien(sem)
+    + `<div class="aviso">${esc(D.aviso)} ${esc(D.convencion)} Fuente: ${esc(D.fuente)}; datos al ${esc(D.generado)}.</div>`;
+  const b1 = document.getElementById('mv-tea'), b2 = document.getElementById('mv-tna');
+  if (b1) b1.onclick = () => { modo = 'tea'; pintar(); };
+  if (b2) b2.onclick = () => { modo = 'tna'; pintar(); };
+  const svg = document.getElementById('mv-svg-curva'), tip = document.getElementById('mv-tip');
+  if (svg && tip) {
+    svg.addEventListener('mousemove', ev => {
+      const rc = svg.getBoundingClientRect(), k = 960 / rc.width;
+      const mx = (ev.clientX - rc.left) * k, my = (ev.clientY - rc.top) * k;
+      let best = null, bd = 16 * k;
+      (window.MV_MARCAS || []).forEach(p => {
+        const d = Math.hypot(p.x - mx, p.y - my);
+        if (d < bd) { bd = d; best = p; }
+      });
+      if (!best) { tip.hidden = true; return; }
+      tip.textContent = best.txt;
+      tip.style.left = (best.x / k) + 'px';
+      tip.style.top = (best.y / k) + 'px';
+      tip.hidden = false;
+    });
+    svg.addEventListener('mouseleave', () => { tip.hidden = true; });
+  }
+  if (location.hash.slice(1) !== sem.hasta) history.replaceState(null, '', '#' + sem.hasta);
+}
+
+fetch('mav_series.json?t=' + Date.now())
+  .then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+  .then(d => {
+    D = d;
+    if (!D.semanas || !D.semanas.length) throw new Error('el archivo no tiene semanas');
+    const sel = document.getElementById('mv-semana');
+    sel.innerHTML = D.semanas.slice().reverse().map(s =>
+      `<option value="${s.hasta}">${corto(s.desde)} al ${corto(s.hasta)}</option>`).join('');
+    const h = location.hash.slice(1);
+    ix = Math.max(0, D.semanas.findIndex(s => s.hasta === h));
+    if (ix < 0 || !h) ix = D.semanas.length - 1;
+    sel.addEventListener('change', () => {
+      ix = D.semanas.findIndex(s => s.hasta === sel.value);
+      pintar();
+    });
+    document.getElementById('mv-ant').addEventListener('click', () => { if (ix > 0) { ix--; pintar(); } });
+    document.getElementById('mv-sig').addEventListener('click', () => { if (ix < D.semanas.length - 1) { ix++; pintar(); } });
+    pintar();
+  })
+  .catch(e => {
+    document.getElementById('mv-todo').innerHTML =
+      '<div class="mv-vacio">No se pudo leer mav_series.json (' + esc(e.message) + ').</div>';
+  });
+</script>
+</body>
+</html>
