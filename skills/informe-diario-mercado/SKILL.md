@@ -50,7 +50,7 @@ LA PROSA ES EL PRODUCTO. El usuario fue explícito: sin el análisis del día el
 interesa. Nunca degrades el informe a "tablas y links" para poder mandarlo igual, ni desde acá ni
 desde ningún automatismo: si no se puede escribir el análisis, es mejor avisar que falta.
 
-El usuario (Ignacio) autorizó explícitamente el envío directo a su casilla: ignaciotalento@gmail.com. No hace falta volver a pedirle permiso para mandarlo. Trabaja en research de renta fija, así que el registro es el de un informe interno de mesa: técnico, sin explicar qué es una TIR.
+El usuario (Ignacio) autorizó explícitamente el envío directo a su casilla (ignaciotalento@gmail.com) y, desde el 14/09/2026, también a su equipo de Balanz: la lista completa está en el PASO 5. No hace falta volver a pedirle permiso para mandarlo. Trabaja en research de renta fija, así que el registro es el de un informe interno de mesa: técnico, sin explicar qué es una TIR.
 
 ═══════════════════════════════════════════════════════════════════
 PASO 1 · CONSEGUIR LOS DATOS
@@ -368,7 +368,8 @@ la convención del Tesoro (S29E7, D30N6); los TAMAR nuevos quedan con el nombre.
   · SI TODAVÍA NO SALIÓ a la hora del informe: una línea que lo diga («la licitación de hoy cerró
     a las 15 y el resultado todavía no se publicó; va en un mail aparte»), mandá el informe igual,
     y DESPUÉS esperá el resultado consultando el script cada 10 minutos hasta las 20:30. Cuando
-    salga, mandá un mail corto EN EL MISMO HILO del informe del día (replyThreadId), con asunto
+    salga, mandá un mail corto EN EL MISMO HILO del informe del día (replyThreadId), a los mismos
+    ocho destinatarios del PASO 5, con asunto
     «Renta fija AR · licitación DD/MM», la tabla y las dos o tres oraciones. Antes de mandarlo
     buscá en Gmail `subject:"licitación DD/MM"`: si ya salió uno —puede haberlo mandado otra
     sesión—, no lo repitas. Si a las 20:30 no salió, no mandes nada más.
@@ -627,7 +628,7 @@ la curva de punta a punta, qué cambió de dirección respecto de la ventana ant
 observación sólo tiene sentido con las dos ventanas juntas —"la rueda fue contra la semana"— va en
 el de cierre, que es donde la comparación es el tema.
 
-LOS DOS MAILS. Primero el diario, con el asunto de siempre. Después el de cierre, con "· cierre
+LOS DOS MAILS, los dos a la lista completa del PASO 5. Primero el diario, con el asunto de siempre. Después el de cierre, con "· cierre
 semanal" o "· cierre de mes" en el asunto y su propio PDF. Cada uno se lee solo: el de cierre no
 supone que el lector abrió el otro.
 
@@ -824,7 +825,18 @@ proveedor de datos. Si agregás una curva nueva, revisá su texto con ese criter
 PASO 5 · MANDAR EL MAIL
 ═══════════════════════════════════════════════════════════════════
 
-A ignaciotalento@gmail.com, con la herramienta de Gmail, en htmlBody.
+A ESTOS OCHO DESTINATARIOS, TODOS EN «PARA» (`to`), con la herramienta de Gmail, en htmlBody:
+
+    ignaciotalento@gmail.com, bgarcia@balanz.com, adumett@balanz.com, vsoro@balanz.com, lmaggioni@balanz.com, fgranda@balanz.com, mmarengo@balanz.com, elabayru@balanz.com
+
+Es la cuenta del usuario más su equipo de Balanz, pedido por él el 14/09/2026. Van todos en «Para» a
+propósito —no en copia oculta—: lo eligió así y no hay problema en que se vean las direcciones. La
+lista vale para LOS TRES tipos de mail: el diario, el de cierre semanal o mensual y el corto de la
+licitación en el mismo hilo. No agregues ni saques a nadie sin que el usuario lo pida en el chat; si
+algún día un mail rebota, avisale cuál en vez de corregir la lista por tu cuenta.
+
+El equipo tiene acceso al monitor, así que las referencias a sus solapas en el mail están bien. El
+PDF sigue siendo la versión sin nada del tablero, para reenviar fuera del equipo.
 
 Asunto: "Renta fija AR · cierre DD/MM" y, cuando corresponda, "· cierre semanal" o "· cierre de
 mes" al final.
