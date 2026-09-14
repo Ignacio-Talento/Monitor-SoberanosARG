@@ -275,9 +275,23 @@
             line-height: 1.6; }
   .mv-dos { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
   @media (max-width: 900px) { .mv-dos { grid-template-columns: 1fr; } }
+  /* Tooltip de varias líneas: la posición la calcula el JS y lo corre al otro lado del cursor
+     cuando está cerca del borde, para que no se salga de la tarjeta. */
   .mv-tip { position: absolute; pointer-events: none; background: var(--navy-fondo); color: #fff;
-            font: 11px var(--mono); padding: 5px 9px; border-radius: 6px; white-space: nowrap;
-            transform: translate(-50%, -130%); z-index: 5; }
+            font: 11px/1.55 var(--mono); padding: 7px 10px; border-radius: 7px; white-space: nowrap;
+            z-index: 5; box-shadow: 0 6px 18px rgba(1, 9, 45, .28); }
+  .mv-tip b { font-family: var(--sans); font-size: 11.5px; }
+  .mv-tip .t-sw { display: inline-block; width: 8px; height: 8px; border-radius: 2px; margin-right: 6px;
+                  vertical-align: 0; }
+  .mv-tip .t-dim { color: rgba(255, 255, 255, .62); }
+  /* Leyenda que prende y apaga curvas. */
+  .mv-chip { display: inline-flex; align-items: center; gap: 6px; font: 11px var(--sans); color: var(--text-2);
+             background: transparent; border: 1px solid var(--border); border-radius: var(--r-pill);
+             padding: 3px 10px 3px 8px; cursor: pointer; }
+  .mv-chip:hover { border-color: var(--text-3); }
+  .mv-chip.off { opacity: .45; text-decoration: line-through; }
+  .mv-chip-todas { font: 600 11px var(--sans); color: var(--cyan); background: none; border: 0; cursor: pointer;
+                   padding: 3px 4px; }
   .mv-vacio { font-size: 12px; color: var(--text-3); padding: 26px 20px; }
 </style>
 
@@ -329,6 +343,13 @@ const SEGS = [
 // ilegible el tramo corto. Ese tramo se sigue viendo en la tabla.
 const TOPE_DIAS = 370;
 let D = null, ix = 0, modo = 'tea';
+// Curvas apagadas en «La curva PyME contra la curva soberana». Se recuerda en el navegador para que
+// no haya que volver a apagarlas al cambiar de semana o al volver a la solapa.
+const OCULTAS = new Set((() => { try { return JSON.parse(localStorage.getItem('mav_curvas_ocultas') || '[]'); }
+                                 catch (e) { return []; } })());
+function guardarOcultas() { try { localStorage.setItem('mav_curvas_ocultas', JSON.stringify([...OCULTAS])); } catch (e) {} }
+// Geometría de cada gráfico, para que el hover sepa qué punto hay debajo del cursor sin redibujar.
+const GRAF = {};
 
 function fmt(x, d) { return x == null ? '—' : x.toFixed(d === undefined ? 2 : d).replace('.', ','); }
 function miles(x) { return x == null ? '—' : Math.round(x).toLocaleString('es-AR'); }
@@ -378,7 +399,8 @@ function ejes(g, X, Y, mx, my, W, H, mL, mR, mT, mB, fx, fy, xlab, ylab) {
 
 /* ── 1 · tarjeta de tasas de referencia + su historia ── */
 function tarjetaIndices(sem, prev) {
-  const IND = [['mav30', 'MAV 30', '0 a 60 días'], ['mav90', 'MAV 90', '61 a 120'], ['mav200', 'MAV 200', '121 a 365']];
+  const IND = [['mav30', 'MAV 30', '0 a 60 días', PAL.navy], ['mav90', 'MAV 90', '61 a 120', PAL.cyan],
+               ['mav200', 'MAV 200', '121 a 365', PAL.ambar]];
   const kpis = IND.map(([k, n, tramo]) => {
     const a = sem.indices[k], b = prev && prev.indices[k];
     const dif = a && b ? a.tna - b.tna : null;
@@ -390,82 +412,122 @@ function tarjetaIndices(sem, prev) {
   // Historia de las tres tasas: una línea por índice sobre todas las semanas del archivo.
   const W = 960, H = 260, mL = 54, mR = 16, mT = 12, mB = 40;
   const sem_ok = D.semanas.filter(s => s.indices.mav30);
-  const xs = sem_ok.map((_, i) => i);
   const vals = [];
   sem_ok.forEach(s => IND.forEach(([k]) => { if (s.indices[k]) vals.push(s.indices[k].tna); }));
   const g = [];
   if (vals.length > 2) {
     const y0 = Math.min(...vals) - 1, y1 = Math.max(...vals) + 1;
-    const X = i => mL + (i / Math.max(1, xs.length - 1)) * (W - mL - mR);
+    const X = i => mL + (i / Math.max(1, sem_ok.length - 1)) * (W - mL - mR);
     const Y = v => H - mB - (v - y0) / (y1 - y0) * (H - mT - mB);
-    const mx = { v: xs.filter(i => i % Math.ceil(xs.length / 10) === 0), paso: 1 };
-    ejes(g, X, Y, mx, marcas(y0, y1, 5), W, H, mL, mR, mT, mB,
-         i => corto(sem_ok[i].hasta), v => fmt(v, 1) + '%', '', 'TNA (%)');
-    IND.forEach(([k, n], j) => {
-      const col = [PAL.navy, PAL.cyan, PAL.ambar][j];
+    const paso = Math.ceil(sem_ok.length / 10);
+    ejes(g, X, Y, { v: sem_ok.map((_, i) => i).filter(i => i % paso === 0), paso: 1 }, marcas(y0, y1, 5),
+         W, H, mL, mR, mT, mB, i => corto(sem_ok[i].hasta), v => fmt(v, 1) + '%', '', 'TNA (%)');
+    IND.forEach(([k, , , col]) => {
       const d = sem_ok.map((s, i) => (s.indices[k] ? `${i ? 'L' : 'M'}${X(i).toFixed(1)} ${Y(s.indices[k].tna).toFixed(1)}` : '')).join('');
       g.push(`<path d="${d}" fill="none" stroke="${col}" stroke-width="2"/>`);
-      const i2 = sem_ok.length - 1;
-      g.push(`<circle cx="${X(i2).toFixed(1)}" cy="${Y(sem_ok[i2].indices[k].tna).toFixed(1)}" r="3.5" fill="${col}"/>`);
     });
-    // Marca la semana que se está mirando.
     const iSel = sem_ok.findIndex(s => s.hasta === sem.hasta);
     if (iSel >= 0) g.push(`<line x1="${X(iSel).toFixed(1)}" x2="${X(iSel).toFixed(1)}" y1="${mT}" y2="${H-mB}" stroke="${PAL.gris}" stroke-dasharray="3 3"/>`);
+    // Hover por SEMANA y no por punto: lo que interesa es leer las tres tasas de esa semana juntas.
+    GRAF['mv-svg-ind'] = { tipo: 'serie', W, n: sem_ok.length, mL, mR, mT, mB, H,
+      x: i => X(i),
+      puntos: i => IND.filter(([k]) => sem_ok[i].indices[k]).map(([k, , , col]) => ({ y: Y(sem_ok[i].indices[k].tna), col })),
+      html: i => {
+        const s = sem_ok[i], p = D.semanas[D.semanas.indexOf(s) - 1];
+        return `<b>Semana del ${dia(s.desde)} al ${dia(s.hasta)}</b><br>` + IND.map(([k, n, , col]) => {
+          const v = s.indices[k], ant = p && p.indices[k];
+          if (!v) return '';
+          const dif = ant ? Math.round((v.tna - ant.tna) * 100) : null;
+          return `<span class="t-sw" style="background:${col}"></span>${n} ${fmt(v.tna)}% TNA · ${fmt(v.tea)}% TEA`
+            + (dif == null ? '' : ` <span class="t-dim">(${dif > 0 ? '+' : ''}${dif} pb)</span>`)
+            + `<br><span class="t-dim">&nbsp;&nbsp;&nbsp;${miles(v.ops)} ops · ${miles(v.vol / 1e6)} M</span><br>`;
+        }).join('');
+      } };
   }
   return `<div class="mv-card">
     <div class="mv-head"><div>
       <div class="mv-tit">Tasas de referencia MAV</div>
       <div class="mv-sub">Cheque avalado en pesos, promedio ponderado por monto · TNA vencida base 365</div>
     </div><div class="mv-kpis">${kpis}</div></div>
-    <div class="mv-leyenda"><span><span class="mv-sw" style="background:${PAL.navy}"></span>MAV 30</span>
-      <span><span class="mv-sw" style="background:${PAL.cyan}"></span>MAV 90</span>
-      <span><span class="mv-sw" style="background:${PAL.ambar}"></span>MAV 200</span></div>
-    <div class="mv-body"><svg class="mv-svg" viewBox="0 0 ${W} ${H}" role="img" aria-label="Historia de las tasas MAV">${g.join('')}</svg></div>
+    <div class="mv-leyenda">${IND.map(([, n, , c]) => `<span><span class="mv-sw" style="background:${c}"></span>${n}</span>`).join('')}</div>
+    <div class="mv-body"><svg class="mv-svg" id="mv-svg-ind" viewBox="0 0 ${W} ${H}" role="img" aria-label="Historia de las tasas MAV">${g.join('')}<g class="mv-hov"></g></svg>
+      <div class="mv-tip" hidden></div></div>
     <div class="mv-pie">Los tres índices son los que publica MAV en su informe: el promedio ponderado
       por monto nominal del cheque avalado en pesos, por tramo de plazo. La variación es contra la
-      semana anterior. La línea punteada marca la semana seleccionada.</div></div>`;
+      semana anterior. La línea punteada marca la semana seleccionada; pasá el cursor por el gráfico
+      para ver las tres tasas de cada semana.</div></div>`;
 }
 
 /* ── 2 · la curva PyME contra la curva soberana ── */
 function tarjetaCurva(sem) {
   const W = 960, H = 380, mL = 58, mR = 18, mT = 14, mB = 46;
-  const pts = [], series = [];
+  const series = [];
   SEGS.forEach(([seg, col, nombre]) => {
     const tr = sem.curva[seg];
     if (!tr) return;
     const p = Object.keys(tr).filter(t => tr[t] && tr[t].dias <= TOPE_DIAS)
       .map(t => ({ t, ...tr[t] })).sort((a, b) => a.dias - b.dias);
-    if (!p.length) return;
-    series.push({ seg, col, nombre, p });
-    p.forEach(x => pts.push(x));
+    if (p.length) series.push({ seg, col, nombre, p });
   });
-  const g = [], leyenda = [];
-  if (!pts.length) return '';
-  const lec = ((sem.lecap && sem.lecap.puntos) || []).filter(p => p[0] <= TOPE_DIAS);
-  const xs = pts.map(p => p.dias).concat(modo === 'tea' ? lec.map(p => p[0]) : []);
-  const ys = pts.map(p => p[modo]).concat(modo === 'tea' ? lec.map(p => p[1]) : []);
-  let x0 = 0, x1 = Math.max(...xs) * 1.04, y0 = Math.min(...ys), y1 = Math.max(...ys);
-  const dy = (y1 - y0) || 1; y0 -= dy * .08; y1 += dy * .08;
-  const X = v => mL + (v - x0) / (x1 - x0) * (W - mL - mR);
-  const Y = v => H - mB - (v - y0) / (y1 - y0) * (H - mT - mB);
-  ejes(g, X, Y, marcas(x0, x1, 8), marcas(y0, y1, 6), W, H, mL, mR, mT, mB,
-       v => String(Math.round(v)), v => fmt(v, 1) + '%', 'Plazo promedio del tramo (días)',
-       modo === 'tea' ? 'TEA (%)' : 'TNA (%)');
-  if (modo === 'tea' && lec.length > 1) {
-    g.push(`<path d="${lec.map((p, i) => `${i ? 'L' : 'M'}${X(p[0]).toFixed(1)} ${Y(p[1]).toFixed(1)}`).join('')}" fill="none" stroke="${PAL.rojo}" stroke-width="2" stroke-dasharray="6 4"/>`);
-    leyenda.push(`<span><span class="mv-sw" style="background:${PAL.rojo}"></span>Curva de pesos (LECAPs) del ${dia(sem.lecap.fecha)}</span>`);
-  }
-  const marcadores = [];
-  series.forEach(s => {
-    g.push(`<path d="${s.p.map((p, i) => `${i ? 'L' : 'M'}${X(p.dias).toFixed(1)} ${Y(p[modo]).toFixed(1)}`).join('')}" fill="none" stroke="${s.col}" stroke-width="2.2"/>`);
-    s.p.forEach(p => {
-      g.push(`<circle cx="${X(p.dias).toFixed(1)}" cy="${Y(p[modo]).toFixed(1)}" r="4" fill="${s.col}"/>`);
-      marcadores.push({ x: X(p.dias), y: Y(p[modo]), txt: `${s.nombre} · ${p.t} d · ${fmt(p[modo])}% ${modo.toUpperCase()} · ${miles(p.vol / 1e6)} M · ${p.ops} ops` });
+  if (!series.length) return '';
+  const lecTodos = ((sem.lecap && sem.lecap.puntos) || []).filter(p => p[0] <= TOPE_DIAS);
+  const lecapVisible = modo === 'tea' && lecTodos.length > 1;
+  const verLecap = lecapVisible && !OCULTAS.has('LECAP');
+  const visibles = series.filter(s => !OCULTAS.has(s.seg));
+
+  // Los chips son la leyenda: tocar uno apaga o prende esa curva. La LECAP sólo existe en TEA.
+  const chips = series.map(s => `<button class="mv-chip ${OCULTAS.has(s.seg) ? 'off' : ''}" data-serie="${esc(s.seg)}"
+      title="Prender o apagar"><span class="mv-sw" style="background:${s.col}"></span>${esc(s.nombre)}</button>`);
+  if (lecapVisible) chips.unshift(`<button class="mv-chip ${OCULTAS.has('LECAP') ? 'off' : ''}" data-serie="LECAP"
+      title="Prender o apagar"><span class="mv-sw" style="background:${PAL.rojo}"></span>Curva de pesos (LECAPs) del ${dia(sem.lecap.fecha)}</button>`);
+  if (OCULTAS.size) chips.push(`<button class="mv-chip-todas" data-serie="*">Mostrar todas</button>`);
+
+  // El eje se ajusta a lo que está prendido: apagar el cheque directo, que llega a 40%, deja ver el
+  // resto de la curva con más detalle.
+  const xs = [], ys = [];
+  visibles.forEach(s => s.p.forEach(p => { xs.push(p.dias); ys.push(p[modo]); }));
+  if (verLecap) lecTodos.forEach(p => { xs.push(p[0]); ys.push(p[1]); });
+  const g = [];
+  let marcadores = [];
+  if (xs.length) {
+    let x0 = 0, x1 = Math.max(...xs) * 1.04, y0 = Math.min(...ys), y1 = Math.max(...ys);
+    const dy = (y1 - y0) || 1; y0 -= dy * .08; y1 += dy * .08;
+    const X = v => mL + (v - x0) / (x1 - x0) * (W - mL - mR);
+    const Y = v => H - mB - (v - y0) / (y1 - y0) * (H - mT - mB);
+    ejes(g, X, Y, marcas(x0, x1, 8), marcas(y0, y1, 6), W, H, mL, mR, mT, mB,
+         v => String(Math.round(v)), v => fmt(v, 1) + '%', 'Plazo promedio del tramo (días)',
+         modo === 'tea' ? 'TEA (%)' : 'TNA (%)');
+    if (verLecap) {
+      g.push(`<path d="${lecTodos.map((p, i) => `${i ? 'L' : 'M'}${X(p[0]).toFixed(1)} ${Y(p[1]).toFixed(1)}`).join('')}" fill="none" stroke="${PAL.rojo}" stroke-width="2" stroke-dasharray="6 4"/>`);
+      lecTodos.forEach(p => {
+        g.push(`<circle cx="${X(p[0]).toFixed(1)}" cy="${Y(p[1]).toFixed(1)}" r="2.5" fill="${PAL.rojo}"/>`);
+        marcadores.push({ x: X(p[0]), y: Y(p[1]), col: PAL.rojo,
+          html: `<b><span class="t-sw" style="background:${PAL.rojo}"></span>LECAP</b><br>`
+            + `${fmt(p[1])}% TEA a ${Math.round(p[0])} días de duration<br>`
+            + `<span class="t-dim">curva de tasa fija del ${dia(sem.lecap.fecha)}</span>` });
+      });
+    }
+    visibles.forEach(s => {
+      g.push(`<path d="${s.p.map((p, i) => `${i ? 'L' : 'M'}${X(p.dias).toFixed(1)} ${Y(p[modo]).toFixed(1)}`).join('')}" fill="none" stroke="${s.col}" stroke-width="2.2"/>`);
+      s.p.forEach(p => {
+        g.push(`<circle cx="${X(p.dias).toFixed(1)}" cy="${Y(p[modo]).toFixed(1)}" r="4" fill="${s.col}"/>`);
+        const ref = lecapA(sem, p.dias), sp = ref == null ? null : p.tea - ref;
+        marcadores.push({ x: X(p.dias), y: Y(p[modo]), col: s.col,
+          html: `<b><span class="t-sw" style="background:${s.col}"></span>${esc(s.nombre)}</b><br>`
+            + `Tramo ${p.t} días · plazo promedio ${fmt(p.dias, 0)} d<br>`
+            + `TNA ${fmt(p.tna)}% · <b>TEA ${fmt(p.tea)}%</b><br>`
+            + (sp == null ? `<span class="t-dim">sin LECAP a ese plazo</span><br>`
+                          : `vs. LECAP ${sp > 0 ? '+' : ''}${fmt(sp)} pp <span class="t-dim">(${fmt(ref)}%)</span><br>`)
+            + `<span class="t-dim">${miles(p.vol / 1e6)} M nominal · ${miles(p.ops)} operaciones</span>` });
+      });
     });
-    leyenda.push(`<span><span class="mv-sw" style="background:${s.col}"></span>${esc(s.nombre)}</span>`);
-  });
-  window.MV_MARCAS = marcadores;
-  // Tabla: tramo por tramo, con el spread contra la curva soberana del mismo viernes.
+  } else {
+    g.push(`<text x="${W / 2}" y="${H / 2}" text-anchor="middle" fill="${PAL.gris}" font-size="14">Todas las curvas están apagadas</text>`);
+  }
+  GRAF['mv-svg-curva'] = { tipo: 'puntos', W, marcas: marcadores };
+
+  // Tabla: tramo por tramo, con el spread contra la curva soberana del mismo viernes. Muestra todos
+  // los segmentos aunque estén apagados en el gráfico: la tabla es la referencia completa.
   const tramos = D.tramos;
   const filas = series.map(s => {
     const celdas = tramos.map(t => {
@@ -486,22 +548,22 @@ function tarjetaCurva(sem) {
     <div class="mv-ctrl"><div class="mv-modo">
       <button id="mv-tea" class="${modo === 'tea' ? 'on' : ''}">TEA</button>
       <button id="mv-tna" class="${modo === 'tna' ? 'on' : ''}">TNA</button>
-    </div><span class="mv-meta">${modo === 'tea' ? 'Comparable contra LECAPs' : 'Como la informa MAV; no comparable contra LECAPs'}</span></div>
-    <div class="mv-leyenda">${leyenda.join('')}</div>
-    <div class="mv-body" id="mv-lienzo">
-      <svg class="mv-svg" id="mv-svg-curva" viewBox="0 0 ${W} ${H}" role="img" aria-label="Curva de tasas del MAV">${g.join('')}</svg>
-      <div class="mv-tip" id="mv-tip" hidden></div>
+    </div><span class="mv-meta">${modo === 'tea' ? 'Comparable contra LECAPs' : 'Como la informa MAV; no comparable contra LECAPs'} · tocá una curva en la leyenda para prenderla o apagarla</span></div>
+    <div class="mv-leyenda" id="mv-chips">${chips.join('')}</div>
+    <div class="mv-body">
+      <svg class="mv-svg" id="mv-svg-curva" viewBox="0 0 ${W} ${H}" role="img" aria-label="Curva de tasas del MAV">${g.join('')}<g class="mv-hov"></g></svg>
+      <div class="mv-tip" hidden></div>
     </div>
     <div class="mv-tabla-wrap"><table class="mv"><thead><tr><th>Segmento</th>
       ${tramos.map(t => `<th>${t} d</th>`).join('')}<th>Volumen (millones)</th></tr></thead>
       <tbody>${filas}</tbody></table></div>
     <div class="mv-pie">El gráfico llega hasta 370 días; el tramo de 366 o más —unos pocos pagarés
       largos— va sólo en la tabla, porque estiraba el eje y aplastaba el tramo donde opera casi todo
-      el mercado. TEA del tramo y, debajo, el spread contra la curva de pesos interpolada al
-      mismo plazo promedio: positivo es que el papel PyME paga más que la LECAP equivalente.
-      «Sin par» es un plazo fuera del tramo con LECAPs. El volumen está en millones de pesos de
-      valor nominal. Los pagarés con ajuste TAMAR, SOJA o BADLAR quedan afuera: cotizan un margen
-      sobre el índice y no una tasa fija.</div></div>`;
+      el mercado. El eje se ajusta a las curvas prendidas. TEA del tramo y, debajo, el spread contra
+      la curva de pesos interpolada al mismo plazo promedio: positivo es que el papel PyME paga más
+      que la LECAP equivalente. «Sin par» es un plazo fuera del tramo con LECAPs. El volumen está en
+      millones de pesos de valor nominal. Los pagarés con ajuste TAMAR, SOJA o BADLAR quedan afuera:
+      cotizan un margen sobre el índice y no una tasa fija.</div></div>`;
 }
 
 /* ── 3 · dólares ── */
@@ -555,6 +617,22 @@ function tarjetaVolumen(sem, prev) {
     INS.forEach(([k, col]) => {
       g.push(`<path d="${D.semanas.map((s, i) => (s.volumen[k] ? `${i ? 'L' : 'M'}${X(i).toFixed(1)} ${Y(s.volumen[k].vol / 1e6).toFixed(1)}` : '')).join('')}" fill="none" stroke="${col}" stroke-width="2"/>`);
     });
+    const iSel = D.semanas.findIndex(s => s.hasta === sem.hasta);
+    if (iSel >= 0) g.push(`<line x1="${X(iSel).toFixed(1)}" x2="${X(iSel).toFixed(1)}" y1="${mT}" y2="${H-mB}" stroke="${PAL.gris}" stroke-dasharray="3 3"/>`);
+    GRAF['mv-svg-vol'] = { tipo: 'serie', W, n: D.semanas.length, mL, mR, mT, mB, H,
+      x: i => X(i),
+      puntos: i => INS.filter(([k]) => D.semanas[i].volumen[k]).map(([k, col]) => ({ y: Y(D.semanas[i].volumen[k].vol / 1e6), col })),
+      html: i => {
+        const s = D.semanas[i], p = D.semanas[i - 1];
+        return `<b>Semana del ${dia(s.desde)} al ${dia(s.hasta)}</b><br>` + INS.map(([k, col]) => {
+          const v = s.volumen[k], ant = p && p.volumen[k];
+          if (!v) return '';
+          const var_ = ant && ant.vol ? (v.vol / ant.vol - 1) * 100 : null;
+          return `<span class="t-sw" style="background:${col}"></span>${k.replace(' ARS', '')} ${miles(v.vol / 1e6)} M`
+            + ` <span class="t-dim">· ${miles(v.ops)} ops`
+            + (var_ == null ? '' : ` · ${var_ > 0 ? '+' : ''}${fmt(var_, 1)}%`) + `</span><br>`;
+        }).join('') + `<span class="t-dim">${miles(s.operaciones)} operaciones en total</span>`;
+      } };
   }
   return `<div class="mv-card">
     <div class="mv-head"><div><div class="mv-tit">Volumen negociado</div>
@@ -562,10 +640,11 @@ function tarjetaVolumen(sem, prev) {
     <div class="mv-tabla-wrap"><table class="mv"><thead><tr><th>Instrumento</th><th>Volumen</th>
       <th>vs. semana anterior</th><th>Operaciones</th></tr></thead><tbody>${filas}</tbody></table></div>
     <div class="mv-leyenda">${INS.map(([k, c]) => `<span><span class="mv-sw" style="background:${c}"></span>${k}</span>`).join('')}</div>
-    <div class="mv-body"><svg class="mv-svg" viewBox="0 0 ${W} ${H}" role="img" aria-label="Volumen por semana">${g.join('')}</svg></div>
+    <div class="mv-body"><svg class="mv-svg" id="mv-svg-vol" viewBox="0 0 ${W} ${H}" role="img" aria-label="Volumen por semana">${g.join('')}<g class="mv-hov"></g></svg>
+      <div class="mv-tip" hidden></div></div>
     <div class="mv-pie">Los montos en pesos van en millones y los de dólares en miles. El eje del
-      gráfico está en miles de millones («bn»). El volumen es de valor nominal, no de valor
-      efectivo: el efectivo es algo menor, por el descuento.</div></div>`;
+      gráfico está en miles de millones («bn»); pasá el cursor para ver cada semana. El volumen
+      es de valor nominal, no de valor efectivo: el efectivo es algo menor, por el descuento.</div></div>`;
 }
 
 /* ── 5 · quién avala y quién opera ── */
@@ -596,6 +675,47 @@ function tarjetaQuien(sem) {
         semana de arriba. Balanz queda resaltado.</div></div></div>`;
 }
 
+/* Hover de un gráfico. «serie»: se busca la semana más cercana en x y se muestran todas sus
+   series juntas, con una guía vertical. «puntos»: el punto más cercano en el plano, con un anillo.
+   El overlay se dibuja en <g class="mv-hov"> sin rehacer el SVG, y el tooltip se corre al otro lado
+   del cursor cuando está cerca del borde derecho o del de arriba. */
+function engancharHover(id) {
+  const svg = document.getElementById(id), G = GRAF[id];
+  if (!svg || !G) return;
+  const hov = svg.querySelector('.mv-hov'), tip = svg.parentNode.querySelector('.mv-tip');
+  function ubicar(px, py, rc) {
+    tip.hidden = false;
+    const k = rc.width / G.W, cx = px * k, cy = py * k;
+    const ancho = tip.offsetWidth, alto = tip.offsetHeight, anchoCaja = svg.parentNode.clientWidth;
+    let left = cx + 16, top = cy - alto - 10;
+    if (left + ancho > anchoCaja - 6) left = cx - ancho - 16;
+    if (top < 0) top = cy + 14;
+    tip.style.left = Math.max(4, left) + 'px';
+    tip.style.top = top + 'px';
+  }
+  svg.addEventListener('mousemove', ev => {
+    const rc = svg.getBoundingClientRect(), k = G.W / rc.width;
+    const mx = (ev.clientX - rc.left) * k, my = (ev.clientY - rc.top) * k;
+    if (G.tipo === 'serie') {
+      if (mx < G.mL - 10 || mx > G.W - G.mR + 10 || !G.n) { hov.innerHTML = ''; tip.hidden = true; return; }
+      const i = Math.max(0, Math.min(G.n - 1, Math.round((mx - G.mL) / (G.W - G.mL - G.mR) * (G.n - 1))));
+      const x = G.x(i), pts = G.puntos(i);
+      hov.innerHTML = `<line x1="${x.toFixed(1)}" x2="${x.toFixed(1)}" y1="${G.mT}" y2="${G.H - G.mB}" stroke="${PAL.gris}" stroke-opacity=".7"/>`
+        + pts.map(p => `<circle cx="${x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="4.5" fill="${p.col}" stroke="#ffffff" stroke-width="1.5"/>`).join('');
+      tip.innerHTML = G.html(i);
+      ubicar(x, Math.min(...pts.map(p => p.y).concat([G.H / 2])), rc);
+    } else {
+      let best = null, bd = 18 * k;
+      G.marcas.forEach(p => { const d = Math.hypot(p.x - mx, p.y - my); if (d < bd) { bd = d; best = p; } });
+      if (!best) { hov.innerHTML = ''; tip.hidden = true; return; }
+      hov.innerHTML = `<circle cx="${best.x.toFixed(1)}" cy="${best.y.toFixed(1)}" r="8" fill="none" stroke="${best.col}" stroke-width="2"/>`;
+      tip.innerHTML = best.html;
+      ubicar(best.x, best.y, rc);
+    }
+  });
+  svg.addEventListener('mouseleave', () => { hov.innerHTML = ''; tip.hidden = true; });
+}
+
 function pintar() {
   const sem = D.semanas[ix], prev = ix > 0 ? D.semanas[ix - 1] : null;
   document.getElementById('mv-semana').value = sem.hasta;
@@ -604,31 +724,26 @@ function pintar() {
   document.getElementById('mv-meta').textContent =
     `semana del ${dia(sem.desde)} al ${dia(sem.hasta)} · publicado el ${dia(sem.publicado)} · `
     + `${miles(sem.operaciones)} operaciones`;
+  const scroll = window.scrollY;
   document.getElementById('mv-todo').innerHTML =
     tarjetaIndices(sem, prev) + tarjetaCurva(sem) + tarjetaDolares(sem)
     + tarjetaVolumen(sem, prev) + tarjetaQuien(sem)
     + `<div class="aviso">${esc(D.aviso)} ${esc(D.convencion)} Fuente: ${esc(D.fuente)}; datos al ${esc(D.generado)}.</div>`;
+  window.scrollTo(0, scroll);
   const b1 = document.getElementById('mv-tea'), b2 = document.getElementById('mv-tna');
   if (b1) b1.onclick = () => { modo = 'tea'; pintar(); };
   if (b2) b2.onclick = () => { modo = 'tna'; pintar(); };
-  const svg = document.getElementById('mv-svg-curva'), tip = document.getElementById('mv-tip');
-  if (svg && tip) {
-    svg.addEventListener('mousemove', ev => {
-      const rc = svg.getBoundingClientRect(), k = 960 / rc.width;
-      const mx = (ev.clientX - rc.left) * k, my = (ev.clientY - rc.top) * k;
-      let best = null, bd = 16 * k;
-      (window.MV_MARCAS || []).forEach(p => {
-        const d = Math.hypot(p.x - mx, p.y - my);
-        if (d < bd) { bd = d; best = p; }
-      });
-      if (!best) { tip.hidden = true; return; }
-      tip.textContent = best.txt;
-      tip.style.left = (best.x / k) + 'px';
-      tip.style.top = (best.y / k) + 'px';
-      tip.hidden = false;
-    });
-    svg.addEventListener('mouseleave', () => { tip.hidden = true; });
-  }
+  document.querySelectorAll('#mv-chips [data-serie]').forEach(btn => {
+    btn.onclick = () => {
+      const k = btn.getAttribute('data-serie');
+      if (k === '*') OCULTAS.clear();
+      else if (OCULTAS.has(k)) OCULTAS.delete(k);
+      else OCULTAS.add(k);
+      guardarOcultas();
+      pintar();
+    };
+  });
+  ['mv-svg-ind', 'mv-svg-curva', 'mv-svg-vol'].forEach(engancharHover);
   if (location.hash.slice(1) !== sem.hasta) history.replaceState(null, '', '#' + sem.hasta);
 }
 
