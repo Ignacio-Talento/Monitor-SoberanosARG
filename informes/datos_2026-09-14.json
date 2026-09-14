@@ -4,20 +4,11 @@
  "tipos": [
   "diario"
  ],
- "generado": "2026-09-14T18:14:53-03:00",
+ "generado": "2026-09-14T18:17:41-03:00",
  "feriadosLeidos": true,
  "universo": 198,
  "sinDato": [
-  "S30S6",
-  "S30O6",
-  "S30N6",
-  "T15E7",
-  "T30A7",
-  "T31Y7",
-  "T30J7",
   "S15S6",
-  "S13N6",
-  "S16O6",
   "D10Y7",
   "TTS26",
   "PMM29",
@@ -42,16 +33,7 @@
  ],
  "sinDatoPorFamilia": {
   "LECAPs y tasa fija": [
-   "S30S6",
-   "S30O6",
-   "S30N6",
-   "T15E7",
-   "T30A7",
-   "T31Y7",
-   "T30J7",
-   "S15S6",
-   "S13N6",
-   "S16O6"
+   "S15S6"
   ],
   "Dólar linked": [
    "D10Y7"
@@ -94,32 +76,32 @@
  ],
  "resumen": {
   "LECAPs y tasa fija": {
-   "instrumentos": 3,
-   "conVariacion": 3,
+   "instrumentos": 12,
+   "conVariacion": 12,
    "metrica": "TEA",
    "precio": {
-    "mediana": 0.19,
-    "min": 0.157,
+    "mediana": 0.195,
+    "min": 0.103,
     "max": 0.499,
-    "n": 3
+    "n": 12
    },
    "tasa": {
-    "mediana": -0.307,
+    "mediana": -0.627,
     "min": -1.69,
-    "max": -0.239,
-    "n": 3
+    "max": -0.207,
+    "n": 12
    },
    "teaMediana": {
-    "mediana": 27.766,
+    "mediana": 27.266,
     "min": 24.789,
     "max": 30.447,
-    "n": 3
+    "n": 12
    },
    "mejor": "TY30P",
-   "peor": "S29E7",
+   "peor": "S30S6",
    "convencionDudosa": [],
    "monedas": {
-    "ars": 3
+    "ars": 12
    }
   },
   "CER": {
@@ -426,6 +408,123 @@
   }
  },
  "instrumentos": [
+  {
+   "ticker": "S30S6",
+   "familia": "LECAPs y tasa fija",
+   "moneda": "ars",
+   "precio": 116.45,
+   "tea": 25.342,
+   "durationMod": 0.037,
+   "paridad": 100.322,
+   "varPrecio": 0.103,
+   "varTasa": -1.184,
+   "varParidad": 0.02,
+   "conAyer": true
+  },
+  {
+   "ticker": "S30O6",
+   "familia": "LECAPs y tasa fija",
+   "moneda": "ars",
+   "precio": 131.607,
+   "tea": 25.001,
+   "durationMod": 0.111,
+   "paridad": 101.031,
+   "varPrecio": 0.196,
+   "varTasa": -1.34,
+   "varParidad": 0.113,
+   "conAyer": true
+  },
+  {
+   "ticker": "S30N6",
+   "familia": "LECAPs y tasa fija",
+   "moneda": "ars",
+   "precio": 123.55000000000001,
+   "tea": 27.158,
+   "durationMod": 0.185,
+   "paridad": 100.684,
+   "varPrecio": 0.211,
+   "varTasa": -0.876,
+   "varParidad": 0.136,
+   "conAyer": true
+  },
+  {
+   "ticker": "T15E7",
+   "familia": "LECAPs y tasa fija",
+   "moneda": "ars",
+   "precio": 148.588,
+   "tea": 27.374,
+   "durationMod": 0.297,
+   "paridad": 100.03,
+   "varPrecio": 0.194,
+   "varTasa": -0.484,
+   "varParidad": 0.126,
+   "conAyer": true
+  },
+  {
+   "ticker": "T30A7",
+   "familia": "LECAPs y tasa fija",
+   "moneda": "ars",
+   "precio": 134.46,
+   "tea": 28.748,
+   "durationMod": 0.547,
+   "paridad": 103.221,
+   "varPrecio": 0.194,
+   "varTasa": -0.256,
+   "varParidad": 0.113,
+   "conAyer": true
+  },
+  {
+   "ticker": "T31Y7",
+   "familia": "LECAPs y tasa fija",
+   "moneda": "ars",
+   "precio": 126.44999999999999,
+   "tea": 29.212,
+   "durationMod": 0.62,
+   "paridad": 102.145,
+   "varPrecio": 0.198,
+   "varTasa": -0.233,
+   "varParidad": 0.121,
+   "conAyer": true
+  },
+  {
+   "ticker": "T30J7",
+   "familia": "LECAPs y tasa fija",
+   "moneda": "ars",
+   "precio": 127.75000000000001,
+   "tea": 28.852,
+   "durationMod": 0.692,
+   "paridad": 104.287,
+   "varPrecio": 0.197,
+   "varTasa": -0.207,
+   "varParidad": 0.116,
+   "conAyer": true
+  },
+  {
+   "ticker": "S13N6",
+   "familia": "LECAPs y tasa fija",
+   "moneda": "ars",
+   "precio": 105.5,
+   "tea": 26.965,
+   "durationMod": 0.144,
+   "paridad": 100.159,
+   "varPrecio": 0.209,
+   "varTasa": -1.112,
+   "varParidad": 0.14,
+   "conAyer": true
+  },
+  {
+   "ticker": "S16O6",
+   "familia": "LECAPs y tasa fija",
+   "moneda": "ars",
+   "precio": 103.25,
+   "tea": 25.695,
+   "durationMod": 0.076,
+   "paridad": 100.155,
+   "varPrecio": 0.116,
+   "varTasa": -0.771,
+   "varParidad": 0.049,
+   "conAyer": true
+  },
   {
    "ticker": "S29E7",
    "familia": "LECAPs y tasa fija",
@@ -3893,42 +3992,39 @@
     "nombre": "Rendimiento de los Bonares AO27 y AO28 contra Cable",
     "unidad": "% TNA · forward 1Y1Y implícito",
     "fuente": "1816 · BYMA PPT T+1 en CCL",
-    "hasta": "2026-09-11",
+    "hasta": "2026-09-14",
     "series": {
      "AO27": {
-      "fecha": "2026-09-11",
-      "valor": 7.5,
+      "fecha": "2026-09-14",
+      "valor": 7.67,
       "previo": {
-       "fecha": "2026-09-10",
-       "valor": 7.51
+       "fecha": "2026-09-11",
+       "valor": 7.5
       },
-      "variacion": -0.01
+      "variacion": 0.17
      },
      "AO28": {
-      "fecha": "2026-09-11",
-      "valor": 10.98,
+      "fecha": "2026-09-14",
+      "valor": 11.14,
       "previo": {
-       "fecha": "2026-09-10",
-       "valor": 11.1
+       "fecha": "2026-09-11",
+       "valor": 10.98
       },
-      "variacion": -0.12
+      "variacion": 0.16
      },
      "forward": {
-      "fecha": "2026-09-11",
-      "valor": 15.52,
+      "fecha": "2026-09-14",
+      "valor": 15.63,
       "previo": {
-       "fecha": "2026-09-10",
-       "valor": 15.8
+       "fecha": "2026-09-11",
+       "valor": 15.52
       },
-      "variacion": -0.28
+      "variacion": 0.11
      }
     }
    }
   },
-  "generado": "2026-09-14T21:13:44+00:00",
-  "fallos": [
-   "bonares: Demasiadas peticiones (HTTP 429) tras 3 reintentos."
-  ],
+  "generado": "2026-09-14T21:16:49+00:00",
   "legislacion": {
    "disponible": true,
    "fuente": "1816 · BYMA PPT, vía series_globvsbon.xlsx",
@@ -4008,7 +4104,16 @@
   "liquidacion": "2026-09-15",
   "curvas": {
    "lecap": [
-    "S29E7"
+    "S30S6",
+    "S16O6",
+    "S30O6",
+    "S13N6",
+    "S30N6",
+    "T15E7",
+    "S29E7",
+    "T30A7",
+    "T31Y7",
+    "T30J7"
    ],
    "dl": [
     "D30S6",
@@ -4031,7 +4136,13 @@
     "sinDatoDelDia": false,
     "sinOperar": false,
     "devTEA": 19.654,
-    "lecap": null,
+    "lecap": {
+     "tasa": 25.342,
+     "entre": [
+      "S30S6",
+      "S16O6"
+     ]
+    },
     "dl": {
      "tasa": 10.387,
      "entre": [
@@ -4039,8 +4150,20 @@
       "D30O6"
      ]
     },
-    "pesos": null,
-    "dolar": null
+    "pesos": {
+     "ref": 25.342,
+     "sint": 32.083,
+     "spread": -6.741,
+     "neto": -0.408,
+     "gana": "Sintético en pesos"
+    },
+    "dolar": {
+     "ref": 10.387,
+     "sint": 4.754,
+     "spread": -5.634,
+     "neto": -9.393,
+     "gana": "Bono DL directo"
+    }
    },
    {
     "contrato": "DLR/OCT26",
@@ -4052,7 +4175,13 @@
     "sinDatoDelDia": false,
     "sinOperar": false,
     "devTEA": 20.663,
-    "lecap": null,
+    "lecap": {
+     "tasa": 25.141,
+     "entre": [
+      "S30O6",
+      "S13N6"
+     ]
+    },
     "dl": {
      "tasa": 6.515,
      "entre": [
@@ -4060,8 +4189,20 @@
       "D15E7"
      ]
     },
-    "pesos": null,
-    "dolar": null
+    "pesos": {
+     "ref": 25.141,
+     "sint": 28.524,
+     "spread": -3.383,
+     "neto": -1.305,
+     "gana": "Sintético en pesos"
+    },
+    "dolar": {
+     "ref": 6.515,
+     "sint": 3.711,
+     "spread": -2.804,
+     "neto": -4.263,
+     "gana": "Bono DL directo"
+    }
    },
    {
     "contrato": "DLR/NOV26",
@@ -4073,7 +4214,13 @@
     "sinDatoDelDia": false,
     "sinOperar": false,
     "devTEA": 21.751,
-    "lecap": null,
+    "lecap": {
+     "tasa": 27.158,
+     "entre": [
+      "S13N6",
+      "S30N6"
+     ]
+    },
     "dl": {
      "tasa": 4.537,
      "entre": [
@@ -4081,8 +4228,20 @@
       "D15E7"
      ]
     },
-    "pesos": null,
-    "dolar": null
+    "pesos": {
+     "ref": 27.158,
+     "sint": 27.275,
+     "spread": -0.117,
+     "neto": 1.075,
+     "gana": "LECAP directa"
+    },
+    "dolar": {
+     "ref": 4.537,
+     "sint": 4.441,
+     "spread": -0.096,
+     "neto": -1.068,
+     "gana": "Bono DL directo"
+    }
    },
    {
     "contrato": "DLR/DIC26",
@@ -4094,7 +4253,13 @@
     "sinDatoDelDia": false,
     "sinOperar": false,
     "devTEA": 22.135,
-    "lecap": null,
+    "lecap": {
+     "tasa": 27.303,
+     "entre": [
+      "S30N6",
+      "T15E7"
+     ]
+    },
     "dl": {
      "tasa": 2.493,
      "entre": [
@@ -4102,8 +4267,20 @@
       "D15E7"
      ]
     },
-    "pesos": null,
-    "dolar": null
+    "pesos": {
+     "ref": 27.303,
+     "sint": 25.18,
+     "spread": 2.124,
+     "neto": 2.926,
+     "gana": "LECAP directa"
+    },
+    "dolar": {
+     "ref": 2.493,
+     "sint": 4.231,
+     "spread": 1.739,
+     "neto": 1.014,
+     "gana": "Sintético DL"
+    }
    },
    {
     "contrato": "DLR/ENE27",
@@ -4115,7 +4292,13 @@
     "sinDatoDelDia": false,
     "sinOperar": false,
     "devTEA": 22.447,
-    "lecap": null,
+    "lecap": {
+     "tasa": 27.787,
+     "entre": [
+      "S29E7",
+      "T30A7"
+     ]
+    },
     "dl": {
      "tasa": 2.608,
      "entre": [
@@ -4123,8 +4306,20 @@
       "D31M7"
      ]
     },
-    "pesos": null,
-    "dolar": null
+    "pesos": {
+     "ref": 27.787,
+     "sint": 25.641,
+     "spread": 2.147,
+     "neto": 2.773,
+     "gana": "LECAP directa"
+    },
+    "dolar": {
+     "ref": 2.608,
+     "sint": 4.361,
+     "spread": 1.753,
+     "neto": 1.187,
+     "gana": "Sintético DL"
+    }
    },
    {
     "contrato": "DLR/FEB27",
@@ -4136,7 +4331,13 @@
     "sinDatoDelDia": false,
     "sinOperar": false,
     "devTEA": 22.686,
-    "lecap": null,
+    "lecap": {
+     "tasa": 28.089,
+     "entre": [
+      "S29E7",
+      "T30A7"
+     ]
+    },
     "dl": {
      "tasa": 4.542,
      "entre": [
@@ -4144,8 +4345,20 @@
       "D31M7"
      ]
     },
-    "pesos": null,
-    "dolar": null
+    "pesos": {
+     "ref": 28.089,
+     "sint": 28.259,
+     "spread": -0.169,
+     "neto": 0.39,
+     "gana": "LECAP directa"
+    },
+    "dolar": {
+     "ref": 4.542,
+     "sint": 4.404,
+     "spread": -0.138,
+     "neto": -0.589,
+     "gana": "Bono DL directo"
+    }
    },
    {
     "contrato": "DLR/MAR27",
@@ -4157,7 +4370,13 @@
     "sinDatoDelDia": false,
     "sinOperar": false,
     "devTEA": 23.086,
-    "lecap": null,
+    "lecap": {
+     "tasa": 28.424,
+     "entre": [
+      "S29E7",
+      "T30A7"
+     ]
+    },
     "dl": {
      "tasa": 6.683,
      "entre": [
@@ -4165,8 +4384,20 @@
       "D31M7"
      ]
     },
-    "pesos": null,
-    "dolar": null
+    "pesos": {
+     "ref": 28.424,
+     "sint": 31.312,
+     "spread": -2.888,
+     "neto": -2.38,
+     "gana": "Sintético en pesos"
+    },
+    "dolar": {
+     "ref": 6.683,
+     "sint": 4.336,
+     "spread": -2.346,
+     "neto": -2.707,
+     "gana": "Bono DL directo"
+    }
    },
    {
     "contrato": "DLR/ABR27",
@@ -4178,7 +4409,13 @@
     "sinDatoDelDia": false,
     "sinOperar": false,
     "devTEA": 23.249,
-    "lecap": null,
+    "lecap": {
+     "tasa": 28.748,
+     "entre": [
+      "S29E7",
+      "T30A7"
+     ]
+    },
     "dl": {
      "tasa": 5.807,
      "entre": [
@@ -4186,8 +4423,20 @@
       "TZV27"
      ]
     },
-    "pesos": null,
-    "dolar": null
+    "pesos": {
+     "ref": 28.748,
+     "sint": 30.406,
+     "spread": -1.658,
+     "neto": -1.229,
+     "gana": "Sintético en pesos"
+    },
+    "dolar": {
+     "ref": 5.807,
+     "sint": 4.462,
+     "spread": -1.345,
+     "neto": -1.667,
+     "gana": "Bono DL directo"
+    }
    }
   ],
   "excluidosPorPlazo": [],
@@ -4242,7 +4491,128 @@
     "volumen": 358
    }
   },
-  "plazoConstante": {}
+  "plazoConstante": {
+   "30": {
+    "hoy": {
+     "pesos": -4.185,
+     "dolar": -3.52,
+     "entre": [
+      "DLR/SEP26",
+      "DLR/OCT26"
+     ]
+    },
+    "anterior": {
+     "fecha": "2026-09-11",
+     "pesos": 0.152,
+     "dolar": 0.13,
+     "variacionPesos": -4.337
+    },
+    "anio": {
+     "ruedas": 91,
+     "desde": "2026-01-02",
+     "mediana": -4.896,
+     "min": {
+      "fecha": "2026-01-02",
+      "pesos": -41.88
+     },
+     "max": {
+      "fecha": "2026-02-10",
+      "pesos": 24.883
+     },
+     "percentilHoy": 0.56
+    }
+   },
+   "60": {
+    "hoy": {
+     "pesos": -1.537,
+     "dolar": -1.279,
+     "entre": [
+      "DLR/OCT26",
+      "DLR/NOV26"
+     ]
+    },
+    "anterior": {
+     "fecha": "2026-09-11",
+     "pesos": 0.133,
+     "dolar": 0.106,
+     "variacionPesos": -1.67
+    },
+    "anio": {
+     "ruedas": 165,
+     "desde": "2026-01-02",
+     "mediana": -2.448,
+     "min": {
+      "fecha": "2026-01-02",
+      "pesos": -27.754
+     },
+     "max": {
+      "fecha": "2026-02-10",
+      "pesos": 14.146
+     },
+     "percentilHoy": 0.642
+    }
+   },
+   "90": {
+    "hoy": {
+     "pesos": 1.108,
+     "dolar": 0.91,
+     "entre": [
+      "DLR/NOV26",
+      "DLR/DIC26"
+     ]
+    },
+    "anterior": {
+     "fecha": "2026-09-11",
+     "pesos": 1.665,
+     "dolar": 1.366,
+     "variacionPesos": -0.557
+    },
+    "anio": {
+     "ruedas": 169,
+     "desde": "2026-01-02",
+     "mediana": -0.857,
+     "min": {
+      "fecha": "2026-01-02",
+      "pesos": -13.725
+     },
+     "max": {
+      "fecha": "2026-04-14",
+      "pesos": 12.499
+     },
+     "percentilHoy": 0.769
+    }
+   },
+   "180": {
+    "hoy": {
+     "pesos": -1.161,
+     "dolar": -0.944,
+     "entre": [
+      "DLR/FEB27",
+      "DLR/MAR27"
+     ]
+    },
+    "anterior": {
+     "fecha": "2026-09-11",
+     "pesos": 0.578,
+     "dolar": 0.471,
+     "variacionPesos": -1.739
+    },
+    "anio": {
+     "ruedas": 131,
+     "desde": "2026-02-27",
+     "mediana": -0.524,
+     "min": {
+      "fecha": "2026-05-18",
+      "pesos": -6.305
+     },
+     "max": {
+      "fecha": "2026-04-14",
+      "pesos": 7.249
+     },
+     "percentilHoy": 0.42
+    }
+   }
+  }
  },
  "rotacionBopreal": {
   "disponible": true,
