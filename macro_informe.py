@@ -90,10 +90,10 @@ def _get(url, params=None, timeout=30):
         return r.json(), False
 
 
-def serie_bcra(id_var, desde, hasta):
+def serie_bcra(id_var, desde, hasta, limite=60):
     """Últimos valores de una serie. Devuelve [(fecha, valor), ...] de más nuevo a más viejo."""
     d, seguro = _get(f"{BCRA}/{id_var}",
-                     {"desde": desde.isoformat(), "hasta": hasta.isoformat(), "limit": 60})
+                     {"desde": desde.isoformat(), "hasta": hasta.isoformat(), "limit": limite})
     filas = []
     for bloque in d.get("results", []):
         for x in bloque.get("detalle", []):
@@ -164,6 +164,15 @@ def datos_macro(hoy=None, cliente_1816=None, referencias=None):
     desde = hoy - timedelta(days=50)
 
     referencias = referencias or {}
+    # El cierre ANUAL necesita llegar al último día del año anterior, a hasta un año de distancia:
+    # la ventana se estira hasta la referencia más vieja y el límite de filas acompaña, porque con
+    # 60 filas la serie diaria no pasa de tres meses y la variación del año saldría vacía.
+    limite = 60
+    if referencias:
+        mas_vieja = min(date.fromisoformat(f) for f in referencias.values())
+        if mas_vieja - timedelta(days=15) < desde:
+            desde = mas_vieja - timedelta(days=15)
+            limite = max(60, (hoy - desde).days + 30)
     out = {"fecha": hoy.isoformat(), "series": {}, "fallos": [], "sslSinVerificar": False,
            "referencias": referencias}
 
@@ -175,7 +184,7 @@ def datos_macro(hoy=None, cliente_1816=None, referencias=None):
 
     for clave, (idv, nombre, unidad, clase) in SERIES.items():
         try:
-            filas, seguro = serie_bcra(idv, desde, hoy)
+            filas, seguro = serie_bcra(idv, desde, hoy, limite)
             if not seguro:
                 out["sslSinVerificar"] = True
             if not filas:

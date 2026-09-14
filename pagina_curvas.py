@@ -44,6 +44,34 @@ FICHAS = [
 ]
 
 
+def rotulo_pdf(pdf, repo=None):
+    """Cómo se rotula un PDF del informe en la página y en la solapa Curvas.
+
+    Hasta el 11/09/2026 el día que cerraba período dejaba DOS PDF —el diario y
+    cierre-semanal-/cierre-mensual-—. Desde el 14/09/2026 es uno solo, cierre-AAAA-MM-DD.pdf, con el
+    día y el período juntos: para saber si trae cierre se mira `tipos` en el JSON de esa rueda.
+    """
+    import json
+    pdf = Path(pdf)
+    for k, r in (("anual", "Cierre anual"), ("mensual", "Cierre mensual"), ("semanal", "Cierre semanal")):
+        if pdf.name.startswith(f"cierre-{k}-"):
+            return r
+    fecha = pdf.stem.replace("cierre-", "")
+    repo = Path(repo) if repo else Path(__file__).resolve().parent
+    try:
+        tipos = json.loads((repo / "informes" / f"datos_{fecha}.json").read_text(encoding="utf-8")).get("tipos") or []
+    except (OSError, ValueError):
+        tipos = []
+    # Dos PDF en la carpeta es el formato viejo: el diario de ese día NO trae el cierre adentro.
+    if any(pdf.parent.glob("cierre-semanal-*.pdf")) or any(pdf.parent.glob("cierre-mensual-*.pdf")):
+        return "Informe del día"
+    for k, r in (("anual", "del día y cierre anual"), ("mensual", "del día y cierre mensual"),
+                 ("semanal", "del día y cierre semanal")):
+        if k in tipos:
+            return "Informe " + r
+    return "Informe del día"
+
+
 def _fecha_larga(iso):
     a, m, d = iso.split("-")
     return f"{int(d)} de {MESES[int(m) - 1]} de {a}"
@@ -69,14 +97,11 @@ def escribir(dir_salida, hechos, fecha):
         aviso = ('<p class="aviso">Sin datos suficientes en esta rueda para: '
                  + ", ".join(faltan) + ".</p>")
 
-    # Los PDF del día, si ya están al lado: son las versiones que se comparten. Pueden ser DOS,
-    # porque la rueda que cierra semana o mes deja el diario y el de cierre por separado.
-    ROTULOS = {"mensual": "Cierre mensual", "semanal": "Cierre semanal"}
+    # Los PDF del día, si ya están al lado: son las versiones que se comparten. Desde el 14/09/2026
+    # es uno solo por rueda, con el cierre de período adentro; las ruedas viejas pueden tener dos.
     bloque_pdf = ""
     for f in sorted(Path(dir_salida).glob("cierre-*.pdf")):
-        # cierre-AAAA-MM-DD.pdf es el diario; cierre-mensual-AAAA-MM-DD.pdf, el de período.
-        clase = next((r for k, r in ROTULOS.items() if f.name.startswith(f"cierre-{k}-")),
-                     "Informe del día")
+        clase = rotulo_pdf(f)
         bloque_pdf += (f'<p class="pdf"><a href="{f.name}">{clase} · descargar el PDF</a>'
                        f'<span> · mismo contenido, listo para reenviar</span></p>')
 
@@ -158,7 +183,6 @@ def escribir_indice(raiz):
     import json
     import re
     raiz = Path(raiz)
-    ROTULOS = {"mensual": "Cierre mensual", "semanal": "Cierre semanal"}
     ruedas = []
     for d in sorted((x for x in raiz.iterdir() if x.is_dir() and re.fullmatch(r"\d{4}-\d{2}-\d{2}", x.name)),
                     reverse=True):
@@ -166,9 +190,7 @@ def escribir_indice(raiz):
                     for n, t, b in FICHAS if (d / f"{n}.png").exists()]
         if not graficos:
             continue
-        pdfs = [{"archivo": f.name,
-                 "rotulo": next((r for k, r in ROTULOS.items() if f.name.startswith(f"cierre-{k}-")),
-                                "Informe del día")}
+        pdfs = [{"archivo": f.name, "rotulo": rotulo_pdf(f, raiz.parent.parent)}
                 for f in sorted(d.glob("cierre-*.pdf"))]
         r = {"fecha": d.name, "graficos": graficos, "pdfs": pdfs}
         # Rueda sin informe propio, rearmada por curvas_historicas.py con los cierres de 1816.

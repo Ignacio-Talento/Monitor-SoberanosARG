@@ -93,7 +93,7 @@ QUÉ TRAE EL JSON:
   universo, sinDato (tickers sin precio de hoy), resumen (por familia) e instrumentos (uno por
   instrumento, con ticker, familia, precio, tea, durationMod, paridad, varPrecio %, varTasa pp,
   varParidad pp). Además dos bloques que replican solapas del monitor y que van como TABLA en los
-  tres informes: `sinteticos` (ver abajo) y `rotacionBopreal` (ver SECCIÓN C, ROTACIÓN BOPREAL).
+  informes: `sinteticos` (ver abajo) y `rotacionBopreal` (ver SECCIÓN C, ROTACIÓN BOPREAL).
 
 TRES COSAS QUE HAY QUE SABER PARA NO DECIR MACANAS:
   · `tea` y `paridad` YA vienen en porcentaje (26.73 = 26,73%) y `durationMod` en AÑOS. El script
@@ -247,7 +247,7 @@ contra el dato previo y una ventana de 15 ruedas para ver la tendencia:
   · `embig` — EMBIG de Argentina, de Latinoamérica y la distancia entre los dos (`argentina`,
     `latam`, `brecha`). Es la tarjeta "Spread de riesgo soberano" de la solapa Macro.
 
-EL EMBIG VA EN LOS TRES INFORMES, y lo que se cuenta es la BRECHA, no los dos niveles. Con escalas
+EL EMBIG VA EN TODOS LOS INFORMES, y lo que se cuenta es la BRECHA, no los dos niveles. Con escalas
 tan distintas —Argentina rinde casi el doble que la región— un movimiento del riesgo país puede
 ser entero regional, y sólo la diferencia dice cuánto es propio. Con datos al 07/09/2026 esa
 lectura cambiaba la conversación: en el año Argentina había comprimido 65 pb y la región 62, así
@@ -373,8 +373,9 @@ la convención del Tesoro (S29E7, D30N6); los TAMAR nuevos quedan con el nombre.
     «Renta fija AR · licitación DD/MM», la tabla y las dos o tres oraciones. Antes de mandarlo
     buscá en Gmail `subject:"licitación DD/MM"`: si ya salió uno —puede haberlo mandado otra
     sesión—, no lo repitas. Si a las 20:30 no salió, no mandes nada más.
-  · En el SEMANAL, si hubo licitación en la semana, un párrafo con el resultado (sin repetir la
-    tabla si ya salió en el diario).
+  · En los días de CIERRE de semana, mes o año, si hubo licitación en el período, un párrafo con el
+    resultado en la sección de cierre (sin repetir la
+    tabla: ya salió en el informe del día de la licitación).
 
 SECCIÓN C — LO RELEVANTE DEL DÍA. Tres a seis observaciones, no más, y sólo si el dato las
 sostiene. Un informe que dice "sin novedades" cuando no las hubo es mejor que uno que infla. Es
@@ -391,7 +392,7 @@ todo derivable del JSON:
     gráfico. Mostralo como tabla de cinco o seis puntos, del corto al largo.
     Sacá de la cuenta los CER de menos de dos meses: con el coeficiente casi todo devengado la TIR
     real es negativa y el breakeven se dispara a 30% y pico sin informar nada. Decí que los sacaste.
-  · MARGEN SOBRE TAMAR DE LOS DUALES: VA EN LOS TRES INFORMES. Sale del JSON, en
+  · MARGEN SOBRE TAMAR DE LOS DUALES: VA EN TODOS LOS INFORMES. Sale del JSON, en
     `d["mercado"]["bloques"]["margenTamar"]`, con una entrada por dual (TXMJ8, TXMD8, TXMJ9, TXMD9,
     TXMJ0) y su variación del día y del período. NO lo recalcules ni se lo pidas a 1816: lo bajó
     `series_mercado.py` en el mismo job y el PDF ya arma la tabla; tu trabajo es la prosa.
@@ -408,7 +409,7 @@ todo derivable del JSON:
     Ojo con la CONVENCIÓN: es TNA 32/365, la misma que publica 1816 en su semanal. En 180/360 el
     mismo bono el mismo día da unos dos puntos más. Si citás un número de otra fuente, verificá en
     qué convención está antes de compararlo con éste.
-  · BONARES CORTOS Y EL FORWARD DE LA ELECCIÓN: VA EN LOS TRES INFORMES. Sale de
+  · BONARES CORTOS Y EL FORWARD DE LA ELECCIÓN: VA EN TODOS LOS INFORMES. Sale de
     `d["mercado"]["bloques"]["bonares"]`: AO27, AO28 y el forward 1Y1Y implícito entre los dos, en
     TNA CONTRA CABLE. Contra cable y no contra MEP a propósito —medido contra MEP se mueve con el
     canje CCL/MEP, que cambia por razones ajenas al bono—, así que NO lo compares con las TIR en MEP
@@ -440,7 +441,7 @@ todo derivable del JSON:
     Bonar, la cuenta de la solapa— sea positivo. Si te da lo contrario, casi seguro estás
     mezclando puntas: verificá antes de reportarlo como hallazgo.
 
-    EL CANJE DE PRECIO DEL PAR AL30/GD30 TIENE CONTEXTO HISTÓRICO Y VA EN LOS TRES INFORMES. Es la
+    EL CANJE DE PRECIO DEL PAR AL30/GD30 TIENE CONTEXTO HISTÓRICO Y VA EN TODOS LOS INFORMES. Es la
     tarjeta "¿El riesgo país está demasiado bajo o el spread de legislación demasiado alto?" de la
     solapa Macro, y los datos vienen en `d["mercado"]["legislacion"]["mediana10"]`: la mediana de
     10 ruedas del diferencial GD30/AL30 (`valor`), el dato crudo del día (`crudo`), sus extremos del
@@ -462,7 +463,7 @@ todo derivable del JSON:
     Serie desde enero de 2024, igual que la de 1816: antes, con el cepo, el diferencial medía la
     regulación y no la legislación. 1816 la mide en pesos; ésta va en MEP y da prácticamente lo
     mismo.
-  · CANJE CCL/MEP: VA EN LOS TRES INFORMES —diario, semanal y mensual—. Es cuánto más caro sale el
+  · CANJE CCL/MEP: VA EN TODOS LOS INFORMES, también los de cierre. Es cuánto más caro sale el
     dólar cable que el MEP, y es lo que hace que comparar un Global contra un Bonar exija llevarlos
     a la misma punta: sin eso, parte del spread que uno mide es canje y no crédito.
 
@@ -491,7 +492,7 @@ todo derivable del JSON:
     trajo igual: merece una línea en el pie, como con el BCRA.
 
   · BOPREALes: el salto de TIR entre series (la 7 y la 8 rinden muy distinto) y las paridades.
-  · ROTACIÓN BOPREAL → BONARES: va en LOS TRES informes —diario, semanal y mensual—, con la TABLA
+  · ROTACIÓN BOPREAL → BONARES: va en TODOS los informes, también los de cierre, con la TABLA
     en el mail y en el PDF. El usuario lo reclamó el 10/09/2026: la tabla se armaba a mano y algunos
     días no salía (el 09/09 faltó). Ahora viene hecha en el bloque `rotacionBopreal` del JSON, que
     replica la solapa «BOPREALes vs Bonares» —Rotación BOPREAL hasta el 11/09/2026; mismos seis pares (BPOA7/B7/C7/D7 contra AO27, BPOA8/B8
@@ -504,7 +505,7 @@ todo derivable del JSON:
       pickup no es positivo), y `anterior` / `semanal` / `mensual` con `variacionPickup` en bps y
       la variación de TIR de cada punta, contra la fecha que traen.
     QUÉ DECIR: el pickup bruto y neto de cada serie y cómo se movió en la ventana del informe —el
-    día en el diario, el período en el de cierre—, y QUÉ PUNTA lo movió (`variacionTirOrigen` contra
+    día y, los días de cierre, también el período—, y QUÉ PUNTA lo movió (`variacionTirOrigen` contra
     `variacionTirDestino`): no es lo mismo un pickup que se abre porque comprimió el BOPREAL que uno
     que se abre porque se estiró el Bonar. El 28/08/2026, por ejemplo, los BOPREALes comprimieron
     0,49 pp y los Bonares 0,06. Variaciones de 1 bps son ruido: con precios quietos el pickup se
@@ -516,7 +517,7 @@ todo derivable del JSON:
     implícita de los futuros sube con el plazo y la breakeven de CER baja; decí dónde se cruzan y
     cuánta depreciación real se paga a un año. Los futuros son los de `sinteticos.futuros`, del
     mismo día que los bonos; el gráfico de futuros ya los usa.
-  · SINTÉTICOS CONTRA INSTRUMENTOS DIRECTOS: va en LOS TRES informes —diario, semanal y mensual—,
+  · SINTÉTICOS CONTRA INSTRUMENTOS DIRECTOS: va en TODOS los informes, también los de cierre,
     con las DOS tablas en el mail y en el PDF. El usuario lo pidió explícitamente el 10/09/2026
     porque los informes no lo mencionaban. Sale del bloque `sinteticos` (ver PASO 1); no lo armes
     a mano con otra fórmula —antes esta sección interpolaba los futuros a la duration de cada bono
@@ -566,107 +567,107 @@ esté en `sinDato` ni en `convencionDudosa`. La mayoría de los desarbitrajes ap
 viejos.
 
 ═══════════════════════════════════════════════════════════════════
-PASO 3 · CIERRES SEMANAL Y MENSUAL
+PASO 3 · CIERRES DE SEMANA, MES Y AÑO
 ═══════════════════════════════════════════════════════════════════
 
-El campo `tipos` del JSON dice qué cierres caen hoy. Se calcula mirando la próxima rueda hábil
-contra el calendario de feriados, así que ya contempla los viernes feriados y los fin de mes que
-caen domingo. No lo recalcules por tu cuenta. También sabe que el 31/12 no hay rueda (asueto
-bancario, sin un precio en 1816 ni en 2024 ni en 2025): el cierre de año y de diciembre es la última
-rueda ANTERIOR al 31 —el miércoles 30/12/2026—, que sale como diario + semanal + mensual. Y que
-los puentes turísticos SÍ son rueda: un viernes puente es el cierre semanal (el 10/07/2026 lo fue)
-y un lunes puente tiene su informe (el 07/12/2026). Lo único que se corre en un puente es la
-liquidación, que va al siguiente día con bancos: por eso el script lleva dos calendarios.
+UN SOLO INFORME POR DÍA, TAMBIÉN LOS DÍAS DE CIERRE. Pedido del usuario el 14/09/2026: los viernes
+no quiere recibir dos informes; quiere que el mismo informe cuente lo relevante del día Y de la
+semana. Y al cierre de mes o de año —caiga el día que caiga— lo mismo: la información diaria de
+siempre más lo más relevante del mes o del año, en el mismo PDF y en el mismo mail. Hasta el
+11/09/2026 salían dos informes separados; eso quedó atrás y NO se vuelve a hacer.
 
-LOS DATOS YA VIENEN CALCULADOS, no hace falta que busques nada. Cuando la rueda es cierre de
-período, el script pide además la última rueda hábil del período anterior y deja:
+El campo `tipos` del JSON dice qué cierres caen hoy: siempre "diario", más "semanal", "mensual" y/o
+"anual". Se calcula mirando la próxima rueda hábil contra el calendario de feriados, así que ya
+contempla los viernes feriados y los fin de mes que caen domingo. No lo recalcules por tu cuenta.
+También sabe que el 31/12 no hay rueda (asueto bancario, sin un precio en 1816 ni en 2024 ni en
+2025): el cierre de diciembre y del año es la última rueda ANTERIOR al 31 —el miércoles 30/12/2026—,
+que sale con los cuatro tipos: diario + semanal + mensual + anual. Y que los puentes turísticos SÍ
+son rueda: un viernes puente es el cierre semanal (el 10/07/2026 lo fue) y un lunes puente tiene su
+informe (el 07/12/2026). Lo único que se corre en un puente es la liquidación, que va al siguiente
+día con bancos: por eso el script lleva dos calendarios.
+
+LOS DATOS YA VIENEN CALCULADOS, no hace falta que busques nada. Cuando la rueda cierra período, el
+script pide además la última rueda hábil del período anterior y deja, por cada período que cierra
+(`semanal`, `mensual`, `anual`):
 
   · `sinDatoPorFamilia` — los que no operaron, agrupados. Cada curva ya lo dice en su pie
     («están los 5 de 11 que operaron»), pero si una familia queda con la mitad del panel afuera
-    conviene decirlo también en el texto: la mediana de esa familia se calculo sobre pocos.
-  · `referencias.semanal` / `referencias.mensual` — la fecha contra la que se midió. NOMBRALA en el
-    informe («contra el viernes 21/08») en vez de decir «la semana pasada».
-  · `resumen[familia].semanal` y `.mensual` — con `precio` y `tasa`, misma estructura que la diaria.
-  · Por instrumento, `varPrecio_semanal`, `varTasa_semanal` y sus equivalentes mensuales.
-  · `rotacionBopreal.filas[i].semanal` / `.mensual` — el pickup de cada par en la rueda de
-    referencia y cuánto se movió, con la variación de TIR de cada punta. La tabla del informe de
-    cierre ya muestra esa columna.
-  · `sinteticos.plazoConstante[plazo].semanal` / `.mensual` — el spread de sintéticos a plazo
-    constante en la rueda de referencia y cuánto se movió. Las tablas de sintéticos del informe de
-    cierre son las de HOY (una foto, no tienen variación por contrato); el período se cuenta con
-    esto. Va en la prosa de la sección de sintéticos del informe de cierre.
+    conviene decirlo también en el texto: la mediana de esa familia se calculó sobre pocos.
+  · `referencias.semanal` / `.mensual` / `.anual` — la fecha contra la que se midió. NOMBRALA en el
+    informe («contra el viernes 21/08», «contra el cierre de 2025, el 30/12») en vez de decir «la
+    semana pasada».
+  · `resumen[familia].semanal` / `.mensual` / `.anual` — con `precio` y `tasa`, misma estructura que
+    la diaria. Por instrumento, `varPrecio_semanal`, `varTasa_semanal` y sus equivalentes.
+  · `rotacionBopreal.filas[i].semanal` / `.mensual` / `.anual` — el pickup en la rueda de referencia
+    y cuánto se movió, con la variación de TIR de cada punta.
+  · `sinteticos.plazoConstante[plazo].semanal` / `.mensual` / `.anual` — el spread de sintéticos a
+    plazo constante en la rueda de referencia y cuánto se movió. Las tablas de sintéticos son la
+    foto de HOY; el período se cuenta con esto.
+  · Las series del bloque `macro`, `mercado.bloques` y `mercado.legislacion` traen su período con
+    la misma clave. Para el año, la ventana de las series del BCRA se estira sola hasta la
+    referencia; las series propias que arrancan después (margen sobre TAMAR, forward de Bonares)
+    pueden no tener dato a fin del año anterior: si falta, decí que no hay, no lo inventes.
 
-EL DÍA QUE CIERRA PERÍODO SALEN DOS INFORMES, NO UNO. Uno es el diario de siempre, con la ventana
-del día y NADA del período. El otro es el de cierre, con la ventana del período y NADA del día. Son
-dos PDF y dos mails.
+CÓMO SE ARMA EL PDF: uno solo, con modo "auto".
 
-Antes iban pegados —columnas "En el día" y "En el mes" en la misma tabla, y prosa que saltaba de
-una ventana a la otra— y se leía mal: hay que estar recordando de qué ventana habla cada frase.
-Peor todavía, invita a leer la columna del período con la regla del día. Pasó: el cierre de agosto
-de 2026 mostraba cinco familias con precio y tasa subiendo juntos, que en la columna del día sería
-un error de dato y en la del mes es lo normal.
+    informe_pdf.construir(json, dir_curvas, textos, salida, modo="auto")
 
-CÓMO SE ARMA CADA UNO:
+    informes/curvas/AAAA-MM-DD/cierre-AAAA-MM-DD.pdf     (siempre este nombre, haya cierre o no)
 
-    informe_pdf.construir(json, dir_curvas, textos, salida, modo="diario")
-    informe_pdf.construir(json, dir_curvas, textos_periodo, salida_periodo, modo="periodo")
+Con "auto" el módulo arma solo: el título de portada «Reporte diario y semanal / mensual / anual»,
+las tablas con DOS columnas rotuladas —«En el día» y «En la semana» (o «En el mes», «En el año»)—,
+la nota que aclara que la regla inversa precio-tasa sólo vale para la columna del día, y al final la
+sección «Cierre semanal / mensual / anual» con la prosa que le pases en `textos["cierre"]`. Cuando
+la rueda cierra varios períodos, la COLUMNA es la del más largo (año sobre mes sobre semana) y los
+más cortos se cuentan en la prosa del cierre. La página de curvas rotula el link del PDF como
+«Informe del día y cierre semanal» sola, leyendo `tipos`.
 
-El modo decide las columnas de la tabla, el título de portada —el mismo JSON produce un PDF que
-dice "Reporte diario" y otro "Reporte mensual"— y si aparecen la sección de cierre y la nota sobre
-los signos. En modo "periodo" la columna N pasa a ser la del PERÍODO: cuántos instrumentos tenían
-dato en las DOS puntas, que es sobre cuántos se calculó esa mediana. En el cierre de agosto eso
-deja a los subsoberanos en 4 sobre 11, que es la verdad y antes había que aclararla en prosa.
+CÓMO SE ESCRIBE. Las dos ventanas juntas se leen mal si no se nombran, que fue la razón por la que se
+habían separado. La regla es simple: CADA FRASE DICE DE QUÉ VENTANA HABLA. «En el día comprimió 0,3
+pp; en la semana acumula +0,8». Nunca un número suelto que el lector tenga que adivinar si es de hoy
+o de los últimos cinco días. Y la regla de signos: que en la semana, el mes o el año suban precio y
+tasa a la vez es NORMAL (devengamiento, CER, devaluación), no un error; en la columna del día sí lo
+sería. Decilo cuando pase.
 
-NOMBRES DE ARCHIVO, que la página de curvas usa para rotular los links:
+  · El RESUMEN de arriba: primero la rueda, en dos o tres líneas como siempre; después una o dos
+    líneas del período («En la semana, …»). El que lee sólo el principio en el teléfono tiene que
+    llevarse las dos cosas.
+  · Las SECCIONES del cuerpo (curva de pesos, dólares, BOPREAL, sintéticos, macro…) cuentan el día
+    como siempre y, cuando el período cambia la lectura, suman una frase del período, rotulada.
+    No repitas cada número del período en cada sección: para eso está la tabla.
+  · La SECCIÓN DE CIERRE del final (`textos["cierre"]`) es donde va el período en serio: qué familia
+    lideró, cómo quedó la curva de pesos de punta a punta, cómo se movieron las paridades de los hard
+    dollar, la licitación si hubo en el período, y sobre todo QUÉ CAMBIÓ DE DIRECCIÓN. Lo más útil
+    de tener las dos ventanas juntas es cuando no coinciden: el 28/08/2026 las tasas en pesos habían
+    subido en la semana (LECAPs +0,18 pp, TAMAR +1,45, Duales +1,44) y bajaron en el día, o sea que
+    la rueda fue contra la semana.
+  · Si cierran VARIOS períodos a la vez (fin de mes en viernes, o el 30/12), la sección de cierre
+    lleva un párrafo por período, del más largo al más corto, cada uno con su nombre y su fecha de
+    referencia. El de AÑO es un repaso del año: cómo terminó cada familia contra el cierre de 2025,
+    la curva de pesos de punta a punta, riesgo país y brecha contra la región, canje, y los dos o
+    tres movimientos que definieron el año. No hace falta ser exhaustivo: lo relevante.
 
-    informes/curvas/AAAA-MM-DD/cierre-AAAA-MM-DD.pdf            (el diario)
-    informes/curvas/AAAA-MM-DD/cierre-mensual-AAAA-MM-DD.pdf    (o cierre-semanal-...)
+UN CIERRE DE MES NO ES NECESARIAMENTE UN CIERRE DE SEMANA. El lunes 31/08/2026 es la última rueda de
+agosto pero no la de su semana —la próxima hábil, el martes 1, cae en la misma semana ISO—, así que
+`tipos` va a ser `['diario', 'mensual']` a secas. Ese día NO hay nada semanal: no lo escribas ni lo
+busques. Verificado corriendo tipos_de_cierre() contra el calendario real; la referencia mensual da
+2026-07-31.
 
-LOS TEXTOS SON DISTINTOS, no el mismo recortado. El diario cuenta la rueda: qué comprimió, qué se
-estiró, qué se despegó de su curva. El de cierre cuenta el período: qué familia lideró, cómo quedó
-la curva de punta a punta, qué cambió de dirección respecto de la ventana anterior. Si una
-observación sólo tiene sentido con las dos ventanas juntas —"la rueda fue contra la semana"— va en
-el de cierre, que es donde la comparación es el tema.
+UN SOLO MAIL, a la lista completa del PASO 5. Asunto de siempre, «Renta fija AR · cierre DD/MM», y
+los días de cierre con el período al final: «· cierre semanal», «· cierre de mes» o «· cierre de
+año» (si cierran varios, el más largo). El mail sigue la misma estructura que el PDF: resumen con
+las dos ventanas, tablas con las dos columnas, y la sección de cierre al final. El mail NO se adapta
+solo: los encabezados de las tablas los escribís vos —«En el día» y «En la semana»— y la nota al pie
+nombra la rueda de referencia.
 
-LOS DOS MAILS, los dos a la lista completa del PASO 5. Primero el diario, con el asunto de siempre. Después el de cierre, con "· cierre
-semanal" o "· cierre de mes" en el asunto y su propio PDF. Cada uno se lee solo: el de cierre no
-supone que el lector abrió el otro.
-
-Si `tipos` incluye "semanal": el informe de cierre lleva la variación por familia y, sobre todo,
-QUÉ CAMBIÓ DE DIRECCIÓN. Lo más útil de tener las dos ventanas juntas es cuando no coinciden: el
-28/08/2026 las tasas en pesos habían subido en la semana (LECAPs +0,18 pp, TAMAR +1,45, Duales
-+1,44) y bajaron en el día, o sea que la rueda fue contra la semana. Eso vale más que repetir la
-tabla diaria con otros números.
-
-Si incluye "mensual": lo mismo contra la última rueda del mes anterior, más un párrafo de cómo
-quedó el mes: qué familia lideró, qué pasó con la curva de pesos de punta a punta, y cómo se
-movieron las paridades de los hard dollar.
-
-UN CIERRE DE MES NO ES NECESARIAMENTE UN CIERRE DE SEMANA. El lunes 31/08/2026 es la última rueda
-de agosto pero no la de su semana —la próxima hábil, el martes 1, cae en la misma semana ISO—, así
-que `tipos` va a ser `['diario', 'mensual']` a secas. Ese día NO hay sección semanal ni datos
-semanales: no la escribas ni la busques. Verificado corriendo tipos_de_cierre() contra el
-calendario real; la referencia mensual da 2026-07-31.
-
-Cuando una rueda cierra mes Y semana a la vez —el último hábil del mes caído viernes—, el informe
-de cierre es UNO SOLO y muestra el mes en la tabla; la semana se cuenta en prosa adentro de ese
-mismo informe. No son tres mails.
-
-EL PDF SE ADAPTA SOLO: informe_pdf.py elige el período con periodo_de(tipos), rotula la columna «En
-el mes» o «En la semana», nombra la fecha de referencia y titula la sección «Cierre mensual» o
-«Cierre semanal». Vos pasás la prosa en `textos["cierre"]` —la clave vieja `textos["semanal"]`
-también se acepta— y no tenés que tocar nada más.
-
-EL MAIL NO se adapta solo: lo escribís vos cada día. En un cierre de mes, los encabezados de la
-tabla dicen «En el mes» y la nota al pie nombra la rueda del mes anterior.
-
-Para el mes, mirá especialmente el bloque macro: con dos a cuatro días hábiles de rezago, la
-variación mensual de las series del BCRA se mide contra un dato que puede ser de fin del mes
-anterior menos unos días. La fecha de cada serie está en el JSON; si la referencia quedó lejos,
+Para el mes y el año, mirá especialmente el bloque macro: con dos a cuatro días hábiles de rezago,
+la variación del período de las series del BCRA se mide contra un dato que puede ser de unos días
+antes del cierre anterior. La fecha de cada serie está en el JSON; si la referencia quedó lejos,
 decilo en vez de presentarla como «el mes».
 
 Ojo con el `n` de cada período: es cuántos instrumentos tenían dato en las DOS puntas. Si es mucho
-menor que el de la familia, la mediana del período se calculó sobre pocos y conviene decirlo.
+menor que el de la familia, la mediana del período se calculó sobre pocos y conviene decirlo. En el
+año pasa seguro: todo lo que se emitió después del cierre de 2025 no tiene punta inicial.
 
 ═══════════════════════════════════════════════════════════════════
 PASO 4 · LAS CURVAS
@@ -773,22 +774,23 @@ PASO 4 BIS · EL PDF PARA COMPARTIR
 ═══════════════════════════════════════════════════════════════════
 
 El usuario reenvía este PDF a colegas que no tienen nada que ver con el monitor. Se arma con
-informe_pdf.construir(json, dir_curvas, textos, salida, modo=...), donde `textos` es un dict con la
-prosa del día —incluida la clave `canje`, que es la sección del canje CCL/MEP y va en los tres
-tipos de informe— —las mismas secciones que escribís para el mail—. El módulo pone la maqueta, las tablas y las
+informe_pdf.construir(json, dir_curvas, textos, salida, modo="auto"), donde `textos` es un dict con la
+prosa del día —incluida la clave `canje`, que es la sección del canje CCL/MEP y va en todos los
+informes, y la clave `cierre` con la prosa del período los días que cierra semana, mes o año— —las
+mismas secciones que escribís para el mail—. El módulo pone la maqueta, las tablas y las
 figuras; vos ponés el texto.
 
 La TABLA DE ROTACIÓN BOPREAL la arma el módulo solo desde `rotacionBopreal` del JSON, con su nota
 de método, debajo de la prosa de `textos["bopreal"]`. Ya no hace falta pasar `tabla_bopreal`: esa
-clave queda sólo como respaldo si el bloque no vino. En modo "periodo" la última columna es la
-variación del pickup en el período en vez de la del día.
+clave queda sólo como respaldo si el bloque no vino. Los días de cierre la tabla trae dos columnas
+de variación del pickup: la del día y la del período.
 
 La clave `sinteticos` (lista de párrafos) es la prosa de la sección «Sintéticos contra
-instrumentos directos», que va después de dólar linked y futuros en los TRES tipos de informe. Las
+instrumentos directos», que va después de dólar linked y futuros en todos los informes, también los de cierre. Las
 dos tablas, la de plazo constante y la nota de método —interpolación, aranceles, contratos sin
 operar— las arma el módulo solo desde el bloque `sinteticos` del JSON; vos escribís sólo la lectura
-(ver SECCIÓN C). En modo "periodo" la tabla de plazo constante muestra la columna del período en
-lugar de la del día. Si el bloque no vino, la sección no aparece.
+(ver SECCIÓN C). Los días de cierre la tabla de plazo constante suma la columna del período al
+lado de la del día. Si el bloque no vino, la sección no aparece.
 
 QUÉ SACAR, que es todo el punto:
   · vencimientos y altas o bajas del universo del monitor
@@ -831,15 +833,15 @@ A ESTOS OCHO DESTINATARIOS, TODOS EN «PARA» (`to`), con la herramienta de Gmai
 
 Es la cuenta del usuario más su equipo de Balanz, pedido por él el 14/09/2026. Van todos en «Para» a
 propósito —no en copia oculta—: lo eligió así y no hay problema en que se vean las direcciones. La
-lista vale para LOS TRES tipos de mail: el diario, el de cierre semanal o mensual y el corto de la
-licitación en el mismo hilo. No agregues ni saques a nadie sin que el usuario lo pida en el chat; si
+lista vale para los DOS tipos de mail: el informe de cada día —que los días de cierre trae adentro
+la semana, el mes o el año— y el corto de la licitación en el mismo hilo. No agregues ni saques a nadie sin que el usuario lo pida en el chat; si
 algún día un mail rebota, avisale cuál en vez de corregir la lista por tu cuenta.
 
 El equipo tiene acceso al monitor, así que las referencias a sus solapas en el mail están bien. El
 PDF sigue siendo la versión sin nada del tablero, para reenviar fuera del equipo.
 
-Asunto: "Renta fija AR · cierre DD/MM" y, cuando corresponda, "· cierre semanal" o "· cierre de
-mes" al final.
+Asunto: "Renta fija AR · cierre DD/MM" y, los días de cierre, "· cierre semanal", "· cierre de
+mes" o "· cierre de año" al final (si cierran varios, el más largo). Es UN solo mail por día.
 
 Arriba de todo, un bloque con los DOS LINKS: primero el PDF para compartir —con una línea que
 aclare que es la misma información sin nada del monitor, y que se descarga y se reenvía como
@@ -855,7 +857,7 @@ NADA DE IMÁGENES NI DE FONDOS DE COLOR: el envío los borra (ver PASO 4). Los r
 marcan con `border-left` y color de texto. El resto —color, borde, padding, tamaño, peso, tablas y
 `<a href>`— pasa sin problema.
 
-LAS DOS TABLAS DE SINTÉTICOS VAN EN EL MAIL, en el diario, el semanal y el mensual, con las mismas
+LAS DOS TABLAS DE SINTÉTICOS VAN EN EL MAIL, en todos los informes, también los de cierre, con las mismas
 columnas que la solapa:
     En pesos:   Contrato · Días · LECAP TEA · Sintético $ TEA · Spread bruto · Spread neto · Qué paga más
     En dólares: Contrato · Días · Bono DL TIR · Sintético DL TIR · Spread bruto · Spread neto · Qué paga más
@@ -868,9 +870,10 @@ ajuste, según `modoFuturos`), A3500 con su fecha, aranceles 0,5 / 0,5 / 0,2 y c
 de 10 días afuera. La de plazo constante es opcional en el mail —está en el PDF—, pero el nivel a
 90 días contra el año va en la prosa.
 
-LA TABLA DE ROTACIÓN BOPREAL VA EN EL MAIL, en los tres informes, con las columnas de la solapa:
+LA TABLA DE ROTACIÓN BOPREAL VA EN EL MAIL, en todos los informes, con las columnas de la solapa:
     Rotación · Precio BOPREAL · TIR BOPREAL · Precio Bonar · TIR Bonar · Pickup (bps) ·
-    Pickup neto (bps) · Break-even (años) · Δ pickup del día (o del período en el de cierre)
+    Pickup neto (bps) · Break-even (años) · Δ pickup del día (y, los días de cierre, una columna
+    más con el Δ pickup de la semana, el mes o el año)
 Una fila por par del bloque `rotacionBopreal`. Pickup con signo y color —verde positivo, rojo
 negativo—, el neto en negrita. Nota al pie: TIR por flujos desde T+1 a precio dirty en MEP,
 comisión 0,5% por punta, y contra qué fecha se mide la variación.

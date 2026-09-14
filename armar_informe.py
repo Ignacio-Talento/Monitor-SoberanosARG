@@ -26,10 +26,11 @@ venir de la misma fuente que la de hoy. Sacar el precio de ayer de historicos.xl
 1816 mezclaría convenciones —el Excel guarda precio dirty en la moneda de cada hoja— y las
 variaciones saldrían con ruido que no es del mercado.
 
-TIPO DE INFORME. El script decide solo si además del diario corresponde el semanal (viernes o
-última rueda de la semana) y el mensual (última rueda hábil del mes), mirando el calendario de
+TIPO DE INFORME. El script decide solo si además del diario la rueda cierra semana (última rueda
+de la semana), mes (última hábil del mes) o año (última hábil del año), mirando el calendario de
 feriados de Argentina. No hace falta un cron por tipo: corre todos los días hábiles y avisa en
-`tipos` qué cierres caen hoy.
+`tipos` qué cierres caen hoy. Desde el 14/09/2026 los cierres NO son un informe aparte: van dentro
+del diario de esa rueda, y este JSON trae las variaciones de cada período para eso.
 
 SALIDA: informes/datos_AAAA-MM-DD.json
 """
@@ -233,12 +234,13 @@ def proxima_habil(d, fer):
 
 
 def tipos_de_cierre(d, fer):
-    """Qué cierres caen en esta rueda: siempre 'diario', más 'semanal' y/o 'mensual'.
+    """Qué cierres caen en esta rueda: siempre 'diario', más 'semanal', 'mensual' y/o 'anual'.
 
     Se define por la PRÓXIMA rueda hábil y no por el día de la semana o el número del día: un
     viernes feriado no es cierre semanal, y el 31 puede caer domingo. Mirando hacia adelante, la
-    última rueda de la semana es aquella cuya siguiente hábil ya cayó en otra semana, y la última
-    del mes, aquella cuya siguiente hábil ya cambió de mes.
+    última rueda de la semana es aquella cuya siguiente hábil ya cayó en otra semana, la última
+    del mes, aquella cuya siguiente hábil ya cambió de mes, y la del año, la que cambia de año —el
+    30/12/2026 sale diario + semanal + mensual + anual, porque el 31 no hay rueda—.
     """
     tipos = ["diario"]
     sig = proxima_habil(d, fer)
@@ -246,18 +248,23 @@ def tipos_de_cierre(d, fer):
         tipos.append("semanal")
     if (sig.year, sig.month) != (d.year, d.month):
         tipos.append("mensual")
+    if sig.year != d.year:
+        tipos.append("anual")
     return tipos
 
 
 def ultima_rueda_de_periodo_anterior(d, fer, periodo):
-    """Última rueda hábil de la semana o del mes ANTERIOR a la de d.
+    """Última rueda hábil de la semana, del mes o del año ANTERIOR a la de d.
 
-    Es contra esta rueda que se mide el cierre semanal y el mensual. Se busca hacia atrás desde el
-    primer día del período de d, saltando fines de semana y feriados: para el viernes 28/08/2026 la
-    referencia semanal es el viernes 21 y la mensual, el jueves 31/07.
+    Es contra esta rueda que se mide cada cierre. Se busca hacia atrás desde el primer día del
+    período de d, saltando fines de semana y feriados: para el viernes 28/08/2026 la referencia
+    semanal es el viernes 21 y la mensual, el jueves 31/07; para el 30/12/2026 la anual es el
+    30/12/2025, porque el 31 no hay rueda.
     """
     if periodo == "semanal":
         x = d - timedelta(days=d.weekday() + 1)          # domingo anterior al lunes de esta semana
+    elif periodo == "anual":
+        x = date(d.year - 1, 12, 31)                     # último día del año anterior
     else:
         x = d.replace(day=1) - timedelta(days=1)         # último día del mes anterior
     while not es_habil(x, fer):
@@ -1245,7 +1252,7 @@ def main():
     # el Excel el cierre semanal podría decir cuánto se movió el precio pero no cuánto la TIR, que
     # en pesos es justamente lo que se mira.
     refs = {}
-    for tipo in ("semanal", "mensual"):
+    for tipo in ("semanal", "mensual", "anual"):
         if tipo not in tipos:
             continue
         f = ultima_rueda_de_periodo_anterior(hoy, fer_rueda, tipo)

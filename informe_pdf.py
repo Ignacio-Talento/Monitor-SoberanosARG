@@ -122,14 +122,23 @@ def _color_num(v):
 def periodo_de(tipos):
     """Qué período compara este informe: la clave del JSON, el rótulo y el nombre en prosa.
 
-    El mes gana sobre la semana cuando la rueda cierra los dos, que pasa cuando el último hábil del
-    mes cae viernes. Devuelve None en un informe puramente diario.
+    Gana el más largo cuando la rueda cierra varios: el año sobre el mes y el mes sobre la semana
+    —el último hábil de octubre de 2026 cae viernes y cierra las dos; el 30/12/2026 cierra las
+    tres—. Los períodos más cortos se cuentan en prosa. Devuelve None en un informe sólo diario.
     """
+    if "anual" in (tipos or []):
+        return "anual", "En el año", "El año"
     if "mensual" in (tipos or []):
         return "mensual", "En el mes", "El mes"
     if "semanal" in (tipos or []):
         return "semanal", "En la semana", "La semana"
     return None, "", ""
+
+
+# Rótulos de cada período para columnas, prosa y títulos.
+CORTO = {"semanal": "Semana", "mensual": "Mes", "anual": "Año"}
+EN_EL = {"semanal": "la semana", "mensual": "el mes", "anual": "el año"}
+CIERRE = {"semanal": "Cierre semanal", "mensual": "Cierre mensual", "anual": "Cierre anual"}
 
 
 def tabla_familias(resumen, ancho, periodo="semanal", rotulo="En la semana", columnas="ambas"):
@@ -511,7 +520,7 @@ def seccion_sinteticos(d, textos, ancho, periodo, rotulo, con_dia):
         tabla_sinteticos(sint, "dolar", ancho)]))
     E.append(Spacer(1, 8))
     if sint.get("plazoConstante"):
-        per_txt = {"semanal": "Semana", "mensual": "Mes"}.get(periodo, rotulo)
+        per_txt = CORTO.get(periodo, rotulo)
         E.append(KeepTogether([
             Paragraph("<b>A plazo constante:</b> el spread bruto en pesos interpolado entre "
                       "contratos a 30, 60, 90 y 180 días, en puntos porcentuales, contra lo que va "
@@ -542,31 +551,41 @@ def tabla_rotacion(rot, ancho, periodo=None, rotulo="", con_dia=True):
     """La tabla de la solapa Rotación BOPREAL: una fila por par BOPREAL → Bonar.
 
     TIR por flujos (XIRR) de cada punta a su precio dirty en MEP, pickup bruto y neto de las dos
-    comisiones, break-even en años y cuánto se movió el pickup en el día o en el período. El pickup
-    va con color —positivo es que el Bonar rinde más—; la variación, también.
+    comisiones, break-even en años y cuánto se movió el pickup. Las columnas de variación dependen
+    del informe: sólo la del día en un diario, la del día Y la del período en un día de cierre
+    —desde el 14/09/2026 el cierre va dentro del diario—, y sólo la del período en un informe
+    armado aparte con modo "periodo". El pickup va con color —positivo es que el Bonar rinde
+    más—; las variaciones, también.
     """
-    col_var = "anterior" if con_dia else periodo
-    filas = [["Rotación", "Precio", "TIR", "Precio", "TIR", "Pickup", "Pickup neto",
-              "Break-even", ("Día" if con_dia else rotulo)],
-             ["", "BOPREAL", "BOPREAL", "Bonar", "Bonar", "bps", "bps", "años", "Δ pickup"]]
+    cols = []
+    if con_dia:
+        cols.append(("anterior", "Día"))
+    if periodo:
+        cols.append((periodo, rotulo))
+    filas = [["Rotación", "Precio", "TIR", "Precio", "TIR", "Pickup", "Pickup neto", "Break-even"]
+             + [r for _, r in cols],
+             ["", "BOPREAL", "BOPREAL", "Bonar", "Bonar", "bps", "bps", "años"]
+             + ["Δ pickup"] * len(cols)]
     estilos = []
     for r in rot.get("filas") or []:
         i = len(filas)
-        v = (r.get(col_var) or {}).get("variacionPickup") if col_var else None
         be = r.get("breakEvenAnios")
+        vs = [(r.get(k) or {}).get("variacionPickup") for k, _ in cols]
         # «→» no está en Open Sans y sale en blanco: va «a».
         filas.append([f'{r["origen"]} a {r["destino"]}', num(r["precioOrigen"], 2),
                       f'{num(r["tirOrigen"])}%', num(r["precioDestino"], 2),
                       f'{num(r["tirDestino"])}%', num(r["pickup"], 0, True),
-                      num(r["pickupNeto"], 0, True), num(be, 2) if be is not None else "—",
-                      num(v, 0, True) if v is not None else "—"])
+                      num(r["pickupNeto"], 0, True), num(be, 2) if be is not None else "—"]
+                     + [num(v, 0, True) if v is not None else "—" for v in vs])
         estilos += [("TEXTCOLOR", (5, i), (5, i), _color_num(r["pickup"])),
                     ("TEXTCOLOR", (6, i), (6, i), _color_num(r["pickupNeto"])),
                     ("FONT", (6, i), (6, i), SEMI, 9.6)]
-        if v is not None:
-            estilos.append(("TEXTCOLOR", (8, i), (8, i), _color_num(v)))
-    t = Table(filas, colWidths=[w * ancho for w in (.18, .09, .09, .09, .09, .1, .12, .12, .12)],
-              repeatRows=2)
+        for j, v in enumerate(vs):
+            if v is not None:
+                estilos.append(("TEXTCOLOR", (8 + j, i), (8 + j, i), _color_num(v)))
+    rel = ((.18, .09, .09, .09, .09, .1, .12, .12, .12) if len(cols) < 2
+           else (.17, .085, .085, .085, .085, .09, .11, .1, .095, .095))
+    t = Table(filas, colWidths=[w * ancho for w in rel], repeatRows=2)
     t.setStyle(TableStyle([
         ("FONT", (0, 0), (-1, 1), SEMI, 8.4),
         ("TEXTCOLOR", (0, 0), (-1, 1), GRIS),
@@ -689,13 +708,15 @@ def figura(ruta, pie, ancho):
 def construir(ruta_json, dir_curvas, textos, salida, modo="auto"):
     """`modo` decide QUÉ VENTANA muestra el informe.
 
-      · "diario"  — sólo la variación del día. Es lo que sale todos los días.
-      · "periodo" — sólo la del cierre semanal o mensual. Es un entregable APARTE, del mismo día.
-      · "auto"    — el comportamiento viejo: las dos ventanas juntas si la rueda cierra período.
+      · "auto"    — EL QUE SE USA: la del día y, si la rueda cierra semana, mes o año, también la
+                    del período, en el mismo informe. Pedido del usuario el 14/09/2026: un solo
+                    informe por día, con lo relevante del día y del período juntos.
+      · "diario"  — sólo la variación del día, aunque la rueda cierre período.
+      · "periodo" — sólo la del cierre. Queda para rearmar un informe viejo de cierre por separado.
 
-    Mezclarlas en un solo informe se lee mal —hay que recordar de qué ventana habla cada frase— y
-    encima invita a aplicarle a la columna del período la regla de signos que sólo vale para la del
-    día. Por eso el día que cierra período se arman dos.
+    Para que las dos ventanas juntas se lean bien, las tablas llevan las dos columnas rotuladas
+    («En el día» y «En la semana»), la nota de los signos aclara que la regla inversa precio-tasa
+    sólo vale para la del día, y la prosa del período va en la sección de cierre del final.
     """
     d = json.loads(Path(ruta_json).read_text(encoding="utf-8"))
     fecha = d["fecha"]
@@ -713,8 +734,12 @@ def construir(ruta_json, dir_curvas, textos, salida, modo="auto"):
     if modo == "diario":
         periodo, rotulo, nombre = None, "", ""
     columnas = "periodo" if modo == "periodo" else ("ambas" if periodo else "dia")
-    clase = ("Reporte mensual" if periodo == "mensual" else
-             "Reporte semanal" if periodo == "semanal" else "Reporte diario")
+    if modo == "periodo":
+        clase = {"anual": "Reporte anual", "mensual": "Reporte mensual",
+                 "semanal": "Reporte semanal"}[periodo]
+    else:
+        clase = {"anual": "Reporte diario y anual", "mensual": "Reporte diario y mensual",
+                 "semanal": "Reporte diario y semanal"}.get(periodo, "Reporte diario")
 
     def portada(canvas, doc):
         canvas.saveState()
@@ -790,7 +815,7 @@ def construir(ruta_json, dir_curvas, textos, salida, modo="auto"):
         # KeepTogether: si no entra al pie de la tabla se va entera a la pagina siguiente. Sin eso
         # se partia a mitad de frase en el salto de pagina.
         E.append(KeepTogether([Spacer(1, 3), Paragraph(
-            f"<b>En {'el mes' if periodo == 'mensual' else 'la semana'} es normal que suban el "
+            f"<b>En {EN_EL.get(periodo, 'el período')} es normal que suban el "
             "precio Y la tasa a la vez, y no es un error de dato.</b> En una rueda el "
             "devengamiento es despreciable y por eso, si la tasa sube, el precio baja. En un "
             "período largo no: un bono en pesos al 28% de tasa efectiva anual gana cerca de 2% de "
@@ -833,7 +858,7 @@ def construir(ruta_json, dir_curvas, textos, salida, modo="auto"):
     if bq_dua:
         E.append(KeepTogether([
             Paragraph("Margen sobre TAMAR de los duales", H2),
-            tabla_mercado(bq_dua, ANCHO, periodo, "Mes" if periodo == "mensual" else "Semana",
+            tabla_mercado(bq_dua, ANCHO, periodo, CORTO.get(periodo, ""),
                           con_dia=(modo != "periodo"))]))
         E.append(Spacer(1, 4))
         for t in textos.get("duales") or []:
@@ -864,7 +889,7 @@ def construir(ruta_json, dir_curvas, textos, salida, modo="auto"):
     if bq_bon:
         E.append(KeepTogether([
             Paragraph("Bonares cortos y el forward de la elección", H2),
-            tabla_mercado(bq_bon, ANCHO, periodo, "Mes" if periodo == "mensual" else "Semana",
+            tabla_mercado(bq_bon, ANCHO, periodo, CORTO.get(periodo, ""),
                           con_dia=(modo != "periodo"),
                           etiquetas={"AO27": "AO27 · vence oct-2027",
                                      "AO28": "AO28 · vence oct-2028",
@@ -897,7 +922,7 @@ def construir(ruta_json, dir_curvas, textos, salida, modo="auto"):
     # tabla escrita a mano (`tabla_bopreal`) queda sólo como respaldo si el bloque no vino.
     rot = d.get("rotacionBopreal") or {}
     if rot.get("disponible"):
-        per_txt = {"semanal": "Semana", "mensual": "Mes"}.get(periodo, rotulo)
+        per_txt = CORTO.get(periodo, rotulo)
         ref_f = ((rot["filas"][0].get(periodo) or {}).get("fecha") if periodo and rot["filas"]
                  else None)
         E.append(KeepTogether([
@@ -913,7 +938,7 @@ def construir(ruta_json, dir_curvas, textos, salida, modo="auto"):
                 "contra el AO27; la Serie 4, bullet a octubre de 2028, contra el AO28. Distinto "
                 "emisor —BCRA contra Tesoro— y distinta estructura."
                 + (f" La variación del período se mide contra el {ref_f[8:10]}/{ref_f[5:7]}."
-                   if ref_f and modo == "periodo" else ""), P_CHICO)]))
+                   if ref_f else ""), P_CHICO)]))
         E.append(Spacer(1, 6))
     elif textos.get("tabla_bopreal"):
         E.append(tabla_simple(textos["tabla_bopreal"], (.16, .13, .13, .16, .13, .13, .16), ANCHO,
@@ -941,7 +966,7 @@ def construir(ruta_json, dir_curvas, textos, salida, modo="auto"):
 
     E.append(KeepTogether([Paragraph("Dinero, tasas y macro", H2),
                            tabla_macro(d["macro"], ANCHO, periodo,
-                                       "Mes" if periodo == "mensual" else "Semana",
+                                       CORTO.get(periodo, ""),
                                        con_dia=(modo != "periodo"))]))
     E.append(Spacer(1, 4))
     E.append(Paragraph(
@@ -962,7 +987,7 @@ def construir(ruta_json, dir_curvas, textos, salida, modo="auto"):
     cierre = textos.get("cierre") or textos.get("semanal") or []
     if periodo and cierre:
         E.append(PageBreak())
-        E.append(Paragraph(f"Cierre {'mensual' if periodo == 'mensual' else 'semanal'}", H2))
+        E.append(Paragraph(CIERRE[periodo], H2))
         for t in cierre:
             E.append(Paragraph(t, P))
 
