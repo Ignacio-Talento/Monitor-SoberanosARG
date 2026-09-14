@@ -4,7 +4,7 @@
  "tipos": [
   "diario"
  ],
- "generado": "2026-09-14T18:17:41-03:00",
+ "generado": "2026-09-14T20:51:23-03:00",
  "feriadosLeidos": true,
  "universo": 198,
  "sinDato": [
@@ -4024,20 +4024,20 @@
     }
    }
   },
-  "generado": "2026-09-14T21:16:49+00:00",
+  "generado": "2026-09-14T23:08:38+00:00",
   "legislacion": {
    "disponible": true,
    "fuente": "1816 · BYMA PPT, vía series_globvsbon.xlsx",
-   "hasta": "2026-09-11",
+   "hasta": "2026-09-14",
    "mediana10": {
-    "fecha": "2026-09-11",
-    "valor": 4.016,
-    "crudo": 4.453,
+    "fecha": "2026-09-14",
+    "valor": 4.138,
+    "crudo": 4.373,
     "previo": {
-     "fecha": "2026-09-10",
+     "fecha": "2026-09-11",
      "valor": 4.016
     },
-    "variacion": 0.0,
+    "variacion": 0.122,
     "minAnio": {
      "fecha": "2026-04-29",
      "valor": 1.361
@@ -4048,6 +4048,11 @@
     },
     "mesesSimilares": [
      {
+      "mes": "2024-03",
+      "diferencial": 4.63,
+      "riesgoPais": 1557
+     },
+     {
       "mes": "2024-04",
       "diferencial": 4.28,
       "riesgoPais": 1276
@@ -4056,11 +4061,6 @@
       "mes": "2024-07",
       "diferencial": 4.29,
       "riesgoPais": 1531
-     },
-     {
-      "mes": "2024-11",
-      "diferencial": 3.57,
-      "riesgoPais": 810
      },
      {
       "mes": "2025-09",
