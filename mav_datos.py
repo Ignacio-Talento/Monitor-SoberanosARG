@@ -231,7 +231,7 @@ def curva_lecap(hasta):
     return None
 
 
-def resumen_semana(ops, desde, hasta, publicado):
+def resumen_semana(ops, desde, hasta, publicado, archivo=None):
     curva = {}
     for o in ops:
         if o["tasa"] is None or o["ajuste"]:
@@ -263,7 +263,8 @@ def resumen_semana(ops, desde, hasta, publicado):
     top = sorted(({"nombre": k, "vol": round(v["vol"], 2), "ops": v["ops"]} for k, v in aval.items()),
                  key=lambda x: -x["vol"])[:12]
     return {
-        "desde": desde, "hasta": hasta, "publicado": publicado, "operaciones": len(ops),
+        "desde": desde, "hasta": hasta, "publicado": publicado, "archivo": archivo,
+        "operaciones": len(ops),
         "indices": indices(ops), "curva": curva, "volumen": volumen, "avalistas": top,
         "ajustables": {k: {"vol": round(v["vol"], 2), "ops": v["ops"]} for k, v in ajust.items()},
         "lecap": curva_lecap(hasta),
@@ -333,14 +334,26 @@ def main(argv=None):
     por_semana = {s["hasta"]: s for s in previo.get("semanas", [])}
 
     archivos = listar("Informe-Semanal")
-    print(f"{len(archivos)} informes semanales en el sitio; se revisan {min(a.semanas, len(archivos))}")
+    # De los 57 adjuntos, cinco son la misma semana subida dos veces —la segunda con sufijo «-1» y
+    # con el dato corregido: la del 26/01/2026 pasa de 8.790 a 8.846 operaciones—, así que son 52
+    # semanas distintas. La lista viene de la más nueva a la más vieja, y la primera aparición de
+    # cada semana es la subida vigente: las siguientes se saltean.
+    distintas = {}
+    for x in archivos:
+        h = rango(x["nombre"])[1]
+        if h and h not in distintas:
+            distintas[h] = x
+    archivos = sorted(distintas.values(), key=lambda x: x["fecha"], reverse=True)
+    print(f"{len(archivos)} semanas distintas en el sitio; se revisan {min(a.semanas, len(archivos))}")
     nuevos = 0
     for arch in archivos[:a.semanas]:
         desde, hasta = rango(arch["nombre"])
         if not hasta:
             print(f"  {arch['nombre']}: no se pudo leer el rango de fechas", file=sys.stderr)
             continue
-        if por_semana.get(hasta, {}).get("operaciones"):
+        guardada = por_semana.get(hasta, {})
+        # Las semanas viejas del archivo no guardan de qué adjunto salieron: se dan por buenas.
+        if guardada.get("operaciones") and guardada.get("archivo", arch["nombre"]) == arch["nombre"]:
             continue
         try:
             ops = operaciones(bajar(arch["url"]))
@@ -350,7 +363,7 @@ def main(argv=None):
         if not ops:
             print(f"  {hasta}: sin operaciones legibles", file=sys.stderr)
             continue
-        por_semana[hasta] = resumen_semana(ops, desde, hasta, arch["fecha"])
+        por_semana[hasta] = resumen_semana(ops, desde, hasta, arch["fecha"], arch["nombre"])
         i = por_semana[hasta]["indices"]
         def t(k):
             return i[k]["tna"] if i.get(k) else "—"
@@ -364,7 +377,7 @@ def main(argv=None):
     # y el archivo se completa solo en unas semanas, sin castigar al sitio ni depender de una corrida
     # larga que puede fallar a mitad de camino.
     if a.completar:
-        faltan = [x for x in archivos if (rango(x["nombre"])[1] or "") not in por_semana]
+        faltan = [x for x in archivos if not por_semana.get(rango(x["nombre"])[1] or "")]
         print(f"faltan {len(faltan)} semanas del archivo; se intentan {min(a.completar, len(faltan))}")
         for arch in faltan[:a.completar]:
             desde, hasta = rango(arch["nombre"])
@@ -375,7 +388,7 @@ def main(argv=None):
                 continue
             if not ops:
                 continue
-            por_semana[hasta] = resumen_semana(ops, desde, hasta, arch["fecha"])
+            por_semana[hasta] = resumen_semana(ops, desde, hasta, arch["fecha"], arch["nombre"])
             print(f"  + {desde} a {hasta}: {len(ops)} ops")
             nuevos += 1
 
