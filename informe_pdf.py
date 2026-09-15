@@ -536,7 +536,7 @@ def seccion_sinteticos(d, textos, ancho, periodo, rotulo, con_dia):
         f"del {tc['fecha'][8:10]}/{tc['fecha'][5:7]} ({num(tc['valor'], 2)}), anualizada. La tasa "
         "de la LECAP y la del dólar linked se <b>interpolan</b> linealmente al vencimiento de cada "
         "futuro entre los dos bonos que lo rodean —los que figuran debajo de la tasa—, porque los "
-        "vencimientos casi nunca coinciden; fuera del tramo con bonos no se extrapola. Días desde "
+        "vencimientos casi nunca coinciden; si un bono vence el mismo día, figura solo; fuera del tramo con bonos no se extrapola. Días desde "
         f"la liquidación en T+1. El <b>neto</b> descuenta aranceles de {num(c.get('lecap'), 1)}% "
         f"en la LECAP, {num(c.get('dl'), 1)}% en el dólar linked y {num(c.get('fut'), 1)}% en el "
         "futuro, anualizados al plazo de cada contrato: por eso en los plazos cortos el neto puede "

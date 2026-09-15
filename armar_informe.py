@@ -769,6 +769,10 @@ def interpolar_curva(curva, dias):
     """interpolar() de la solapa: lineal en días y SIN extrapolar —fuera de rango, None—."""
     if not curva or dias < curva[0]["dias"] or dias > curva[-1]["dias"]:
         return None
+    # Un bono que vence el mismo día que el contrato ES la tasa: va solo, también en el rótulo.
+    for p in curva:
+        if p["dias"] == dias:
+            return {"tasa": p["tasa"], "entre": [p["ticker"]]}
     for a, b in zip(curva, curva[1:]):
         if a["dias"] <= dias <= b["dias"]:
             if a["dias"] == b["dias"]:

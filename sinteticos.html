@@ -345,7 +345,8 @@
       Las tasas de LECAP y DL están <strong>interpoladas a la fecha de cada contrato</strong>, no
       tomadas del bono más cercano: los vencimientos casi nunca coinciden y comparar contra un bono
       que vence dos semanas después mete ruido que no es del mercado. Entre paréntesis, los dos
-      instrumentos entre los que se interpola.
+      instrumentos entre los que se interpola; si hay un bono que vence el mismo día que el
+      contrato, figura solo y se usa su tasa tal cual.
     </div>
   <div class="panel">
     <div style="display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;">
@@ -484,6 +485,10 @@ function curvaDe(grupo) {
 function interpolar(curva, dias) {
   if (!curva.length) return null;
   if (dias < curva[0].dias || dias > curva[curva.length - 1].dias) return null;
+  // Un bono que vence el mismo día que el contrato ES la tasa: se usa sola y se rotula sola. Antes
+  // salía «S30S6–S16O6» para DLR/SEP26 con peso cero en el S16O6, y parecía que se mezclaban.
+  const exacto = curva.find(p => p.dias === dias);
+  if (exacto) return { tasa: exacto.tasa, entre: [exacto.ticker] };
   for (let i = 1; i < curva.length; i++) {
     const a = curva[i - 1], b = curva[i];
     if (dias >= a.dias && dias <= b.dias) {
@@ -636,7 +641,7 @@ function filaComparativa(r, lado, gana, pierde) {
   const cls = v => v === null ? '' : (v >= 0 ? 'val-green' : 'val-red');
   const f = futuros[r.tk] || {};
   const inerte = !f.volumenVN;
-  const ref = i => i ? `<span class="no-p" style="font-size:9px;"> (${i.entre[0]}–${i.entre[1]})</span>` : '';
+  const ref = i => i ? `<span class="no-p" style="font-size:9px;"> (${i.entre.join('–')})</span>` : '';
   if (!d) {
     return `<tr${inerte ? ' style="opacity:.62"' : ''}>
       <td class="lft">${r.tk}</td><td>${r.dias}</td>
@@ -1172,9 +1177,9 @@ function renderGrafico(cfg) {
       const f = [{ etiqueta: 'Sintético en pesos', valor: pct(r.pesos.sint), color: '#00a3e4' }];
       if (r.dolar) f.push({ etiqueta: 'Sintético DL', valor: pct(r.dolar.sint), color: '#0d9488' });
       if (r.lecap) f.push({ etiqueta: 'LECAP interpolada', valor: pct(r.lecap.tasa)
-                            + ' (' + r.lecap.entre[0] + '–' + r.lecap.entre[1] + ')', color: '#0d2055' });
+                            + ' (' + r.lecap.entre.join('–') + ')', color: '#0d2055' });
       if (r.dl) f.push({ etiqueta: 'DL interpolado', valor: pct(r.dl.tasa)
-                         + ' (' + r.dl.entre[0] + '–' + r.dl.entre[1] + ')', color: '#6b7280' });
+                         + ' (' + r.dl.entre.join('–') + ')', color: '#6b7280' });
       f.push({ etiqueta: 'Spread $ (bruto/neto)', valor: signo(r.pesos.spread) + ' / ' + signo(r.pesos.neto) + ' pp', color: '#6b7280' });
       if (r.dolar) f.push({ etiqueta: 'Spread DL (bruto/neto)', valor: signo(r.dolar.spread) + ' / ' + signo(r.dolar.neto) + ' pp', color: '#6b7280' });
       return f;
