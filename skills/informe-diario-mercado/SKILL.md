@@ -866,8 +866,10 @@ Debajo de cada tasa de referencia, en gris y chico, los dos bonos entre los que 
 negativo; el neto en negrita, que es el que decide «Qué paga más» (`gana`). Un contrato
 `sinOperar` va en gris con la marca «sin operar». Una línea arriba de cada tabla dice qué se
 compara y qué quiere decir el signo, y una nota corta al pie: futuros de A3 (último operado o
-ajuste, según `modoFuturos`), A3500 con su fecha, aranceles 0,5 / 0,5 / 0,2 y contratos a menos
-de 10 días afuera. La de plazo constante es opcional en el mail —está en el PDF—, pero el nivel a
+ajuste, según `modoFuturos`), A3500 con su fecha y contratos a menos de 10 días afuera. Y debajo
+de la tabla en dólares, una línea propia con las comisiones que usa el neto, tomadas de
+`sinteticos.comisiones` —no las escribas de memoria—: «Comisiones usadas en el spread neto: LECAP
+0,10% · bono dólar linked 0,10% · futuro 0,20%, por operación.» (pedido del usuario, 16/09/2026). La de plazo constante es opcional en el mail —está en el PDF—, pero el nivel a
 90 días contra el año va en la prosa.
 
 LA TABLA DE ROTACIÓN BOPREAL VA EN EL MAIL, en todos los informes, con las columnas de la solapa:

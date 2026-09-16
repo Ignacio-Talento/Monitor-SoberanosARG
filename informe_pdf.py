@@ -506,6 +506,11 @@ def seccion_sinteticos(d, textos, ancho, periodo, rotulo, con_dia):
     for t in textos.get("sinteticos") or []:
         E.append(Paragraph(t, P))
     tc = sint["tc"]
+    c = sint.get("comisiones") or {}
+    # Pedido del usuario el 16/09/2026: las comisiones del neto, a la vista debajo de las tablas.
+    nota_com = Paragraph(
+        f"Comisiones usadas en el spread neto: LECAP {num(c.get('lecap'))}% · bono dólar linked "
+        f"{num(c.get('dl'))}% · futuro {num(c.get('fut'))}%, por operación.", P_CHICO)
     rf = sint.get("ruedaFuturos") or ""
     E.append(KeepTogether([
         Paragraph("<b>En pesos:</b> LECAP contra sintético en pesos (comprar el bono dólar linked y "
@@ -517,7 +522,8 @@ def seccion_sinteticos(d, textos, ancho, periodo, rotulo, con_dia):
         Paragraph("<b>En dólares:</b> sintético dólar linked (comprar la LECAP y comprar el futuro) "
                   "contra el bono dólar linked. Spread = sintético − bono; positivo, rinde más el "
                   "sintético.", P_CHICO),
-        tabla_sinteticos(sint, "dolar", ancho)]))
+        tabla_sinteticos(sint, "dolar", ancho),
+        Spacer(1, 3), nota_com]))
     E.append(Spacer(1, 8))
     if sint.get("plazoConstante"):
         per_txt = CORTO.get(periodo, rotulo)
@@ -530,16 +536,14 @@ def seccion_sinteticos(d, textos, ancho, periodo, rotulo, con_dia):
     modo = ("último precio operado de la rueda del "
             f"{rf[8:10]}/{rf[5:7]}" if sint.get("modoFuturos") == "intradia"
             else f"precio de ajuste de la rueda del {rf[8:10]}/{rf[5:7]}, no el de hoy")
-    c = sint.get("comisiones") or {}
     E.append(Paragraph(
         f"Futuros de A3 Mercados: {modo}. Devaluación implícita de cada contrato contra el A3500 "
         f"del {tc['fecha'][8:10]}/{tc['fecha'][5:7]} ({num(tc['valor'], 2)}), anualizada. La tasa "
         "de la LECAP y la del dólar linked se <b>interpolan</b> linealmente al vencimiento de cada "
         "futuro entre los dos bonos que lo rodean —los que figuran debajo de la tasa—, porque los "
         "vencimientos casi nunca coinciden; si un bono vence el mismo día, figura solo; fuera del tramo con bonos no se extrapola. Días desde "
-        f"la liquidación en T+1. El <b>neto</b> descuenta aranceles de {num(c.get('lecap'), 1)}% "
-        f"en la LECAP, {num(c.get('dl'), 1)}% en el dólar linked y {num(c.get('fut'), 1)}% en el "
-        "futuro, anualizados al plazo de cada contrato: por eso en los plazos cortos el neto puede "
+        f"la liquidación en T+1. El <b>neto</b> descuenta esas comisiones "
+        "anualizadas al plazo de cada contrato: por eso en los plazos cortos el neto puede "
         "dar vuelta el signo del bruto. Quedan afuera los contratos a menos de "
         f"{sint.get('diasMinimos', 10)} días. Un contrato <b>sin operar</b> lleva el precio de su "
         "último ajuste. El histórico del año se calcula con el precio de ajuste de cada rueda, así "
