@@ -4,7 +4,7 @@
  "tipos": [
   "diario"
  ],
- "generado": "2026-09-15T20:31:31-03:00",
+ "generado": "2026-09-15T21:48:36-03:00",
  "feriadosLeidos": true,
  "universo": 203,
  "sinDato": [
@@ -3966,15 +3966,15 @@
    "fecha": "2026-08-31"
   },
   "riesgoPais": {
-   "valor": 490.0,
-   "fecha": "2026-09-14",
-   "rezagoDias": 1,
+   "valor": 506.0,
+   "fecha": "2026-09-15",
+   "rezagoDias": 0,
    "fuente": "EMBI+ Argentina vía argentinadatos.com",
    "previo": {
-    "fecha": "2026-09-11",
-    "valor": 485.0
+    "fecha": "2026-09-14",
+    "valor": 490.0
    },
-   "variacion": 5.0
+   "variacion": 16.0
   },
   "caucion": {
    "disponible": true,
