@@ -118,7 +118,7 @@ la página contra el Python con los mismos insumos: coinciden al tercer decimal)
     Positivo en los dos casos quiere decir lo mismo: la LECAP rinde más que el sintético en pesos, y
     el sintético DL (que es LECAP + futuro) rinde más que el bono DL. `gana` es el veredicto NETO.
     `pesos` o `dolar` en null = sin curva en ese plazo (no se extrapola).
-  · `neto` descuenta aranceles de 0,5% LECAP, 0,5% DL y 0,2% futuro (`comisiones`), anualizados
+  · `neto` descuenta aranceles de 0,1% LECAP, 0,1% DL y 0,2% futuro (`comisiones`), anualizados
     al plazo de cada contrato. En los contratos cortos eso pesa MUCHO —0,2% a 20 días son 3,7 pp
     anualizados— y el neto puede dar vuelta el signo del bruto. Leé los dos.
   · `plazoConstante`: el spread BRUTO en pesos interpolado entre contratos a 30/60/90/180 días, que

@@ -262,10 +262,10 @@
       <div class="panel-title" style="margin-bottom:0;">Comisiones</div>
       <div style="display:flex;align-items:center;gap:18px;flex-wrap:wrap;">
         <label class="nota" style="margin:0;display:flex;align-items:center;gap:7px;">LECAP
-          <input id="com-lecap" class="rot-inp" type="number" step="0.05" min="0" value="0.5"
+          <input id="com-lecap" class="rot-inp" type="number" step="0.05" min="0" value="0.1"
                  oninput="onComision('lecap', this.value)" style="width:78px;"> %</label>
         <label class="nota" style="margin:0;display:flex;align-items:center;gap:7px;">Bono DL
-          <input id="com-dl" class="rot-inp" type="number" step="0.05" min="0" value="0.5"
+          <input id="com-dl" class="rot-inp" type="number" step="0.05" min="0" value="0.1"
                  oninput="onComision('dl', this.value)" style="width:78px;"> %</label>
         <label class="nota" style="margin:0;display:flex;align-items:center;gap:7px;">Futuro
           <input id="com-fut" class="rot-inp" type="number" step="0.05" min="0" value="0.2"
@@ -275,7 +275,7 @@
     </div>
     <div class="nota" style="margin-top:12px;">
       Los valores por defecto salen de la tabla de aranceles: <strong>0,20 %</strong> el futuro y
-      <strong>0,50 %</strong> los bonos. El arancel del futuro es 0,20 % en casi todos los grupos, pero
+      <strong>0,10 %</strong> la LECAP y el bono DL, que es el arancel por defecto de las letras del Tesoro. El arancel del futuro es 0,20 % en casi todos los grupos, pero
       hay alguno en 0,50 % y uno en 0,75 %, así que conviene poner el del grupo que corresponda.<br><br>
       El <strong>spread bruto</strong> compara tasas de mercado, como el informe. El <strong>neto</strong> le aplica
       las tres comisiones: la de la LECAP baja su tasa, y las del bono DL y el futuro bajan la del sintético.
@@ -426,9 +426,10 @@ let futurosFallidos = [];
 let futurosModo = 'intradia';   // 'ajuste' cuando A3 no dio los ticks del día
 // Aranceles por defecto, de la tabla de costos del back-office (grupos "NO REG"):
 //   futuro 0,20% — el valor de casi todos los grupos; hay alguno en 0,50% y uno en 0,75%
-//   bonos  0,50%
+//   LECAP y bono DL 0,10% — el arancel por defecto de las letras del Tesoro (desde el 16/09/2026;
+//   antes era 0,50%). La solapa Letras + bonos tiene su propio 0,25% y no se toca.
 // Por eso los tres quedan editables: el arancel depende del grupo en el que esté cada cliente.
-let comisiones = { lecap: 0.5, dl: 0.5, fut: 0.2 };   // % por operación
+let comisiones = { lecap: 0.1, dl: 0.1, fut: 0.2 };   // % por operación
 let tcSpot = null;
 let tcFecha = null;      // fecha del A3500 que se usa como spot
 

@@ -555,7 +555,8 @@ CEM_API = "https://apicem.matbarofex.com.ar/api/v2"
 CABECERAS_CEM = {"User-Agent": "Mozilla/5.0", "Accept": "application/json",
                  "Referer": "https://cem.matbarofex.com.ar/"}
 # `comisiones` de la solapa: aranceles por defecto de la tabla del back-office (grupos "NO REG").
-COMISIONES_SINT = {"lecap": 0.5, "dl": 0.5, "fut": 0.2}
+# LECAP y DL en 0,1%, el arancel de las letras del Tesoro (pedido del usuario el 16/09/2026; era 0,5%).
+COMISIONES_SINT = {"lecap": 0.1, "dl": 0.1, "fut": 0.2}
 # Menos de 10 días no entra, igual que en la solapa: anualizar sobre tan poco plazo convierte
 # cualquier diferencia chica en decenas de puntos.
 DIAS_MIN_SINT = 10
