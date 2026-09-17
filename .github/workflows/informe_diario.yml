@@ -104,10 +104,18 @@ jobs:
         continue-on-error: true
         run: python macro_series.py
 
+      # Índice de Caución BYMA: BYMA no publica su historia, así que la serie se arma acá, una rueda
+      # por vez (caucion_byma.json). El script no escribe antes de las 17:05 ART ni en días sin
+      # rueda, y reescribir la misma fecha no duplica. continue-on-error: si BYMADATA no responde,
+      # la rueda se archiva igual y ese día queda sin dato.
+      - name: Guardar el índice de caución BYMA
+        continue-on-error: true
+        run: python caucion_byma.py
+
       - name: Commit y push si hay cambios
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          git add informes/ macro_series.json series_mercado.json
+          git add informes/ macro_series.json series_mercado.json caucion_byma.json
           git diff --staged --quiet || git commit -m "Datos del informe $(date +'%Y-%m-%d')"
           git push

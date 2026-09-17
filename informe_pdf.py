@@ -393,6 +393,7 @@ def tabla_macro(macro, ancho, periodo=None, rotulo="", con_dia=True):
                            ("BADLAR bancos privados", "badlarTEA", "TEA", {}),
                            ("Plazo fijo 30 días", "plazoFijo30", "TNA", {}),
                            ("Caución 1 día · pases entre terceros", "pasesTerceros", "TNA", {}),
+                           ("Caución BYMA · índice a 1 día", "caucionByma", "TNA", {}),
                            ("BAIBAR · entre bancos privados", "baibar", "TNA", {}),
                            ("Entre entidades financieras", "interbancario", "TNA", {}),
                            ("Compra de divisas del BCRA", "comprasMLC", "M USD", {"monto": True}),
@@ -1010,9 +1011,11 @@ def construir(ruta_json, dir_curvas, textos, salida, modo="auto"):
         "las tasas con dos días hábiles de rezago, y reservas y compra de divisas con tres o "
         "cuatro. No se leen contra el movimiento de los bonos del día como si fueran simultáneas. "
         "<b>Las tasas y las reservas informan cuánto cambiaron; la compra de divisas, cuánto se "
-        "acumuló</b> —el sufijo «·Nr» son las ruedas que entraron en el período—. La caución es la "
-        "de pases entre terceros a un día que publica el BCRA; no es la caución bursátil, que se "
-        "opera en BYMA y en MAE y corre bastante por encima." + _nota_riesgo_embig(d["macro"]),
+        "acumuló</b> —el sufijo «·Nr» son las ruedas que entraron en el período—. Hay dos cauciones: "
+        "la de pases entre terceros a un día que publica el BCRA, el repo entre bancos, con un día "
+        "de rezago, y el <b>Índice de Caución BYMA</b>, la caución bursátil a un día de la misma rueda "
+        "—promedio ponderado por monto de las operaciones de contado inmediato—. La serie del "
+        "índice la guarda el repo desde el 17/09/2026: BYMA no publica su historia." + _nota_riesgo_embig(d["macro"]),
         P_CHICO))
 
     for t in textos["macro"]:

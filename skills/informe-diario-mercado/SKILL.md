@@ -244,6 +244,13 @@ contra el dato previo y una ventana de 15 ruedas para ver la tendencia:
   · `comprasMLC` — compra de divisas del BCRA medida por su efecto en reservas, en millones de USD.
   · `efectoMonetario` — el mismo hecho visto en pesos emitidos.
   · `reservas` — reservas internacionales.
+  · `caucionByma` — Índice de Caución BYMA (IDXCAUTIONB), la caución BURSÁTIL a 1 día en TNA, del
+    día —con `hora` cuando es el valor en vivo—. NO reemplaza a `pasesTerceros` (pedido del usuario,
+    17/09/2026): van las dos filas en la tabla del mail, «Caución 1 día · pases entre terceros» y
+    debajo «Caución BYMA · índice a 1 día». Son mercados distintos —repo entre bancos con un día de
+    rezago contra caución bursátil del día—, así que la diferencia entre las dos no es un error y se
+    puede comentar. La serie la guarda el repo (caucion_byma.json) desde el 17/09/2026 porque BYMA
+    no publica la historia: las variaciones del período van a salir vacías hasta que se acumule.
   · `embig` — EMBIG de Argentina, de Latinoamérica y la distancia entre los dos (`argentina`,
     `latam`, `brecha`). Es la tarjeta "Spread de riesgo soberano" de la solapa Macro.
 

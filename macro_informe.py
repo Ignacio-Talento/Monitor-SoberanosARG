@@ -209,6 +209,50 @@ def datos_macro(hoy=None, cliente_1816=None, referencias=None):
         except Exception as e:                                    # noqa: BLE001
             out["fallos"].append(f"{clave} (id {idv}): {e}")
 
+    # CAUCIÓN BYMA (IDXCAUTIONB) — la caución bursátil a 1 día, que NO reemplaza a los pases entre
+    # terceros del BCRA: van las dos (pedido del usuario, 17/09/2026). Si el informe es de la rueda
+    # de hoy y la sesión ya abrió, se toma el valor en vivo; si es de una rueda pasada —un informe
+    # atrasado que se arma a la mañana siguiente—, el de la serie propia caucion_byma.json, porque
+    # el en vivo ya sería de otro día. Sin ninguno de los dos, la fila no aparece.
+    try:
+        import caucion_byma
+        from datetime import datetime, timezone
+        serie = caucion_byma.filas()
+        ahora = datetime.now(timezone.utc) - timedelta(hours=3)
+        v = None
+        if hoy == ahora.date() and (ahora.hour, ahora.minute) >= (10, 30):
+            vv = caucion_byma.vivo()
+            v = (hoy.isoformat(), vv["valor"])
+            extra = {"hora": vv["hora"], "apertura": vv["apertura"], "maximo": vv["maximo"],
+                     "minimo": vv["minimo"]}
+            # El previo es el «cierre anterior» que informa BYMA; la fecha, la de la última rueda
+            # guardada, si la hay.
+            ant = [x for x in serie if x[0] < hoy.isoformat()]
+            if vv["cierreAnterior"] is not None:
+                previo = (ant[-1][0] if ant else None, vv["cierreAnterior"])
+            else:
+                previo = ant[-1] if ant else None
+        else:
+            hasta = [x for x in serie if x[0] <= hoy.isoformat()]
+            if hasta and hasta[-1][0] == hoy.isoformat():
+                v = hasta[-1]
+                extra = {}
+                previo = hasta[-2] if len(hasta) > 1 else None
+        if v:
+            f, val = v
+            reg = {"nombre": "Índice de Caución BYMA · 1 día", "unidad": "% TNA",
+                   "fecha": f, "valor": val, "clase": "stock", "rezagoDias": 0,
+                   "fuente": "BYMADATA · IDXCAUTIONB", **extra}
+            if previo:
+                reg["previo"] = {"fecha": previo[0], "valor": previo[1]}
+                reg["variacion"] = round(val - previo[1], 4)
+            historia = sorted([x for x in caucion_byma.filas() if x[0] < f] + [(f, val)],
+                              reverse=True)
+            _agregar_periodos(reg, historia, val, referencias)
+            out["series"]["caucionByma"] = reg
+    except Exception as e:                                        # noqa: BLE001
+        out["fallos"].append(f"caucionByma: {e}")
+
     try:
         # La serie entera y no /ultimo: son 7.689 puntos desde 1999 y pesan 400 KB, pero es el
         # único modo de tener la variación semanal y mensual sin pedir el endpoint tres veces.

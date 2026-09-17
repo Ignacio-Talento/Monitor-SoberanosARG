@@ -1,0 +1,12 @@
+{
+ "nombre": "Índice de Caución BYMA · 1 día",
+ "fuente": "BYMADATA (IDXCAUTIONB), serie armada por el repo desde el 17/09/2026",
+ "unidad": "% TNA",
+ "filas": [
+  {
+   "fecha": "2026-09-16",
+   "valor": 20.27,
+   "desdeCierreAnterior": true
+  }
+ ]
+}
