@@ -91,49 +91,75 @@ def serie_larga(id_var, desde=DESDE, hasta=None):
     return filas
 
 
-# EMBIG por país y por región, del Banco Central de Reserva del Perú: es la única fuente pública y
-# sin credenciales que publica diario el EMBIG de Latinoamérica. El de Argentina se pide a la MISMA
-# fuente —y no a argentinadatos, que republica el EMBI+— para que las dos series de la tarjeta sean
-# del mismo índice. EMBI+ y EMBIG difieren en unos puntos (490 contra 496 el 07/09/2026).
-# Verificado el 10/09/2026 contra el gráfico "Spread de riesgo soberano en 2026" del semanal de
-# 1816: el de Argentina coincide punto por punto —pico de 634 el 30/03, piso de 403 en julio, 496
-# el 07/09—; el de Latinoamérica tiene la misma forma pero queda 15-20 pb arriba del que usa 1816,
-# que no dice qué agregado regional toma.
-BCRP_API = "https://estadisticas.bcrp.gob.pe/estadisticas/series/api"
-EMBIG = {"embigArg": ("PD04710XD", "Argentina"), "embigLatam": ("PD04708XD", "America Latina")}
-MES_BCRP = {"Ene": 1, "Feb": 2, "Mar": 3, "Abr": 4, "May": 5, "Jun": 6, "Jul": 7, "Ago": 8,
-            "Set": 9, "Sep": 9, "Oct": 10, "Nov": 11, "Dic": 12}
+# EMBIG por país y por región. HASTA EL 03/09/2026 salía del Banco Central de Reserva del Perú
+# (series PD04710XD y PD04708XD): desde el 04/09 esa API devuelve «n.d.» para TODOS los países
+# —verificado el 17/09/2026, con el resto de sus series diarias al día—, así que no era rezago.
+#
+# AHORA SALE DEL BANCO CENTRAL DE REPÚBLICA DOMINICANA, que publica el EMBI Global Diversified de
+# J.P. Morgan por país y por región en un XLSX público, sin credenciales, diario desde el
+# 29/10/2007 y con dos o tres ruedas de rezago. Viene en PORCENTAJE (4,95 = 495 pb). En la misma
+# carpeta hay otro «EMBI.xlsx» que quedó congelado en octubre de 2024: no confundirlos.
+#
+# CONTRA LA FUENTE ANTERIOR: el de Argentina coincide punto por punto con el del BCRP (ocho ruedas
+# de agosto-septiembre de 2026 comparadas). El agregado «LATINO» NO: da unos 18 pb menos que el
+# «América Latina» del BCRP (250 contra 268 el 03/09/2026) —es otra definición del agregado—, así
+# que se usa la serie entera de esta fuente y nunca se empalma con la vieja. Se pierde el tramo
+# 1998-2007, que esta fuente no tiene.
+#
+# QUIEBRE DEL 04/09/2026 (ver EMBIG_QUIEBRES): ese día Venezuela pasó de 6.055 a 3.961 pb y el
+# agregado LATINO de 250 a 172 —el Global, de 218 a 173— con Argentina, Brasil y México quietos. Es
+# un cambio en la composición del índice, no un movimiento de mercado, y probablemente lo mismo que
+# cortó la publicación del BCRP. Cualquier variación de Latinoamérica o de la brecha que cruce esa
+# fecha salta ~80 pb de mentira; por eso el quiebre viaja en el JSON y lo marcan el informe y el
+# gráfico.
+BCRD_EMBIG = ("https://cdn.bancentral.gov.do/documents/entorno-internacional/documents/"
+              "Serie_Historica_Spread_del_EMBI.xlsx")
+EMBIG = {"embigArg": "Argentina", "embigLatam": "LATINO"}
+EMBIG_QUIEBRES = [{
+    "fecha": "2026-09-04",
+    "series": ["embigLatam"],
+    "nota": ("Cambio en la composición del EMBI Global Diversified: Venezuela pasó de 6.055 a "
+             "3.961 pb y el agregado latinoamericano de 250 a 172 en un día, con Argentina, Brasil "
+             "y México quietos. No es mercado: las variaciones de Latinoamérica y de la brecha que "
+             "cruzan esa fecha no se leen."),
+}]
 _embig = {}
 
 
 def embig(clave):
-    """-> [(fecha ISO, pbs)] de una de las dos series, desde enero de 1998.
+    """-> [(fecha ISO, pbs)] de una de las dos series, desde el 29/10/2007.
 
-    Las dos se piden en UNA sola llamada y se cachean. La API devuelve las series en su propio
-    orden y NO en el que se piden —el 10/09/2026 llegaba Latinoamérica primero aunque se pidiera
-    Argentina primero—, así que cada columna se identifica por el nombre en config.series, nunca
-    por posición. Leída por posición, la tarjeta dibujaba Argentina en 260-330 pb.
+    El archivo se baja una vez y se cachea. Las columnas se buscan por el NOMBRE del header (fila
+    2: Fecha, Global, LATINO, REP DOM, Argentina, …), nunca por posición, por si agregan un país.
+    Las celdas sin dato vienen vacías o con "N/A".
     """
     if not _embig:
-        cods = "-".join(c for c, _ in EMBIG.values())
-        r = requests.get(f"{BCRP_API}/{cods}/json/1998-01-01/{date.today().isoformat()}",
-                         headers=UA, timeout=90)
+        import io as _io
+        import openpyxl
+        r = requests.get(BCRD_EMBIG, headers={"User-Agent": "Mozilla/5.0"}, timeout=90)
         r.raise_for_status()
-        j = json.loads(r.content.decode("utf-8-sig"))        # viene con BOM
-        nombres = [x["name"] for x in j["config"]["series"]]
-        col = {k: next(i for i, n in enumerate(nombres) if marca in n)
-               for k, (_, marca) in EMBIG.items()}
+        ws = openpyxl.load_workbook(_io.BytesIO(r.content), read_only=True,
+                                    data_only=True).worksheets[0]
+        filas = ws.iter_rows(values_only=True)
+        col = None
         for k in EMBIG:
             _embig[k] = []
-        for per in j["periods"]:
-            dd, mm, yy = per["name"].split(".")                 # "07.Set.26"
-            anio = int(yy) + (1900 if int(yy) >= 90 else 2000)
-            f = date(anio, MES_BCRP[mm], int(dd)).isoformat()
+        for fila in filas:
+            if col is None:
+                if fila and fila[0] == "Fecha":
+                    nombres = [str(x).strip() if x is not None else "" for x in fila]
+                    col = {k: nombres.index(marca) for k, marca in EMBIG.items()}
+                continue
+            if not fila or not hasattr(fila[0], "year"):
+                continue
+            f = fila[0].date().isoformat()
             for k, i in col.items():
-                v = per["values"][i]
-                if v not in ("n.d.", "", None):                 # los días sin publicar vienen así
-                    _embig[k].append((f, float(v)))
-    return _embig[clave]
+                v = fila[i] if i < len(fila) else None
+                if isinstance(v, (int, float)):
+                    _embig[k].append((f, round(v * 100, 2)))
+        if col is None:
+            raise ValueError("no encontré la fila de encabezados del XLSX del EMBIG")
+    return sorted(_embig[clave])
 
 
 def riesgo_pais():
@@ -217,9 +243,11 @@ def main():
         ("repo", "Repo a 1 día entre bancos", "% TNA",
          "BCRA · serie 150 (pases entre terceros)", 2, lambda: serie_larga(150)),
         ("embigArg", "EMBIG Argentina", "puntos básicos",
-         "BCRP · serie PD04710XD (EMBIG de J.P. Morgan)", 0, lambda: embig("embigArg")),
+         "Banco Central de República Dominicana (EMBI Global Diversified de J.P. Morgan)", 0,
+         lambda: embig("embigArg")),
         ("embigLatam", "EMBIG Latinoamérica", "puntos básicos",
-         "BCRP · serie PD04708XD (EMBIG de J.P. Morgan)", 0, lambda: embig("embigLatam")),
+         "Banco Central de República Dominicana (EMBI Global Diversified de J.P. Morgan, "
+         "agregado LATINO)", 0, lambda: embig("embigLatam")),
     ]
     try:
         filas = rem_ipc()
@@ -253,6 +281,8 @@ def main():
         except Exception as e:                                    # noqa: BLE001
             out["fallos"].append(f"{clave}: {e}")
             print(f"{clave:11} FALLÓ: {e}")
+
+    out["quiebres"] = EMBIG_QUIEBRES
 
     if not out["series"]:
         raise SystemExit("ninguna serie se pudo bajar; no se pisa el JSON anterior")

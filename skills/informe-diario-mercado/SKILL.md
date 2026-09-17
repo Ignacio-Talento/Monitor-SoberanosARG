@@ -260,17 +260,30 @@ contarlo vienen en `brecha.inicioAnio`, `brecha.minAnio`, `brecha.maxAnio` y los
 En el mail van las tres filas en la tabla macro, con su fecha en «Al día», y una o dos oraciones
 de la brecha en la prosa de la sección. El PDF ya arma las filas solo.
 
-TRES CUIDADOS CON ESTA SERIE:
+CUATRO CUIDADOS CON ESTA SERIE:
+  · QUIEBRE DEL 04/09/2026 (pedido del usuario, 17/09/2026: marcarlo siempre). Ese día cambió la
+    composición del índice: Venezuela pasó de 6.055 a 3.961 pb y el EMBIG de Latinoamérica de 250 a
+    172 en un día, con Argentina, Brasil y México quietos. NO ES MERCADO. El bloque trae `quiebre`
+    (fecha y nota) y marca con `cruzaQuiebre: true` toda variación de `latam` o de `brecha` —del día,
+    del período, `inicioAnio`, `minAnio`, `maxAnio`— cuya punta vieja es anterior al quiebre. Esas
+    variaciones NO se cuentan como movimiento: decí que la serie regional tiene un quiebre y usá
+    `brecha.desdeQuiebre` (nivel el 04/09, extremos y variación desde ahí). El nivel y las
+    variaciones de `argentina` no están afectados. La lectura del 07/09 de más abajo —brecha de
+    231 a 228 en el año— es de ANTES del quiebre y con la fuente vieja: no la repitas. En la tabla
+    del mail esas celdas van «quiebre» en gris, como en el PDF.
   · Es EMBIG, no el EMBI+ de la fila de riesgo país: son índices distintos y difieren en unos
     puntos (490 contra 496 el 07/09/2026). No los restes ni los presentes como la misma serie.
-  · La publica el Banco Central de Reserva del Perú con dos o tres días hábiles de rezago, Y REPITE
-    EL ÚLTIMO DATO LOS FERIADOS DE EE.UU., en que el índice no se calcula —el 07/09/2026 fue Labor
+  · DESDE EL 17/09/2026 SALE DEL BANCO CENTRAL DE REPÚBLICA DOMINICANA (EMBI Global Diversified,
+    agregado «LATINO»): el del Perú dejó de publicarlo el 04/09. El de Argentina es idéntico al
+    anterior; el de Latinoamérica da unos 18 pb menos que el del BCRP (otra definición). Llega con
+    dos o tres días hábiles de rezago Y PUEDE REPETIR EL ÚLTIMO DATO LOS FERIADOS DE EE.UU., en que el índice no se calcula —el 07/09/2026 fue Labor
     Day—. `ultimoCambio` dice cuál fue la última fecha en que alguna de las dos series se movió: si
     difiere de `hasta`, la variación del día es cero por calendario y no porque el mercado haya
     estado quieto. No la comentes como noticia; contá el nivel y la brecha, y decí la fecha.
-  · La de Latinoamérica NO es la que usa 1816 en su semanal: tiene la misma forma pero queda 15-20
-    pb arriba, y 1816 no dice qué agregado regional toma. El EMBIG Argentina sí coincide punto por
-    punto con el de ellos. Si citás un número de 1816 para la región, no lo compares contra éste.
+  · La de Latinoamérica puede no ser la que usa 1816 en su semanal (la del BCRP quedaba 15-20 pb
+    arriba de la de ellos; la nueva fuente da ~18 pb menos que el BCRP, así que probablemente
+    coincida, pero no está verificado). El EMBIG Argentina sí coincide punto por punto. Si citás un
+    número de 1816 para la región, no lo compares contra éste sin chequear.
 
 EN LOS CIERRES, ESTAS SERIES TAMBIÉN TRAEN SU PERÍODO, en `serie.semanal` / `serie.mensual` y en
 `macro.riesgoPais.semanal`. Pero ojo con leerlas todas igual, porque hay dos clases y el campo
@@ -301,14 +314,18 @@ movimiento de los bonos de hoy, aclará que la del BCRA es de dos días antes. S
 con un rezago mayor al habitual —`rezagoDias` de 5 o más en las tasas—, marcala: puede ser un
 feriado o puede ser que el BCRA dejó de publicarla.
 
-EL RIESGO PAÍS DEL INFORME ES EL DE LA RUEDA ANTERIOR, SIEMPRE. Sale de argentinadatos, que
-republica el EMBI+ de J.P. Morgan: el índice cierra con Nueva York —las 18 de Argentina— y
-argentinadatos lo levanta después, así que a la hora del informe el del día todavía no existe y
-al mediodía siguiente ya está. Verificado el 10/09/2026: a las 12:44 el último era el del 09/09,
-y los informes del 08 y del 09 usaron el del 07 y el del 08. No es un atraso del job, es el
-calendario de la fuente.
+EL RIESGO PAÍS DEL DÍA SALE DE ÁMBITO, EN VIVO (desde el 17/09/2026). argentinadatos, de donde sale
+la historia, recién carga el dato del día cerca de las 21:50, así que a las 17:30 traía el de
+ayer. Ahora el script toma el valor de Ámbito si su fecha es la de la rueda del informe, y el
+registro `riesgoPais` viene con `provisorio: true` y `hora` («17:34»): es el nivel a esa hora, con
+Nueva York todavía abierto —el cierre oficial de J.P. Morgan sale después de las 18— y puede
+diferir en unos puntos del definitivo. Escribilo así: «el riesgo país marcaba 509 a las 17:34, un
+punto abajo». En la tabla del mail, «Al día» lleva la fecha y la hora. El PDF lo aclara solo.
 
-Por eso el riesgo país va CON SU FECHA EN LA PROSA TAMBIÉN, incluido el resumen de arriba, no sólo
+Si NO viene `provisorio` —Ámbito falló, o el informe se arma a la mañana siguiente para una rueda
+que ya pasó—, el dato es de argentinadatos y puede ser el de la rueda anterior: mirá `fecha`.
+
+En ese caso el riesgo país va CON SU FECHA EN LA PROSA TAMBIÉN, incluido el resumen de arriba, no sólo
 en la columna «Al día». "El riesgo país subió cuatro puntos, a 494" leído en el informe del
 miércoles parece el movimiento del miércoles y era el del martes; escribí "subió cuatro puntos a
 494, con dato del martes" o "el martes subió...". Y no lo juntes con el movimiento de los bonos

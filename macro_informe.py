@@ -48,6 +48,11 @@ import requests
 
 BCRA = "https://api.bcra.gob.ar/estadisticas/v4.0/monetarias"
 RIESGO_PAIS = "https://api.argentinadatos.com/v1/finanzas/indices/riesgo-pais"
+# Ámbito publica el riesgo país EN VIVO —el 17/09/2026 a las 10:44 ya marcaba el del día—, y
+# argentinadatos recién carga el del día cerca de las 21:50: a las 17:30, cuando corre el informe,
+# trae el de ayer (medido en los JSON del 14 y el 15/09/2026). La historia sigue saliendo de
+# argentinadatos; Ámbito sólo aporta el punto de HOY, y sólo si su fecha es la de la rueda.
+AMBITO_RIESGO = "https://mercados.ambito.com//riesgopais/variacion"
 UA = {"User-Agent": "Mozilla/5.0", "Accept": "application/json"}
 
 # Series del BCRA que le interesan al informe. Se piden por ID porque los nombres se repiten: hay
@@ -210,10 +215,28 @@ def datos_macro(hoy=None, cliente_1816=None, referencias=None):
         d, _ = _get(RIESGO_PAIS, timeout=45)
         filas = sorted(((x["fecha"], float(x["valor"])) for x in d if x.get("fecha")),
                        reverse=True)
+        vivo = None
+        try:
+            a, _ = _get(AMBITO_RIESGO, timeout=20)
+            dd, mm, aa = a["fecha"].split("-")
+            fa = f"{aa}-{mm}-{dd}"
+            # Sólo si es la rueda del informe y argentinadatos todavía no la tiene. Un informe
+            # atrasado que se arma a la mañana siguiente NO toma el de Ámbito: su fecha ya es otra.
+            if fa == hoy.isoformat() and (not filas or filas[0][0] < fa):
+                from datetime import datetime as _dt, timezone as _tz
+                vivo = (fa, float(str(a["ultimo"]).replace(".", "").replace(",", ".")))
+                hora = (_dt.now(_tz.utc) - timedelta(hours=3)).strftime("%H:%M")
+                filas.insert(0, vivo)
+        except Exception as e:                                    # noqa: BLE001
+            out["fallos"].append(f"riesgoPais en vivo (Ámbito): {e}")
         if filas:
             f, v = filas[0]
             reg = {"valor": v, "fecha": f, "rezagoDias": (hoy - date.fromisoformat(f)).days,
                    "fuente": "EMBI+ Argentina vía argentinadatos.com"}
+            if vivo:
+                reg.update({"provisorio": True, "hora": hora,
+                            "fuente": (f"Ámbito, en vivo a las {hora} (el cierre de J.P. Morgan sale "
+                                       "más tarde); historia de argentinadatos.com")})
             if len(filas) > 1:
                 reg["previo"] = {"fecha": filas[1][0], "valor": filas[1][1]}
                 reg["variacion"] = round(v - filas[1][1], 2)

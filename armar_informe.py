@@ -470,7 +470,8 @@ def datos_legislacion(referencias, anio):
 def datos_embig(referencias, anio):
     """EMBIG de Argentina, de Latinoamérica y la distancia entre los dos, para el bloque macro.
 
-    Sale de macro_series.json, que arma el job de Series Macro a partir del BCRP; no se pide acá.
+    Sale de macro_series.json, que arma el job de Series Macro a partir del XLSX del Banco Central
+    de República Dominicana (hasta el 03/09/2026, del BCRP, que dejó de publicarlo); no se pide acá.
     Es EMBIG y no el EMBI+ de la fila de riesgo país: son índices distintos y difieren en unos
     puntos. Se usa porque es el único que tiene su par regional público.
 
@@ -482,7 +483,9 @@ def datos_embig(referencias, anio):
     """
     out = {"disponible": False}
     try:
-        S = json.loads(MACRO_SERIES.read_text(encoding="utf-8"))["series"]
+        MS = json.loads(MACRO_SERIES.read_text(encoding="utf-8"))
+        S = MS["series"]
+        quiebres = [q for q in (MS.get("quiebres") or []) if "embigLatam" in q.get("series", [])]
         a = dict(zip(S["embigArg"]["f"], S["embigArg"]["v"]))
         l = dict(zip(S["embigLatam"]["f"], S["embigLatam"]["v"]))
     except Exception as e:                                        # noqa: BLE001
@@ -506,7 +509,8 @@ def datos_embig(referencias, anio):
     brecha = [(f, a[f] - l[f]) for f in comunes]
     out.update({
         "disponible": True,
-        "fuente": "BCRP · EMBIG de J.P. Morgan (series PD04710XD y PD04708XD)",
+        "fuente": ("Banco Central de República Dominicana · EMBI Global Diversified de "
+                   "J.P. Morgan (Argentina y agregado LATINO)"),
         "hasta": comunes[-1],
         "argentina": registro([(f, a[f]) for f in comunes]),
         "latam": registro([(f, l[f]) for f in comunes]),
@@ -537,6 +541,38 @@ def datos_embig(referencias, anio):
             ult_cambio = f
             break
     out["ultimoCambio"] = ult_cambio
+
+    # QUIEBRE DE LA SERIE REGIONAL (04/09/2026). Una variación de Latinoamérica o de la brecha cuya
+    # punta vieja es ANTERIOR al quiebre y la nueva posterior mezcla dos composiciones del índice:
+    # se marca con `cruzaQuiebre` para que ni el PDF ni la prosa la lean como mercado. El nivel
+    # argentino no se toca: su serie no cambió.
+    if quiebres:
+        out["quiebre"] = quiebres[-1]
+        fq = quiebres[-1]["fecha"]
+
+        def cruza(desde):
+            return desde < fq <= out["hasta"]
+
+        for clave in ("latam", "brecha"):
+            reg = out[clave]
+            if reg.get("previo") and cruza(reg["previo"]["fecha"]):
+                reg["cruzaQuiebre"] = True
+            for tipo in referencias:
+                if isinstance(reg.get(tipo), dict) and cruza(reg[tipo].get("fecha", fq)):
+                    reg[tipo]["cruzaQuiebre"] = True
+            for ext in ("inicioAnio", "minAnio", "maxAnio"):
+                if reg.get(ext) and cruza(reg[ext]["fecha"]):
+                    reg[ext]["cruzaQuiebre"] = True
+        # Los extremos del año de la brecha también mezclan composiciones: se recalculan desde el
+        # quiebre y se deja dicho.
+        post = [(f, a[f] - l[f]) for f in comunes if f >= fq]
+        if post:
+            fmin, vmin = min(post, key=lambda x: x[1])
+            fmax, vmax = max(post, key=lambda x: x[1])
+            out["brecha"]["desdeQuiebre"] = {"fecha": post[0][0], "valor": post[0][1],
+                                             "min": {"fecha": fmin, "valor": vmin},
+                                             "max": {"fecha": fmax, "valor": vmax},
+                                             "variacion": round(out["brecha"]["valor"] - post[0][1], 2)}
     return out
 
 

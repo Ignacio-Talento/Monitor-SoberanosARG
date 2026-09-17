@@ -624,6 +624,17 @@ function dibujar(cfg) {
          s.color + '"/>';
   }
 
+  /* Marcas verticales: quiebres de serie que NO son mercado (el EMBIG regional cambió de
+     composición el 04/09/2026). Van punteadas y rotuladas para que un salto no se lea como dato. */
+  for (const m of (cfg.marcas || [])) {
+    if (m.t < t0 || m.t > t1) continue;
+    const x = X(m.t).toFixed(1);
+    g += '<line x1="' + x + '" y1="' + MT + '" x2="' + x + '" y2="' + (MT + PH) + '" stroke="' +
+         PAL.gris + '" stroke-width="1.2" stroke-dasharray="4 3"/>';
+    g += '<text x="' + (X(m.t) - 5).toFixed(1) + '" y="' + (MT + 12) + '" text-anchor="end" ' +
+         'font-size="10.5" font-weight="600" fill="' + PAL.gris + '">' + m.texto + '</text>';
+  }
+
   g += '<line x1="' + ML + '" y1="' + (MT + PH) + '" x2="' + (ML + pw) + '" y2="' + (MT + PH) +
        '" stroke="' + PAL.borde + '" stroke-width="1"/>';
   g += '<g class="g-cursor" style="display:none"><line y1="' + MT + '" y2="' + (MT + PH) +
@@ -925,25 +936,35 @@ function render() {
       return a === null || l === null ? null : a - l;
     };
     const bHoy = brecha(ua[0]), bIni = brecha(vEa[0][0]);
-    const dB = bHoy !== null && bIni !== null ? bHoy - bIni : null;
+    /* Quiebre del índice regional: si la ventana lo cruza, la variación de la brecha mezcla dos
+       composiciones distintas y no se muestra como número. */
+    const quiebres = ((DATOS && DATOS.quiebres) || []).filter((q) => (q.series || []).includes('embigLatam'));
+    const cruza = quiebres.some((q) => ms(q.fecha) > vEa[0][0] && ms(q.fecha) <= ua[0]);
+    const dB = cruza ? null : (bHoy !== null && bIni !== null ? bHoy - bIni : null);
     const d = dibujar({ series: [{ pts: vEa, color: PAL.navy },
                                  { pts: vEl, color: PAL.ambar, der: true }],
+                        marcas: quiebres.map((q) => ({ t: ms(q.fecha), texto: 'quiebre del índice' })),
                         dec: 0, etiquetas: ['Argentina', 'Latinoamérica'],
                         aria: 'EMBIG Argentina contra EMBIG Latinoamérica' });
     partes.push(tarjeta({
       titulo: 'Spread de riesgo soberano · Argentina contra Latinoamérica',
       sub: 'EMBIG de J.P. Morgan, en puntos básicos sobre el Tesoro de los Estados Unidos. ' +
-           'Argentina en el eje izquierdo y Latinoamérica en el derecho. Diario desde enero de 1998.',
+           'Argentina en el eje izquierdo y Latinoamérica en el derecho. Diario desde octubre de 2007.',
       kpis: kpi('Argentina', fmt(ua[1], 0)) + kpi('Latinoamérica', fmt(ul[1], 0)) +
             kpi('Argentina sobre la región', bHoy === null ? '—' : fmt(bHoy, 0) + ' pbs') +
-            kpi('En la ventana', dB === null ? '—' : signo(dB, 0, ' pbs'),
+            kpi('En la ventana', cruza ? 'quiebre' : dB === null ? '—' : signo(dB, 0, ' pbs'),
                 dB < 0 ? 'pos' : dB > 0 ? 'neg' : ''),
       ctrl: ctrlPlazo('embig', vEa),
       svg: d.svg,
       leyenda: '<span><i style="border-color:' + PAL.navy + '"></i>EMBIG Argentina · eje izquierdo</span>' +
                '<span><i style="border-color:' + PAL.ambar + '"></i>EMBIG Latinoamérica · eje derecho</span>',
-      pie: 'Fuente: Banco Central de Reserva del Perú, que publica el EMBIG de J.P. Morgan por país y ' +
-           'por región con dos o tres días hábiles de rezago. Es otro índice que el EMBI+ de la ' +
+      pie: 'Fuente: Banco Central de República Dominicana, que publica el EMBI Global Diversified de ' +
+           'J.P. Morgan por país y por región con dos o tres días hábiles de rezago; hasta el 03/09/2026 ' +
+           'salía del Banco Central de Reserva del Perú, que dejó de publicarlo. <b>QUIEBRE EL 04/09/2026</b> ' +
+           '(línea punteada): cambió la composición del índice —Venezuela pasó de 6.055 a 3.961 pb y el ' +
+           'agregado regional de 250 a 172 en un día, con Argentina quieta—, así que el salto de ' +
+           'Latinoamérica ese día no es mercado y la variación de la brecha no se mide a través de esa ' +
+           'fecha. Es otro índice que el EMBI+ de la ' +
            'tarjeta de arriba —difieren en unos puntos— y se usa acá para que las dos series sean de ' +
            'la misma familia. LOS DOS EJES TIENEN ESCALAS DISTINTAS a propósito, porque Argentina ' +
            'rinde casi el doble que la región: que las líneas se crucen o se separen no significa ' +

@@ -286,6 +286,26 @@ def _nota_atraso(bloque, d):
             f"vieja.")
 
 
+def _nota_riesgo_embig(macro):
+    """Lo que la tabla macro tiene que aclarar del riesgo país en vivo y del quiebre del EMBIG."""
+    txt = ""
+    rp = macro.get("riesgoPais") or {}
+    if rp.get("provisorio"):
+        txt += (f" <b>El riesgo país es el de Ámbito a las {rp.get('hora', '')}</b>, con la rueda "
+                "de Nueva York todavía abierta: el cierre oficial de J.P. Morgan sale más tarde y "
+                "puede diferir en unos puntos.")
+    eb = macro.get("embig") or {}
+    q = eb.get("quiebre")
+    if q:
+        f = q["fecha"]
+        txt += (f" <b>El EMBIG de Latinoamérica tiene un quiebre el {f[8:10]}/{f[5:7]}/{f[:4]}</b>: "
+                "cambió la composición del índice —Venezuela pasó de 6.055 a 3.961 pb y el agregado "
+                "regional de 250 a 172 en un día, sin movimiento en Argentina, Brasil ni México—. "
+                "Donde la variación cruza esa fecha dice «quiebre»: no es mercado. Fuente del EMBIG: "
+                "Banco Central de República Dominicana, desde que el BCRP dejó de publicarlo.")
+    return txt
+
+
 def tabla_macro(macro, ancho, periodo=None, rotulo="", con_dia=True):
     S = macro["series"]
     rp = macro["riesgoPais"]
@@ -329,7 +349,8 @@ def tabla_macro(macro, ancho, periodo=None, rotulo="", con_dia=True):
     filas.append(["Riesgo país · EMBI+", f"{rp['valor']:.0f}", "bps"]
                  + ([num(rp["variacion"], 0, True)] if con_dia else [])
                  + ([num(w.get("variacion"), 0, True) if w else "—"] if per else [])
-                 + [f"{rp['fecha'][8:10]}/{rp['fecha'][5:7]}"])
+                 + [f"{rp['fecha'][8:10]}/{rp['fecha'][5:7]}"
+                    + (f" {rp['hora']}" if rp.get("provisorio") else "")])
     if con_dia:
         estilos.append(("TEXTCOLOR", (3, i), (3, i),
                         VERDE if rp["variacion"] < 0 else ROJO))
@@ -347,10 +368,21 @@ def tabla_macro(macro, ancho, periodo=None, rotulo="", con_dia=True):
             i = len(filas)
             w = r.get(periodo) or {}
             var = r.get("variacion")
+            # Una variación que cruza el quiebre del índice regional no es mercado: va «quiebre»
+            # en gris en lugar del número (ver datos_embig y la nota al pie de la tabla).
+            q_dia, q_per = bool(r.get("cruzaQuiebre")), bool(w.get("cruzaQuiebre"))
             filas.append([et, f"{r['valor']:.0f}", "bps"]
-                         + ([num(var, 0, True) if var is not None else "—"] if con_dia else [])
-                         + ([num(w.get("variacion"), 0, True) if w else "—"] if per else [])
+                         + (["quiebre" if q_dia else (num(var, 0, True) if var is not None else "—")]
+                            if con_dia else [])
+                         + (["quiebre" if q_per else (num(w.get("variacion"), 0, True) if w else "—")]
+                            if per else [])
                          + [f"{r['fecha'][8:10]}/{r['fecha'][5:7]}"])
+            if q_dia and con_dia:
+                estilos.append(("TEXTCOLOR", (3, i), (3, i), GRIS))
+                var = None
+            if q_per and per:
+                estilos.append(("TEXTCOLOR", (3 + int(con_dia), i), (3 + int(con_dia), i), GRIS))
+                w = {}
             if con_dia and var:
                 estilos.append(("TEXTCOLOR", (3, i), (3, i), VERDE if var < 0 else ROJO))
             if w and w.get("variacion"):
@@ -980,7 +1012,8 @@ def construir(ruta_json, dir_curvas, textos, salida, modo="auto"):
         "<b>Las tasas y las reservas informan cuánto cambiaron; la compra de divisas, cuánto se "
         "acumuló</b> —el sufijo «·Nr» son las ruedas que entraron en el período—. La caución es la "
         "de pases entre terceros a un día que publica el BCRA; no es la caución bursátil, que se "
-        "opera en BYMA y en MAE y corre bastante por encima.", P_CHICO))
+        "opera en BYMA y en MAE y corre bastante por encima." + _nota_riesgo_embig(d["macro"]),
+        P_CHICO))
 
     for t in textos["macro"]:
         E.append(Paragraph(t, P))
