@@ -342,7 +342,7 @@
       </table>
     </div>
     <div class="nota">
-      Si hay una LECAP o un DL que vence a 15 días o menos del contrato, se usa <strong>ese bono
+      Si hay una LECAP o un DL que vence a 16 días o menos del contrato, se usa <strong>ese bono
       solo</strong>, el más cercano; si no, las tasas de LECAP y DL están <strong>interpoladas a la
       fecha de cada contrato</strong>, no
       tomadas del bono más cercano: los vencimientos casi nunca coinciden y comparar contra un bono
@@ -486,7 +486,7 @@ function curvaDe(grupo) {
 // NO extrapola más allá de los extremos: devuelve null. Estirar una curva de tasas fuera del
 // rango donde hay bonos es inventar un dato, y acá el número se usa para decidir.
 // Mismo valor que TOLERANCIA_SINT en armar_informe.py.
-const TOLERANCIA_SINT = 15;
+const TOLERANCIA_SINT = 16;
 function interpolar(curva, dias) {
   if (!curva.length) return null;
   if (dias < curva[0].dias || dias > curva[curva.length - 1].dias) return null;

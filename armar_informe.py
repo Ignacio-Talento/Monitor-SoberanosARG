@@ -817,7 +817,7 @@ def vencimientos_excel(hojas=("LECAPS", "USD Linked")):
 
 # Días de distancia hasta los que se usa el bono más cercano en vez de interpolar (ver
 # interpolar_curva). Mismo valor que TOLERANCIA_SINT en sinteticos.html.
-TOLERANCIA_SINT = 15
+TOLERANCIA_SINT = 16
 
 
 def interpolar_curva(curva, dias):
