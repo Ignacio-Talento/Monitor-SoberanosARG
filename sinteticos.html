@@ -342,7 +342,9 @@
       </table>
     </div>
     <div class="nota">
-      Las tasas de LECAP y DL están <strong>interpoladas a la fecha de cada contrato</strong>, no
+      Si hay una LECAP o un DL que vence a 15 días o menos del contrato, se usa <strong>ese bono
+      solo</strong>, el más cercano; si no, las tasas de LECAP y DL están <strong>interpoladas a la
+      fecha de cada contrato</strong>, no
       tomadas del bono más cercano: los vencimientos casi nunca coinciden y comparar contra un bono
       que vence dos semanas después mete ruido que no es del mercado. Entre paréntesis, los dos
       instrumentos entre los que se interpola; si hay un bono que vence el mismo día que el
@@ -483,13 +485,21 @@ function curvaDe(grupo) {
 // Interpolación lineal en días. Devuelve { tasa, entre:[tickerA, tickerB], extrapolado }.
 // NO extrapola más allá de los extremos: devuelve null. Estirar una curva de tasas fuera del
 // rango donde hay bonos es inventar un dato, y acá el número se usa para decidir.
+// Mismo valor que TOLERANCIA_SINT en armar_informe.py.
+const TOLERANCIA_SINT = 15;
 function interpolar(curva, dias) {
   if (!curva.length) return null;
   if (dias < curva[0].dias || dias > curva[curva.length - 1].dias) return null;
   // Un bono que vence el mismo día que el contrato ES la tasa: se usa sola y se rotula sola. Antes
   // salía «S30S6–S16O6» para DLR/SEP26 con peso cero en el S16O6, y parecía que se mezclaban.
-  const exacto = curva.find(p => p.dias === dias);
-  if (exacto) return { tasa: exacto.tasa, entre: [exacto.ticker] };
+  // Y si no hay uno exacto pero hay uno a TOLERANCIA_SINT días o menos, se usa ese solo, el más
+  // cercano (pedido del usuario, 17/09/2026: para DLR/ENE27 la D15E7, a 14 días, es mejor
+  // referencia que una mezcla con la D31M7). Más lejos que eso, se interpola.
+  let cerca = curva[0];
+  for (const p of curva) {
+    if (Math.abs(p.dias - dias) < Math.abs(cerca.dias - dias)) cerca = p;
+  }
+  if (Math.abs(cerca.dias - dias) <= TOLERANCIA_SINT) return { tasa: cerca.tasa, entre: [cerca.ticker] };
   for (let i = 1; i < curva.length; i++) {
     const a = curva[i - 1], b = curva[i];
     if (dias >= a.dias && dias <= b.dias) {

@@ -175,8 +175,10 @@
    * intento por contrato —como se hacía— la curva queda con huecos distintos cada vez, y quien
    * la mira no tiene forma de distinguir "este mes no cotiza" de "esta vez no contestó".
    *
-   * Los contratos vencen SIEMPRE el último día del mes, así que el vencimiento se deriva del
-   * propio ticker en vez de hardcodearse.
+   * Los contratos vencen el ÚLTIMO DÍA HÁBIL del mes, así que el vencimiento se deriva del propio
+   * ticker en vez de hardcodearse. Hasta el 17/09/2026 se tomaba el último día CALENDARIO: DLR/OCT26
+   * quedaba al sábado 31/10 en vez del viernes 30/10, un día después de la S30O6 y la D30O6, y la
+   * solapa Sintéticos lo interpolaba contra la S13N6 y la D30N6 en lugar de usar las del mismo día.
    *
    * -> { 'DLR/SEP26': { precio, venc: Date, dias }, ... }  sólo los vivos y con precio.
    */
@@ -187,7 +189,19 @@
     var m = MESES_FUT[ticker.slice(4, 7)];
     var a = 2000 + parseInt(ticker.slice(7, 9), 10);
     if (m === undefined || isNaN(a)) return null;
-    return new Date(a, m + 1, 0);          // día 0 del mes siguiente = último del mes
+    var d = new Date(a, m + 1, 0);         // día 0 del mes siguiente = último del mes
+    // Hacia atrás hasta un día con rueda: sin fin de semana, sin feriado nacional (el set global
+    // `feriados`, si ya cargó) y sin 31/12, que no tiene rueda aunque no sea feriado.
+    var fer = (typeof feriados !== 'undefined' && feriados) ? feriados : null;
+    var ymd = function (x) {
+      return x.getFullYear() + '-' + String(x.getMonth() + 1).padStart(2, '0') + '-' +
+             String(x.getDate()).padStart(2, '0');
+    };
+    while (d.getDay() === 0 || d.getDay() === 6 || (d.getMonth() === 11 && d.getDate() === 31) ||
+           (fer && fer.has(ymd(d)))) {
+      d.setDate(d.getDate() - 1);
+    }
+    return d;
   }
 
   /* Caché en sessionStorage. No es una optimización: es lo que evita que el propio monitor tire

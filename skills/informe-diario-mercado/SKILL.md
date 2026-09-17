@@ -885,8 +885,10 @@ LAS DOS TABLAS DE SINTÉTICOS VAN EN EL MAIL, en todos los informes, también lo
 columnas que la solapa:
     En pesos:   Contrato · Días · LECAP TEA · Sintético $ TEA · Spread bruto · Spread neto · Qué paga más
     En dólares: Contrato · Días · Bono DL TIR · Sintético DL TIR · Spread bruto · Spread neto · Qué paga más
-Debajo de cada tasa de referencia, en gris y chico, los dos bonos entre los que se interpoló
-(`lecap.entre` / `dl.entre`). Spread con signo y dos decimales, verde si es positivo y rojo si es
+Debajo de cada tasa de referencia, en gris y chico, el o los bonos de `lecap.entre` / `dl.entre`:
+uno solo cuando hay un bono que vence a 15 días o menos del futuro (se usa el más cercano, pedido
+del usuario el 17/09/2026), dos cuando se interpola. Los futuros vencen el último día HÁBIL del mes
+(DLR/OCT26 el 30/10, igual que la S30O6 y la D30O6). Spread con signo y dos decimales, verde si es positivo y rojo si es
 negativo; el neto en negrita, que es el que decide «Qué paga más» (`gana`). Un contrato
 `sinOperar` va en gris con la marca «sin operar». Una línea arriba de cada tabla dice qué se
 compara y qué quiere decir el signo, y una nota corta al pie: futuros de A3 (último operado o

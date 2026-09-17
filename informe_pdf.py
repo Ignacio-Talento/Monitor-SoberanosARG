@@ -572,9 +572,9 @@ def seccion_sinteticos(d, textos, ancho, periodo, rotulo, con_dia):
     E.append(Paragraph(
         f"Futuros de A3 Mercados: {modo}. Devaluación implícita de cada contrato contra el A3500 "
         f"del {tc['fecha'][8:10]}/{tc['fecha'][5:7]} ({num(tc['valor'], 2)}), anualizada. La tasa "
-        "de la LECAP y la del dólar linked se <b>interpolan</b> linealmente al vencimiento de cada "
-        "futuro entre los dos bonos que lo rodean —los que figuran debajo de la tasa—, porque los "
-        "vencimientos casi nunca coinciden; si un bono vence el mismo día, figura solo; fuera del tramo con bonos no se extrapola. Días desde "
+        "de la LECAP y la del dólar linked es la del bono que vence a 15 días o menos del futuro "
+        "—el más cercano, que figura solo debajo de la tasa—; si no hay ninguno tan cerca, se "
+        "<b>interpola</b> linealmente entre los dos que lo rodean; fuera del tramo con bonos no se extrapola. Días desde "
         f"la liquidación en T+1. El <b>neto</b> descuenta esas comisiones "
         "anualizadas al plazo de cada contrato: por eso en los plazos cortos el neto puede "
         "dar vuelta el signo del bruto. Quedan afuera los contratos a menos de "

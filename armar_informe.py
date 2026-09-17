@@ -619,13 +619,26 @@ def contratos_solapa():
             "DLR/MAR27", "DLR/ABR27"]
 
 
+_FER_RUEDA = {}
+
+
 def venc_contrato(tk):
-    """vencContrato() de monitor-core.js: el último día CALENDARIO del mes del contrato."""
+    """vencContrato() de monitor-core.js: el último día HÁBIL del mes del contrato.
+
+    Hasta el 17/09/2026 era el último día CALENDARIO: DLR/OCT26 quedaba al sábado 31/10, un día
+    después de la S30O6 y la D30O6, y el informe lo interpolaba contra la S13N6 y la D30N6. Se usa
+    el calendario de ruedas (los puentes cuentan como hábiles) y el 31/12 no tiene rueda.
+    """
     m, a = MES_FUT.get(tk[4:7]), tk[7:9]
     if not m or not a.isdigit():
         return None
     y = 2000 + int(a)
-    return (date(y + (m == 12), m % 12 + 1, 1) - timedelta(days=1))
+    d = date(y + (m == 12), m % 12 + 1, 1) - timedelta(days=1)
+    if y not in _FER_RUEDA:
+        _FER_RUEDA[y] = feriados(y, puentes=False)
+    while not es_habil(d, _FER_RUEDA[y]):
+        d -= timedelta(days=1)
+    return d
 
 
 def _ticker_cem(symbol):
@@ -802,14 +815,22 @@ def vencimientos_excel(hojas=("LECAPS", "USD Linked")):
     return out
 
 
+# Días de distancia hasta los que se usa el bono más cercano en vez de interpolar (ver
+# interpolar_curva). Mismo valor que TOLERANCIA_SINT en sinteticos.html.
+TOLERANCIA_SINT = 15
+
+
 def interpolar_curva(curva, dias):
     """interpolar() de la solapa: lineal en días y SIN extrapolar —fuera de rango, None—."""
     if not curva or dias < curva[0]["dias"] or dias > curva[-1]["dias"]:
         return None
     # Un bono que vence el mismo día que el contrato ES la tasa: va solo, también en el rótulo.
-    for p in curva:
-        if p["dias"] == dias:
-            return {"tasa": p["tasa"], "entre": [p["ticker"]]}
+    # Y si no hay uno exacto pero hay uno a TOLERANCIA_SINT días o menos, se usa ese solo, el más
+    # cercano: pedido del usuario el 17/09/2026 —para DLR/ENE27 la D15E7, a 14 días, es mucho mejor
+    # referencia que una mezcla con la D31M7—. Más lejos que eso, se interpola.
+    cerca = min(curva, key=lambda p: (abs(p["dias"] - dias), p["dias"]))
+    if abs(cerca["dias"] - dias) <= TOLERANCIA_SINT:
+        return {"tasa": cerca["tasa"], "entre": [cerca["ticker"]]}
     for a, b in zip(curva, curva[1:]):
         if a["dias"] <= dias <= b["dias"]:
             if a["dias"] == b["dias"]:
