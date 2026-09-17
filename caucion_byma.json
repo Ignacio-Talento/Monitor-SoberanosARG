@@ -7,6 +7,14 @@
    "fecha": "2026-09-16",
    "valor": 20.27,
    "desdeCierreAnterior": true
+  },
+  {
+   "fecha": "2026-09-17",
+   "valor": 20.32,
+   "apertura": 20.46,
+   "maximo": 20.62,
+   "minimo": 20.32,
+   "hora": "16:59:00"
   }
  ]
 }
