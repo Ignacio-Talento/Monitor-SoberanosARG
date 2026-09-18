@@ -4,7 +4,7 @@
  "tipos": [
   "diario"
  ],
- "generado": "2026-09-17T20:32:38-03:00",
+ "generado": "2026-09-17T21:47:35-03:00",
  "feriadosLeidos": true,
  "universo": 203,
  "sinDato": [
@@ -3952,9 +3952,7 @@
    "valor": 515.0,
    "fecha": "2026-09-17",
    "rezagoDias": 0,
-   "fuente": "Ámbito, en vivo a las 20:32 (el cierre de J.P. Morgan sale más tarde); historia de argentinadatos.com",
-   "provisorio": true,
-   "hora": "20:32",
+   "fuente": "EMBI+ Argentina vía argentinadatos.com",
    "previo": {
     "fecha": "2026-09-16",
     "valor": 510.0
@@ -3972,20 +3970,20 @@
   "embig": {
    "disponible": true,
    "fuente": "Banco Central de República Dominicana · EMBI Global Diversified de J.P. Morgan (Argentina y agregado LATINO)",
-   "hasta": "2026-09-15",
+   "hasta": "2026-09-16",
    "argentina": {
-    "fecha": "2026-09-15",
-    "valor": 510.0,
+    "fecha": "2026-09-16",
+    "valor": 509.0,
     "previo": {
-     "fecha": "2026-09-14",
-     "valor": 495.0
+     "fecha": "2026-09-15",
+     "valor": 510.0
     },
-    "variacion": 15.0,
+    "variacion": -1.0,
     "inicioAnio": {
      "fecha": "2026-01-02",
      "valor": 557.0
     },
-    "variacionAnio": -47.0,
+    "variacionAnio": -48.0,
     "minAnio": {
      "fecha": "2026-07-07",
      "valor": 403.0
@@ -3996,22 +3994,22 @@
     }
    },
    "latam": {
-    "fecha": "2026-09-15",
-    "valor": 174.0,
+    "fecha": "2026-09-16",
+    "valor": 173.0,
     "previo": {
-     "fecha": "2026-09-14",
-     "valor": 171.0
+     "fecha": "2026-09-15",
+     "valor": 174.0
     },
-    "variacion": 3.0
+    "variacion": -1.0
    },
    "brecha": {
-    "fecha": "2026-09-15",
+    "fecha": "2026-09-16",
     "valor": 336.0,
     "previo": {
-     "fecha": "2026-09-14",
-     "valor": 324.0
+     "fecha": "2026-09-15",
+     "valor": 336.0
     },
-    "variacion": 12.0,
+    "variacion": 0.0,
     "inicioAnio": {
      "fecha": "2026-01-02",
      "valor": 250.0,
@@ -4041,7 +4039,7 @@
      "variacion": 13.0
     }
    },
-   "ultimoCambio": "2026-09-15",
+   "ultimoCambio": "2026-09-16",
    "quiebre": {
     "fecha": "2026-09-04",
     "series": [
