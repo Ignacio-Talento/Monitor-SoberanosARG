@@ -57,7 +57,8 @@ MACRO_SERIES = Path(__file__).resolve().parent / "macro_series.json"
 # Campos que se le piden a 1816. Son los mismos cuatro que pide el monitor para los instrumentos
 # sin cronograma cargado (CAMPOS_IND en functions/api/precios.js), así que el informe y la pantalla
 # hablan de los mismos números.
-CAMPOS = ["precioDirty", "tea", "durationMod", "paridad"]
+# volumenMontoDiario es para el mínimo de volumen de los sintéticos (MIN_MONTO_SINT_USD).
+CAMPOS = ["precioDirty", "tea", "durationMod", "paridad", "volumenMontoDiario"]
 
 # Hoja de Instrumentos.xlsx -> familia del informe. Son las que pidió el usuario, con el nombre con
 # el que se las nombra en la mesa. LECAPS y TASA FIJA van juntas: es una sola curva en pesos a tasa
@@ -815,6 +816,19 @@ def vencimientos_excel(hojas=("LECAPS", "USD Linked")):
     return out
 
 
+# MÍNIMO DE VOLUMEN PARA LOS SINTÉTICOS (pedido del usuario, 18/09/2026). Una LECAP o un DL
+# entra en la curva de los sintéticos sólo si operó al menos USD 100.000 en la rueda (monto en
+# pesos / A3500). Motivo: el 16 y el 17/09/2026 la D30N6 (1 nominal, 9,70%) y la D10Y7 (649
+# nominales a 150.000 redondos, 1,04%) armaban las filas de NOV26 y ABR27 con precios que no eran
+# mercado. Medido sobre 2026 (3.599 ruedas de 28 LECAPs y 16 DL): en las LECAPs el p90 del pico de
+# un día cae de 3,4 pp (<USD 10k) a 1,2-1,4 (10k-100k) y se aplana en ~1,0 de USD 100k para arriba;
+# en los DL el ruido no depende del volumen —lo domina el plazo corto y el dólar intradiario— y
+# sólo el 11% de las ruedas operadas queda debajo del umbral, así que filtrar cuesta poco. El
+# bono que no llega se saltea y la tasa sale del siguiente más cercano o de la interpolación; el
+# informe y la solapa lo dicen. El spread a plazo constante NO se filtra: su historia no tiene
+# volumen y tiene que seguir siendo comparable.
+MIN_MONTO_SINT_USD = 100_000
+
 # Días de distancia hasta los que se usa el bono más cercano en vez de interpolar (ver
 # interpolar_curva). Mismo valor que TOLERANCIA_SINT en sinteticos.html.
 TOLERANCIA_SINT = 16
@@ -962,13 +976,21 @@ def datos_sinteticos(items, datos, hoy, fer, ayer, referencias):
     venc = vencimientos_excel()
     liq = proxima_habil(hoy, fer)
     tasas = {"LECAPS": {}, "USD Linked": {}}
+    liquidas = {"LECAPS": {}, "USD Linked": {}}      # las que pasan el mínimo de volumen
+    finos = []
     for it in items:
         if it.get("hoja") in tasas and it.get("t1816"):
             h = datos.get(it["t1816"], {}).get(hoy.isoformat()) or {}
             if h.get("tea") is not None:
                 tasas[it["hoja"]][it["eco"]] = pct(h["tea"])
-    c_lecap = _curva_de_tasas(tasas["LECAPS"], venc, liq)
-    c_dl = _curva_de_tasas(tasas["USD Linked"], venc, liq)
+                usd = (h.get("volumenMontoDiario") or 0) / tc
+                if usd >= MIN_MONTO_SINT_USD:
+                    liquidas[it["hoja"]][it["eco"]] = pct(h["tea"])
+                else:
+                    finos.append({"ticker": it["eco"], "montoUSD": round(usd),
+                                  "tasa": pct(h["tea"])})
+    c_lecap = _curva_de_tasas(liquidas["LECAPS"], venc, liq)
+    c_dl = _curva_de_tasas(liquidas["USD Linked"], venc, liq)
 
     filas, cortos, sin_dato = [], [], []
     for tk in contratos_solapa():
@@ -1059,6 +1081,8 @@ def datos_sinteticos(items, datos, hoy, fer, ayer, referencias):
         "curvas": {"lecap": [p["ticker"] for p in c_lecap], "dl": [p["ticker"] for p in c_dl]},
         "filas": red(filas),
         "excluidosPorPlazo": cortos,
+        "minMontoUSD": MIN_MONTO_SINT_USD,
+        "excluidosPorVolumen": sorted(finos, key=lambda x: x["ticker"]),
         "sinPrecio": sin_dato,
         "futuros": {k: {"precio": v["precio"], "volumen": v.get("volumen")}
                     for k, v in sorted(fut.items(), key=lambda x: venc_contrato(x[0]) or date.max)

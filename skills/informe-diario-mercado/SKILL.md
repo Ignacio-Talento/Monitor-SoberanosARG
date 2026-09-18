@@ -888,7 +888,12 @@ columnas que la solapa:
 Debajo de cada tasa de referencia, en gris y chico, el o los bonos de `lecap.entre` / `dl.entre`:
 uno solo cuando hay un bono que vence a 16 días o menos del futuro (se usa el más cercano; con 16 y no 15, DLR/DIC26 toma la T15E7 y la D15E7; pedido
 del usuario el 17/09/2026), dos cuando se interpola. Los futuros vencen el último día HÁBIL del mes
-(DLR/OCT26 el 30/10, igual que la S30O6 y la D30O6). Spread con signo y dos decimales, verde si es positivo y rojo si es
+(DLR/OCT26 el 30/10, igual que la S30O6 y la D30O6). MÍNIMO DE VOLUMEN (pedido del usuario,
+18/09/2026): una LECAP o un DL entra en la curva de los sintéticos sólo si operó al menos
+USD 100.000 en la rueda; los que no llegan vienen en `sinteticos.excluidosPorVolumen` (ticker,
+montoUSD, tasa) y la tasa sale del bono siguiente o de la interpolación. Nombralos en la nota al pie
+de la tabla en dólares, junto a las comisiones («No se usan por operar menos de USD 100.000: D10Y7
+(USD 650)…»), y no los comentes como puntos de la curva. Spread con signo y dos decimales, verde si es positivo y rojo si es
 negativo; el neto en negrita, que es el que decide «Qué paga más» (`gana`). Un contrato
 `sinOperar` va en gris con la marca «sin operar». Una línea arriba de cada tabla dice qué se
 compara y qué quiere decir el signo, y una nota corta al pie: futuros de A3 (último operado o

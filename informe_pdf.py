@@ -541,9 +541,17 @@ def seccion_sinteticos(d, textos, ancho, periodo, rotulo, con_dia):
     tc = sint["tc"]
     c = sint.get("comisiones") or {}
     # Pedido del usuario el 16/09/2026: las comisiones del neto, a la vista debajo de las tablas.
+    finos = sint.get("excluidosPorVolumen") or []
+    txt_finos = ""
+    if finos:
+        txt_finos = (f" No se usan por operar menos de USD {miles(sint.get('minMontoUSD', 100000))} "
+                     "en la rueda: " + ", ".join(
+                         f"{x['ticker']} (USD {miles(x['montoUSD'])}, {num(x['tasa'])}%)"
+                         for x in finos) + "; la tasa sale del bono siguiente o de la interpolación.")
     nota_com = Paragraph(
         f"Comisiones usadas en el spread neto: LECAP {num(c.get('lecap'))}% · bono dólar linked "
-        f"{num(c.get('dl'))}% · futuro {num(c.get('fut'))}%, por operación.", P_CHICO)
+        f"{num(c.get('dl'))}% · futuro {num(c.get('fut'))}%, por operación." + txt_finos,
+        P_CHICO)
     rf = sint.get("ruedaFuturos") or ""
     E.append(KeepTogether([
         Paragraph("<b>En pesos:</b> LECAP contra sintético en pesos (comprar el bono dólar linked y "

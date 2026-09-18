@@ -341,6 +341,7 @@
         <tbody id="tbody-dolar"></tbody>
       </table>
     </div>
+    <div class="nota" id="nota-finos"></div>
     <div class="nota">
       Si hay una LECAP o un DL que vence a 16 días o menos del contrato, se usa <strong>ese bono
       solo</strong>, el más cercano; si no, las tasas de LECAP y DL están <strong>interpoladas a la
@@ -477,6 +478,7 @@ function curvaDe(grupo) {
     if (dias <= 0) continue;
     const m = calcMetricas(inst);
     if (!m || m.tea === null || isNaN(m.tea)) continue;
+    if ((grupo === 'lecap' || grupo === 'usdlinked') && esFino(inst.ticker)) continue;
     pts.push({ dias, tasa: m.tea, ticker: inst.ticker });
   }
   return pts.sort((a, b) => a.dias - b.dias);
@@ -485,6 +487,37 @@ function curvaDe(grupo) {
 // Interpolación lineal en días. Devuelve { tasa, entre:[tickerA, tickerB], extrapolado }.
 // NO extrapola más allá de los extremos: devuelve null. Estirar una curva de tasas fuera del
 // rango donde hay bonos es inventar un dato, y acá el número se usa para decidir.
+// MÍNIMO DE VOLUMEN (pedido del usuario, 18/09/2026; ver MIN_MONTO_SINT_USD en armar_informe.py,
+// con la medición que lo respalda). Una LECAP o un DL entra en la curva sólo si en su última rueda
+// operada movió al menos USD 100.000. Es la ÚLTIMA RUEDA OPERADA y no «hoy» porque a la mañana el
+// volumen del día recién arranca y vaciaría la curva: el precio que muestra la solapa es el de esa
+// misma rueda. Si el volumen no se pudo traer, no se filtra y la nota lo dice.
+const MIN_MONTO_USD = 100000;
+let montoUSD = null;          // { ticker: { usd, fecha } } o null si no se pudo traer
+async function cargarMontos() {
+  const tks = itemsPedido().map(i => i.ticker);
+  const hoy = new Date();
+  const iso = d => d.toISOString().slice(0, 10);
+  const r = await fetch('/api/series', {
+    method: 'POST', headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ tickers: tks, moneda: 'ars', campo: 'volumenMontoDiario',
+                           desde: iso(new Date(hoy.getTime() - 12 * 86400000)), hasta: iso(hoy) }),
+  });
+  if (!r.ok) throw new Error('/api/series HTTP ' + r.status);
+  const d = await r.json();
+  const out = {};
+  for (const tk of tks) {
+    const s = (d.series || {})[tk] || {};
+    const fs = Object.keys(s).filter(f => s[f] != null).sort();
+    const f = fs[fs.length - 1];
+    out[tk] = { usd: f && tcSpot ? s[f] / tcSpot : 0, fecha: f || null };
+  }
+  montoUSD = out;
+}
+function esFino(tk) {
+  return !!(montoUSD && (!montoUSD[tk] || montoUSD[tk].usd < MIN_MONTO_USD));
+}
+
 // Mismo valor que TOLERANCIA_SINT en armar_informe.py.
 const TOLERANCIA_SINT = 16;
 function interpolar(curva, dias) {
@@ -680,6 +713,23 @@ function renderSinteticos() {
   // En dólares es sintético − bono: positivo, gana el sintético.
   if (b) b.innerHTML = filas.map(r => filaComparativa(r, 'dolar',
     'Sintético DL', 'Bono DL directo')).join('');
+  const nf = document.getElementById('nota-finos');
+  if (nf) {
+    if (!montoUSD) {
+      nf.innerHTML = 'No se pudo traer el volumen de las letras: esta vez <strong>no se aplicó</strong> ' +
+        'el mínimo de USD 100.000 operados.';
+    } else {
+      const fin = itemsPedido().map(i => i.ticker).filter(tk => precios[tk] && esFino(tk));
+      const fmtD = f => f ? f.slice(8, 10) + '/' + f.slice(5, 7) : 'sin operar en 12 días';
+      nf.innerHTML = fin.length
+        ? 'No se usan por haber operado menos de <strong>USD 100.000</strong> en su última rueda: ' +
+          fin.map(tk => `<strong>${tk}</strong> (USD ${fmt(montoUSD[tk] ? montoUSD[tk].usd : 0, 0)}, ` +
+                        `${fmtD(montoUSD[tk] && montoUSD[tk].fecha)})`).join(', ') +
+          '. Su tasa no es un precio de mercado confiable; la referencia sale del bono siguiente o de ' +
+          'la interpolación.'
+        : 'Todas las LECAPs y los DL operaron al menos USD 100.000 en su última rueda.';
+    }
+  }
 }
 
 // ── HISTÓRICO DEL SPREAD ─────────────────────────────────────────────────────────────────────
@@ -1431,6 +1481,7 @@ async function init() {
   } catch (e) {
     console.warn('precios:', e);
   }
+  await cargarMontos().catch(e => { montoUSD = null; console.warn('volumen:', e); });
 
   const nP = Object.keys(precios).length, nF = Object.keys(futuros).length;
   estado(nP && nF ? `✓ ${nP} precios de 1816 · ${nF} contratos` : 'Faltan datos', nP && nF);
