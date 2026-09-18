@@ -225,13 +225,17 @@ def datos_macro(hoy=None, cliente_1816=None, referencias=None):
             v = (hoy.isoformat(), vv["valor"])
             extra = {"hora": vv["hora"], "apertura": vv["apertura"], "maximo": vv["maximo"],
                      "minimo": vv["minimo"]}
-            # El previo es el «cierre anterior» que informa BYMA; la fecha, la de la última rueda
-            # guardada, si la hay.
+            # El previo es la última rueda guardada en la serie propia. El «cierre anterior» de
+            # BYMA sólo sirve de respaldo y sólo con la rueda abierta: DESPUÉS DEL CIERRE BYMA le
+            # pone el cierre del día —el 17/09/2026 a las 17:37 valía 20,32, igual que el último—
+            # y la variación salía +0,00 en vez de +0,05.
             ant = [x for x in serie if x[0] < hoy.isoformat()]
-            if vv["cierreAnterior"] is not None:
-                previo = (ant[-1][0] if ant else None, vv["cierreAnterior"])
+            if ant:
+                previo = ant[-1]
+            elif vv["cierreAnterior"] is not None and (ahora.hour, ahora.minute) < (17, 0):
+                previo = (None, vv["cierreAnterior"])
             else:
-                previo = ant[-1] if ant else None
+                previo = None
         else:
             hasta = [x for x in serie if x[0] <= hoy.isoformat()]
             if hasta and hasta[-1][0] == hoy.isoformat():

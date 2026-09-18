@@ -24,9 +24,9 @@ POR QUÉ LA SERIE ES PROPIA. BYMA no publica la historia del índice (pedido del
 
 CUÁNDO SE GUARDA. Sólo en día de rueda (calendario de ruedas: los puentes cuentan, el 31/12 no) y
 desde las 17:05, cuando la sesión de contado inmediato ya cerró y el último valor es el del día. Una
-corrida antes de esa hora no escribe nada. Si falta la rueda anterior, se completa con el «cierre
-anterior» que informa BYMA y queda marcada `desdeCierreAnterior`. Correr dos veces reescribe la
-misma fecha: no duplica.
+corrida antes de esa hora no escribe nada. Una rueda que falte NO se completa con el «cierre
+anterior» de BYMA: después del cierre ese campo ya trae el cierre del día. Correr dos veces
+reescribe la misma fecha: no duplica.
 """
 import json
 from datetime import date, datetime, timedelta, timezone
@@ -100,12 +100,9 @@ def registrar():
     por_fecha[hoy.isoformat()] = {"fecha": hoy.isoformat(), "valor": v["valor"],
                                   "apertura": v["apertura"], "maximo": v["maximo"],
                                   "minimo": v["minimo"], "hora": v["hora"]}
-    ant = hoy - timedelta(days=1)
-    while not ai.es_habil(ant, fer if ant.year == hoy.year else ai.feriados(ant.year, puentes=False)):
-        ant -= timedelta(days=1)
-    if ant.isoformat() not in por_fecha and v["cierreAnterior"] is not None:
-        por_fecha[ant.isoformat()] = {"fecha": ant.isoformat(), "valor": v["cierreAnterior"],
-                                      "desdeCierreAnterior": True}
+    # NO se completa la rueda anterior con el «cierre anterior» de BYMA: después del cierre ese
+    # campo ya trae el cierre de HOY (verificado el 17/09/2026), así que rellenaría un hueco con el
+    # dato equivocado. Un día que falte queda faltando.
     serie["filas"] = [por_fecha[k] for k in sorted(por_fecha)]
     SALIDA.write_text(json.dumps(serie, ensure_ascii=False, indent=1), encoding="utf-8")
     print(f"caución BYMA {hoy}: {v['valor']} (cierre anterior {v['cierreAnterior']}, "
